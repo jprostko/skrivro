@@ -336,7 +336,7 @@
   const LS_KEY       = 'adoc-editor-draft-v1';
   const PREFS_KEY    = 'adoc-editor-prefs-v1';
   const DEFAULT_NAME = 'untitled.adoc';
-  const DEFAULT_DOC  = '= Hello\n\nType here.';
+  const DEFAULT_DOC  = '';
 
   const hasFSA = 'showOpenFilePicker' in window && 'showSaveFilePicker' in window;
   const FILE_TYPES = [{
@@ -558,7 +558,7 @@
 
   const newFile = () => {
     if (!confirmDiscard()) return;
-    setDoc('= Untitled\n\n');
+    setDoc('');
     currentHandle = null;
     currentName   = DEFAULT_NAME;
     setDirty(false);

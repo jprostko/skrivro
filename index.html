@@ -291,6 +291,20 @@
   .cm-content, .preview code, .preview pre {
     font-variant-ligatures: none;
   }
+
+  /* ---------- Display modes: split / editor-only / preview-only ---------- */
+  body.mode-editor .preview      { display: none; }
+  body.mode-preview .editor-pane { display: none; }
+
+  body.mode-editor .editor-pane {
+    max-width: 900px;
+    margin: 0 auto;
+    border-right: none;
+  }
+  body.mode-preview .preview {
+    max-width: 900px;
+    margin: 0 auto;
+  }
 </style>
 </head>
 <body>
@@ -302,7 +316,10 @@
       <kbd>Ctrl+Shift+S</kbd> save as
       <kbd>Ctrl+Alt+N</kbd> new
       <kbd>Ctrl+Alt+V</kbd> vim
-      <kbd>Ctrl+\</kbd> minimal
+      <kbd>Ctrl+Alt+M</kbd> minimal
+      <kbd>Ctrl+Alt+S</kbd> split
+      <kbd>Ctrl+Alt+E</kbd> editor
+      <kbd>Ctrl+Alt+P</kbd> preview
     </div>
   </header>
 
@@ -353,7 +370,7 @@
 
   // ================= Prefs =================
 
-  const defaultPrefs = { titlebarHidden: false, vimMode: false };
+  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split' };
 
   const loadPrefs = () => {
     try {
@@ -791,24 +808,47 @@
     });
   };
 
+  const DISPLAY_MODES = ['split', 'editor', 'preview'];
+  const applyDisplayMode = () => {
+    const cl = document.body.classList;
+    for (const m of DISPLAY_MODES) cl.remove(`mode-${m}`);
+    cl.add(`mode-${prefs.displayMode}`);
+  };
+  const setDisplayMode = (mode) => {
+    if (!DISPLAY_MODES.includes(mode)) return;
+    prefs.displayMode = mode;
+    savePrefs();
+    applyDisplayMode();
+  };
+
   // ================= Keyboard shortcuts =================
   // Capture phase so we beat CM6's internal keymap + vim bindings.
   window.addEventListener('keydown', (e) => {
     const mod = e.ctrlKey || e.metaKey;
     if (!mod) return;
     const k = (e.key || '').toLowerCase();
-    if (k === 's' && e.shiftKey) {
+
+    // Alt-modified shortcuts first — so Ctrl+Alt+S (split) doesn't match plain Ctrl+S (save).
+    if (e.altKey && k === 'n') {
+      e.preventDefault(); newFile();
+    } else if (e.altKey && k === 'v') {
+      e.preventDefault(); toggleVim();
+    } else if (e.altKey && k === 's') {
+      e.preventDefault(); setDisplayMode('split');
+    } else if (e.altKey && k === 'e') {
+      e.preventDefault(); setDisplayMode('editor');
+    } else if (e.altKey && k === 'p') {
+      e.preventDefault(); setDisplayMode('preview');
+    } else if (e.altKey && k === 'm') {
+      e.preventDefault(); toggleTitlebar();
+    }
+    // Non-alt shortcuts.
+    else if (k === 's' && e.shiftKey) {
       e.preventDefault(); saveFileAs();
     } else if (k === 's') {
       e.preventDefault(); saveFile();
     } else if (k === 'o') {
       e.preventDefault(); openFile();
-    } else if (e.altKey && k === 'n') {
-      e.preventDefault(); newFile();
-    } else if (e.altKey && k === 'v') {
-      e.preventDefault(); toggleVim();
-    } else if (k === '\\') {
-      e.preventDefault(); toggleTitlebar();
     }
   }, { capture: true });
 
@@ -822,6 +862,7 @@
   // ================= Init =================
 
   applyTitlebar();
+  applyDisplayMode();
 
   const { doc: initialDoc, hasDraft } = resolveInitialDoc();
 

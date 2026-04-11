@@ -82,7 +82,14 @@
     content: '● ';
     color: var(--ctp-peach);
   }
-  .titlebar .hint { color: var(--ctp-overlay1); font-size: 0.75rem; }
+  .titlebar .hint {
+    color: var(--ctp-overlay1);
+    font-size: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: flex-start;
+  }
   .titlebar .hint kbd {
     background: var(--ctp-surface0);
     color: var(--ctp-subtext1);
@@ -91,6 +98,9 @@
     font-family: var(--font-mono);
     font-size: 0.7rem;
     margin: 0 0.15rem;
+  }
+  .titlebar .hint kbd.layout-start {
+    margin-left: 1.5rem;
   }
   body.no-titlebar .titlebar { display: none; }
 
@@ -314,16 +324,20 @@
   <header class="titlebar">
     <div><span class="name" id="name">untitled.adoc</span></div>
     <div class="hint">
-      <kbd>Ctrl+O</kbd> open
-      <kbd>Ctrl+S</kbd> save
-      <kbd>Ctrl+Shift+S</kbd> save as
-      <kbd>Ctrl+Alt+N</kbd> new
-      <kbd>Ctrl+Alt+V</kbd> vim
-      <kbd>Ctrl+Alt+G</kbd> gutter
-      <kbd>Ctrl+Alt+M</kbd> minimal
-      <kbd>Ctrl+Alt+S</kbd> split
-      <kbd>Ctrl+Alt+E</kbd> editor
-      <kbd>Ctrl+Alt+P</kbd> preview
+      <div class="hint-row">
+        <kbd>Ctrl+O</kbd> open
+        <kbd>Ctrl+S</kbd> save
+        <kbd>Ctrl+Shift+S</kbd> save as
+        <kbd>Ctrl+Alt+N</kbd> new
+      </div>
+      <div class="hint-row">
+        <kbd>Ctrl+Alt+V</kbd> vim
+        <kbd>Ctrl+Alt+G</kbd> gutter
+        <kbd>Ctrl+Alt+M</kbd> minimal
+        <kbd class="layout-start">Ctrl+Alt+S</kbd> split
+        <kbd>Ctrl+Alt+E</kbd> editor
+        <kbd>Ctrl+Alt+P</kbd> preview
+      </div>
     </div>
   </header>
 

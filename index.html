@@ -305,6 +305,9 @@
     max-width: 900px;
     margin: 0 auto;
   }
+
+  /* ---------- Gutter (line numbers) toggle ---------- */
+  body.no-gutter .cm-gutters { display: none; }
 </style>
 </head>
 <body>
@@ -316,6 +319,7 @@
       <kbd>Ctrl+Shift+S</kbd> save as
       <kbd>Ctrl+Alt+N</kbd> new
       <kbd>Ctrl+Alt+V</kbd> vim
+      <kbd>Ctrl+Alt+G</kbd> gutter
       <kbd>Ctrl+Alt+M</kbd> minimal
       <kbd>Ctrl+Alt+S</kbd> split
       <kbd>Ctrl+Alt+E</kbd> editor
@@ -370,7 +374,7 @@
 
   // ================= Prefs =================
 
-  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split' };
+  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split', gutterHidden: true };
 
   const loadPrefs = () => {
     try {
@@ -800,6 +804,14 @@
     savePrefs();
     applyTitlebar();
   };
+  const applyGutter = () => {
+    document.body.classList.toggle('no-gutter', prefs.gutterHidden);
+  };
+  const toggleGutter = () => {
+    prefs.gutterHidden = !prefs.gutterHidden;
+    savePrefs();
+    applyGutter();
+  };
   const toggleVim = () => {
     prefs.vimMode = !prefs.vimMode;
     savePrefs();
@@ -833,6 +845,8 @@
       e.preventDefault(); newFile();
     } else if (e.altKey && k === 'v') {
       e.preventDefault(); toggleVim();
+    } else if (e.altKey && k === 'g') {
+      e.preventDefault(); toggleGutter();
     } else if (e.altKey && k === 's') {
       e.preventDefault(); setDisplayMode('split');
     } else if (e.altKey && k === 'e') {
@@ -862,6 +876,7 @@
   // ================= Init =================
 
   applyTitlebar();
+  applyGutter();
   applyDisplayMode();
 
   const { doc: initialDoc, hasDraft } = resolveInitialDoc();

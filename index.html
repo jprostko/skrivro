@@ -318,6 +318,62 @@
 
   /* ---------- Gutter (line numbers) toggle ---------- */
   body.no-gutter .cm-gutters { display: none; }
+
+  /* ---------- Confirm dialog (custom <dialog>) ----------
+     Replaces window.confirm so it doesn't consume the transient user
+     activation required by the File System Access API. */
+  dialog.confirm-dialog {
+    background: var(--ctp-mantle);
+    color: var(--ctp-text);
+    border: 1px solid var(--ctp-surface0);
+    border-radius: 8px;
+    padding: 1.5rem 1.75rem;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    max-width: 420px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+  dialog.confirm-dialog::backdrop {
+    background: rgba(17, 17, 27, 0.6);
+    backdrop-filter: blur(2px);
+  }
+  .confirm-dialog .confirm-message {
+    margin: 0 0 1.25rem 0;
+    color: var(--ctp-text);
+    line-height: 1.5;
+  }
+  .confirm-dialog .confirm-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+  .confirm-dialog .confirm-btn {
+    background: var(--ctp-surface0);
+    color: var(--ctp-text);
+    border: 1px solid var(--ctp-surface1);
+    border-radius: 4px;
+    padding: 0.45rem 1.1rem;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .confirm-dialog .confirm-btn:hover {
+    background: var(--ctp-surface1);
+  }
+  .confirm-dialog .confirm-btn:focus-visible {
+    outline: 2px solid var(--ctp-lavender);
+    outline-offset: 2px;
+  }
+  .confirm-dialog .confirm-btn-primary {
+    background: var(--ctp-red);
+    color: var(--ctp-crust);
+    border-color: var(--ctp-red);
+    font-weight: 600;
+  }
+  .confirm-dialog .confirm-btn-primary:hover {
+    background: var(--ctp-maroon);
+    border-color: var(--ctp-maroon);
+  }
 </style>
 </head>
 <body>
@@ -348,6 +404,17 @@
 
   <!-- Fallback for browsers without File System Access API -->
   <input type="file" id="fileInput" accept=".adoc,.asciidoc,.asc,.ad,.txt" style="display:none">
+
+  <!-- Custom confirmation dialog. Replaces window.confirm so it doesn't
+       consume the transient user activation required by File System
+       Access API calls. -->
+  <dialog id="confirmDialog" class="confirm-dialog">
+    <p class="confirm-message" id="confirmMessage"></p>
+    <div class="confirm-actions">
+      <button type="button" id="confirmCancelBtn" class="confirm-btn">Cancel</button>
+      <button type="button" id="confirmOkBtn" class="confirm-btn confirm-btn-primary">Discard</button>
+    </div>
+  </dialog>
 
 <script type="module">
   import Asciidoctor from '@asciidoctor/core';
@@ -385,6 +452,11 @@
   const host      = document.getElementById('src-host');
   const nameEl    = document.getElementById('name');
   const fileInput = document.getElementById('fileInput');
+
+  const confirmDlg       = document.getElementById('confirmDialog');
+  const confirmMsgEl     = document.getElementById('confirmMessage');
+  const confirmOkBtn     = document.getElementById('confirmOkBtn');
+  const confirmCancelBtn = document.getElementById('confirmCancelBtn');
 
   // ================= Prefs =================
 
@@ -495,30 +567,62 @@
 
   // ================= File ops =================
 
-  const confirmDiscard = () => {
-    if (!dirty) return true;
-    return confirm('You have unsaved changes. Discard them?');
+  // Custom confirm dialog — replaces window.confirm so it does not consume
+  // the transient user activation required by the File System Access API.
+  // Pattern: callback-based (not Promise-based). The OK button click handler
+  // runs the saved action synchronously inside its own click gesture, which
+  // starts a fresh activation for any FSA call that follows.
+  let pendingConfirmOk = null;
+  confirmOkBtn.addEventListener('click', () => {
+    const cb = pendingConfirmOk;
+    pendingConfirmOk = null;
+    confirmDlg.close();
+    if (cb) cb();
+  });
+  confirmCancelBtn.addEventListener('click', () => {
+    pendingConfirmOk = null;
+    confirmDlg.close();
+  });
+
+  const askConfirm = (message, onOk) => {
+    confirmMsgEl.textContent = message;
+    pendingConfirmOk = onOk;
+    confirmDlg.showModal();
+    confirmOkBtn.focus();
   };
 
-  const openFile = async () => {
-    if (!confirmDiscard()) return;
-    if (hasFSA) {
-      try {
-        const [handle] = await window.showOpenFilePicker({ types: FILE_TYPES, multiple: false });
-        const file = await handle.getFile();
-        setDoc(await file.text());
-        currentHandle = handle;
-        currentName   = handle.name || file.name || DEFAULT_NAME;
-        setDirty(false);
-        clearDraft();
-        updateTitle();
-        render();
-      } catch (e) {
-        if (e.name !== 'AbortError') console.error(e);
+  const confirmDiscard = (onOk) => {
+    if (!dirty) { onOk(); return; }
+    askConfirm('You have unsaved changes. Discard them?', onOk);
+  };
+
+  const openFile = () => {
+    confirmDiscard(() => {
+      if (hasFSA) {
+        // Critical: showOpenFilePicker must be called synchronously inside
+        // the OK-button click handler's gesture context so it sees a fresh
+        // transient user activation. The IIFE starts synchronously, so its
+        // first statement (the await-expression) calls showOpenFilePicker
+        // before the microtask yield — that is what keeps the gesture live.
+        (async () => {
+          try {
+            const [handle] = await window.showOpenFilePicker({ types: FILE_TYPES, multiple: false });
+            const file = await handle.getFile();
+            setDoc(await file.text());
+            currentHandle = handle;
+            currentName   = handle.name || file.name || DEFAULT_NAME;
+            setDirty(false);
+            clearDraft();
+            updateTitle();
+            render();
+          } catch (e) {
+            if (e.name !== 'AbortError') console.error(e);
+          }
+        })();
+      } else {
+        fileInput.click();
       }
-    } else {
-      fileInput.click();
-    }
+    });
   };
 
   fileInput.addEventListener('change', async () => {
@@ -592,18 +696,19 @@
   };
 
   const newFile = () => {
-    if (!confirmDiscard()) return;
-    setDoc('');
-    currentHandle = null;
-    currentName   = DEFAULT_NAME;
-    setDirty(false);
-    clearDraft();
-    updateTitle();
-    render();
-    editorView.focus();
-    // Move cursor to end
-    editorView.dispatch({
-      selection: { anchor: editorView.state.doc.length },
+    confirmDiscard(() => {
+      setDoc('');
+      currentHandle = null;
+      currentName   = DEFAULT_NAME;
+      setDirty(false);
+      clearDraft();
+      updateTitle();
+      render();
+      editorView.focus();
+      // Move cursor to end
+      editorView.dispatch({
+        selection: { anchor: editorView.state.doc.length },
+      });
     });
   };
 

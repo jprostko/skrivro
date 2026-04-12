@@ -399,7 +399,7 @@
     <div><span class="name" id="name">untitled.adoc</span></div>
     <div class="hint">
       <div class="hint-row">
-        <kbd>Ctrl+O</kbd> open
+        <kbd>Ctrl+Alt+O</kbd> open
         <kbd>Ctrl+S</kbd> save
         <kbd>Ctrl+Shift+S</kbd> save as
         <kbd>Ctrl+Alt+N</kbd> new
@@ -998,7 +998,7 @@
       e.preventDefault(); saveFileAs();
     } else if (k === 's') {
       e.preventDefault(); saveFile();
-    } else if (k === 'o') {
+    } else if (e.altKey && k === 'o') {
       e.preventDefault(); openFile();
     }
   }, { capture: true });

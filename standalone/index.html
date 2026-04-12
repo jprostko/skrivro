@@ -764,10 +764,10 @@
     },
     '.cm-content': {
       caretColor: 'var(--ctp-rosewater)',
-      padding: '2rem 0',
+      padding: '8pt 0',
     },
     '.cm-line': {
-      padding: '0 2.5rem',
+      padding: '0 8pt',
     },
     '.cm-cursor, .cm-dropCursor': {
       borderLeftColor: 'var(--ctp-rosewater)',
@@ -1049,6 +1049,13 @@
 
   Vim.defineEx('new', 'new', () => {
     newFile();
+  });
+
+  // :open / :op — non-standard, shows the native file picker dialog.
+  // Vim has no canonical Ex command for "show file browser"; this is
+  // our addition so vim-mode users don't have to leave the command line.
+  Vim.defineEx('open', 'op', () => {
+    openFile();
   });
 
   window.addEventListener('beforeunload', (e) => {

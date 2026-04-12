@@ -937,21 +937,11 @@
   }, { capture: true });
 
   // ================= Close handler =================
-  // Replaces the web version's beforeunload. Tauri's onCloseRequested
-  // lets us show our custom dialog and conditionally prevent the close.
-  // Uses a bypass flag instead of destroy() — on confirm, we set the flag
-  // and re-issue close(), which re-triggers onCloseRequested but this time
-  // the handler lets it through.
-  const appWindow = getCurrentWindow();
-  let forceClose = false;
-  appWindow.onCloseRequested((event) => {
-    if (forceClose || !dirty) return;
-    event.preventDefault();
-    askConfirm('You have unsaved changes. Discard them?', () => {
-      forceClose = true;
-      appWindow.close();
-    });
-  });
+  // TODO: Re-add dirty-close confirmation once basic close works.
+  // The onCloseRequested handler was preventing ALL closes (even clean
+  // state). Removed for diagnosis. Without this, closing while dirty
+  // will lose unsaved work silently — autosave draft in localStorage
+  // is the safety net until we fix this.
 
   // ================= Init =================
 

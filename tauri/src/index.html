@@ -530,7 +530,11 @@
   const updateTitle = () => {
     nameEl.textContent = currentName;
     document.body.classList.toggle('is-dirty', dirty);
-    document.title = `${dirty ? '● ' : ''}${currentName} — Klartext`;
+    const title = `${dirty ? '● ' : ''}${currentName} — Klartext`;
+    document.title = title;
+    // Tauri 2 does not auto-sync document.title to the native window
+    // title, unlike browsers. We have to set it explicitly.
+    getCurrentWindow().setTitle(title).catch((e) => console.error('setTitle failed:', e));
   };
   const setDirty = (d) => {
     if (dirty === d) return;

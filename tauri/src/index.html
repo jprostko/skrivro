@@ -1079,6 +1079,10 @@
     if (!dirty) return; // library auto-calls destroy() to close
     event.preventDefault();
     askConfirm('You have unsaved changes. Discard them?', () => {
+      // "Discard" means actually discard — clear the autosave draft
+      // so the next launch starts clean. Without this, the draft
+      // restoration would bring the "discarded" changes back.
+      clearDraft();
       appWindow.destroy();
     });
   });

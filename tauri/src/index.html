@@ -492,6 +492,10 @@
 
   const getDoc = () => editorView ? editorView.state.doc.toString() : '';
 
+  // POSIX convention: text files end in a newline. Applied at every
+  // write-to-disk site (not to autosave draft or render input).
+  const ensureTrailingNewline = (text) => text.endsWith('\n') ? text : text + '\n';
+
   const setDoc = (text) => {
     suppressDocEvents = true;
     try {
@@ -620,7 +624,7 @@
   const saveFile = async () => {
     if (!currentPath) return saveFileAs();
     try {
-      await writeTextFile(currentPath, getDoc());
+      await writeTextFile(currentPath, ensureTrailingNewline(getDoc()));
       setDirty(false);
       clearDraft();
     } catch (e) {
@@ -635,7 +639,7 @@
         defaultPath: currentPath || currentName,
       });
       if (!selected) return; // user cancelled
-      await writeTextFile(selected, getDoc());
+      await writeTextFile(selected, ensureTrailingNewline(getDoc()));
       currentPath = selected;
       currentName = await basename(selected);
       setDirty(false);
@@ -955,7 +959,7 @@
     if (arg) {
       // :w filename — save to specific path
       try {
-        await writeTextFile(arg, getDoc());
+        await writeTextFile(arg, ensureTrailingNewline(getDoc()));
         currentPath = arg;
         currentName = await basename(arg);
         setDirty(false);

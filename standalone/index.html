@@ -509,6 +509,10 @@
 
   const getDoc = () => editorView ? editorView.state.doc.toString() : '';
 
+  // POSIX convention: text files end in a newline. Applied at every
+  // write-to-disk site (not to autosave draft or render input).
+  const ensureTrailingNewline = (text) => text.endsWith('\n') ? text : text + '\n';
+
   const setDoc = (text) => {
     suppressDocEvents = true;
     try {
@@ -661,7 +665,7 @@
       if (!currentHandle) return saveFileAs();
       try {
         const w = await currentHandle.createWritable();
-        await w.write(getDoc());
+        await w.write(ensureTrailingNewline(getDoc()));
         await w.close();
         setDirty(false);
         clearDraft();
@@ -681,7 +685,7 @@
           types: FILE_TYPES,
         });
         const w = await handle.createWritable();
-        await w.write(getDoc());
+        await w.write(ensureTrailingNewline(getDoc()));
         await w.close();
         currentHandle = handle;
         currentName   = handle.name || currentName;
@@ -702,7 +706,7 @@
   };
 
   const downloadFile = (filename) => {
-    const blob = new Blob([getDoc()], { type: 'text/plain' });
+    const blob = new Blob([ensureTrailingNewline(getDoc())], { type: 'text/plain' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;

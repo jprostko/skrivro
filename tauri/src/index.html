@@ -516,12 +516,15 @@
   const render = () => {
     try {
       // Load first (so we get the AST for the scroll-sync block map),
-      // then convert. sourcemap=true makes Asciidoctor annotate blocks
-      // with their originating source line numbers in the parse tree.
-      const doc = ad.load(getDoc(), { attributes: { sourcemap: true } });
+      // then convert. sourcemap=true is a TOP-LEVEL option to load(),
+      // NOT nested under attributes — this is what makes Asciidoctor
+      // annotate blocks with their source line numbers. Getting this
+      // wrong silently produces blocks with null source locations.
+      const doc = ad.load(getDoc(), { sourcemap: true });
       out.innerHTML = doc.convert({ standalone: false });
       buildBlockMap(doc);
     } catch (e) {
+      console.error('render failed:', e);
       out.innerHTML =
         `<pre class="render-error">Render error: ${escapeHtml(e.message || String(e))}</pre>`;
       blockMap = [];
@@ -556,17 +559,30 @@
   let blockMap = []; // Array<{ line: number, el: Element }>, sorted by line
 
   // Walk the parsed AST and the rendered DOM in parallel, building a
-  // map from source line to preview block element. Relies on Asciidoctor
-  // emitting blocks in document order in both the AST walk (via findBy)
-  // and the rendered HTML (via querySelectorAll). The i-th matching
-  // AST block aligns with the i-th matching DOM element.
+  // map from source line to preview block element. Walks the tree
+  // manually via getBlocks() rather than findBy() for robustness
+  // against API surprises. Relies on Asciidoctor emitting blocks in
+  // document order in both the AST walk and the rendered HTML (via
+  // querySelectorAll). The i-th matching AST block aligns with the
+  // i-th matching DOM element.
   const buildBlockMap = (doc) => {
     try {
-      const ast = doc.findBy({}).filter((b) => {
-        try {
-          return MAPPABLE_CONTEXTS.has(b.getContext()) && b.getSourceLocation();
-        } catch { return false; }
-      });
+      const ast = [];
+      const walk = (block) => {
+        if (!block || typeof block.getBlocks !== 'function') return;
+        for (const child of block.getBlocks()) {
+          let ctx = null;
+          try { ctx = child.getContext(); } catch {}
+          if (ctx && MAPPABLE_CONTEXTS.has(ctx)) {
+            let loc = null;
+            try { loc = child.getSourceLocation(); } catch {}
+            if (loc) ast.push(child);
+          }
+          walk(child);
+        }
+      };
+      walk(doc);
+
       const dom = Array.from(out.querySelectorAll(DOM_BLOCK_SELECTOR));
       const map = [];
       const n = Math.min(ast.length, dom.length);
@@ -580,6 +596,7 @@
       }
       map.sort((a, b) => a.line - b.line);
       blockMap = map;
+      console.log(`[klartext] buildBlockMap: ast=${ast.length} dom=${dom.length} map=${map.length}`);
     } catch (e) {
       console.error('buildBlockMap failed:', e);
       blockMap = [];

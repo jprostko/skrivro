@@ -681,6 +681,24 @@
     }
   };
 
+  // Vim-style path resolution for :w / :e arguments.
+  // - Absolute paths are returned as-is.
+  // - Relative paths resolve against the directory of the current file
+  //   (matching Vim's behavior).
+  // - If there is no current file, relative paths resolve against the
+  //   shell CWD captured at launch time (from Rust).
+  // - If neither is available, the raw argument is returned as a last resort.
+  const resolveArgPath = async (arg) => {
+    if (await isAbsolute(arg)) return arg;
+    if (currentPath) {
+      return await resolve(await dirname(currentPath), arg);
+    }
+    if (launchCwd) {
+      return await resolve(launchCwd, arg);
+    }
+    return arg;
+  };
+
   // ================= Catppuccin Mocha editor theme =================
 
   const catppuccinTheme = EditorView.theme({
@@ -959,11 +977,14 @@
   Vim.defineEx('write', 'w', async (cm, params) => {
     const arg = params.argString && params.argString.trim();
     if (arg) {
-      // :w filename — save to specific path
+      // :w filename — save to specific path. Vim-style resolution:
+      // relative paths are resolved against the current file's directory
+      // (or the shell CWD at launch if no current file).
       try {
-        await writeTextFile(arg, ensureTrailingNewline(getDoc()));
-        currentPath = arg;
-        currentName = await basename(arg);
+        const targetPath = await resolveArgPath(arg);
+        await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
+        currentPath = targetPath;
+        currentName = await basename(targetPath);
         setDirty(false);
         clearDraft();
         updateTitle();
@@ -984,12 +1005,14 @@
     const arg = params.argString && params.argString.trim();
     if (dirty && !params.bang) return;
     if (arg) {
-      // :e filename or :e! filename — open specific file by path
+      // :e filename or :e! filename — open specific file by path.
+      // Same vim-style path resolution as :w filename.
       try {
-        const content = await readTextFile(arg);
+        const sourcePath = await resolveArgPath(arg);
+        const content = await readTextFile(sourcePath);
         setDoc(content);
-        currentPath = arg;
-        currentName = await basename(arg);
+        currentPath = sourcePath;
+        currentName = await basename(sourcePath);
         setDirty(false);
         clearDraft();
         updateTitle();

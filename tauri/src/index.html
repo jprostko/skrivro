@@ -977,9 +977,31 @@
   Vim.defineEx('write', 'w', async (cm, params) => {
     const arg = params.argString && params.argString.trim();
     if (arg) {
-      // :w filename — save to specific path. Vim-style resolution:
-      // relative paths are resolved against the current file's directory
-      // (or the shell CWD at launch if no current file).
+      // :w filename — write the buffer's content to `filename`, but do
+      // NOT change the buffer's current file. The buffer stays associated
+      // with its original file, dirty flag unchanged. Matches Vim semantics:
+      // `:w bar.adoc` followed by `:w` still saves to the original file.
+      // Relative paths resolve against the current file's directory (or
+      // the shell CWD at launch if no current file).
+      try {
+        const targetPath = await resolveArgPath(arg);
+        await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      // :w or :w! — save to current file
+      saveFile();
+    }
+  });
+
+  Vim.defineEx('saveas', 'sav', async (cm, params) => {
+    const arg = params.argString && params.argString.trim();
+    if (arg) {
+      // :saveas filename — write to the given path AND rename the buffer.
+      // Future :w calls will save to this new path. Matches Vim semantics:
+      // this is the buffer-renaming counterpart to :w filename's pure-write.
+      // Relative paths resolve the same way as :w filename.
       try {
         const targetPath = await resolveArgPath(arg);
         await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
@@ -992,13 +1014,11 @@
         console.error(e);
       }
     } else {
-      // :w or :w! — save to current file
-      saveFile();
+      // :saveas (no args) — non-standard: show the save dialog. Real Vim
+      // errors with "Argument required" here, but a dialog is friendlier
+      // for a GUI editor and matches what Ctrl+Shift+S does.
+      saveFileAs();
     }
-  });
-
-  Vim.defineEx('saveas', 'sav', () => {
-    saveFileAs();
   });
 
   Vim.defineEx('edit', 'e', async (cm, params) => {

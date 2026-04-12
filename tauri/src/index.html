@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>untitled.adoc — Klartext</title>
+
+<style>
+  :root {
+    /* Catppuccin Mocha */
+    --ctp-rosewater: #f5e0dc;
+    --ctp-flamingo:  #f2cdcd;
+    --ctp-pink:      #f5c2e7;
+    --ctp-mauve:     #cba6f7;
+    --ctp-red:       #f38ba8;
+    --ctp-maroon:    #eba0ac;
+    --ctp-peach:     #fab387;
+    --ctp-yellow:    #f9e2af;
+    --ctp-green:     #a6e3a1;
+    --ctp-teal:      #94e2d5;
+    --ctp-sky:       #89dceb;
+    --ctp-sapphire:  #74c7ec;
+    --ctp-blue:      #89b4fa;
+    --ctp-lavender:  #b4befe;
+    --ctp-text:      #cdd6f4;
+    --ctp-subtext1:  #bac2de;
+    --ctp-subtext0:  #a6adc8;
+    --ctp-overlay2:  #9399b2;
+    --ctp-overlay1:  #7f849c;
+    --ctp-overlay0:  #6c7086;
+    --ctp-surface2:  #585b70;
+    --ctp-surface1:  #45475a;
+    --ctp-surface0:  #313244;
+    --ctp-base:      #1e1e2e;
+    --ctp-mantle:    #181825;
+    --ctp-crust:     #11111b;
+
+    --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--ctp-base);
+    color: var(--ctp-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body { display: flex; flex-direction: column; }
+
+  /* ---------- Titlebar ---------- */
+  .titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: var(--ctp-mantle);
+    border-bottom: 1px solid var(--ctp-surface0);
+    font-size: 0.85rem;
+    color: var(--ctp-subtext1);
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .titlebar .name { font-weight: 500; }
+  body.is-dirty .titlebar .name::before {
+    content: '● ';
+    color: var(--ctp-peach);
+  }
+  .titlebar .hint {
+    color: var(--ctp-blue);
+    font-size: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: flex-start;
+  }
+  .titlebar .hint kbd {
+    background: var(--ctp-surface0);
+    color: var(--ctp-subtext1);
+    border-radius: 3px;
+    padding: 0.05rem 0.35rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    margin: 0 0.15rem;
+  }
+  .titlebar .hint kbd.layout-start {
+    margin-left: 1.5rem;
+  }
+  body.no-titlebar .titlebar { display: none; }
+
+  /* ---------- Split panes ---------- */
+  .wrap {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+  .editor-pane, .preview {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    box-sizing: border-box;
+  }
+  .editor-pane {
+    overflow: hidden;
+    background: var(--ctp-base);
+    border-right: 1px solid var(--ctp-surface0);
+  }
+  .editor-pane .cm-editor { height: 100%; }
+  .editor-pane .cm-editor.cm-focused { outline: none; }
+
+  .preview {
+    overflow: auto;
+    padding: 2rem 2.5rem;
+    background: var(--ctp-mantle);
+    color: var(--ctp-text);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    line-height: 1.65;
+    scrollbar-color: var(--ctp-surface1) var(--ctp-base);
+    scrollbar-width: thin;
+  }
+  .preview > :first-child { margin-top: 0; }
+
+  /* ---------- Preview — generic HTML ---------- */
+  .preview h1, .preview h2, .preview h3,
+  .preview h4, .preview h5, .preview h6 {
+    color: var(--ctp-lavender);
+    font-weight: 600;
+    line-height: 1.25;
+    margin-top: 1.6em;
+    margin-bottom: 0.6em;
+  }
+  .preview h1 { font-size: 1.9rem; border-bottom: 1px solid var(--ctp-surface0); padding-bottom: 0.3em; }
+  .preview h2 { font-size: 1.5rem; border-bottom: 1px solid var(--ctp-surface0); padding-bottom: 0.25em; }
+  .preview h3 { font-size: 1.25rem; color: var(--ctp-mauve); }
+  .preview h4 { font-size: 1.1rem;  color: var(--ctp-mauve); }
+  .preview h5, .preview h6 { font-size: 1rem; color: var(--ctp-pink); }
+
+  .preview p { margin: 0.8em 0; }
+  .preview a { color: var(--ctp-blue); text-decoration: none; }
+  .preview a:hover { text-decoration: underline; }
+  .preview strong { color: var(--ctp-text); font-weight: 700; }
+  .preview em { color: var(--ctp-text); }
+
+  .preview code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--ctp-surface0);
+    color: var(--ctp-peach);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  .preview pre {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--ctp-crust);
+    color: var(--ctp-text);
+    padding: 1em 1.2em;
+    border-radius: 6px;
+    overflow-x: auto;
+    border: 1px solid var(--ctp-surface0);
+    line-height: 1.5;
+    margin: 1em 0;
+  }
+  .preview pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .preview blockquote,
+  .preview .quoteblock blockquote {
+    margin: 1em 0;
+    padding: 0.5em 1.2em;
+    border-left: 3px solid var(--ctp-mauve);
+    background: var(--ctp-base);
+    color: var(--ctp-subtext1);
+    border-radius: 0 4px 4px 0;
+  }
+  .preview .quoteblock .attribution {
+    color: var(--ctp-subtext0);
+    font-size: 0.85em;
+    text-align: right;
+    margin-top: 0.5em;
+  }
+
+  .preview hr {
+    border: none;
+    border-top: 1px solid var(--ctp-surface0);
+    margin: 2em 0;
+  }
+
+  .preview ul, .preview ol { padding-left: 1.5em; margin: 0.8em 0; }
+  .preview li { margin: 0.25em 0; }
+
+  .preview table {
+    border-collapse: collapse;
+    margin: 1em 0;
+    width: 100%;
+  }
+  .preview th, .preview td {
+    border: 1px solid var(--ctp-surface0);
+    padding: 0.5em 0.8em;
+    text-align: left;
+  }
+  .preview th {
+    background: var(--ctp-surface0);
+    color: var(--ctp-lavender);
+  }
+  .preview tr:nth-child(even) td { background: rgba(49, 50, 68, 0.3); }
+
+  /* ---------- Preview — AsciiDoctor block classes ---------- */
+  .preview .listingblock pre,
+  .preview .literalblock pre {
+    background: var(--ctp-crust);
+  }
+  .preview .exampleblock > .content {
+    border-left: 3px solid var(--ctp-blue);
+    padding: 0.5em 1em;
+    background: var(--ctp-base);
+    border-radius: 0 4px 4px 0;
+    margin: 1em 0;
+  }
+  .preview .sidebarblock {
+    border: 1px solid var(--ctp-surface0);
+    border-radius: 6px;
+    padding: 1em 1.2em;
+    background: var(--ctp-base);
+    margin: 1em 0;
+  }
+  .preview .admonitionblock { margin: 1em 0; }
+  .preview .admonitionblock > table {
+    border: none;
+    border-left: 3px solid var(--ctp-yellow);
+    background: var(--ctp-base);
+    border-radius: 0 4px 4px 0;
+  }
+  .preview .admonitionblock > table td { border: none; padding: 0.8em 1em; }
+  .preview .admonitionblock.note      > table { border-left-color: var(--ctp-blue); }
+  .preview .admonitionblock.tip       > table { border-left-color: var(--ctp-green); }
+  .preview .admonitionblock.warning   > table { border-left-color: var(--ctp-peach); }
+  .preview .admonitionblock.caution   > table { border-left-color: var(--ctp-yellow); }
+  .preview .admonitionblock.important > table { border-left-color: var(--ctp-red); }
+  .preview .admonitionblock td.icon {
+    color: var(--ctp-subtext1);
+    font-weight: 600;
+    width: 2.5em;
+    vertical-align: top;
+  }
+  .preview .title {
+    color: var(--ctp-subtext0);
+    font-style: italic;
+    margin-bottom: 0.3em;
+  }
+  .preview .verseblock pre {
+    font-family: inherit;
+    white-space: pre-wrap;
+    background: var(--ctp-base);
+    border: none;
+  }
+
+  /* ---------- Preview scrollbars (webkit) ---------- */
+  .preview::-webkit-scrollbar { width: 10px; height: 10px; }
+  .preview::-webkit-scrollbar-track { background: var(--ctp-base); }
+  .preview::-webkit-scrollbar-thumb {
+    background: var(--ctp-surface1);
+    border-radius: 5px;
+    border: 2px solid var(--ctp-base);
+  }
+  .preview::-webkit-scrollbar-thumb:hover { background: var(--ctp-surface2); }
+
+  .render-error {
+    color: var(--ctp-red);
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--ctp-crust);
+    padding: 1em;
+    border-left: 3px solid var(--ctp-red);
+    border-radius: 4px;
+  }
+
+  /* Disable programming ligatures in monospace contexts.
+     JetBrains Mono, Fira Code, etc. enable them by default. */
+  .cm-content, .preview code, .preview pre {
+    font-variant-ligatures: none;
+  }
+
+  /* ---------- Display modes: split / editor-only / preview-only ---------- */
+  body.mode-editor .preview      { display: none; }
+  body.mode-preview .editor-pane { display: none; }
+
+  body.mode-editor .editor-pane {
+    max-width: 900px;
+    margin: 0 auto;
+    border-right: none;
+  }
+  body.mode-preview .preview {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* ---------- Gutter (line numbers) toggle ---------- */
+  body.no-gutter .cm-gutters { display: none; }
+
+  /* ---------- Confirm dialog (custom <dialog>) ---------- */
+  dialog.confirm-dialog {
+    background: var(--ctp-mantle);
+    color: var(--ctp-text);
+    border: 1px solid var(--ctp-surface0);
+    border-radius: 8px;
+    padding: 1.5rem 1.75rem;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    max-width: 420px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+  dialog.confirm-dialog::backdrop {
+    background: rgba(17, 17, 27, 0.6);
+    backdrop-filter: blur(2px);
+  }
+  .confirm-dialog .confirm-message {
+    margin: 0 0 1.25rem 0;
+    color: var(--ctp-text);
+    line-height: 1.5;
+  }
+  .confirm-dialog .confirm-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+  .confirm-dialog .confirm-btn {
+    background: var(--ctp-surface0);
+    color: var(--ctp-text);
+    border: 1px solid var(--ctp-surface1);
+    border-radius: 4px;
+    padding: 0.45rem 1.1rem;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .confirm-dialog .confirm-btn:hover {
+    background: var(--ctp-surface1);
+  }
+  .confirm-dialog .confirm-btn:focus-visible {
+    outline: 2px solid var(--ctp-lavender);
+    outline-offset: 2px;
+  }
+  .confirm-dialog .confirm-btn-primary {
+    background: var(--ctp-red);
+    color: var(--ctp-crust);
+    border-color: var(--ctp-red);
+    font-weight: 600;
+  }
+  .confirm-dialog .confirm-btn-primary:hover {
+    background: var(--ctp-maroon);
+    border-color: var(--ctp-maroon);
+  }
+</style>
+</head>
+<body>
+  <!-- Inline (non-module) script runs synchronously during parse, before
+       the first paint. Reads prefs from localStorage and sets body classes
+       immediately so the titlebar / gutter / display-mode state is correct
+       on the very first frame — no FOUC. The module script's applyTitlebar
+       / applyGutter / applyDisplayMode calls still run later, but they're
+       no-ops because the classes are already correct. -->
+  <script>
+    (function() {
+      try {
+        var p = JSON.parse(localStorage.getItem('adoc-editor-prefs-v1'));
+        if (!p) return;
+        var cl = document.body.classList;
+        if (p.titlebarHidden) cl.add('no-titlebar');
+        if (p.gutterHidden)   cl.add('no-gutter');
+        if (p.displayMode && p.displayMode !== 'split') cl.add('mode-' + p.displayMode);
+      } catch(e) {}
+    })();
+  </script>
+  <header class="titlebar">
+    <div><span class="name" id="name">untitled.adoc</span></div>
+    <div class="hint">
+      <div class="hint-row">
+        <kbd>Ctrl+O</kbd> open
+        <kbd>Ctrl+S</kbd> save
+        <kbd>Ctrl+Shift+S</kbd> save as
+        <kbd>Ctrl+Alt+N</kbd> new
+      </div>
+      <div class="hint-row">
+        <kbd>Ctrl+Alt+V</kbd> vim
+        <kbd>Ctrl+Alt+G</kbd> gutter
+        <kbd>Ctrl+Alt+M</kbd> minimal
+        <kbd class="layout-start">Ctrl+Alt+S</kbd> split
+        <kbd>Ctrl+Alt+E</kbd> editor
+        <kbd>Ctrl+Alt+P</kbd> preview
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="src-host" class="editor-pane"></div>
+    <div class="preview" id="out"></div>
+  </main>
+
+  <!-- Custom confirmation dialog -->
+  <dialog id="confirmDialog" class="confirm-dialog">
+    <p class="confirm-message" id="confirmMessage"></p>
+    <div class="confirm-actions">
+      <button type="button" id="confirmCancelBtn" class="confirm-btn">Cancel</button>
+      <button type="button" id="confirmOkBtn" class="confirm-btn confirm-btn-primary">Discard</button>
+    </div>
+  </dialog>
+
+<script type="module">
+  import Asciidoctor from '@asciidoctor/core';
+  import { EditorState, Compartment } from '@codemirror/state';
+  import {
+    EditorView, keymap,
+    lineNumbers, highlightActiveLine, highlightActiveLineGutter,
+  } from '@codemirror/view';
+  import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+  import {
+    indentOnInput, bracketMatching, syntaxHighlighting,
+    HighlightStyle, defaultHighlightStyle, StreamLanguage,
+  } from '@codemirror/language';
+  import { tags as t } from '@lezer/highlight';
+  import { vim } from '@replit/codemirror-vim';
+
+  // Tauri plugins
+  import { open, save } from '@tauri-apps/plugin-dialog';
+  import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
+  import { getCurrentWindow } from '@tauri-apps/api/window';
+  import { basename } from '@tauri-apps/api/path';
+
+  // ================= Constants =================
+
+  const ad = Asciidoctor();
+
+  const LS_KEY       = 'adoc-editor-draft-v1';
+  const PREFS_KEY    = 'adoc-editor-prefs-v1';
+  const DEFAULT_NAME = 'untitled.adoc';
+  const DEFAULT_DOC  = '';
+
+  const DIALOG_FILTERS = [{
+    name: 'AsciiDoc',
+    extensions: ['adoc', 'asciidoc', 'asc', 'ad', 'txt'],
+  }];
+
+  // ================= DOM refs =================
+
+  const out       = document.getElementById('out');
+  const host      = document.getElementById('src-host');
+  const nameEl    = document.getElementById('name');
+
+  const confirmDlg       = document.getElementById('confirmDialog');
+  const confirmMsgEl     = document.getElementById('confirmMessage');
+  const confirmOkBtn     = document.getElementById('confirmOkBtn');
+  const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+
+  // ================= Prefs =================
+
+  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split', gutterHidden: true };
+
+  const loadPrefs = () => {
+    try {
+      const raw = localStorage.getItem(PREFS_KEY);
+      if (raw) return { ...defaultPrefs, ...JSON.parse(raw) };
+    } catch {}
+    return { ...defaultPrefs };
+  };
+  const savePrefs = () => {
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch {}
+  };
+  const prefs = loadPrefs();
+
+  // ================= Mutable state =================
+
+  let currentPath        = null;
+  let currentName        = DEFAULT_NAME;
+  let dirty              = false;
+  let renderTimer        = null;
+  let autosaveTimer      = null;
+  let editorView         = null;
+  let suppressDocEvents  = false; // true during programmatic setDoc calls
+
+  // ================= Helpers =================
+
+  const escapeHtml = (s) =>
+    s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+  const getDoc = () => editorView ? editorView.state.doc.toString() : '';
+
+  const setDoc = (text) => {
+    suppressDocEvents = true;
+    try {
+      editorView.dispatch({
+        changes: { from: 0, to: editorView.state.doc.length, insert: text },
+        selection: { anchor: 0 },
+      });
+    } finally {
+      suppressDocEvents = false;
+    }
+  };
+
+  // ================= Rendering =================
+
+  const render = () => {
+    try {
+      out.innerHTML = ad.convert(getDoc(), { standalone: false });
+    } catch (e) {
+      out.innerHTML =
+        `<pre class="render-error">Render error: ${escapeHtml(e.message || String(e))}</pre>`;
+    }
+  };
+  const scheduleRender = () => {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(render, 100);
+  };
+
+  // ================= Title / dirty =================
+
+  const updateTitle = () => {
+    nameEl.textContent = currentName;
+    document.body.classList.toggle('is-dirty', dirty);
+    document.title = `${dirty ? '● ' : ''}${currentName} — Klartext`;
+  };
+  const setDirty = (d) => {
+    if (dirty === d) return;
+    dirty = d;
+    updateTitle();
+  };
+
+  // ================= Autosave draft =================
+
+  const scheduleAutosave = () => {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify({
+          content: getDoc(),
+          name:    currentName,
+          ts:      Date.now(),
+        }));
+      } catch {}
+    }, 500);
+  };
+  const clearDraft = () => {
+    try { localStorage.removeItem(LS_KEY); } catch {}
+  };
+
+  // Resolves the initial doc + name (from saved draft, or defaults).
+  // Side-effect: may set currentName.
+  const resolveInitialDoc = () => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (typeof d.content === 'string' && d.content.length > 0) {
+          currentName = d.name || DEFAULT_NAME;
+          return { doc: d.content, hasDraft: true };
+        }
+      }
+    } catch {}
+    return { doc: DEFAULT_DOC, hasDraft: false };
+  };
+
+  // ================= File ops =================
+
+  // Custom confirm dialog using a callback pattern. The OK button click
+  // handler runs the saved action directly, keeping the code structure
+  // parallel with the standalone version.
+  let pendingConfirmOk = null;
+  confirmOkBtn.addEventListener('click', () => {
+    const cb = pendingConfirmOk;
+    pendingConfirmOk = null;
+    confirmDlg.close();
+    if (cb) cb();
+  });
+  confirmCancelBtn.addEventListener('click', () => {
+    pendingConfirmOk = null;
+    confirmDlg.close();
+  });
+
+  const askConfirm = (message, onOk) => {
+    confirmMsgEl.textContent = message;
+    pendingConfirmOk = onOk;
+    confirmDlg.showModal();
+    confirmOkBtn.focus();
+  };
+
+  const confirmDiscard = (onOk) => {
+    if (!dirty) { onOk(); return; }
+    askConfirm('You have unsaved changes. Discard them?', onOk);
+  };
+
+  const openFile = () => {
+    confirmDiscard(async () => {
+      try {
+        const selected = await open({
+          filters: DIALOG_FILTERS,
+          multiple: false,
+        });
+        if (!selected) return; // user cancelled
+        const content = await readTextFile(selected);
+        setDoc(content);
+        currentPath = selected;
+        currentName = await basename(selected);
+        setDirty(false);
+        clearDraft();
+        updateTitle();
+        render();
+      } catch (e) {
+        console.error(e);
+      }
+    });
+  };
+
+  const saveFile = async () => {
+    if (!currentPath) return saveFileAs();
+    try {
+      await writeTextFile(currentPath, getDoc());
+      setDirty(false);
+      clearDraft();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveFileAs = async () => {
+    try {
+      const selected = await save({
+        filters: DIALOG_FILTERS,
+        defaultPath: currentPath || currentName,
+      });
+      if (!selected) return; // user cancelled
+      await writeTextFile(selected, getDoc());
+      currentPath = selected;
+      currentName = await basename(selected);
+      setDirty(false);
+      clearDraft();
+      updateTitle();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const newFile = () => {
+    confirmDiscard(() => {
+      setDoc('');
+      currentPath = null;
+      currentName   = DEFAULT_NAME;
+      setDirty(false);
+      clearDraft();
+      updateTitle();
+      render();
+      editorView.focus();
+      // Move cursor to end
+      editorView.dispatch({
+        selection: { anchor: editorView.state.doc.length },
+      });
+    });
+  };
+
+  // ================= Catppuccin Mocha editor theme =================
+
+  const catppuccinTheme = EditorView.theme({
+    '&': {
+      color: 'var(--ctp-text)',
+      backgroundColor: 'var(--ctp-base)',
+      height: '100%',
+      fontSize: '0.9rem',
+    },
+    '.cm-scroller': {
+      fontFamily: 'var(--font-mono)',
+      lineHeight: '1.6',
+      scrollbarColor: 'var(--ctp-surface1) var(--ctp-base)',
+      scrollbarWidth: 'thin',
+    },
+    '.cm-content': {
+      caretColor: 'var(--ctp-rosewater)',
+      padding: '2rem 0',
+    },
+    '.cm-line': {
+      padding: '0 2.5rem',
+    },
+    '.cm-cursor, .cm-dropCursor': {
+      borderLeftColor: 'var(--ctp-rosewater)',
+      borderLeftWidth: '2px',
+    },
+    '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
+      backgroundColor: 'var(--ctp-surface1)',
+    },
+    '.cm-gutters': {
+      backgroundColor: 'var(--ctp-base)',
+      color: 'var(--ctp-overlay0)',
+      border: 'none',
+    },
+    '.cm-gutterElement': {
+      padding: '0 0.5rem 0 1rem',
+      minWidth: '2.5rem',
+    },
+    '.cm-activeLine': { backgroundColor: 'rgba(49, 50, 68, 0.25)' },
+    '.cm-activeLineGutter': {
+      backgroundColor: 'transparent',
+      color: 'var(--ctp-subtext1)',
+    },
+    '.cm-scroller::-webkit-scrollbar': { width: '10px', height: '10px' },
+    '.cm-scroller::-webkit-scrollbar-track': { background: 'var(--ctp-base)' },
+    '.cm-scroller::-webkit-scrollbar-thumb': {
+      background: 'var(--ctp-surface1)',
+      borderRadius: '5px',
+      border: '2px solid var(--ctp-base)',
+    },
+    '.cm-scroller::-webkit-scrollbar-thumb:hover': { background: 'var(--ctp-surface2)' },
+    // Vim block cursor
+    '.cm-fat-cursor': {
+      background: 'var(--ctp-rosewater)',
+      outline: 'none',
+      border: 'none',
+    },
+    '&:not(.cm-focused) .cm-fat-cursor': {
+      background: 'transparent',
+      outline: 'solid 1px var(--ctp-rosewater)',
+    },
+  }, { dark: true });
+
+  // ================= Catppuccin highlight style =================
+
+  const catppuccinHighlight = HighlightStyle.define([
+    { tag: t.heading1, color: 'var(--ctp-lavender)', fontWeight: 'bold', fontSize: '1.5em' },
+    { tag: t.heading2, color: 'var(--ctp-lavender)', fontWeight: 'bold', fontSize: '1.3em' },
+    { tag: t.heading3, color: 'var(--ctp-mauve)',    fontWeight: 'bold', fontSize: '1.15em' },
+    { tag: t.heading4, color: 'var(--ctp-mauve)',    fontWeight: 'bold' },
+    { tag: t.heading5, color: 'var(--ctp-pink)',     fontWeight: 'bold' },
+    { tag: t.heading6, color: 'var(--ctp-pink)',     fontWeight: 'bold' },
+    { tag: t.strong,        color: 'var(--ctp-text)',    fontWeight: 'bold' },
+    { tag: t.emphasis,      color: 'var(--ctp-text)',    fontStyle: 'italic' },
+    { tag: t.link,          color: 'var(--ctp-blue)',    textDecoration: 'underline' },
+    { tag: t.monospace,     color: 'var(--ctp-peach)' },
+    { tag: t.comment,       color: 'var(--ctp-overlay0)', fontStyle: 'italic' },
+    { tag: t.list,          color: 'var(--ctp-peach)' },
+    { tag: t.attributeName, color: 'var(--ctp-yellow)' },
+    { tag: t.punctuation,   color: 'var(--ctp-overlay1)' },
+  ]);
+
+  // ================= Minimal AsciiDoc stream highlighter =================
+  // Not a full parser — just enough to color what you'll actually see:
+  // headings, attributes, comments, lists, block titles, listing blocks,
+  // and inline emphasis/code/links.
+  const asciidocLang = StreamLanguage.define({
+    name: 'asciidoc',
+    startState: () => ({ listing: false }),
+    token(stream, state) {
+      // Inside a ---- listing block, the whole line is monospace
+      // until we see a closing ----.
+      if (state.listing) {
+        if (stream.sol() && stream.match(/-{4,}\s*$/)) {
+          state.listing = false;
+          return 'punctuation';
+        }
+        stream.skipToEnd();
+        return 'monospace';
+      }
+
+      if (stream.sol()) {
+        // Open listing block
+        if (stream.match(/-{4,}\s*$/)) {
+          state.listing = true;
+          return 'punctuation';
+        }
+        // Line comment
+        if (stream.match(/\/\/.*$/)) return 'comment';
+        // Heading: 1..6 leading '=' followed by space + content
+        const h = stream.match(/(={1,6})\s+/);
+        if (h) {
+          stream.skipToEnd();
+          return 'heading' + h[1].length;
+        }
+        // Document / block attribute entry: :name: value
+        if (stream.match(/:[\w-]+:/)) {
+          stream.skipToEnd();
+          return 'attributeName';
+        }
+        // Block title: .Some title
+        if (stream.match(/\.[A-Za-z].*$/)) {
+          return 'emphasis';
+        }
+        // Unordered list markers: *, **, ***, -
+        if (stream.match(/[*\-]+\s+/)) return 'list';
+        // Ordered list markers: ., .., ...
+        if (stream.match(/\.{1,5}\s+/)) return 'list';
+        // Horizontal rule: '''
+        if (stream.match(/'{3,}\s*$/)) return 'punctuation';
+      }
+
+      // Inline tokens
+      if (stream.match(/`[^`\n]+`/))              return 'monospace';
+      if (stream.match(/\*[^*\s][^*\n]*\*/))      return 'strong';
+      if (stream.match(/_[^_\s][^_\n]*_/))        return 'emphasis';
+      if (stream.match(/https?:\/\/\S+/))         return 'link';
+
+      stream.next();
+      return null;
+    },
+    tokenTable: {
+      heading1:      t.heading1,
+      heading2:      t.heading2,
+      heading3:      t.heading3,
+      heading4:      t.heading4,
+      heading5:      t.heading5,
+      heading6:      t.heading6,
+      monospace:     t.monospace,
+      strong:        t.strong,
+      emphasis:      t.emphasis,
+      link:          t.link,
+      list:          t.list,
+      attributeName: t.attributeName,
+      comment:       t.comment,
+      punctuation:   t.punctuation,
+    },
+  });
+
+  // ================= Vim compartment =================
+  // Reconfigured at runtime when the user toggles vim mode.
+  const vimCompartment = new Compartment();
+
+  // ================= Editor extensions =================
+
+  const makeExtensions = () => [
+    // vim must come before the default keymap so it wins when enabled
+    vimCompartment.of(prefs.vimMode ? [vim()] : []),
+
+    // base editing
+    lineNumbers(),
+    highlightActiveLineGutter(),
+    highlightActiveLine(),
+    history(),
+    indentOnInput(),
+    bracketMatching(),
+    EditorView.lineWrapping,
+
+    // language — minimal adoc stream highlighter
+    asciidocLang,
+
+    // highlighting
+    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    syntaxHighlighting(catppuccinHighlight),
+
+    // theme
+    catppuccinTheme,
+
+    // base keymap
+    keymap.of([...defaultKeymap, ...historyKeymap]),
+
+    // change listener -> dirty / render / autosave
+    EditorView.updateListener.of((update) => {
+      if (update.docChanged && !suppressDocEvents) {
+        setDirty(true);
+        scheduleRender();
+        scheduleAutosave();
+      }
+    }),
+  ];
+
+  // ================= Toggles =================
+
+  const applyTitlebar = () => {
+    document.body.classList.toggle('no-titlebar', prefs.titlebarHidden);
+  };
+  const toggleTitlebar = () => {
+    prefs.titlebarHidden = !prefs.titlebarHidden;
+    savePrefs();
+    applyTitlebar();
+  };
+  const applyGutter = () => {
+    document.body.classList.toggle('no-gutter', prefs.gutterHidden);
+  };
+  const toggleGutter = () => {
+    prefs.gutterHidden = !prefs.gutterHidden;
+    savePrefs();
+    applyGutter();
+  };
+  const toggleVim = () => {
+    prefs.vimMode = !prefs.vimMode;
+    savePrefs();
+    editorView.dispatch({
+      effects: vimCompartment.reconfigure(prefs.vimMode ? [vim()] : []),
+    });
+  };
+
+  const DISPLAY_MODES = ['split', 'editor', 'preview'];
+  const applyDisplayMode = () => {
+    const cl = document.body.classList;
+    for (const m of DISPLAY_MODES) cl.remove(`mode-${m}`);
+    cl.add(`mode-${prefs.displayMode}`);
+  };
+  const setDisplayMode = (mode) => {
+    if (!DISPLAY_MODES.includes(mode)) return;
+    prefs.displayMode = mode;
+    savePrefs();
+    applyDisplayMode();
+  };
+
+  // ================= Keyboard shortcuts =================
+  // Capture phase so we beat CM6's internal keymap + vim bindings.
+  window.addEventListener('keydown', (e) => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod) return;
+    const k = (e.key || '').toLowerCase();
+
+    // Alt-modified shortcuts first — so Ctrl+Alt+S (split) doesn't match plain Ctrl+S (save).
+    if (e.altKey && k === 'n') {
+      e.preventDefault(); newFile();
+    } else if (e.altKey && k === 'v') {
+      e.preventDefault(); toggleVim();
+    } else if (e.altKey && k === 'g') {
+      e.preventDefault(); toggleGutter();
+    } else if (e.altKey && k === 's') {
+      e.preventDefault(); setDisplayMode('split');
+    } else if (e.altKey && k === 'e') {
+      e.preventDefault(); setDisplayMode('editor');
+    } else if (e.altKey && k === 'p') {
+      e.preventDefault(); setDisplayMode('preview');
+    } else if (e.altKey && k === 'm') {
+      e.preventDefault(); toggleTitlebar();
+    }
+    // Non-alt shortcuts.
+    else if (k === 's' && e.shiftKey) {
+      e.preventDefault(); saveFileAs();
+    } else if (k === 's') {
+      e.preventDefault(); saveFile();
+    } else if (k === 'o') {
+      e.preventDefault(); openFile();
+    }
+  }, { capture: true });
+
+  // ================= Close handler =================
+  // Replaces the web version's beforeunload. Tauri's onCloseRequested
+  // lets us show our custom dialog and conditionally prevent the close.
+  const appWindow = getCurrentWindow();
+  appWindow.onCloseRequested((event) => {
+    if (!dirty) return;
+    event.preventDefault();
+    askConfirm('You have unsaved changes. Discard them?', () => {
+      appWindow.destroy();
+    });
+  });
+
+  // ================= Init =================
+
+  applyTitlebar();
+  applyGutter();
+  applyDisplayMode();
+
+  const { doc: initialDoc, hasDraft } = resolveInitialDoc();
+
+  editorView = new EditorView({
+    doc: initialDoc,
+    parent: host,
+    extensions: makeExtensions(),
+  });
+
+  if (hasDraft) setDirty(true);
+  updateTitle();
+  render();
+  editorView.focus();
+</script>
+</body>
+</html>

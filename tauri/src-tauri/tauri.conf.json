@@ -1,0 +1,25 @@
+{
+  "productName": "Klartext",
+  "version": "0.1.0",
+  "identifier": "klartext",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Klartext",
+        "width": 1280,
+        "height": 720,
+        "decorations": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}

@@ -992,14 +992,14 @@
       e.preventDefault(); setDisplayMode('preview');
     } else if (e.altKey && k === 'm') {
       e.preventDefault(); toggleTitlebar();
+    } else if (e.altKey && k === 'o') {
+      e.preventDefault(); openFile();
     }
     // Non-alt shortcuts.
     else if (k === 's' && e.shiftKey) {
       e.preventDefault(); saveFileAs();
     } else if (k === 's') {
       e.preventDefault(); saveFile();
-    } else if (e.altKey && k === 'o') {
-      e.preventDefault(); openFile();
     }
   }, { capture: true });
 

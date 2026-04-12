@@ -547,6 +547,7 @@
         localStorage.setItem(LS_KEY, JSON.stringify({
           content: getDoc(),
           name:    currentName,
+          path:    currentPath,
           ts:      Date.now(),
         }));
       } catch {}
@@ -557,7 +558,7 @@
   };
 
   // Resolves the initial doc + name (from saved draft, or defaults).
-  // Side-effect: may set currentName.
+  // Side-effect: may set currentName and currentPath.
   const resolveInitialDoc = () => {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -565,6 +566,7 @@
         const d = JSON.parse(raw);
         if (typeof d.content === 'string' && d.content.length > 0) {
           currentName = d.name || DEFAULT_NAME;
+          if (d.path) currentPath = d.path;
           return { doc: d.content, hasDraft: true };
         }
       }

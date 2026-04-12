@@ -377,6 +377,24 @@
 </style>
 </head>
 <body>
+  <!-- Inline (non-module) script runs synchronously during parse, before
+       the first paint. Reads prefs from localStorage and sets body classes
+       immediately so the titlebar / gutter / display-mode state is correct
+       on the very first frame — no FOUC. The module script's applyTitlebar
+       / applyGutter / applyDisplayMode calls still run later, but they're
+       no-ops because the classes are already correct. -->
+  <script>
+    (function() {
+      try {
+        var p = JSON.parse(localStorage.getItem('adoc-editor-prefs-v1'));
+        if (!p) return;
+        var cl = document.body.classList;
+        if (p.titlebarHidden) cl.add('no-titlebar');
+        if (p.gutterHidden)   cl.add('no-gutter');
+        if (p.displayMode && p.displayMode !== 'split') cl.add('mode-' + p.displayMode);
+      } catch(e) {}
+    })();
+  </script>
   <header class="titlebar">
     <div><span class="name" id="name">untitled.adoc</span></div>
     <div class="hint">

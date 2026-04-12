@@ -395,6 +395,7 @@
         <kbd class="layout-start">Ctrl+Alt+S</kbd> split
         <kbd>Ctrl+Alt+E</kbd> editor
         <kbd>Ctrl+Alt+P</kbd> preview
+        <kbd>Ctrl+Alt+L</kbd> sync
       </div>
     </div>
   </header>
@@ -514,15 +515,95 @@
 
   const render = () => {
     try {
-      out.innerHTML = ad.convert(getDoc(), { standalone: false });
+      // Load first (so we get the AST for the scroll-sync block map),
+      // then convert. sourcemap=true makes Asciidoctor annotate blocks
+      // with their originating source line numbers in the parse tree.
+      const doc = ad.load(getDoc(), { attributes: { sourcemap: true } });
+      out.innerHTML = doc.convert({ standalone: false });
+      buildBlockMap(doc);
     } catch (e) {
       out.innerHTML =
         `<pre class="render-error">Render error: ${escapeHtml(e.message || String(e))}</pre>`;
+      blockMap = [];
     }
   };
   const scheduleRender = () => {
     clearTimeout(renderTimer);
     renderTimer = setTimeout(render, 100);
+  };
+
+  // ================= Scroll sync =================
+  // Sync-once: snap the preview to the block containing (or nearest
+  // preceding) the editor caret's source line. Triggered by Ctrl+Alt+L,
+  // the :syncpreview Ex command, or gz in vim normal mode. NOT a
+  // continuous sync — both panes stay independently scrollable and we
+  // don't touch them unless the user asks.
+
+  const MAPPABLE_CONTEXTS = new Set([
+    'paragraph', 'listing', 'literal', 'example', 'sidebar',
+    'admonition', 'quote', 'verse', 'image', 'ulist', 'olist', 'dlist',
+    'section', 'open', 'table',
+  ]);
+
+  const DOM_BLOCK_SELECTOR = [
+    '.paragraph', '.listingblock', '.literalblock', '.exampleblock',
+    '.sidebarblock', '.admonitionblock', '.quoteblock', '.verseblock',
+    '.imageblock', '.ulist', '.olist', '.dlist',
+    '.sect1', '.sect2', '.sect3', '.sect4', '.sect5',
+    '.openblock', 'table.tableblock',
+  ].join(', ');
+
+  let blockMap = []; // Array<{ line: number, el: Element }>, sorted by line
+
+  // Walk the parsed AST and the rendered DOM in parallel, building a
+  // map from source line to preview block element. Relies on Asciidoctor
+  // emitting blocks in document order in both the AST walk (via findBy)
+  // and the rendered HTML (via querySelectorAll). The i-th matching
+  // AST block aligns with the i-th matching DOM element.
+  const buildBlockMap = (doc) => {
+    try {
+      const ast = doc.findBy({}).filter((b) => {
+        try {
+          return MAPPABLE_CONTEXTS.has(b.getContext()) && b.getSourceLocation();
+        } catch { return false; }
+      });
+      const dom = Array.from(out.querySelectorAll(DOM_BLOCK_SELECTOR));
+      const map = [];
+      const n = Math.min(ast.length, dom.length);
+      for (let i = 0; i < n; i++) {
+        try {
+          const line = ast[i].getSourceLocation().getLineNumber();
+          if (typeof line === 'number') {
+            map.push({ line, el: dom[i] });
+          }
+        } catch {}
+      }
+      map.sort((a, b) => a.line - b.line);
+      blockMap = map;
+    } catch (e) {
+      console.error('buildBlockMap failed:', e);
+      blockMap = [];
+    }
+  };
+
+  // Binary search for the greatest block with line <= caretLine, then
+  // scroll its DOM element to the top of the preview viewport.
+  const syncPreviewToCaret = () => {
+    if (!blockMap.length || !editorView) return;
+    const pos = editorView.state.selection.main.head;
+    const caretLine = editorView.state.doc.lineAt(pos).number;
+    let lo = 0, hi = blockMap.length - 1, found = 0;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (blockMap[mid].line <= caretLine) {
+        found = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    const target = blockMap[found].el;
+    if (target) target.scrollIntoView({ block: 'start' });
   };
 
   // ================= Title / dirty =================
@@ -969,6 +1050,8 @@
       e.preventDefault(); toggleTitlebar();
     } else if (e.altKey && k === 'o') {
       e.preventDefault(); openFile();
+    } else if (e.altKey && k === 'l') {
+      e.preventDefault(); syncPreviewToCaret();
     }
     // Non-alt shortcuts.
     else if (k === 's' && e.shiftKey) {
@@ -1066,6 +1149,23 @@
   Vim.defineEx('open', 'op', () => {
     openFile();
   });
+
+  // :syncpreview / :syncp — snap the preview to the block containing
+  // the editor caret's source line. Same action as Ctrl+Alt+L.
+  Vim.defineEx('syncpreview', 'syncp', () => {
+    syncPreviewToCaret();
+  });
+
+  // Normal-mode mapping: gz → :syncpreview<CR>. gz is in vim's `g`
+  // namespace for extended commands and is unused in standard vim.
+  // Wrapped in try/catch because Vim.map's exact signature in
+  // @replit/codemirror-vim isn't documented; if it fails, the Ex
+  // command and Ctrl+Alt+L both still work.
+  try {
+    Vim.map('gz', ':syncpreview<CR>', 'normal');
+  } catch (e) {
+    console.error('Vim.map gz failed:', e);
+  }
 
   // ================= Close handler =================
   // Replaces the web version's beforeunload. When onCloseRequested is

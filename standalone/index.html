@@ -447,7 +447,7 @@
     HighlightStyle, defaultHighlightStyle, StreamLanguage,
   } from '@codemirror/language';
   import { tags as t } from '@lezer/highlight';
-  import { vim } from '@replit/codemirror-vim';
+  import { vim, Vim } from '@replit/codemirror-vim';
 
   // ================= Constants =================
 
@@ -730,6 +730,19 @@
     });
   };
 
+  const revertFile = async () => {
+    if (!currentHandle) return;
+    try {
+      const file = await currentHandle.getFile();
+      setDoc(await file.text());
+      setDirty(false);
+      clearDraft();
+      render();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // ================= Catppuccin Mocha editor theme =================
 
   const catppuccinTheme = EditorView.theme({
@@ -1002,6 +1015,37 @@
       e.preventDefault(); saveFile();
     }
   }, { capture: true });
+
+  // ================= Vim Ex commands =================
+
+  Vim.defineEx('write', 'w', (cm, params) => {
+    // :w filename is not supported in standalone (no filesystem path access).
+    // :w and :w! both save to current file.
+    if (!params.argString || !params.argString.trim()) {
+      saveFile();
+    }
+  });
+
+  Vim.defineEx('saveas', 'sav', () => {
+    saveFileAs();
+  });
+
+  Vim.defineEx('edit', 'e', (cm, params) => {
+    // :e filename is not supported in standalone (no filesystem path access).
+    // :e — revert if clean; refuse if dirty (use :e! to force).
+    // :e! — force revert, discard changes.
+    if (params.argString && params.argString.trim()) return;
+    if (dirty && !params.bang) return;
+    revertFile();
+  });
+
+  Vim.defineEx('enew', 'ene', () => {
+    newFile();
+  });
+
+  Vim.defineEx('new', 'new', () => {
+    newFile();
+  });
 
   window.addEventListener('beforeunload', (e) => {
     if (dirty) {

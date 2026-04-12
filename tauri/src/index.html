@@ -426,7 +426,7 @@
     HighlightStyle, defaultHighlightStyle, StreamLanguage,
   } from '@codemirror/language';
   import { tags as t } from '@lezer/highlight';
-  import { vim } from '@replit/codemirror-vim';
+  import { vim, Vim } from '@replit/codemirror-vim';
 
   // Tauri plugins
   import { open, save } from '@tauri-apps/plugin-dialog';
@@ -661,6 +661,18 @@
         selection: { anchor: editorView.state.doc.length },
       });
     });
+  };
+
+  const revertFile = async () => {
+    if (!currentPath) return;
+    try {
+      setDoc(await readTextFile(currentPath));
+      setDirty(false);
+      clearDraft();
+      render();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // ================= Catppuccin Mocha editor theme =================
@@ -935,6 +947,63 @@
       e.preventDefault(); saveFile();
     }
   }, { capture: true });
+
+  // ================= Vim Ex commands =================
+
+  Vim.defineEx('write', 'w', async (cm, params) => {
+    const arg = params.argString && params.argString.trim();
+    if (arg) {
+      // :w filename — save to specific path
+      try {
+        await writeTextFile(arg, getDoc());
+        currentPath = arg;
+        currentName = await basename(arg);
+        setDirty(false);
+        clearDraft();
+        updateTitle();
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      // :w or :w! — save to current file
+      saveFile();
+    }
+  });
+
+  Vim.defineEx('saveas', 'sav', () => {
+    saveFileAs();
+  });
+
+  Vim.defineEx('edit', 'e', async (cm, params) => {
+    const arg = params.argString && params.argString.trim();
+    if (dirty && !params.bang) return;
+    if (arg) {
+      // :e filename or :e! filename — open specific file by path
+      try {
+        const content = await readTextFile(arg);
+        setDoc(content);
+        currentPath = arg;
+        currentName = await basename(arg);
+        setDirty(false);
+        clearDraft();
+        updateTitle();
+        render();
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      // :e or :e! — revert current file from disk
+      revertFile();
+    }
+  });
+
+  Vim.defineEx('enew', 'ene', () => {
+    newFile();
+  });
+
+  Vim.defineEx('new', 'new', () => {
+    newFile();
+  });
 
   // ================= Close handler =================
   // Replaces the web version's beforeunload. When onCloseRequested is

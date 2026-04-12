@@ -432,7 +432,8 @@
   import { open, save } from '@tauri-apps/plugin-dialog';
   import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
   import { getCurrentWindow } from '@tauri-apps/api/window';
-  import { basename } from '@tauri-apps/api/path';
+  import { basename, dirname, resolve, isAbsolute } from '@tauri-apps/api/path';
+  import { invoke } from '@tauri-apps/api/core';
 
   // ================= Constants =================
 
@@ -484,6 +485,7 @@
   let autosaveTimer      = null;
   let editorView         = null;
   let suppressDocEvents  = false; // true during programmatic setDoc calls
+  let launchCwd          = '';    // shell CWD at launch, captured from Rust; used as fallback for :w relative.txt
 
   // ================= Helpers =================
 
@@ -1038,7 +1040,37 @@
   applyGutter();
   applyDisplayMode();
 
-  const { doc: initialDoc, hasDraft } = resolveInitialDoc();
+  // Query Rust for launch-time info (CLI argument, shell CWD). If a file
+  // path was passed on the command line, that wins over the autosave draft.
+  let launchInfo = { initial_file: null, cwd: '' };
+  try {
+    launchInfo = await invoke('get_launch_info');
+  } catch (e) {
+    console.error('Failed to get launch info:', e);
+  }
+  launchCwd = launchInfo.cwd || '';
+
+  // Determine the initial document content.
+  let initialDoc = DEFAULT_DOC;
+  let hasDraft = false;
+  if (launchInfo.initial_file) {
+    // CLI argument wins — skip draft restore entirely.
+    try {
+      initialDoc = await readTextFile(launchInfo.initial_file);
+      currentPath = launchInfo.initial_file;
+      currentName = await basename(launchInfo.initial_file);
+    } catch (e) {
+      console.error('Failed to load file from CLI argument:', e);
+      // Fall back to draft / default
+      const r = resolveInitialDoc();
+      initialDoc = r.doc;
+      hasDraft = r.hasDraft;
+    }
+  } else {
+    const r = resolveInitialDoc();
+    initialDoc = r.doc;
+    hasDraft = r.hasDraft;
+  }
 
   editorView = new EditorView({
     doc: initialDoc,

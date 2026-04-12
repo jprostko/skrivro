@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default permissions for Klartext",
+  "description": "Default permissions for Klartext. IMPORTANT: the core:window:allow-close, allow-destroy, and allow-set-title entries below are NOT redundant with core:default — they are not included in core:window:default and must be granted explicitly. Removing them will silently break window closes (including the dirty-confirm close handler, because Tauri's onCloseRequested library internally calls destroy() after the handler), and will break window title updates (because Tauri does not auto-sync document.title to the native window title — setTitle() is explicit).",
   "windows": ["main"],
   "permissions": [
     "core:default",

@@ -937,11 +937,20 @@
   }, { capture: true });
 
   // ================= Close handler =================
-  // TODO: Re-add dirty-close confirmation once basic close works.
-  // The onCloseRequested handler was preventing ALL closes (even clean
-  // state). Removed for diagnosis. Without this, closing while dirty
-  // will lose unsaved work silently — autosave draft in localStorage
-  // is the safety net until we fix this.
+  // Replaces the web version's beforeunload. When onCloseRequested is
+  // registered, Tauri's JS library intercepts ALL close requests and
+  // uses window.destroy() internally to complete the close after the
+  // handler finishes. This requires core:window:allow-destroy in
+  // capabilities — without it, destroy() silently fails and the
+  // window becomes uncloseable.
+  const appWindow = getCurrentWindow();
+  appWindow.onCloseRequested((event) => {
+    if (!dirty) return; // library auto-calls destroy() to close
+    event.preventDefault();
+    askConfirm('You have unsaved changes. Discard them?', () => {
+      appWindow.destroy();
+    });
+  });
 
   // ================= Init =================
 

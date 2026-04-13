@@ -18,5 +18,14 @@ export default defineConfig({
     target: "es2022",
     minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_DEBUG,
+    // Vite's default 500 KB chunk-size warning targets web apps where
+    // bundle size affects download time and first paint. Klartext is a
+    // Tauri desktop app — the JS ships embedded inside the binary and
+    // loads from local memory at launch, so chunk size is not a perceived
+    // performance concern. Asciidoctor.js alone accounts for most of the
+    // ~1.2 MB bundle and cannot be tree-shaken (it's compiled from Ruby
+    // via Opal). Raise the threshold so the warning stops firing on
+    // every build.
+    chunkSizeWarningLimit: 2000,
   },
 });

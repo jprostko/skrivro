@@ -1115,15 +1115,40 @@
 
   // ================= Vim Ex commands =================
 
+  // Parse an Ex command's argString into a normalized { bang, arg } pair.
+  //
+  // @replit/codemirror-vim exposes the ! bang suffix to user-defined
+  // commands via params.argString (as a leading "!"), NOT via params.bang
+  // — params.bang is undefined for every command registered through
+  // Vim.defineEx. Naively checking params.bang silently treats every
+  // bang variant as the non-bang form, and naively trimming argString
+  // treats the leading "!" as part of the filename argument. Both
+  // mistakes are easy to make (I made both), so all Ex handlers that
+  // care about either the bang or the argument should go through this
+  // helper.
+  //
+  // Returns { bang: boolean, arg: string|null } where arg is the
+  // argument text with the leading ! stripped and whitespace trimmed,
+  // or null if no argument was given.
+  const parseExArgs = (params) => {
+    let s = ((params && params.argString) || '').trim();
+    const bang = s.startsWith('!');
+    if (bang) s = s.slice(1).trim();
+    return { bang, arg: s || null };
+  };
+
   Vim.defineEx('write', 'w', async (cm, params) => {
-    const arg = params.argString && params.argString.trim();
+    const { arg } = parseExArgs(params);
+    // Bang has no additional effect in our :w path — vim's :w! forces
+    // write to a readonly file, and Klartext has no readonly concept.
     if (arg) {
-      // :w filename — write the buffer's content to `filename`, but do
-      // NOT change the buffer's current file. The buffer stays associated
-      // with its original file, dirty flag unchanged. Matches Vim semantics:
-      // `:w bar.adoc` followed by `:w` still saves to the original file.
-      // Relative paths resolve against the current file's directory (or
-      // the shell CWD at launch if no current file).
+      // :w filename / :w! filename — write the buffer's content to
+      // `filename`, but do NOT change the buffer's current file. The
+      // buffer stays associated with its original file, dirty flag
+      // unchanged. Matches Vim semantics: `:w bar.adoc` followed by
+      // `:w` still saves to the original file. Relative paths resolve
+      // against the current file's directory (or the shell CWD at
+      // launch if no current file).
       try {
         const targetPath = await resolveArgPath(arg);
         await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
@@ -1137,12 +1162,16 @@
   });
 
   Vim.defineEx('saveas', 'sav', async (cm, params) => {
-    const arg = params.argString && params.argString.trim();
+    const { arg } = parseExArgs(params);
+    // Bang has no additional effect — vim's :saveas! forces overwrite
+    // of an existing file, and Klartext's writeTextFile has no such
+    // refuse-if-exists check to override.
     if (arg) {
-      // :saveas filename — write to the given path AND rename the buffer.
-      // Future :w calls will save to this new path. Matches Vim semantics:
-      // this is the buffer-renaming counterpart to :w filename's pure-write.
-      // Relative paths resolve the same way as :w filename.
+      // :saveas filename / :saveas! filename — write to the given path
+      // AND rename the buffer. Future :w calls will save to this new
+      // path. Matches Vim semantics: this is the buffer-renaming
+      // counterpart to :w filename's pure-write. Relative paths resolve
+      // the same way as :w filename.
       try {
         const targetPath = await resolveArgPath(arg);
         await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
@@ -1163,8 +1192,10 @@
   });
 
   Vim.defineEx('edit', 'e', async (cm, params) => {
-    const arg = params.argString && params.argString.trim();
-    if (dirty && !params.bang) return;
+    const { bang, arg } = parseExArgs(params);
+    // Refuse to discard a dirty buffer without the force bang. Applies
+    // to both :e (revert current file) and :e filename (open a new one).
+    if (dirty && !bang) return;
     if (arg) {
       // :e filename or :e! filename — open specific file by path.
       // Same vim-style path resolution as :w filename.
@@ -1208,6 +1239,102 @@
     syncPreviewToCaret();
   });
 
+  // ================= Quit commands (Tauri only) =================
+  //
+  // Clean-quit commands call getCurrentWindow().close(), which flows
+  // through the onCloseRequested handler below. That handler checks
+  // dirty state and shows the custom Catppuccin confirm dialog if
+  // there are unsaved changes — matching the behavior of clicking the
+  // window's X button, for UI consistency with the rest of Klartext.
+  //
+  // The force variants (:q!, ZQ) call destroy() directly, bypassing
+  // onCloseRequested so no prompt appears. clearDraft() runs first so
+  // the next launch starts clean — without it, the autosave draft
+  // restoration would bring the "discarded" content back.
+  //
+  // :wq vs :x semantics match vim faithfully:
+  //   :wq ALWAYS calls saveFile(), so the filesystem mtime is bumped
+  //       even on an unchanged buffer (unconditional write).
+  //   :x  only calls saveFile() when dirty — on a clean buffer, mtime
+  //       is not touched. Matters for tools that watch mtime.
+  //
+  // :wq! and :x! accept the bang but have no additional effect here.
+  // Vim's :wq! forces write to a readonly file; Klartext has no
+  // readonly concept. Vim's :x! forces write even when the buffer is
+  // clean, which in our context is literally what :wq does. Both
+  // resolve to "always write and quit" for our purposes.
+  //
+  // After saveFile() we check `dirty` to detect save failure or a
+  // cancelled save-as dialog: on success, saveFile() sets dirty=false;
+  // on error or cancel, dirty stays true. If dirty is still true we
+  // return without closing, so a cancelled save never drops the user
+  // out of the editor unexpectedly.
+
+  const quitClean = () => {
+    getCurrentWindow().close();
+  };
+
+  const quitForce = () => {
+    clearDraft();
+    getCurrentWindow().destroy();
+  };
+
+  const quitHandler = (cm, params) => {
+    if (parseExArgs(params).bang) quitForce();
+    else quitClean();
+  };
+
+  const writeAndQuit = async () => {
+    await saveFile();
+    if (dirty) return; // save failed or user cancelled save-as dialog
+    getCurrentWindow().close();
+  };
+
+  const exitIfDirty = async (cm, params) => {
+    if (dirty || parseExArgs(params).bang) {
+      await saveFile();
+      if (dirty) return; // save failed or user cancelled save-as dialog
+    }
+    getCurrentWindow().close();
+  };
+
+  // Note on aliases: Vim.defineEx(name, shortName, handler) requires
+  // shortName to be a LITERAL prefix of name — the plugin throws if
+  // you pass e.g. ('quitall', 'qa', ...) because 'qa' is not a prefix
+  // of 'quitall'. Vim's own command table aliases :qa to :quitall via
+  // internal alias logic, but the plugin's defineEx has no such logic.
+  // Workaround: register each alias form as its own command with a
+  // valid prefix relationship (or with shortName === name for forms
+  // that have no shorter alias).
+
+  // :q / :quit  (plus :q! / :quit! bang variant for force-quit)
+  Vim.defineEx('quit', 'q', quitHandler);
+  // :quitall — full form, registered as a standalone command since
+  // 'qa' is not a prefix of 'quitall'.
+  Vim.defineEx('quitall', 'quitall', quitHandler);
+  // :qall / :qa — registered together because 'qa' IS a prefix of
+  // 'qall'. This is the registration that covers the common 2-letter
+  // muscle memory (:qa) and the 4-letter form (:qall).
+  Vim.defineEx('qall', 'qa', quitHandler);
+
+  // :wq (plus :wq! bang, which is a no-op — see note above)
+  Vim.defineEx('wq', 'wq', writeAndQuit);
+  // :wqall / :wqa — 'wqa' is a prefix of 'wqall', so one registration
+  // gives both forms.
+  Vim.defineEx('wqall', 'wqa', writeAndQuit);
+
+  // :x  — short form, registered as its own command because 'x' is
+  // not a prefix of 'exit'. Accepts the :x! bang to force save.
+  Vim.defineEx('x', 'x', exitIfDirty);
+  // :exit — full form, standalone registration (can't use 'e' as its
+  // short form because that would clash with the existing :edit / :e).
+  Vim.defineEx('exit', 'exit', exitIfDirty);
+  // :xit — another valid vim alias for :exit.
+  Vim.defineEx('xit', 'xit', exitIfDirty);
+  // :xall / :xa — 'xa' is a prefix of 'xall', so one registration
+  // gives both forms.
+  Vim.defineEx('xall', 'xa', exitIfDirty);
+
   // Normal-mode mapping: gz → :syncpreview<CR>. gz is in vim's `g`
   // namespace for extended commands and is unused in standard vim.
   // Wrapped in try/catch because Vim.map's exact signature in
@@ -1217,6 +1344,17 @@
     Vim.map('gz', ':syncpreview<CR>', 'normal');
   } catch (e) {
     console.error('Vim.map gz failed:', e);
+  }
+
+  // Normal mode: ZZ = :x (save if dirty, quit), ZQ = :q! (discard, quit).
+  // Classic vim shortcuts that correspond to the Ex commands defined
+  // above. Separate try/catch from the gz mapping so one failure doesn't
+  // silently prevent the other from registering.
+  try {
+    Vim.map('ZZ', ':x<CR>', 'normal');
+    Vim.map('ZQ', ':q!<CR>', 'normal');
+  } catch (e) {
+    console.error('Vim.map ZZ/ZQ failed:', e);
   }
 
   // Default regex engine to Vim magic-mode translation instead of raw

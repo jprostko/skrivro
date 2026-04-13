@@ -1159,12 +1159,36 @@
 
   // ================= Vim Ex commands =================
 
+  // Parse an Ex command's argString into a normalized { bang, arg } pair.
+  //
+  // @replit/codemirror-vim exposes the ! bang suffix to user-defined
+  // commands via params.argString (as a leading "!"), NOT via params.bang
+  // — params.bang is undefined for every command registered through
+  // Vim.defineEx. Naively checking params.bang silently treats every
+  // bang variant as the non-bang form, and naively trimming argString
+  // treats the leading "!" as part of the filename argument. All Ex
+  // handlers that care about either the bang or the argument should
+  // go through this helper to avoid those two classes of bug.
+  //
+  // Returns { bang: boolean, arg: string|null } where arg is the
+  // argument text with the leading ! stripped and whitespace trimmed,
+  // or null if no argument was given.
+  const parseExArgs = (params) => {
+    let s = ((params && params.argString) || '').trim();
+    const bang = s.startsWith('!');
+    if (bang) s = s.slice(1).trim();
+    return { bang, arg: s || null };
+  };
+
   Vim.defineEx('write', 'w', (cm, params) => {
     // :w filename is not supported in standalone (no filesystem path access).
-    // :w and :w! both save to current file.
-    if (!params.argString || !params.argString.trim()) {
-      saveFile();
-    }
+    // :w and :w! both save to current file; any filename argument is
+    // silently ignored. Bang itself has no additional effect — vim's
+    // :w! forces write to a readonly file, and Klartext has no readonly
+    // concept.
+    const { arg } = parseExArgs(params);
+    if (arg) return;
+    saveFile();
   });
 
   Vim.defineEx('saveas', 'sav', () => {
@@ -1175,8 +1199,9 @@
     // :e filename is not supported in standalone (no filesystem path access).
     // :e — revert if clean; refuse if dirty (use :e! to force).
     // :e! — force revert, discard changes.
-    if (params.argString && params.argString.trim()) return;
-    if (dirty && !params.bang) return;
+    const { bang, arg } = parseExArgs(params);
+    if (arg) return; // filename argument ignored per the :w note above
+    if (dirty && !bang) return;
     revertFile();
   });
 

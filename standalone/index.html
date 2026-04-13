@@ -422,7 +422,7 @@
   </main>
 
   <!-- Fallback for browsers without File System Access API -->
-  <input type="file" id="fileInput" accept=".adoc,.asciidoc,.asc,.ad,.txt" style="display:none">
+  <input type="file" id="fileInput" style="display:none">
 
   <!-- Custom confirmation dialog. Replaces window.confirm so it doesn't
        consume the transient user activation required by File System
@@ -460,10 +460,6 @@
   const DEFAULT_DOC  = '';
 
   const hasFSA = 'showOpenFilePicker' in window && 'showSaveFilePicker' in window;
-  const FILE_TYPES = [{
-    description: 'AsciiDoc',
-    accept: { 'text/plain': ['.adoc', '.asciidoc', '.asc', '.ad'] },
-  }];
 
   // ================= DOM refs =================
 
@@ -726,7 +722,7 @@
         // before the microtask yield — that is what keeps the gesture live.
         (async () => {
           try {
-            const [handle] = await window.showOpenFilePicker({ types: FILE_TYPES, multiple: false });
+            const [handle] = await window.showOpenFilePicker({ multiple: false });
             const file = await handle.getFile();
             setDoc(await file.text());
             currentHandle = handle;
@@ -780,7 +776,6 @@
       try {
         const handle = await window.showSaveFilePicker({
           suggestedName: currentName,
-          types: FILE_TYPES,
         });
         const w = await handle.createWritable();
         await w.write(ensureTrailingNewline(getDoc()));

@@ -445,11 +445,6 @@
   const DEFAULT_NAME = 'untitled.adoc';
   const DEFAULT_DOC  = '';
 
-  const DIALOG_FILTERS = [
-    { name: 'AsciiDoc', extensions: ['adoc', 'asciidoc', 'asc', 'ad'] },
-    { name: 'All files', extensions: ['*'] },
-  ];
-
   // ================= DOM refs =================
 
   const out       = document.getElementById('out');
@@ -709,7 +704,6 @@
     confirmDiscard(async () => {
       try {
         const selected = await open({
-          filters: DIALOG_FILTERS,
           multiple: false,
         });
         if (!selected) return; // user cancelled
@@ -741,7 +735,6 @@
   const saveFileAs = async () => {
     try {
       const selected = await save({
-        filters: DIALOG_FILTERS,
         defaultPath: currentPath || currentName,
       });
       if (!selected) return; // user cancelled

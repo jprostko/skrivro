@@ -1206,6 +1206,21 @@
     console.error('Vim.map gz failed:', e);
   }
 
+  // Default regex engine to Vim magic-mode translation instead of raw
+  // JavaScript RegExp. The plugin ships with pcre=true (shown in the
+  // search panel hint as "JavaScript regexp: set pcre"), which lets JS
+  // regex syntax pass through untranslated — an odd default for a vim
+  // emulator, since Vim users expect \(foo\|bar\), \<word\>, and other
+  // magic-mode syntax to work as written. Flipping pcre off enables
+  // the plugin's Vim-to-JS regex translation layer. Try/catch for the
+  // same reason as Vim.map above: Vim.setOption's exact API in
+  // @replit/codemirror-vim isn't documented.
+  try {
+    Vim.setOption('pcre', false);
+  } catch (e) {
+    console.error('Vim.setOption pcre failed:', e);
+  }
+
   // ================= Close handler =================
   // Replaces the web version's beforeunload. When onCloseRequested is
   // registered, Tauri's JS library intercepts ALL close requests and

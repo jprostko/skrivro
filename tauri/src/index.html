@@ -391,7 +391,7 @@
       <div class="hint-row">
         <kbd>Ctrl+Alt+V</kbd> vim
         <kbd>Ctrl+Alt+G</kbd> gutter
-        <kbd>Ctrl+Alt+M</kbd> minimal
+        <kbd>Ctrl+Alt+T</kbd> titlebar
         <kbd class="layout-start">Ctrl+Alt+S</kbd> split
         <kbd>Ctrl+Alt+E</kbd> editor
         <kbd>Ctrl+Alt+P</kbd> preview
@@ -1085,7 +1085,7 @@
       e.preventDefault(); setDisplayMode('editor');
     } else if (e.altKey && k === 'p') {
       e.preventDefault(); setDisplayMode('preview');
-    } else if (e.altKey && k === 'm') {
+    } else if (e.altKey && k === 't') {
       e.preventDefault(); toggleTitlebar();
     } else if (e.altKey && k === 'o') {
       e.preventDefault(); openFile();

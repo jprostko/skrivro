@@ -930,6 +930,19 @@
       fontFamily: 'var(--font-mono)',
       padding: '2px 6px',
     },
+    // Hide the "(JavaScript regexp: set pcre)" / "(Vim regexp: set nopcre)"
+    // hint that @replit/codemirror-vim renders next to the search input.
+    // makePrompt() in vim.js builds it as a <span style="color:#888"> that
+    // sits as the second flex child of the outer panel div (the first child
+    // is the prefix + input span). Adjacent sibling combinator matches only
+    // when a second span exists — Ex command panels have only one span
+    // child (desc is undefined), so those are untouched. The hint is
+    // informational but repetitive; since we already default pcre to false
+    // at init, users rarely need to toggle, and the label is clutter in
+    // an otherwise clean command bar.
+    '.cm-panel span + span': {
+      display: 'none',
+    },
   }, { dark: true });
 
   // ================= Catppuccin highlight style =================

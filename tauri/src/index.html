@@ -857,6 +857,35 @@
       background: 'transparent',
       outline: 'solid 1px var(--ctp-rosewater)',
     },
+    // Vim Ex command / search panel at the bottom of the editor.
+    // Without these, CM6's built-in dark base theme provides a neutral
+    // gray strip and the <input> falls back to the UA's black-on-white
+    // field defaults (UA input styling does not inherit from the parent).
+    '.cm-panels': {
+      backgroundColor: 'var(--ctp-mantle)',
+      color: 'var(--ctp-text)',
+    },
+    '.cm-panels.cm-panels-bottom': {
+      borderTop: '1px solid var(--ctp-surface0)',
+    },
+    // CM6 (or @replit/codemirror-vim's .cm-vim-panel class) sets 10px
+    // of horizontal padding on .cm-panel. The right side shows as a
+    // dark sliver in :open and similar Ex-command panels because
+    // nothing lives there — the PCRE-hint slot is a separate flex
+    // sibling that only exists in search mode. Zero the right padding
+    // so the input reaches the panel edge; 10px on the left stays so
+    // the : prefix has breathing room.
+    '.cm-panel': {
+      paddingRight: '0',
+    },
+    '.cm-panel input, .cm-textfield': {
+      backgroundColor: 'var(--ctp-surface0)',
+      color: 'var(--ctp-text)',
+      border: 'none',
+      outline: 'none',
+      fontFamily: 'var(--font-mono)',
+      padding: '2px 6px',
+    },
   }, { dark: true });
 
   // ================= Catppuccin highlight style =================

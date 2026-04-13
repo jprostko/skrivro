@@ -766,7 +766,7 @@
     });
   };
 
-  const revertFile = async () => {
+  const reloadFile = async () => {
     if (!currentPath) return;
     try {
       setDoc(await readTextFile(currentPath));
@@ -1194,7 +1194,8 @@
   Vim.defineEx('edit', 'e', async (cm, params) => {
     const { bang, arg } = parseExArgs(params);
     // Refuse to discard a dirty buffer without the force bang. Applies
-    // to both :e (revert current file) and :e filename (open a new one).
+    // to both :e (reload current file from disk) and :e filename (open
+    // a new one).
     if (dirty && !bang) return;
     if (arg) {
       // :e filename or :e! filename — open specific file by path.
@@ -1213,8 +1214,8 @@
         console.error(e);
       }
     } else {
-      // :e or :e! — revert current file from disk
-      revertFile();
+      // :e or :e! — reload current file from disk
+      reloadFile();
     }
   });
 

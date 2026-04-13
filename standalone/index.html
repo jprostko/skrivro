@@ -827,7 +827,7 @@
     });
   };
 
-  const revertFile = async () => {
+  const reloadFile = async () => {
     if (!currentHandle) return;
     try {
       const file = await currentHandle.getFile();
@@ -1197,12 +1197,12 @@
 
   Vim.defineEx('edit', 'e', (cm, params) => {
     // :e filename is not supported in standalone (no filesystem path access).
-    // :e — revert if clean; refuse if dirty (use :e! to force).
-    // :e! — force revert, discard changes.
+    // :e — reload from disk if clean; refuse if dirty (use :e! to force).
+    // :e! — force reload, discarding any unsaved changes.
     const { bang, arg } = parseExArgs(params);
     if (arg) return; // filename argument ignored per the :w note above
     if (dirty && !bang) return;
-    revertFile();
+    reloadFile();
   });
 
   Vim.defineEx('enew', 'ene', () => {

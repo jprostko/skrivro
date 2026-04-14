@@ -20,6 +20,7 @@
         var cl = document.body.classList;
         if (p.titlebarHidden) cl.add('no-titlebar');
         if (p.gutterHidden)   cl.add('no-gutter');
+        if (p.statusBarHidden) cl.add('no-statusbar');
         if (p.displayMode && p.displayMode !== 'split') cl.add('mode-' + p.displayMode);
       } catch(e) {}
     })();
@@ -34,6 +35,20 @@
     <div id="src-host" class="editor-pane"></div>
     <div class="preview" id="out"></div>
   </main>
+
+  <!-- Status bar: mode pill (vim-only) + filename on the left;
+       file type + cursor position on the right. Toggled by Ctrl+Alt+B.
+       See memory/project_status_bar.md for the design spec. -->
+  <footer class="statusbar" id="statusbar">
+    <div class="status-left">
+      <span class="status-mode-pill" id="statusMode" data-vim-mode="normal" hidden>NORMAL</span>
+      <span class="status-filename" id="statusFilename">untitled.adoc</span>
+    </div>
+    <div class="status-right">
+      <span class="status-filetype" id="statusFiletype">AsciiDoc</span>
+      <span class="status-position" id="statusPosition">Ln 1, Col 1</span>
+    </div>
+  </footer>
 
   <!-- Custom confirmation dialog -->
   <dialog id="confirmDialog" class="confirm-dialog">
@@ -81,6 +96,8 @@
       <div class="help-desc">Preview only</div>
       <div class="help-key"><kbd>Ctrl+Alt+H</kbd></div>
       <div class="help-desc">Toggle this help</div>
+      <div class="help-key"><kbd>Ctrl+Alt+B</kbd></div>
+      <div class="help-desc">Toggle status bar</div>
     </div>
 
     <h3>Navigation</h3>
@@ -141,6 +158,25 @@
 
     <h2>Vim normal mode <span class="help-note">(vim mode only)</span></h2>
 
+    <h3>Modes</h3>
+    <div class="help-grid">
+      <div class="help-key"><kbd>i</kbd> <kbd>a</kbd></div>
+      <div class="help-desc">Insert mode (before / after cursor)</div>
+      <div class="help-key"><kbd>v</kbd></div>
+      <div class="help-desc">Visual mode (character-wise)</div>
+      <div class="help-key"><kbd>V</kbd></div>
+      <div class="help-desc">Visual line mode</div>
+      <div class="help-key"><kbd>Ctrl+Q</kbd></div>
+      <div class="help-desc">Visual block mode (<kbd>Ctrl+V</kbd> is reserved for browser paste)</div>
+      <div class="help-key"><kbd>R</kbd></div>
+      <div class="help-desc">Replace mode</div>
+      <div class="help-key"><kbd>:</kbd></div>
+      <div class="help-desc">Ex command line</div>
+      <div class="help-key"><kbd>Esc</kbd></div>
+      <div class="help-desc">Return to normal mode</div>
+    </div>
+
+    <h3>Commands</h3>
     <div class="help-grid">
       <div class="help-key"><kbd>gz</kbd></div>
       <div class="help-desc">Snap preview to cursor (same as :syncpreview)</div>
@@ -193,7 +229,7 @@
     HighlightStyle, defaultHighlightStyle, StreamLanguage,
   } from '@codemirror/language';
   import { tags as t } from '@lezer/highlight';
-  import { vim, Vim } from '@replit/codemirror-vim';
+  import { vim, Vim, getCM } from '@replit/codemirror-vim';
 
   // Tauri plugins
   import { open, save } from '@tauri-apps/plugin-dialog';
@@ -226,9 +262,15 @@
   const helpBtn          = document.getElementById('helpBtn');
   const helpCloseBtn     = document.getElementById('helpCloseBtn');
 
+  const statusBar        = document.getElementById('statusbar');
+  const statusMode       = document.getElementById('statusMode');
+  const statusFilename   = document.getElementById('statusFilename');
+  const statusFiletype   = document.getElementById('statusFiletype');
+  const statusPosition   = document.getElementById('statusPosition');
+
   // ================= Prefs =================
 
-  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split', gutterHidden: true };
+  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split', gutterHidden: true, statusBarHidden: false };
 
   const loadPrefs = () => {
     try {
@@ -252,6 +294,154 @@
   let editorView         = null;
   let suppressDocEvents  = false; // true during programmatic setDoc calls
   let launchCwd          = '';    // shell CWD at launch, captured from Rust; used as fallback for :w relative.txt
+  let inCommandMode      = false; // true while vim's : command panel is focused — flips the mode pill to COMMAND
+
+  // ================= Status bar =================
+  //
+  // See memory/project_status_bar.md for the design spec. Summary:
+  //   - Mode pill (left): canonical Catppuccin colors from catppuccin/nvim
+  //     (blue/green/mauve/red/peach). Hidden when vim is off.
+  //   - Filename (left): dirty indicator + basename
+  //   - File type (right): hardcoded 'AsciiDoc' for v1
+  //   - Cursor position (right): 'Ln 42, Col 85', 1-indexed, codepoint-aware
+  //   - In visual modes, cursor position is replaced with selection info
+  //
+  // Functions are defined here (before the Title / dirty section) so that
+  // updateTitle() can call refreshStatus() without TDZ issues.
+
+  // Read the current vim mode from @replit/codemirror-vim's state.
+  // getCM() returns a CM5-compat wrapper whose .state.vim holds the
+  // vim mode flags (insertMode, visualMode, visualLine, visualBlock),
+  // and whose .state.overwrite distinguishes REPLACE from plain INSERT.
+  //
+  // Returns null if vim is off (signals "hide the pill"); returns
+  // 'command' if the Ex command panel is currently focused (tracked
+  // via inCommandMode, set by focusin/focusout listeners registered
+  // after editor creation).
+  //
+  // REPLACE vs INSERT precedence: the plugin models REPLACE as a
+  // sub-state of INSERT (matching real Vim's internal model) —
+  // pressing R sets vs.insertMode=true AND cm.state.overwrite=true
+  // via the toggleOverwrite action. insertMode alone is ambiguous,
+  // so the overwrite flag has to be checked BEFORE falling through
+  // to 'insert'. Plugin source reference: the `enterInsertMode`
+  // action with `actionArgs.replace` calls cm.toggleOverwrite(true)
+  // and sets the keyMap to 'vim-replace'.
+  const readVimMode = () => {
+    if (!prefs.vimMode) return null;
+    if (inCommandMode) return 'command';
+    if (!editorView) return 'normal';
+    try {
+      const cm = getCM(editorView);
+      if (!cm || !cm.state) return 'normal';
+      const vs = cm.state.vim;
+      if (!vs) return 'normal';
+      if (vs.insertMode && cm.state.overwrite) return 'replace';
+      if (vs.insertMode) return 'insert';
+      if (vs.visualMode) return 'visual';
+      return 'normal';
+    } catch {
+      return 'normal';
+    }
+  };
+
+  // Sub-classify a visual-mode selection into char / line / block.
+  // All three share the same pill color (mauve per canonical Catppuccin);
+  // only the label text differs — VISUAL, V-LINE, V-BLOCK.
+  const readVisualVariant = () => {
+    if (!editorView) return 'char';
+    try {
+      const cm = getCM(editorView);
+      const vs = cm && cm.state && cm.state.vim;
+      if (!vs || !vs.visualMode) return 'char';
+      if (vs.visualBlock) return 'block';
+      if (vs.visualLine) return 'line';
+      return 'char';
+    } catch {
+      return 'char';
+    }
+  };
+
+  const formatModeLabel = (mode, variant) => {
+    switch (mode) {
+      case 'insert':  return 'INSERT';
+      case 'replace': return 'REPLACE';
+      case 'command': return 'COMMAND';
+      case 'visual':
+        if (variant === 'line')  return 'V-LINE';
+        if (variant === 'block') return 'V-BLOCK';
+        return 'VISUAL';
+      default: return 'NORMAL';
+    }
+  };
+
+  // Cursor position as 'Ln X, Col Y', 1-indexed, codepoint-aware.
+  // Counts Unicode codepoints (via [...str].length) rather than JS
+  // string length (UTF-16 code units) so emoji and other non-BMP
+  // characters count as 1. Em-dashes, curly quotes, accented letters
+  // all count as 1. Prose-correct by construction.
+  const formatCursorPosition = () => {
+    if (!editorView) return 'Ln 1, Col 1';
+    const head = editorView.state.selection.main.head;
+    const line = editorView.state.doc.lineAt(head);
+    const textBeforeCursor = line.text.slice(0, head - line.from);
+    const colNum = [...textBeforeCursor].length + 1;
+    return `Ln ${line.number}, Col ${colNum}`;
+  };
+
+  // Selection info displayed in visual modes in place of cursor position:
+  //   single-line char selection:  '87 chars'
+  //   multi-line char / V-LINE:    '3 lines, 240 chars'
+  //   V-BLOCK:                     '3 × 5' (rows × cols)
+  const formatSelectionInfo = (variant) => {
+    if (!editorView) return '';
+    const state = editorView.state;
+    const sel = state.selection.main;
+    const doc = state.doc;
+    const from = Math.min(sel.anchor, sel.head);
+    const to   = Math.max(sel.anchor, sel.head);
+    const fromLine = doc.lineAt(from).number;
+    const toLine   = doc.lineAt(to).number;
+    const lines = toLine - fromLine + 1;
+
+    if (variant === 'block') {
+      // V-BLOCK: CM6 represents the rectangular selection as multiple
+      // parallel ranges (one per row). Row count = range count. Column
+      // width = max codepoint-delta across ranges.
+      const ranges = state.selection.ranges;
+      const rows = ranges.length > 1 ? ranges.length : lines;
+      let cols = 0;
+      for (const r of ranges) {
+        const rLine = doc.lineAt(r.from);
+        const rFromCol = [...rLine.text.slice(0, r.from - rLine.from)].length;
+        const rToCol   = [...rLine.text.slice(0, r.to   - rLine.from)].length;
+        cols = Math.max(cols, Math.abs(rToCol - rFromCol));
+      }
+      return `${rows} × ${cols || 1}`;
+    }
+
+    const chars = [...doc.sliceString(from, to)].length;
+    if (lines > 1) return `${lines} lines, ${chars} chars`;
+    return `${chars} chars`;
+  };
+
+  const refreshStatus = () => {
+    if (!statusBar) return;
+    const mode = readVimMode();
+    if (mode) {
+      const variant = mode === 'visual' ? readVisualVariant() : null;
+      statusMode.hidden = false;
+      statusMode.dataset.vimMode = mode;
+      statusMode.textContent = formatModeLabel(mode, variant);
+      statusPosition.textContent = mode === 'visual'
+        ? formatSelectionInfo(variant)
+        : formatCursorPosition();
+    } else {
+      statusMode.hidden = true;
+      statusPosition.textContent = formatCursorPosition();
+    }
+    statusFilename.textContent = currentName;
+  };
 
   // ================= Helpers =================
 
@@ -422,6 +612,8 @@
     // Tauri 2 does not auto-sync document.title to the native window
     // title, unlike browsers. We have to set it explicitly.
     getCurrentWindow().setTitle(title).catch((e) => console.error('setTitle failed:', e));
+    // Status bar mirrors filename + dirty indicator; refresh on any title update.
+    refreshStatus();
   };
   const setDirty = (d) => {
     if (dirty === d) return;
@@ -825,6 +1017,18 @@
     // vim must come before the default keymap so it wins when enabled
     vimCompartment.of(prefs.vimMode ? [vim()] : []),
 
+    // Enable CM6 multi-range selections. Required for vim visual-block
+    // mode (Ctrl+Q / Ctrl+V) to extend vertically — the @replit/codemirror-vim
+    // plugin represents a V-BLOCK selection as multiple parallel ranges
+    // (one per row) and dispatches them via cm6.dispatch({ selection: ... }).
+    // CM6 silently collapses multi-range selections to a single range
+    // unless allowMultipleSelections is explicitly enabled. Without this
+    // facet, pressing j/k in V-BLOCK appears to enter block mode (the
+    // plugin's internal vim.visualBlock=true is set) but the visible CM6
+    // selection never grows beyond one row. The plugin itself doesn't
+    // set this facet — consuming code has to.
+    EditorState.allowMultipleSelections.of(true),
+
     // base editing
     lineNumbers(),
     // drawSelection() renders CM6's internal selection state as
@@ -858,12 +1062,15 @@
     // base keymap
     keymap.of([...defaultKeymap, ...historyKeymap]),
 
-    // change listener -> dirty / render / autosave
+    // change listener -> dirty / render / autosave + status bar refresh
     EditorView.updateListener.of((update) => {
       if (update.docChanged && !suppressDocEvents) {
         setDirty(true);
         scheduleRender();
         scheduleAutosave();
+      }
+      if (update.docChanged || update.selectionSet) {
+        refreshStatus();
       }
     }),
   ];
@@ -886,12 +1093,22 @@
     savePrefs();
     applyGutter();
   };
+  const applyStatusBar = () => {
+    document.body.classList.toggle('no-statusbar', prefs.statusBarHidden);
+  };
+  const toggleStatusBar = () => {
+    prefs.statusBarHidden = !prefs.statusBarHidden;
+    savePrefs();
+    applyStatusBar();
+  };
   const toggleVim = () => {
     prefs.vimMode = !prefs.vimMode;
     savePrefs();
     editorView.dispatch({
       effects: vimCompartment.reconfigure(prefs.vimMode ? [vim()] : []),
     });
+    // Show / hide the mode pill immediately on vim toggle.
+    refreshStatus();
   };
 
   const DISPLAY_MODES = ['split', 'editor', 'preview'];
@@ -929,6 +1146,8 @@
       e.preventDefault(); setDisplayMode('preview');
     } else if (e.altKey && k === 't') {
       e.preventDefault(); toggleTitlebar();
+    } else if (e.altKey && k === 'b') {
+      e.preventDefault(); toggleStatusBar();
     } else if (e.altKey && k === 'o') {
       e.preventDefault(); openFile();
     } else if (e.altKey && k === 'l') {
@@ -1189,6 +1408,15 @@
     console.error('Vim.map ZZ/ZQ failed:', e);
   }
 
+  // Note on visual block mode: Ctrl+V is intercepted by the webkit2gtk
+  // paste handler in the Tauri webview before it reaches CM6's key
+  // handler, so Ctrl+V is unreachable as a vim binding here. The plugin
+  // already ships Ctrl+Q as a native default binding for V-BLOCK entry
+  // (see @replit/codemirror-vim's defaultKeymap — it's the same
+  // workaround Vim itself uses on Windows, where Ctrl+V is also the
+  // system paste shortcut), so no remapping is needed on our side:
+  // users press Ctrl+Q to enter V-BLOCK. Help overlay documents this.
+
   // Default regex engine to Vim magic-mode translation instead of raw
   // JavaScript RegExp. The plugin ships with pcre=true (shown in the
   // search panel hint as "JavaScript regexp: set pcre"), which lets JS
@@ -1228,6 +1456,7 @@
 
   applyTitlebar();
   applyGutter();
+  applyStatusBar();
   applyDisplayMode();
 
   // Query Rust for launch-time info (CLI argument, shell CWD). If a file
@@ -1266,6 +1495,39 @@
     doc: initialDoc,
     parent: host,
     extensions: makeExtensions(),
+  });
+
+  // Status bar event hooks.
+  //
+  // The CM6 updateListener (above, inside makeExtensions) catches doc
+  // and selection changes, which covers most vim mode transitions —
+  // most mode changes also tend to change selection (v → visual starts
+  // a selection, Esc from insert → cursor moves back by 1, etc.). But
+  // pure-mode transitions like `i` (normal → insert at the current
+  // position) don't touch doc or selection, so updateListener never
+  // fires for those. A keyup listener on the editor host catches them:
+  // every mode transition goes through a keypress, so reading mode
+  // state on every keyup is sufficient. Cheap because refreshStatus
+  // just reads a few DOM properties and dispatches no CM state updates.
+  host.addEventListener('keyup', refreshStatus);
+
+  // COMMAND mode detection. The vim command panel is rendered as a
+  // CM6 panel containing an <input> element; pressing `:` focuses
+  // the input, and completing or cancelling the command blurs it.
+  // Tracking focus/blur on the input is the simplest signal — no
+  // MutationObserver needed. The panel input is the only <input>
+  // inside the editor host, so a tag-name check is precise enough.
+  host.addEventListener('focusin', (e) => {
+    if (e.target && e.target.tagName === 'INPUT') {
+      inCommandMode = true;
+      refreshStatus();
+    }
+  });
+  host.addEventListener('focusout', (e) => {
+    if (e.target && e.target.tagName === 'INPUT') {
+      inCommandMode = false;
+      refreshStatus();
+    }
   });
 
   if (hasDraft) setDirty(true);

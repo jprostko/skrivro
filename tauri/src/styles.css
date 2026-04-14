@@ -466,3 +466,67 @@ dialog.help-dialog::backdrop {
   color: var(--ctp-subtext0);
   font-style: italic;
 }
+
+/* ---------- Status bar ---------- */
+/* Canonical Catppuccin mode colors (blue/green/mauve/red/peach) sourced
+   from catppuccin/nvim's lualine.lua. See memory/project_status_bar.md
+   for the full design rationale. */
+.statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.2rem 0.75rem;
+  background: var(--ctp-mantle);
+  border-top: 1px solid var(--ctp-surface0);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ctp-subtext0);
+  user-select: none;
+  flex-shrink: 0;
+  min-height: 1.5rem;
+}
+body.no-statusbar .statusbar { display: none; }
+
+.statusbar .status-left,
+.statusbar .status-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.statusbar .status-left  { flex: 1; min-width: 0; }
+.statusbar .status-right { flex-shrink: 0; }
+
+.statusbar .status-mode-pill {
+  display: inline-block;
+  padding: 0.05rem 0.55rem;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.statusbar .status-mode-pill[hidden] { display: none; }
+.statusbar .status-mode-pill[data-vim-mode="normal"]  { background: var(--ctp-blue);   color: var(--ctp-mantle); }
+.statusbar .status-mode-pill[data-vim-mode="insert"]  { background: var(--ctp-green);  color: var(--ctp-base); }
+.statusbar .status-mode-pill[data-vim-mode="visual"]  { background: var(--ctp-mauve);  color: var(--ctp-base); }
+.statusbar .status-mode-pill[data-vim-mode="replace"] { background: var(--ctp-red);    color: var(--ctp-base); }
+.statusbar .status-mode-pill[data-vim-mode="command"] { background: var(--ctp-peach);  color: var(--ctp-base); }
+
+.statusbar .status-filename {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ctp-subtext1);
+  min-width: 0;
+}
+body.is-dirty .statusbar .status-filename::before {
+  content: '● ';
+  color: var(--ctp-peach);
+}
+
+.statusbar .status-filetype,
+.statusbar .status-position {
+  white-space: nowrap;
+}

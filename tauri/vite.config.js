@@ -15,8 +15,8 @@ export default defineConfig({
   build: {
     outDir: "../dist",
     emptyOutDir: true,
-    target: "es2022",
-    minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
+    target: "es2025",
+    minify: !process.env.TAURI_DEBUG,
     sourcemap: !!process.env.TAURI_DEBUG,
     // Vite's default 500 KB chunk-size warning targets web apps where
     // bundle size affects download time and first paint. Klartext is a

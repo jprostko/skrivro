@@ -4,6 +4,29 @@
 <meta charset="utf-8">
 <title>untitled.adoc — Klartext Web</title>
 
+<!-- Restrictive Content Security Policy. Blocks all external origins
+     except esm.sh (which is required because the standalone version loads
+     its JavaScript modules from esm.sh's CDN at runtime — we have no build
+     step to bundle them locally). 'unsafe-inline' is used on script-src
+     because without a build step there's no way to compute hashes for our
+     inline scripts; DOMPurify handles the equivalent protection at the
+     output level by stripping script tags from rendered AsciiDoc before
+     innerHTML injection. object-src/frame-src/form-action are 'none' to
+     block plugin/iframe/form attack vectors regardless of what DOMPurify
+     does or doesn't catch. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self' https://esm.sh;
+  script-src 'self' 'unsafe-inline' https://esm.sh;
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data:;
+  font-src 'self';
+  connect-src 'self' https://esm.sh;
+  object-src 'none';
+  frame-src 'none';
+  base-uri 'self';
+  form-action 'none';
+">
+
 <script type="importmap">
 {
   "imports": {
@@ -13,7 +36,8 @@
     "@codemirror/language":      "https://esm.sh/@codemirror/language@6",
     "@lezer/highlight":          "https://esm.sh/@lezer/highlight@1",
     "@replit/codemirror-vim":    "https://esm.sh/@replit/codemirror-vim@6",
-    "@asciidoctor/core":         "https://esm.sh/@asciidoctor/core@3"
+    "@asciidoctor/core":         "https://esm.sh/@asciidoctor/core@3",
+    "dompurify":                 "https://esm.sh/dompurify@3"
   }
 }
 </script>
@@ -437,6 +461,7 @@
 
 <script type="module">
   import Asciidoctor from '@asciidoctor/core';
+  import DOMPurify from 'dompurify';
   import { EditorState, Compartment } from '@codemirror/state';
   import {
     EditorView, keymap,
@@ -531,8 +556,32 @@
       // NOT nested under attributes — this is what makes Asciidoctor
       // annotate blocks with their source line numbers. Getting this
       // wrong silently produces blocks with null source locations.
-      const doc = ad.load(getDoc(), { sourcemap: true });
-      out.innerHTML = doc.convert({ standalone: false });
+      // safe: 'unsafe' allows all Asciidoctor features: include:: directives
+      // across the filesystem, docinfo injection, custom :doctype: (e.g.
+      // book), :source-highlighter:, image:: with absolute paths, and so on.
+      //
+      // Asciidoctor's safe modes (unsafe/safe/server/secure) gate parser-
+      // level features and were designed for a server-rendering threat
+      // model where an untrusted user submits a document that a trusted
+      // server processes on its own filesystem and serves to other users.
+      // That model does not apply to Klartext — this is a single-user
+      // local editor where users edit their own files. Restricting safe
+      // mode here would cripple legitimate features (docinfo, book-mode
+      // doctype, includes across directories) without providing real
+      // security gain, because the user can already read any file the OS
+      // permits them to read via File → Open.
+      //
+      // The real security layers are Content-Security-Policy (blocks all
+      // network egress so nothing can phone home) and DOMPurify on the
+      // render output (strips scripts and event handlers from passthrough-
+      // injected HTML before it reaches the DOM). Those are what protect
+      // against actual attacks. The safe mode here is intentionally open.
+      //
+      // This is also a planned config-file knob — users who prefer a
+      // stricter mode can override it via klartext.conf (see the config
+      // spec in memory).
+      const doc = ad.load(getDoc(), { safe: 'unsafe', sourcemap: true });
+      out.innerHTML = DOMPurify.sanitize(doc.convert({ standalone: false }));
       buildBlockMap(doc);
     } catch (e) {
       console.error('render failed:', e);

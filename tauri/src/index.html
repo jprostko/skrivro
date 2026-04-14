@@ -416,6 +416,7 @@
 
 <script type="module">
   import Asciidoctor from '@asciidoctor/core';
+  import DOMPurify from 'dompurify';
   import { EditorState, Compartment } from '@codemirror/state';
   import {
     EditorView, keymap,
@@ -515,8 +516,32 @@
       // NOT nested under attributes — this is what makes Asciidoctor
       // annotate blocks with their source line numbers. Getting this
       // wrong silently produces blocks with null source locations.
-      const doc = ad.load(getDoc(), { sourcemap: true });
-      out.innerHTML = doc.convert({ standalone: false });
+      // safe: 'unsafe' allows all Asciidoctor features: include:: directives
+      // across the filesystem, docinfo injection, custom :doctype: (e.g.
+      // book), :source-highlighter:, image:: with absolute paths, and so on.
+      //
+      // Asciidoctor's safe modes (unsafe/safe/server/secure) gate parser-
+      // level features and were designed for a server-rendering threat
+      // model where an untrusted user submits a document that a trusted
+      // server processes on its own filesystem and serves to other users.
+      // That model does not apply to Klartext — this is a single-user
+      // local editor where users edit their own files. Restricting safe
+      // mode here would cripple legitimate features (docinfo, book-mode
+      // doctype, includes across directories) without providing real
+      // security gain, because the user can already read any file the OS
+      // permits them to read via File → Open.
+      //
+      // The real security layers are Content-Security-Policy (blocks all
+      // network egress so nothing can phone home) and DOMPurify on the
+      // render output (strips scripts and event handlers from passthrough-
+      // injected HTML before it reaches the DOM). Those are what protect
+      // against actual attacks. The safe mode here is intentionally open.
+      //
+      // This is also a planned config-file knob — users who prefer a
+      // stricter mode can override it via klartext.conf (see the config
+      // spec in memory).
+      const doc = ad.load(getDoc(), { safe: 'unsafe', sourcemap: true });
+      out.innerHTML = DOMPurify.sanitize(doc.convert({ standalone: false }));
       buildBlockMap(doc);
     } catch (e) {
       console.error('render failed:', e);

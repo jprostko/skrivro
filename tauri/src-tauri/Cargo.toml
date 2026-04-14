@@ -11,7 +11,15 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# `protocol-asset` enables Tauri's asset:// protocol handler so the webview
+# can load local files via convertFileSrc(). Required by tauri.conf.json's
+# `app.security.assetProtocol.enable = true` — the config alone isn't
+# enough; Tauri's build-time feature allowlist check fails without this
+# cargo feature on the `tauri` crate itself. We use it in the frontend's
+# image post-processing path to rewrite Asciidoctor's relative image src
+# paths into URLs the webview can actually load (which would otherwise
+# hit the SPA-fallback trap of `tauri://localhost/`).
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 serde = { version = "1", features = ["derive"] }

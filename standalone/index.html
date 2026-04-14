@@ -235,6 +235,17 @@
     margin: 2em 0;
   }
 
+  /* Constrain images to the preview container width. Asciidoctor's default
+     stylesheet applies `.imageblock img { max-width: 100% }` but our custom
+     Catppuccin-styled preview CSS doesn't inherit from that, so without this
+     rule any image rendered at its natural resolution (e.g. a 1920x1920
+     photograph) overflows the preview pane. height: auto preserves aspect
+     ratio when the intrinsic width exceeds the container. */
+  .preview img {
+    max-width: 100%;
+    height: auto;
+  }
+
   .preview ul, .preview ol { padding-left: 1.5em; margin: 0.8em 0; }
   .preview li { margin: 0.25em 0; }
 

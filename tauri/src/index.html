@@ -185,6 +185,7 @@
   import {
     EditorView, keymap,
     lineNumbers, highlightActiveLine, highlightActiveLineGutter,
+    drawSelection,
   } from '@codemirror/view';
   import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
   import {
@@ -826,6 +827,17 @@
 
     // base editing
     lineNumbers(),
+    // drawSelection() renders CM6's internal selection state as
+    // .cm-selectionBackground DOM elements. Without this extension CM6
+    // relies on the browser's native ::selection pseudo-element, which
+    // only shows actual browser text selection (from mouse drag), NOT
+    // internal selection state set programmatically. That means vim
+    // visual mode (which dispatches selection changes via CM6's state)
+    // tracks the selection internally but has no visible highlight —
+    // pressing v + motions appears to do nothing. drawSelection() fixes
+    // that by rendering the internal selection as visible highlights.
+    // It's also what renders the fat vim block cursor.
+    drawSelection(),
     highlightActiveLineGutter(),
     highlightActiveLine(),
     history(),

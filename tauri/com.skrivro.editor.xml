@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Shared MIME info for AsciiDoc source documents.
+
+  Teaches the system (via shared-mime-info / xdg-mime) that .adoc, .asciidoc,
+  and .asc files are "text/x-asciidoc" rather than the generic "text/plain".
+  Without this, xdg-mime query filetype foo.adoc returns "text/plain" on
+  systems whose shared-mime-info database doesn't yet include AsciiDoc — and
+  our .desktop file's `MimeType=text/x-asciidoc;` association silently never
+  fires because the system never identifies any file as that type.
+
+  text/x-asciidoc is the de-facto MIME type for AsciiDoc source. The x-
+  prefix marks it as unregistered with IANA (there's no official
+  "text/asciidoc" yet — the IETF draft has been in limbo for years). Upstream
+  shared-mime-info added an entry for this type in release 2.1 (2021), so
+  on recent distros this file is redundant. On older systems (or minimal
+  installs without shared-mime-info 2.1+) it's the mechanism that makes
+  "Open with Skrivro" show up in file manager right-click menus.
+
+  The sub-class-of text/plain declaration means: AsciiDoc is a specialized
+  form of plain text. Tools that handle plain text still see .adoc files as
+  openable, but tools that specifically handle text/x-asciidoc (Skrivro)
+  get priority. Clean polymorphism — we claim the specific type without
+  blocking the generic handlers.
+
+  Install instructions (user-level, for the current user):
+
+    mkdir -p ~/.local/share/mime/packages/
+    cp tauri/com.skrivro.editor.xml ~/.local/share/mime/packages/
+    update-mime-database ~/.local/share/mime/
+
+  System-wide install (requires root):
+
+    sudo cp tauri/com.skrivro.editor.xml /usr/share/mime/packages/
+    sudo update-mime-database /usr/share/mime/
+
+  After either, `xdg-mime query filetype somefile.adoc` should report
+  text/x-asciidoc. Log out and back in (or restart the file manager) for
+  the change to appear in "Open with..." menus.
+-->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="text/x-asciidoc">
+    <comment>AsciiDoc source document</comment>
+    <comment xml:lang="en">AsciiDoc source document</comment>
+    <sub-class-of type="text/plain"/>
+    <glob pattern="*.adoc"/>
+    <glob pattern="*.asciidoc"/>
+    <glob pattern="*.asc"/>
+    <magic priority="50">
+      <match type="string" offset="0" value="= "/>
+      <match type="string" offset="0" value=":author:"/>
+      <match type="string" offset="0" value=":doctype:"/>
+    </magic>
+  </mime-type>
+</mime-info>

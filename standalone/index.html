@@ -106,25 +106,29 @@
     content: '● ';
     color: var(--ctp-peach);
   }
-  .titlebar .hint {
-    color: var(--ctp-blue);
-    font-size: 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    align-items: flex-start;
-  }
-  .titlebar .hint kbd {
+  .titlebar .help-button {
     background: var(--ctp-surface0);
-    color: var(--ctp-subtext1);
-    border-radius: 3px;
-    padding: 0.05rem 0.35rem;
+    color: var(--ctp-blue);
+    border: none;
+    border-radius: 4px;
+    width: 1.5rem;
+    height: 1.5rem;
     font-family: var(--font-mono);
-    font-size: 0.7rem;
-    margin: 0 0.15rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  .titlebar .hint kbd.layout-start {
-    margin-left: 1.5rem;
+  .titlebar .help-button:hover {
+    background: var(--ctp-surface1);
+    color: var(--ctp-lavender);
+  }
+  .titlebar .help-button:focus-visible {
+    outline: 2px solid var(--ctp-lavender);
+    outline-offset: 2px;
   }
   body.no-titlebar .titlebar { display: none; }
 
@@ -398,6 +402,117 @@
     background: var(--ctp-maroon);
     border-color: var(--ctp-maroon);
   }
+
+  /* ---------- Help overlay (custom <dialog>) ---------- */
+  dialog.help-dialog {
+    background: var(--ctp-mantle);
+    color: var(--ctp-text);
+    border: 1px solid var(--ctp-surface0);
+    border-radius: 8px;
+    padding: 1.5rem 2rem;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-width: 700px;
+    width: calc(100% - 4rem);
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    position: relative;
+    /* Match the editor/preview scrollbars. Firefox uses the
+       scrollbar-* properties; WebKit uses the ::-webkit-scrollbar
+       pseudo-elements below. Track is mantle (to match the dialog
+       background) rather than base, so it blends into the dialog
+       instead of showing a visible column. */
+    scrollbar-color: var(--ctp-surface1) var(--ctp-mantle);
+    scrollbar-width: thin;
+  }
+  dialog.help-dialog::-webkit-scrollbar { width: 10px; height: 10px; }
+  dialog.help-dialog::-webkit-scrollbar-track { background: var(--ctp-mantle); }
+  dialog.help-dialog::-webkit-scrollbar-thumb {
+    background: var(--ctp-surface1);
+    border-radius: 5px;
+    border: 2px solid var(--ctp-mantle);
+  }
+  dialog.help-dialog::-webkit-scrollbar-thumb:hover { background: var(--ctp-surface2); }
+  dialog.help-dialog::backdrop {
+    background: rgba(17, 17, 27, 0.6);
+    backdrop-filter: blur(2px);
+  }
+  .help-dialog .help-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    color: var(--ctp-subtext0);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+  }
+  .help-dialog .help-close:hover {
+    color: var(--ctp-text);
+  }
+  .help-dialog .help-close:focus-visible {
+    outline: 2px solid var(--ctp-lavender);
+    outline-offset: 2px;
+  }
+  .help-dialog h2 {
+    color: var(--ctp-lavender);
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 1.5rem 0 0.5rem 0;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--ctp-surface0);
+  }
+  .help-dialog h2:first-of-type {
+    margin-top: 0;
+    padding-right: 2.5rem;
+  }
+  .help-dialog h3 {
+    color: var(--ctp-mauve);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin: 0.85rem 0 0.35rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .help-dialog .help-note {
+    color: var(--ctp-subtext0);
+    font-size: 0.75rem;
+    font-weight: normal;
+    text-transform: none;
+    letter-spacing: normal;
+    margin-left: 0.5rem;
+  }
+  .help-dialog .help-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.35rem 1.25rem;
+    align-items: baseline;
+    margin-bottom: 0.25rem;
+  }
+  .help-dialog .help-key {
+    justify-self: end;
+    white-space: nowrap;
+  }
+  .help-dialog .help-key kbd {
+    background: var(--ctp-surface0);
+    color: var(--ctp-subtext1);
+    border-radius: 3px;
+    padding: 0.1rem 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+  .help-dialog .help-key kbd + kbd {
+    margin-left: 0.2rem;
+  }
+  .help-dialog .help-key var {
+    color: var(--ctp-subtext0);
+    font-style: italic;
+  }
 </style>
 </head>
 <body>
@@ -421,23 +536,8 @@
   </script>
   <header class="titlebar">
     <div><span class="name" id="name">untitled.adoc</span></div>
-    <div class="hint">
-      <div class="hint-row">
-        <kbd>Ctrl+Alt+O</kbd> open
-        <kbd>Ctrl+S</kbd> save
-        <kbd>Ctrl+Shift+S</kbd> save as
-        <kbd>Ctrl+Alt+N</kbd> new
-      </div>
-      <div class="hint-row">
-        <kbd>Ctrl+Alt+V</kbd> vim
-        <kbd>Ctrl+Alt+G</kbd> gutter
-        <kbd>Ctrl+Alt+T</kbd> titlebar
-        <kbd class="layout-start">Ctrl+Alt+S</kbd> split
-        <kbd>Ctrl+Alt+E</kbd> editor
-        <kbd>Ctrl+Alt+P</kbd> preview
-        <kbd>Ctrl+Alt+L</kbd> sync
-      </div>
-    </div>
+    <button type="button" id="helpBtn" class="help-button"
+            aria-label="Show keyboard shortcuts and commands help (Ctrl+Alt+H)">?</button>
   </header>
 
   <main class="wrap">
@@ -456,6 +556,83 @@
     <div class="confirm-actions">
       <button type="button" id="confirmCancelBtn" class="confirm-btn">Cancel</button>
       <button type="button" id="confirmOkBtn" class="confirm-btn confirm-btn-primary">Discard</button>
+    </div>
+  </dialog>
+
+  <!-- Help overlay with all keyboard shortcuts and vim Ex commands.
+       Toggled by Ctrl+Alt+H or by clicking the "?" button in the titlebar.
+       Dismissable via Escape (native <dialog> behavior), backdrop click,
+       or the close button. -->
+  <dialog id="helpDialog" class="help-dialog">
+    <button type="button" class="help-close" id="helpCloseBtn" aria-label="Close help">×</button>
+
+    <h2>Keyboard shortcuts</h2>
+
+    <h3>File</h3>
+    <div class="help-grid">
+      <div class="help-key"><kbd>Ctrl+S</kbd></div>
+      <div class="help-desc">Save</div>
+      <div class="help-key"><kbd>Ctrl+Shift+S</kbd></div>
+      <div class="help-desc">Save as</div>
+      <div class="help-key"><kbd>Ctrl+Alt+O</kbd></div>
+      <div class="help-desc">Open</div>
+      <div class="help-key"><kbd>Ctrl+Alt+N</kbd></div>
+      <div class="help-desc">New</div>
+    </div>
+
+    <h3>Display</h3>
+    <div class="help-grid">
+      <div class="help-key"><kbd>Ctrl+Alt+T</kbd></div>
+      <div class="help-desc">Toggle titlebar</div>
+      <div class="help-key"><kbd>Ctrl+Alt+G</kbd></div>
+      <div class="help-desc">Toggle gutter</div>
+      <div class="help-key"><kbd>Ctrl+Alt+V</kbd></div>
+      <div class="help-desc">Toggle vim mode</div>
+      <div class="help-key"><kbd>Ctrl+Alt+S</kbd></div>
+      <div class="help-desc">Split mode (editor + preview)</div>
+      <div class="help-key"><kbd>Ctrl+Alt+E</kbd></div>
+      <div class="help-desc">Editor only</div>
+      <div class="help-key"><kbd>Ctrl+Alt+P</kbd></div>
+      <div class="help-desc">Preview only</div>
+      <div class="help-key"><kbd>Ctrl+Alt+H</kbd></div>
+      <div class="help-desc">Toggle this help</div>
+    </div>
+
+    <h3>Navigation</h3>
+    <div class="help-grid">
+      <div class="help-key"><kbd>Ctrl+Alt+L</kbd></div>
+      <div class="help-desc">Sync preview to cursor</div>
+    </div>
+
+    <h2>Vim Ex commands <span class="help-note">(vim mode only)</span></h2>
+
+    <h3>File</h3>
+    <div class="help-grid">
+      <div class="help-key"><kbd>:w</kbd> <kbd>:write</kbd></div>
+      <div class="help-desc">Save current file</div>
+      <div class="help-key"><kbd>:e</kbd> <kbd>:edit</kbd></div>
+      <div class="help-desc">Reload current file from disk (standalone: refuses if dirty, use :e! to force)</div>
+      <div class="help-key"><kbd>:e!</kbd></div>
+      <div class="help-desc">Force reload, discarding dirty buffer</div>
+      <div class="help-key"><kbd>:sav</kbd> <kbd>:saveas</kbd></div>
+      <div class="help-desc">Show the save-as dialog</div>
+      <div class="help-key"><kbd>:new</kbd> <kbd>:enew</kbd></div>
+      <div class="help-desc">New empty buffer</div>
+      <div class="help-key"><kbd>:open</kbd> <kbd>:op</kbd></div>
+      <div class="help-desc">Show the file picker dialog</div>
+    </div>
+
+    <h3>Preview</h3>
+    <div class="help-grid">
+      <div class="help-key"><kbd>:syncpreview</kbd> <kbd>:syncp</kbd></div>
+      <div class="help-desc">Snap preview to the block containing the caret line</div>
+    </div>
+
+    <h2>Vim normal mode <span class="help-note">(vim mode only)</span></h2>
+
+    <div class="help-grid">
+      <div class="help-key"><kbd>gz</kbd></div>
+      <div class="help-desc">Snap preview to cursor (same as :syncpreview)</div>
     </div>
   </dialog>
 
@@ -497,6 +674,10 @@
   const confirmMsgEl     = document.getElementById('confirmMessage');
   const confirmOkBtn     = document.getElementById('confirmOkBtn');
   const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+
+  const helpDlg          = document.getElementById('helpDialog');
+  const helpBtn          = document.getElementById('helpBtn');
+  const helpCloseBtn     = document.getElementById('helpCloseBtn');
 
   // ================= Prefs =================
 
@@ -755,6 +936,30 @@
     confirmDlg.showModal();
     confirmOkBtn.focus();
   };
+
+  // ================= Help overlay =================
+  // Ctrl+Alt+H or the "?" button in the titlebar toggles the help
+  // dialog. Escape (native <dialog> behavior), the close button,
+  // and clicking the backdrop all dismiss it.
+  const showHelp = () => {
+    if (helpDlg.open) return;
+    helpDlg.showModal();
+    helpCloseBtn.focus();
+  };
+  const hideHelp = () => {
+    if (helpDlg.open) helpDlg.close();
+  };
+  const toggleHelp = () => {
+    if (helpDlg.open) hideHelp();
+    else showHelp();
+  };
+  helpBtn.addEventListener('click', showHelp);
+  helpCloseBtn.addEventListener('click', hideHelp);
+  // When the click target IS the dialog element itself (as opposed to
+  // a child), it means the click landed on the backdrop area.
+  helpDlg.addEventListener('click', (e) => {
+    if (e.target === helpDlg) hideHelp();
+  });
 
   const confirmDiscard = (onOk) => {
     if (!dirty) { onOk(); return; }
@@ -1197,6 +1402,8 @@
       e.preventDefault(); openFile();
     } else if (e.altKey && k === 'l') {
       e.preventDefault(); syncPreviewToCaret();
+    } else if (e.altKey && k === 'h') {
+      e.preventDefault(); toggleHelp();
     }
     // Non-alt shortcuts.
     else if (k === 's' && e.shiftKey) {

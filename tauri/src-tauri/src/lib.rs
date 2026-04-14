@@ -41,6 +41,7 @@ pub fn run() {
         .manage(launch_info)
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![get_launch_info])
         .setup(|app| {
             // On Linux, webkit2gtk inherits GTK's text-widget context menu,

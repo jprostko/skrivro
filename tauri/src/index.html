@@ -257,6 +257,10 @@
   // Tauri plugins
   import { open, save } from '@tauri-apps/plugin-dialog';
   import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
+  // Renamed to shellOpen to avoid colliding with dialog's `open`.
+  // Used to hand off external-URL clicks in the preview to the
+  // user's system browser via the Tauri shell plugin.
+  import { open as shellOpen } from '@tauri-apps/plugin-shell';
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import { basename, dirname, resolve, isAbsolute } from '@tauri-apps/api/path';
   import { invoke, convertFileSrc } from '@tauri-apps/api/core';
@@ -1120,6 +1124,39 @@
   // a child), it means the click landed on the backdrop area.
   helpDlg.addEventListener('click', (e) => {
     if (e.target === helpDlg) hideHelp();
+  });
+
+  // ================= External link handling =================
+  //
+  // Hand off clicks on http(s) links in the preview pane to the user's
+  // system browser via the Tauri shell plugin. Without this, clicking
+  // a link in a rendered AsciiDoc document does nothing: Tauri 2 blocks
+  // webview navigation to arbitrary external URLs by default as a
+  // security measure (preventing phishing-style webview hijacking), so
+  // default click behavior on an external <a> is silently swallowed.
+  //
+  // Delegation (listener on the preview container, closest() lookup)
+  // catches every re-render's links without re-attaching per-render.
+  // Only http:// and https:// schemes are intercepted — fragment links
+  // (#section) fall through to default scroll-to-anchor behavior, and
+  // other schemes (mailto:, ftp:, etc.) are left to whatever the
+  // webview does with them (usually nothing, which is fine).
+  //
+  // Requires the `shell:allow-open` capability to have been granted
+  // with a URL scope that permits the href we're opening. See
+  // src-tauri/capabilities/default.json — scoped to ^https?:// so that
+  // the shell plugin will only hand off web URLs to the OS, not e.g.
+  // file:// URLs that could be used to open arbitrary local files.
+  out.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('a');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (!href) return;
+    if (/^https?:\/\//i.test(href)) {
+      e.preventDefault();
+      shellOpen(href).catch((err) =>
+        console.error('Failed to open external URL:', href, err));
+    }
   });
 
   const confirmDiscard = (onOk) => {

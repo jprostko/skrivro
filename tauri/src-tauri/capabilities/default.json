@@ -16,6 +16,10 @@
     {
       "identifier": "fs:allow-write-text-file",
       "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "shell:allow-open",
+      "allow": [{ "url": "^https?://" }]
     }
   ]
 }

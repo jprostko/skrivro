@@ -1,10 +1,10 @@
 [package]
-name = "klartext"
+name = "skrivro"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "klartext_lib"
+name = "skrivro_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

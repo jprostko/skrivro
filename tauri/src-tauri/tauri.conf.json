@@ -1,7 +1,7 @@
 {
-  "productName": "Klartext",
+  "productName": "Skrivro",
   "version": "0.1.0",
-  "identifier": "klartext",
+  "identifier": "com.skrivro.editor",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Klartext",
+        "title": "Skrivro",
         "width": 1280,
         "height": 720,
         "decorations": false

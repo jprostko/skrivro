@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Skrivro
+GenericName=AsciiDoc Editor
+Comment=Distraction-free AsciiDoc editor with live preview
+Exec=skrivro %F
+Icon=com.skrivro.editor
+Terminal=false
+Categories=Office;Publishing;TextEditor;
+MimeType=text/x-asciidoc;
+StartupWMClass=com.skrivro.editor

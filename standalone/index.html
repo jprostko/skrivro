@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>untitled.adoc — Klartext Web</title>
+<title>untitled.adoc — Skrivro Web</title>
 
 <!-- Restrictive Content Security Policy. Blocks all external origins
      except esm.sh (which is required because the standalone version loads
@@ -1011,7 +1011,7 @@
       // level features and were designed for a server-rendering threat
       // model where an untrusted user submits a document that a trusted
       // server processes on its own filesystem and serves to other users.
-      // That model does not apply to Klartext — this is a single-user
+      // That model does not apply to Skrivro — this is a single-user
       // local editor where users edit their own files. Restricting safe
       // mode here would cripple legitimate features (docinfo, book-mode
       // doctype, includes across directories) without providing real
@@ -1025,7 +1025,7 @@
       // against actual attacks. The safe mode here is intentionally open.
       //
       // This is also a planned config-file knob — users who prefer a
-      // stricter mode can override it via klartext.conf (see the config
+      // stricter mode can override it via skrivro.conf (see the config
       // spec in memory).
       const doc = ad.load(getDoc(), { safe: 'unsafe', sourcemap: true });
       out.innerHTML = DOMPurify.sanitize(doc.convert({ standalone: false }));
@@ -1103,7 +1103,7 @@
       }
       map.sort((a, b) => a.line - b.line);
       blockMap = map;
-      console.log(`[klartext] buildBlockMap: ast=${ast.length} dom=${dom.length} map=${map.length}`);
+      console.log(`[skrivro] buildBlockMap: ast=${ast.length} dom=${dom.length} map=${map.length}`);
     } catch (e) {
       console.error('buildBlockMap failed:', e);
       blockMap = [];
@@ -1135,7 +1135,7 @@
   const updateTitle = () => {
     nameEl.textContent = currentName;
     document.body.classList.toggle('is-dirty', dirty);
-    document.title = `${dirty ? '● ' : ''}${currentName} — Klartext Web`;
+    document.title = `${dirty ? '● ' : ''}${currentName} — Skrivro Web`;
     // Status bar mirrors filename + dirty indicator; refresh on any title update.
     refreshStatus();
   };
@@ -1746,7 +1746,7 @@
     // :w filename is not supported in standalone (no filesystem path access).
     // :w and :w! both save to current file; any filename argument is
     // silently ignored. Bang itself has no additional effect — vim's
-    // :w! forces write to a readonly file, and Klartext has no readonly
+    // :w! forces write to a readonly file, and Skrivro has no readonly
     // concept.
     const { arg } = parseExArgs(params);
     if (arg) return;

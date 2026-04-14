@@ -15,6 +15,44 @@ fn get_launch_info(state: tauri::State<LaunchInfo>) -> LaunchInfo {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Wayland app_id workaround: set GLib's program name to the Tauri
+    // identifier BEFORE any GTK code runs.
+    //
+    // Why this exists: Tauri's tauri.conf.json has `app.enableGTKAppId =
+    // true` set, which makes Tauri pass our identifier ("com.skrivro.editor")
+    // as the app_id to wry/tao. tao in turn passes it to
+    // `gtk::Application::new(Some("com.skrivro.editor"), ...)`. In theory
+    // GTK should use that application_id as the Wayland `xdg_toplevel.app_id`
+    // for our windows — that's what the GtkApplication docs say.
+    //
+    // In practice tao's Linux event loop (tao-0.34.8, see
+    // platform_impl/linux/event_loop.rs::new_gtk) calls `gtk::init()`
+    // before `gtk::Application::new()`. GTK's init locks in the internal
+    // `prgname` from `argv[0]` at that point — which is the executable
+    // name "skrivro" (from Cargo's [package] name). The GtkApplication
+    // constructed afterwards doesn't override this. And the Wayland
+    // backend of GDK sets `xdg_toplevel.app_id` from `g_get_prgname()`,
+    // NOT from the GtkApplication's application_id. The net effect is
+    // that Hyprland (and any other Wayland compositor) sees our window
+    // class as "skrivro" instead of "com.skrivro.editor".
+    //
+    // There's even an acknowledging comment in tao's source near the
+    // gtk::init() call: "This should be done by gtk::Application::new,
+    // but does not work properly."
+    //
+    // The workaround: set the prgname ourselves, BEFORE calling into
+    // Tauri/tao. When tao's gtk::init() runs, it reads our already-set
+    // value instead of falling back to argv[0]. When GDK-Wayland then
+    // reads prgname for the xdg_toplevel.app_id, it gets the right value.
+    //
+    // Must stay in sync with `identifier` in tauri.conf.json. If we ever
+    // rename the app again, both need to change — there's no way to
+    // read the Tauri config before calling into Tauri itself, which is
+    // exactly what we need to avoid here since Tauri/tao's init is the
+    // thing that's locking in the wrong prgname.
+    #[cfg(target_os = "linux")]
+    glib::set_prgname(Some("com.skrivro.editor"));
+
     // Capture launch-time info: CLI argument (if any) and current working
     // directory. Resolved once at startup so the frontend has an absolute
     // path regardless of where the binary was launched from.
@@ -44,6 +82,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![get_launch_info])
         .setup(|app| {
+
             // On Linux, webkit2gtk inherits GTK's text-widget context menu,
             // which includes an "Insert Unicode Control Character" submenu
             // full of BiDi marks (LRM/RLM/LRE/etc.) and zero-width characters

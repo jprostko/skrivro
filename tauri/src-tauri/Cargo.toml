@@ -26,12 +26,21 @@ tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# Linux-only: webkit2gtk crate, used by the .setup() hook in lib.rs to filter
-# the GTK-inherited "Insert Unicode Control Character" submenu out of the
-# right-click context menu. Caret-semver ("2") deliberately matches whatever
-# 2.x version wry already pulls in transitively, so Cargo unifies them and
-# we don't end up with two copies of the crate compiled into the binary.
-# If a future Tauri bump moves wry to webkit2gtk 3.x, this needs to become
-# "3" and the ContextMenu API may need re-verification.
+# Linux-only dependencies. All already present in the transitive tree via
+# wry/gtk/webkit2gtk, declared directly here so we can `use` them from our
+# own source.
 [target.'cfg(target_os = "linux")'.dependencies]
+# webkit2gtk: used by the .setup() hook in lib.rs to filter the GTK-inherited
+# "Insert Unicode Control Character" submenu out of the right-click context
+# menu. Caret-semver ("2") deliberately matches whatever 2.x version wry
+# already pulls in transitively, so Cargo unifies them and we don't end up
+# with two copies of the crate compiled into the binary. If a future Tauri
+# bump moves wry to webkit2gtk 3.x, this needs to become "3" and the
+# ContextMenu API may need re-verification.
 webkit2gtk = "2"
+# glib: used by lib.rs::run() to call glib::set_prgname() early, as a
+# workaround for a Wayland app_id propagation bug in tao's GTK backend.
+# See the prgname-setting block at the top of run() in lib.rs for the
+# full rationale. Version "0.18" matches what gtk 0.18.x already pulls
+# in transitively, so Cargo unifies the crate.
+glib = "0.18"

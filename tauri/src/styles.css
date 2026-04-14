@@ -1,0 +1,468 @@
+:root {
+  /* Catppuccin Mocha */
+  --ctp-rosewater: #f5e0dc;
+  --ctp-flamingo:  #f2cdcd;
+  --ctp-pink:      #f5c2e7;
+  --ctp-mauve:     #cba6f7;
+  --ctp-red:       #f38ba8;
+  --ctp-maroon:    #eba0ac;
+  --ctp-peach:     #fab387;
+  --ctp-yellow:    #f9e2af;
+  --ctp-green:     #a6e3a1;
+  --ctp-teal:      #94e2d5;
+  --ctp-sky:       #89dceb;
+  --ctp-sapphire:  #74c7ec;
+  --ctp-blue:      #89b4fa;
+  --ctp-lavender:  #b4befe;
+  --ctp-text:      #cdd6f4;
+  --ctp-subtext1:  #bac2de;
+  --ctp-subtext0:  #a6adc8;
+  --ctp-overlay2:  #9399b2;
+  --ctp-overlay1:  #7f849c;
+  --ctp-overlay0:  #6c7086;
+  --ctp-surface2:  #585b70;
+  --ctp-surface1:  #45475a;
+  --ctp-surface0:  #313244;
+  --ctp-base:      #1e1e2e;
+  --ctp-mantle:    #181825;
+  --ctp-crust:     #11111b;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--ctp-base);
+  color: var(--ctp-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body { display: flex; flex-direction: column; }
+
+/* ---------- Titlebar ---------- */
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--ctp-mantle);
+  border-bottom: 1px solid var(--ctp-surface0);
+  font-size: 0.85rem;
+  color: var(--ctp-subtext1);
+  user-select: none;
+  flex-shrink: 0;
+}
+.titlebar .name { font-weight: 500; }
+body.is-dirty .titlebar .name::before {
+  content: '● ';
+  color: var(--ctp-peach);
+}
+.titlebar .help-button {
+  background: var(--ctp-surface0);
+  color: var(--ctp-blue);
+  border: none;
+  border-radius: 4px;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.titlebar .help-button:hover {
+  background: var(--ctp-surface1);
+  color: var(--ctp-lavender);
+}
+.titlebar .help-button:focus-visible {
+  outline: 2px solid var(--ctp-lavender);
+  outline-offset: 2px;
+}
+body.no-titlebar .titlebar { display: none; }
+
+/* ---------- Split panes ---------- */
+.wrap {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.editor-pane, .preview {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  box-sizing: border-box;
+}
+.editor-pane {
+  overflow: hidden;
+  background: var(--ctp-base);
+  border-right: 1px solid var(--ctp-surface0);
+}
+.editor-pane .cm-editor { height: 100%; }
+.editor-pane .cm-editor.cm-focused { outline: none; }
+
+.preview {
+  overflow: auto;
+  padding: 2rem 2.5rem;
+  background: var(--ctp-mantle);
+  color: var(--ctp-text);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.65;
+  scrollbar-color: var(--ctp-surface1) var(--ctp-base);
+  scrollbar-width: thin;
+}
+.preview > :first-child { margin-top: 0; }
+
+/* ---------- Preview — generic HTML ---------- */
+.preview h1, .preview h2, .preview h3,
+.preview h4, .preview h5, .preview h6 {
+  color: var(--ctp-lavender);
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+}
+.preview h1 { font-size: 1.9rem; border-bottom: 1px solid var(--ctp-surface0); padding-bottom: 0.3em; }
+.preview h2 { font-size: 1.5rem; border-bottom: 1px solid var(--ctp-surface0); padding-bottom: 0.25em; }
+.preview h3 { font-size: 1.25rem; color: var(--ctp-mauve); }
+.preview h4 { font-size: 1.1rem;  color: var(--ctp-mauve); }
+.preview h5, .preview h6 { font-size: 1rem; color: var(--ctp-pink); }
+
+.preview p { margin: 0.8em 0; }
+.preview a { color: var(--ctp-blue); text-decoration: none; }
+.preview a:hover { text-decoration: underline; }
+.preview strong { color: var(--ctp-text); font-weight: 700; }
+.preview em { color: var(--ctp-text); }
+
+.preview code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--ctp-surface0);
+  color: var(--ctp-peach);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+.preview pre {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--ctp-crust);
+  color: var(--ctp-text);
+  padding: 1em 1.2em;
+  border-radius: 6px;
+  overflow-x: auto;
+  border: 1px solid var(--ctp-surface0);
+  line-height: 1.5;
+  margin: 1em 0;
+}
+.preview pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+}
+
+.preview blockquote,
+.preview .quoteblock blockquote {
+  margin: 1em 0;
+  padding: 0.5em 1.2em;
+  border-left: 3px solid var(--ctp-mauve);
+  background: var(--ctp-base);
+  color: var(--ctp-subtext1);
+  border-radius: 0 4px 4px 0;
+}
+.preview .quoteblock .attribution {
+  color: var(--ctp-subtext0);
+  font-size: 0.85em;
+  text-align: right;
+  margin-top: 0.5em;
+}
+
+.preview hr {
+  border: none;
+  border-top: 1px solid var(--ctp-surface0);
+  margin: 2em 0;
+}
+
+.preview ul, .preview ol { padding-left: 1.5em; margin: 0.8em 0; }
+.preview li { margin: 0.25em 0; }
+
+.preview table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+}
+.preview th, .preview td {
+  border: 1px solid var(--ctp-surface0);
+  padding: 0.5em 0.8em;
+  text-align: left;
+}
+.preview th {
+  background: var(--ctp-surface0);
+  color: var(--ctp-lavender);
+}
+.preview tr:nth-child(even) td { background: rgba(49, 50, 68, 0.3); }
+
+/* ---------- Preview — AsciiDoctor block classes ---------- */
+.preview .listingblock pre,
+.preview .literalblock pre {
+  background: var(--ctp-crust);
+}
+.preview .exampleblock > .content {
+  border-left: 3px solid var(--ctp-blue);
+  padding: 0.5em 1em;
+  background: var(--ctp-base);
+  border-radius: 0 4px 4px 0;
+  margin: 1em 0;
+}
+.preview .sidebarblock {
+  border: 1px solid var(--ctp-surface0);
+  border-radius: 6px;
+  padding: 1em 1.2em;
+  background: var(--ctp-base);
+  margin: 1em 0;
+}
+.preview .admonitionblock { margin: 1em 0; }
+.preview .admonitionblock > table {
+  border: none;
+  border-left: 3px solid var(--ctp-yellow);
+  background: var(--ctp-base);
+  border-radius: 0 4px 4px 0;
+}
+.preview .admonitionblock > table td { border: none; padding: 0.8em 1em; }
+.preview .admonitionblock.note      > table { border-left-color: var(--ctp-blue); }
+.preview .admonitionblock.tip       > table { border-left-color: var(--ctp-green); }
+.preview .admonitionblock.warning   > table { border-left-color: var(--ctp-peach); }
+.preview .admonitionblock.caution   > table { border-left-color: var(--ctp-yellow); }
+.preview .admonitionblock.important > table { border-left-color: var(--ctp-red); }
+.preview .admonitionblock td.icon {
+  color: var(--ctp-subtext1);
+  font-weight: 600;
+  width: 2.5em;
+  vertical-align: top;
+}
+.preview .title {
+  color: var(--ctp-subtext0);
+  font-style: italic;
+  margin-bottom: 0.3em;
+}
+.preview .verseblock pre {
+  font-family: inherit;
+  white-space: pre-wrap;
+  background: var(--ctp-base);
+  border: none;
+}
+
+/* ---------- Preview scrollbars (webkit) ---------- */
+.preview::-webkit-scrollbar { width: 10px; height: 10px; }
+.preview::-webkit-scrollbar-track { background: var(--ctp-base); }
+.preview::-webkit-scrollbar-thumb {
+  background: var(--ctp-surface1);
+  border-radius: 5px;
+  border: 2px solid var(--ctp-base);
+}
+.preview::-webkit-scrollbar-thumb:hover { background: var(--ctp-surface2); }
+
+.render-error {
+  color: var(--ctp-red);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--ctp-crust);
+  padding: 1em;
+  border-left: 3px solid var(--ctp-red);
+  border-radius: 4px;
+}
+
+/* Disable programming ligatures in monospace contexts.
+   JetBrains Mono, Fira Code, etc. enable them by default. */
+.cm-content, .preview code, .preview pre {
+  font-variant-ligatures: none;
+}
+
+/* ---------- Display modes: split / editor-only / preview-only ---------- */
+body.mode-editor .preview      { display: none; }
+body.mode-preview .editor-pane { display: none; }
+
+body.mode-editor .editor-pane {
+  max-width: 900px;
+  margin: 0 auto;
+  border-right: none;
+}
+body.mode-preview .preview {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ---------- Gutter (line numbers) toggle ---------- */
+body.no-gutter .cm-gutters { display: none; }
+
+/* ---------- Confirm dialog (custom <dialog>) ---------- */
+dialog.confirm-dialog {
+  background: var(--ctp-mantle);
+  color: var(--ctp-text);
+  border: 1px solid var(--ctp-surface0);
+  border-radius: 8px;
+  padding: 1.5rem 1.75rem;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  max-width: 420px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+dialog.confirm-dialog::backdrop {
+  background: rgba(17, 17, 27, 0.6);
+  backdrop-filter: blur(2px);
+}
+.confirm-dialog .confirm-message {
+  margin: 0 0 1.25rem 0;
+  color: var(--ctp-text);
+  line-height: 1.5;
+}
+.confirm-dialog .confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.confirm-dialog .confirm-btn {
+  background: var(--ctp-surface0);
+  color: var(--ctp-text);
+  border: 1px solid var(--ctp-surface1);
+  border-radius: 4px;
+  padding: 0.45rem 1.1rem;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.confirm-dialog .confirm-btn:hover {
+  background: var(--ctp-surface1);
+}
+.confirm-dialog .confirm-btn:focus-visible {
+  outline: 2px solid var(--ctp-lavender);
+  outline-offset: 2px;
+}
+.confirm-dialog .confirm-btn-primary {
+  background: var(--ctp-red);
+  color: var(--ctp-crust);
+  border-color: var(--ctp-red);
+  font-weight: 600;
+}
+.confirm-dialog .confirm-btn-primary:hover {
+  background: var(--ctp-maroon);
+  border-color: var(--ctp-maroon);
+}
+
+/* ---------- Help overlay (custom <dialog>) ---------- */
+dialog.help-dialog {
+  background: var(--ctp-mantle);
+  color: var(--ctp-text);
+  border: 1px solid var(--ctp-surface0);
+  border-radius: 8px;
+  padding: 1.5rem 2rem;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  max-width: 700px;
+  width: calc(100% - 4rem);
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  position: relative;
+  /* Match the editor/preview scrollbars. Firefox uses the
+     scrollbar-* properties; WebKit uses the ::-webkit-scrollbar
+     pseudo-elements below. Track is mantle (to match the dialog
+     background) rather than base, so it blends into the dialog
+     instead of showing a visible column. */
+  scrollbar-color: var(--ctp-surface1) var(--ctp-mantle);
+  scrollbar-width: thin;
+}
+dialog.help-dialog::-webkit-scrollbar { width: 10px; height: 10px; }
+dialog.help-dialog::-webkit-scrollbar-track { background: var(--ctp-mantle); }
+dialog.help-dialog::-webkit-scrollbar-thumb {
+  background: var(--ctp-surface1);
+  border-radius: 5px;
+  border: 2px solid var(--ctp-mantle);
+}
+dialog.help-dialog::-webkit-scrollbar-thumb:hover { background: var(--ctp-surface2); }
+dialog.help-dialog::backdrop {
+  background: rgba(17, 17, 27, 0.6);
+  backdrop-filter: blur(2px);
+}
+.help-dialog .help-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--ctp-subtext0);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+}
+.help-dialog .help-close:hover {
+  color: var(--ctp-text);
+}
+.help-dialog .help-close:focus-visible {
+  outline: 2px solid var(--ctp-lavender);
+  outline-offset: 2px;
+}
+.help-dialog h2 {
+  color: var(--ctp-lavender);
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.5rem 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--ctp-surface0);
+}
+.help-dialog h2:first-of-type {
+  margin-top: 0;
+  padding-right: 2.5rem;
+}
+.help-dialog h3 {
+  color: var(--ctp-mauve);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0.85rem 0 0.35rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.help-dialog .help-note {
+  color: var(--ctp-subtext0);
+  font-size: 0.75rem;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  margin-left: 0.5rem;
+}
+.help-dialog .help-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1.25rem;
+  align-items: baseline;
+  margin-bottom: 0.25rem;
+}
+.help-dialog .help-key {
+  justify-self: end;
+  white-space: nowrap;
+}
+.help-dialog .help-key kbd {
+  background: var(--ctp-surface0);
+  color: var(--ctp-subtext1);
+  border-radius: 3px;
+  padding: 0.1rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.help-dialog .help-key kbd + kbd {
+  margin-left: 0.2rem;
+}
+.help-dialog .help-key var {
+  color: var(--ctp-subtext0);
+  font-style: italic;
+}

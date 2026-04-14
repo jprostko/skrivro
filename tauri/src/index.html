@@ -215,6 +215,29 @@
   // the JS import as the idiomatic Vite pattern.
   import './styles.css';
 
+  // Font Awesome 4.7.0, bundled locally. Required for Asciidoctor's
+  // :icons: font output — Asciidoctor's HTML converter hardcodes FA4-
+  // style class names (`<i class="fa fa-X">`) for every `icon:name[]`
+  // directive, and those classes need Font Awesome CSS + webfont loaded
+  // to actually display glyphs. Without this import, icon:: directives
+  // render as empty invisible <i> elements.
+  //
+  // FA4 specifically (not 5/6/7) because Asciidoctor's Ruby source
+  // hardcodes `"fa fa-#{target}"` at line 357 of lib/asciidoctor.rb,
+  // and modern FA versions use different class prefixes (fas, far, fab,
+  // fa-solid, etc.). Using FA4 matches Asciidoctor's output 1:1 with no
+  // shim CSS, no class rewriting, smallest bundle. See
+  // memory/project_asciidoctor_includes.md and asciidoctor#2535 for
+  // the upstream discussion.
+  //
+  // License: MIT (CSS) + SIL Open Font License 1.1 (font files).
+  // Both permissive and compatible with Klartext's 0BSD source
+  // license. The OFL has a Reserved Font Name clause for "Font
+  // Awesome" — we bundle unmodified so that clause doesn't affect
+  // us. See memory/project_licensing.md for the full aggregation
+  // rationale. Bundle cost: ~240 KB (CSS ~75 KB, woff2 font ~165 KB).
+  import 'font-awesome/css/font-awesome.min.css';
+
   import Asciidoctor from '@asciidoctor/core';
   import DOMPurify from 'dompurify';
   import { EditorState, Compartment } from '@codemirror/state';

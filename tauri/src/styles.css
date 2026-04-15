@@ -583,6 +583,20 @@ dialog.help-dialog::backdrop {
 }
 body.no-statusbar .statusbar { display: none; }
 
+/* Preview-only mode: hide editor-specific status bar slots. The vim
+   mode pill and the Ln/Col cursor readout both describe state that
+   only makes sense when the editor is visible and receiving input.
+   In preview-only mode the editor is `display: none` (see the
+   display-modes section above), so its cursor and vim mode are not
+   user-actionable — showing them just invites muscle-memory attempts
+   at vim commands that go nowhere. Hiding via CSS only: the CM6
+   instance is still alive in the DOM with its full vim state intact,
+   so when the user switches back to editor or split the mode pill
+   and cursor readout reappear exactly where they left off. No JS
+   state shuffling, no save/restore dance — just visibility toggling. */
+body.mode-preview .statusbar .status-mode-pill,
+body.mode-preview .statusbar .status-position { display: none; }
+
 .statusbar .status-left,
 .statusbar .status-right {
   display: flex;

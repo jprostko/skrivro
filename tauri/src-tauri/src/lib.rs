@@ -104,6 +104,11 @@ fn skrivro_config_path() -> Option<PathBuf> {
 /// for end users, and no stderr noise from a launched .desktop entry).
 fn parse_skrivro_config(text: &str) -> SkrivroConfig {
     let mut cfg = SkrivroConfig::default();
+    // `idx` is only referenced inside #[cfg(debug_assertions)] eprintln!s
+    // below, so release builds see it as unused. cfg_attr here suppresses
+    // the unused_variables warning ONLY when debug_assertions is off —
+    // debug builds still get normal lint coverage.
+    #[cfg_attr(not(debug_assertions), allow(unused_variables))]
     for (idx, raw) in text.lines().enumerate() {
         let line = raw.trim();
         if line.is_empty() || line.starts_with('#') {

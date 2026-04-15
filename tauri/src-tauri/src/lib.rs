@@ -29,13 +29,21 @@ fn get_launch_info(state: tauri::State<LaunchInfo>) -> LaunchInfo {
 //   edit-font = JetBrains Mono
 //   preview-font = Charter
 //
-//   # Lengths (font sizes, padding): a bare positive number — integer or
-//   # decimal — is assumed to be pt, so `14` and `14pt` produce the same
-//   # result. An explicit unit (px, rem, em, %, ...) is passed through to
-//   # CSS unchanged for users who know what they want.
+//   # Lengths (font sizes): a bare positive number is assumed to be pt,
+//   # so `14` and `14pt` produce the same result. An explicit unit (px,
+//   # rem, em, %, ...) is passed through to CSS unchanged.
 //   edit-font-size = 14
 //   preview-font-size = 15
-//   editor-padding = 16
+//
+//   # Padding (editor and preview, x / y axes). Each key accepts one or
+//   # two values. One value: applied uniformly to both ends of the axis.
+//   # Two values: reading order — for x it's `left right`, for y it's
+//   # `top bottom`. Bare numbers are assumed pt; any value with an
+//   # explicit unit passes through. Three or more values are rejected.
+//   editor-padding-x = 2.5rem
+//   editor-padding-y = 2rem
+//   preview-padding-x = 2.5rem
+//   preview-padding-y = 2rem
 //
 //   # Dimensions (pane widths in single-pane modes): unit is REQUIRED.
 //   # A bare number like `900` is rejected because no unit assumption is
@@ -72,7 +80,10 @@ struct SkrivroConfig {
     preview_font: Option<String>,
     edit_font_size: Option<String>,
     preview_font_size: Option<String>,
-    editor_padding: Option<String>,
+    editor_padding_x: Option<String>,
+    editor_padding_y: Option<String>,
+    preview_padding_x: Option<String>,
+    preview_padding_y: Option<String>,
     edit_pane_width: Option<String>,
     preview_pane_width: Option<String>,
     theme: Option<String>,
@@ -117,26 +128,60 @@ fn skrivro_config_path() -> Option<PathBuf> {
 /// diagnostic visible in dev builds instead of leaving the user to
 /// puzzle out why their setting "didn't work."
 ///
-/// Called from `parse_skrivro_config` for exactly three keys:
-/// `edit-font-size`, `preview-font-size`, `editor-padding`.
+/// Multi-token support: `max_tokens` caps the number of whitespace-
+/// separated values the key accepts. Font-size keys pass `1` (only a
+/// single length makes sense for `font-size`). Padding-x / padding-y
+/// keys pass `2` (one value for uniform, two for asymmetric start/end).
+/// Values exceeding the cap are rejected with a debug warning. Each
+/// token is normalized independently using the rules above — so
+/// `editor-padding-y = 10 20` becomes `10pt 20pt`, and
+/// `editor-padding-y = 2rem 10` becomes `2rem 10pt`.
+///
+/// Called from `parse_skrivro_config` for the font-size keys
+/// (`edit-font-size`, `preview-font-size`, max_tokens=1) and the
+/// padding keys (`edit/preview-padding-x/y`, max_tokens=2).
 #[cfg_attr(not(debug_assertions), allow(unused_variables))]
-fn normalize_length(key: &str, val: &str, line_num: usize) -> Option<String> {
-    if let Ok(n) = val.parse::<f64>() {
-        if n > 0.0 {
-            // Bare positive number — assume pt
-            return Some(format!("{}pt", val));
-        }
-        // Zero or negative → almost certainly a mistake
+fn normalize_length(key: &str, val: &str, line_num: usize, max_tokens: usize) -> Option<String> {
+    let tokens: Vec<&str> = val.split_whitespace().collect();
+    if tokens.is_empty() {
+        // Value was whitespace-only. Caller already filters empty strings,
+        // but guard here anyway so the function stays self-consistent.
+        return None;
+    }
+    if tokens.len() > max_tokens {
         #[cfg(debug_assertions)]
         eprintln!(
-            "[skrivro config] line {}: {} value '{}' must be positive, skipping",
-            line_num, key, val
+            "[skrivro config] line {}: {} value '{}' has {} tokens, max is {}, skipping",
+            line_num,
+            key,
+            val,
+            tokens.len(),
+            max_tokens
         );
         return None;
     }
-    // Not a bare number — trust the user's unit suffix (or let CSS drop
-    // it if they typed garbage).
-    Some(val.to_string())
+    let mut out = Vec::with_capacity(tokens.len());
+    for token in &tokens {
+        if let Ok(n) = token.parse::<f64>() {
+            if n > 0.0 {
+                // Bare positive number — assume pt
+                out.push(format!("{}pt", token));
+            } else {
+                // Zero or negative → almost certainly a mistake
+                #[cfg(debug_assertions)]
+                eprintln!(
+                    "[skrivro config] line {}: {} token '{}' must be positive, skipping whole value '{}'",
+                    line_num, key, token, val
+                );
+                return None;
+            }
+        } else {
+            // Not a bare number — trust the user's unit suffix (or let
+            // CSS drop it if they typed garbage).
+            out.push(token.to_string());
+        }
+    }
+    Some(out.join(" "))
 }
 
 /// Normalize a dimension value for the pane-width keys.
@@ -200,10 +245,14 @@ fn normalize_dimension(key: &str, val: &str, line_num: usize) -> Option<String> 
 /// - Malformed lines (missing `=`): warn and skip
 /// - Empty values treated as "unset" — struct field stays `None`, frontend
 ///   falls through to compiled-in defaults
-/// - Length-valued keys (edit-font-size, preview-font-size,
-///   editor-padding) go through `normalize_length` which maps bare
-///   positive numbers to pt and rejects zero/negative. See that
-///   function's doc comment for the full rules.
+/// - Length-valued keys go through `normalize_length` which maps bare
+///   positive numbers to pt, passes through explicit-unit values, and
+///   rejects zero/negative. The helper takes a `max_tokens` argument:
+///   font-size keys (`edit-font-size`, `preview-font-size`) pass `1`
+///   since CSS font-size is single-valued; padding keys
+///   (`editor/preview-padding-x/y`) pass `2` to accept both
+///   `= 2rem` (uniform) and `= 2rem 3rem` (asymmetric start/end) forms.
+///   See that function's doc comment for the full rules.
 /// - Dimension-valued keys (edit-pane-width, preview-pane-width) go
 ///   through `normalize_dimension`, which REJECTS bare numbers and
 ///   requires an explicit CSS unit. No unit assumption is universally
@@ -246,9 +295,12 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
         match key {
             "edit-font" => cfg.edit_font = Some(val.to_string()),
             "preview-font" => cfg.preview_font = Some(val.to_string()),
-            "edit-font-size" => cfg.edit_font_size = normalize_length(key, val, idx + 1),
-            "preview-font-size" => cfg.preview_font_size = normalize_length(key, val, idx + 1),
-            "editor-padding" => cfg.editor_padding = normalize_length(key, val, idx + 1),
+            "edit-font-size" => cfg.edit_font_size = normalize_length(key, val, idx + 1, 1),
+            "preview-font-size" => cfg.preview_font_size = normalize_length(key, val, idx + 1, 1),
+            "editor-padding-x" => cfg.editor_padding_x = normalize_length(key, val, idx + 1, 2),
+            "editor-padding-y" => cfg.editor_padding_y = normalize_length(key, val, idx + 1, 2),
+            "preview-padding-x" => cfg.preview_padding_x = normalize_length(key, val, idx + 1, 2),
+            "preview-padding-y" => cfg.preview_padding_y = normalize_length(key, val, idx + 1, 2),
             "edit-pane-width" => cfg.edit_pane_width = normalize_dimension(key, val, idx + 1),
             "preview-pane-width" => cfg.preview_pane_width = normalize_dimension(key, val, idx + 1),
             "theme" => cfg.theme = Some(val.to_string()),

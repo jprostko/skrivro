@@ -15,10 +15,15 @@
 # is no hot reload.
 
 # ================= Fonts =================
-# Both font keys are PREPENDED to the built-in CSS font stack, so if
-# the font you pick isn't installed on the system the renderer falls
-# through to the original stack — your setting is a preference, not
-# a hard requirement.
+# Font family keys are PREPENDED to the built-in CSS font stack, so
+# if the font you pick isn't installed on the system the renderer
+# falls through to the original stack — your setting is a preference,
+# not a hard requirement.
+#
+# Font size keys: a bare positive number (integer or decimal) is
+# assumed to be pt, so `14` and `14pt` produce the same result. An
+# explicit unit (px, rem, em, %, ...) passes through to CSS
+# unchanged. Zero or negative values are rejected.
 
 # Editor (monospace) font. Built-in fallback stack:
 #   ui-monospace, JetBrains Mono, Cascadia Code, Fira Code,
@@ -30,29 +35,37 @@
 #   Helvetica Neue, Arial, sans-serif
 # preview-font = system-ui
 
-# ================= Lengths =================
-# Bare positive numbers (integer or decimal) are treated as pt, so
-# `11` and `11pt` produce the same result. Explicit units (px, rem,
-# em, %, ...) are passed through to CSS unchanged for users who know
-# what they want. Zero or negative values are rejected.
+# edit-font-size = 0.9rem
+# preview-font-size = 0.95rem
 
-# edit-font-size = 11
-# preview-font-size = 12
-# editor-padding = 10
-
-# ================= Pane widths =================
-# Maximum width of the editor and preview panes in SINGLE-PANE modes
-# (editor-only and preview-only). These do NOT apply in split mode —
-# in split mode the panes share the window 50/50 via flexbox.
+# ================= Layout =================
+# Padding keys are split by axis: `-x` for horizontal (left/right),
+# `-y` for vertical (top/bottom). Each key accepts one or two values.
+# One value applies uniformly to both ends of the axis. Two values
+# are in reading order: for `-y` that's `top bottom`, for `-x` that's
+# `left right`. Bare numbers in any position default to pt; explicit
+# units pass through. Three or more values are rejected.
 #
-# Unlike the font-size / padding keys above, width keys REQUIRE an
-# explicit unit. A bare number is rejected because no single unit is
-# universally intuitive for layout. Accepted units include px (pixels),
-# % (of the window), vw (viewport width), rem, em, and ch (the width
-# of the `0` character in the current font). The ch unit is useful for
-# prose: `edit-pane-width = 80ch` gives you roughly 80 characters wide
+# Example (asymmetric top vs. bottom):
+#   editor-padding-y = 2rem 3rem     # top = 2rem, bottom = 3rem
+#
+# Example (uniform horizontal):
+#   editor-padding-x = 20px          # both left and right = 20px
+#
+# Pane width keys apply only in single-pane modes (editor-only and
+# preview-only) and cap the reading column at that width, centering
+# it in the window. They do NOT apply in split mode — each pane
+# already shares the window 50/50 via flexbox. Width values REQUIRE
+# an explicit unit (bare numbers are rejected); accepted units
+# include px, %, vw, rem, em, and ch. The `ch` unit is useful for
+# prose: `edit-pane-width = 80ch` gives roughly 80 characters wide
 # — exact in the monospace editor, approximate in the proportional
 # preview.
+
+# editor-padding-x = 2.5rem
+# editor-padding-y = 2rem
+# preview-padding-x = 2.5rem
+# preview-padding-y = 2rem
 
 # edit-pane-width = 900px
 # preview-pane-width = 900px

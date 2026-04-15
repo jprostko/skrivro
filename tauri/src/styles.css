@@ -31,26 +31,51 @@
   --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
 
   /* Config-file-overridable tokens — referenced by the CM6 theme in
-     tauri/src/index.html (fontSize on &, padding on .cm-content and
-     .cm-line) and by the .preview / .cm-scroller CSS rules below.
+     tauri/src/index.html and by the .preview / .cm-scroller rules
+     below.
 
-     Font-size / padding defaults are clean integer pt values: config
-     file authors overwhelmingly think in points, and keeping all
-     three in the same unit means the shape of a config file matches
-     the shape of these defaults. Width defaults are in px because
-     layout measurements are natural in pixels and the historical
-     hardcoded value was 900px. The Rust parser's normalize_length
-     helper assumes pt for bare numbers (font-size / padding), while
-     normalize_dimension requires explicit units (widths) — this
-     split mirrors the difference in defaults here.
+     Defaults are in rem for font sizes and padding so they scale
+     with the user's system / browser font-size preference (respects
+     "Large Text" and browser zoom in a way absolute units like pt
+     and px do not). Widths are in px because layout measurements are
+     natural in pixels and the historical hardcoded value was 900px.
+
+     Padding is split into -x (horizontal) and -y (vertical) variables
+     for both the editor and the preview. On the editor side the split
+     is load-bearing: CM6's DOM puts horizontal padding on .cm-line
+     (per-line, for click targets at the left margin) and vertical
+     padding on .cm-content (on the whole content block). Two variables
+     map cleanly to those two elements. The preview side is a single
+     <div> — it doesn't need two variables for the DOM, but we keep
+     the same split for consistency with the editor so the user only
+     has one mental model ("-x is horizontal, -y is vertical"), not
+     one schema for the editor and another for the preview.
+
+     Each padding variable holds one or two values. One value applies
+     uniformly to both ends of the axis (top+bottom for -y, left+right
+     for -x). Two values are in reading order: for -y that's
+     `top bottom`, for -x that's `left right`. The CSS consuming these
+     uses the logical properties `padding-block` (for -y) and
+     `padding-inline` (for -x), both of which accept 1 or 2 values
+     directly — so the variable's string contents are substituted in
+     as-is and the browser does the rest.
+
+     Users overriding these via skrivro.conf can write any CSS unit
+     they want — the Rust parser's normalize_length helper only
+     applies the "bare number = pt" rule when the value has no unit
+     suffix, so `editor-padding-x = 1.1rem 2rem` passes straight
+     through.
 
      When the user sets one of the corresponding keys in skrivro.conf,
      the frontend's applyUserConfig() function writes the override as
      an inline style on :root, shadowing these defaults. See
      memory/project_config_file.md for the full spec. */
-  --edit-font-size: 11pt;
-  --preview-font-size: 12pt;
-  --editor-padding: 10pt;
+  --edit-font-size: 0.9rem;
+  --preview-font-size: 0.95rem;
+  --editor-padding-x: 2.5rem;
+  --editor-padding-y: 2rem;
+  --preview-padding-x: 2.5rem;
+  --preview-padding-y: 2rem;
   --edit-pane-width: 900px;
   --preview-pane-width: 900px;
 }
@@ -133,7 +158,8 @@ body.no-titlebar .titlebar { display: none; }
 
 .preview {
   overflow: auto;
-  padding: 2rem 2.5rem;
+  padding-block: var(--preview-padding-y);
+  padding-inline: var(--preview-padding-x);
   background: var(--ctp-mantle);
   color: var(--ctp-text);
   font-family: var(--font-sans);

@@ -1313,12 +1313,25 @@
       scrollbarColor: 'var(--ctp-surface1) var(--ctp-base)',
       scrollbarWidth: 'thin',
     },
+    // CM6 splits editor padding across two elements. .cm-content is
+    // the whole content block, so vertical padding (top above the
+    // first line, bottom below the last) belongs there. .cm-line is
+    // each individual text line, so horizontal padding belongs there
+    // — CM6 uses per-line horizontal padding so that clicking near
+    // the far left edge of a line still lands ON the line, rather
+    // than outside the click target. padding-block and padding-inline
+    // are CSS logical properties that each accept 1 or 2 values, so
+    // --editor-padding-x and --editor-padding-y can hold either
+    // "2.5rem" (uniform) or "2.5rem 3rem" (asymmetric start/end) and
+    // drop straight in.
     '.cm-content': {
       caretColor: 'var(--ctp-rosewater)',
-      padding: 'var(--editor-padding) 0',
+      paddingBlock: 'var(--editor-padding-y)',
+      paddingInline: '0',
     },
     '.cm-line': {
-      padding: '0 var(--editor-padding)',
+      paddingBlock: '0',
+      paddingInline: 'var(--editor-padding-x)',
     },
     '.cm-cursor, .cm-dropCursor': {
       borderLeftColor: 'var(--ctp-rosewater)',
@@ -1571,13 +1584,14 @@
   //
   // Apply overrides from the user's skrivro.conf file to :root CSS custom
   // properties and body classes. The CSS variables (--font-mono,
-  // --font-sans, --edit-font-size, --preview-font-size, --editor-padding,
-  // --edit-pane-width, --preview-pane-width) are all consumed by the CM6
-  // theme and the .preview / .cm-scroller CSS rules, so a single
-  // assignment here propagates to every rendered element that reads
-  // them. No CM6 dispatch effects, no theme reconfiguration dance —
-  // this is why CSS variables are strictly simpler than CM6 Compartments
-  // for this use case.
+  // --font-sans, --edit-font-size, --preview-font-size,
+  // --editor-padding-x, --editor-padding-y, --preview-padding-x,
+  // --preview-padding-y, --edit-pane-width, --preview-pane-width)
+  // are all consumed by the CM6 theme and the .preview / .cm-scroller
+  // CSS rules, so a single assignment here propagates to every
+  // rendered element that reads them. No CM6 dispatch effects, no
+  // theme reconfiguration dance — this is why CSS variables are
+  // strictly simpler than CM6 Compartments for this use case.
   //
   // Runtime-read keys (asciidocSafeMode, cursorPositionFormat) are NOT
   // handled here — render() and formatCursorPosition() read them
@@ -1619,11 +1633,32 @@
       root.style.setProperty('--preview-font-size', cfg.previewFontSize);
     }
 
-    // Editor padding override: referenced by the CM6 theme via the
-    // --editor-padding variable for both .cm-content vertical padding
-    // and .cm-line horizontal padding.
-    if (cfg.editorPadding) {
-      root.style.setProperty('--editor-padding', cfg.editorPadding);
+    // Padding overrides (editor and preview, x and y axes). Four
+    // independent variables, one per axis per pane. The editor side
+    // consumes --editor-padding-y on .cm-content's padding-block and
+    // --editor-padding-x on .cm-line's padding-inline (see the CM6
+    // theme above for why the split is load-bearing). The preview
+    // side consumes both on the .preview element directly via
+    // padding-block and padding-inline (.preview is a single <div>,
+    // no DOM split needed, but we keep the two-variable shape for
+    // consistency with the editor so the user has one mental model).
+    //
+    // Each variable's value is the user's raw string — one or two
+    // whitespace-separated CSS length tokens. The Rust-side
+    // normalize_length helper has already validated the token count
+    // (max 2) and appended `pt` to any bare numbers, so whatever
+    // arrives here is ready to substitute directly into CSS.
+    if (cfg.editorPaddingX) {
+      root.style.setProperty('--editor-padding-x', cfg.editorPaddingX);
+    }
+    if (cfg.editorPaddingY) {
+      root.style.setProperty('--editor-padding-y', cfg.editorPaddingY);
+    }
+    if (cfg.previewPaddingX) {
+      root.style.setProperty('--preview-padding-x', cfg.previewPaddingX);
+    }
+    if (cfg.previewPaddingY) {
+      root.style.setProperty('--preview-padding-y', cfg.previewPaddingY);
     }
 
     // Pane width overrides: affect only the single-pane display modes.

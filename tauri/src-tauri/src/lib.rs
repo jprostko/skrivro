@@ -29,9 +29,13 @@ fn get_launch_info(state: tauri::State<LaunchInfo>) -> LaunchInfo {
 //   edit-font = JetBrains Mono
 //   preview-font = Charter
 //
-//   edit-font-size = 14pt
-//   preview-font-size = 15pt
-//   editor-padding = 16pt
+//   # Lengths (font sizes, padding): a bare positive number — integer or
+//   # decimal — is assumed to be pt, so `14` and `14pt` produce the same
+//   # result. An explicit unit (px, rem, em, %, ...) is passed through to
+//   # CSS unchanged for users who know what they want.
+//   edit-font-size = 14
+//   preview-font-size = 15
+//   editor-padding = 16
 //
 //   # Asciidoctor safe mode (set-and-forget; not exposed in UI)
 //   asciidoc-safe-mode = unsafe
@@ -84,6 +88,49 @@ fn skrivro_config_path() -> Option<PathBuf> {
     Some(base.join("skrivro").join("skrivro.conf"))
 }
 
+/// Normalize a length value for the font-size / padding keys.
+///
+/// Users writing a config file overwhelmingly think in points, so a bare
+/// positive number (integer or decimal) is treated as pt — `14` becomes
+/// `14pt`, `10.5` becomes `10.5pt`. Any value that does NOT parse as a
+/// bare number is passed through unchanged on the assumption that it
+/// already carries a CSS unit suffix (`14px`, `1.1rem`, `16em`, `80%`,
+/// etc.). We deliberately do not maintain an allowlist of valid CSS
+/// length units: the CSS engine in the webview already validates far
+/// more thoroughly than we ever could, and a user who types `14potato`
+/// will see their setting silently drop — which is noisier than getting
+/// zero help from us but less noisy than a false-positive reject from
+/// an outdated allowlist.
+///
+/// Zero or negative values are rejected with a debug warning. CSS
+/// length ≤ 0 is almost never what the user intended (no editor wants
+/// a negative font size), and trying to render `font-size: -5pt` would
+/// drop the declaration anyway. Rejecting in the parser makes the
+/// diagnostic visible in dev builds instead of leaving the user to
+/// puzzle out why their setting "didn't work."
+///
+/// Called from `parse_skrivro_config` for exactly three keys:
+/// `edit-font-size`, `preview-font-size`, `editor-padding`.
+#[cfg_attr(not(debug_assertions), allow(unused_variables))]
+fn normalize_length(key: &str, val: &str, line_num: usize) -> Option<String> {
+    if let Ok(n) = val.parse::<f64>() {
+        if n > 0.0 {
+            // Bare positive number — assume pt
+            return Some(format!("{}pt", val));
+        }
+        // Zero or negative → almost certainly a mistake
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "[skrivro config] line {}: {} value '{}' must be positive, skipping",
+            line_num, key, val
+        );
+        return None;
+    }
+    // Not a bare number — trust the user's unit suffix (or let CSS drop
+    // it if they typed garbage).
+    Some(val.to_string())
+}
+
 /// Parse a Skrivro config file's text into a `SkrivroConfig`.
 ///
 /// Parsing rules (per spec):
@@ -96,6 +143,10 @@ fn skrivro_config_path() -> Option<PathBuf> {
 /// - Malformed lines (missing `=`): warn and skip
 /// - Empty values treated as "unset" — struct field stays `None`, frontend
 ///   falls through to compiled-in defaults
+/// - Length-valued keys (edit-font-size, preview-font-size,
+///   editor-padding) go through `normalize_length` which maps bare
+///   positive numbers to pt and rejects zero/negative. See that
+///   function's doc comment for the full rules.
 /// - One bad line does NOT abort loading the rest of the file
 ///
 /// All warning `eprintln!`s are wrapped in `#[cfg(debug_assertions)]` so
@@ -130,17 +181,16 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
             // and let the frontend fall through to compiled-in defaults.
             continue;
         }
-        let val = val.to_string();
         match key {
-            "edit-font" => cfg.edit_font = Some(val),
-            "preview-font" => cfg.preview_font = Some(val),
-            "edit-font-size" => cfg.edit_font_size = Some(val),
-            "preview-font-size" => cfg.preview_font_size = Some(val),
-            "editor-padding" => cfg.editor_padding = Some(val),
-            "theme" => cfg.theme = Some(val),
-            "asciidoc-safe-mode" => cfg.asciidoc_safe_mode = Some(val),
-            "cursor-position-format" => cfg.cursor_position_format = Some(val),
-            "statusbar-style" => cfg.statusbar_style = Some(val),
+            "edit-font" => cfg.edit_font = Some(val.to_string()),
+            "preview-font" => cfg.preview_font = Some(val.to_string()),
+            "edit-font-size" => cfg.edit_font_size = normalize_length(key, val, idx + 1),
+            "preview-font-size" => cfg.preview_font_size = normalize_length(key, val, idx + 1),
+            "editor-padding" => cfg.editor_padding = normalize_length(key, val, idx + 1),
+            "theme" => cfg.theme = Some(val.to_string()),
+            "asciidoc-safe-mode" => cfg.asciidoc_safe_mode = Some(val.to_string()),
+            "cursor-position-format" => cfg.cursor_position_format = Some(val.to_string()),
+            "statusbar-style" => cfg.statusbar_style = Some(val.to_string()),
             _ => {
                 #[cfg(debug_assertions)]
                 eprintln!(

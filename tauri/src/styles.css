@@ -32,14 +32,18 @@
 
   /* Config-file-overridable tokens — referenced by the CM6 theme in
      tauri/src/index.html (fontSize on &, padding on .cm-content and
-     .cm-line) and by the .preview CSS rule below. Defaults match the
-     historical hardcoded values. When the user sets edit-font-size,
-     preview-font-size, or editor-padding in skrivro.conf, the
-     frontend's applyUserConfig() function writes the override as an
-     inline style on :root, shadowing these defaults. See
-     memory/project_config_file.md for the full config file spec. */
-  --edit-font-size: 0.9rem;
-  --preview-font-size: 0.95rem;
+     .cm-line) and by the .preview CSS rule below. Defaults are clean
+     integer pt values: config-file authors overwhelmingly think in
+     points, and keeping all three defaults in the same unit means the
+     shape of a config file matches the shape of these defaults. The
+     previous values (0.9rem / 0.95rem / 10pt) were a mixed-unit
+     leftover from the pre-config-file era. When the user sets
+     edit-font-size, preview-font-size, or editor-padding in
+     skrivro.conf, the frontend's applyUserConfig() function writes
+     the override as an inline style on :root, shadowing these
+     defaults. See memory/project_config_file.md for the full spec. */
+  --edit-font-size: 11pt;
+  --preview-font-size: 12pt;
   --editor-padding: 10pt;
 }
 

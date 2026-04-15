@@ -1,0 +1,74 @@
+# Skrivro config file — every key with its compiled-in default value,
+# all commented out. This file ships with the source tree as a
+# reference; to customize Skrivro, copy it to:
+#
+#   $XDG_CONFIG_HOME/skrivro/skrivro.conf
+#   (or ~/.config/skrivro/skrivro.conf if $XDG_CONFIG_HOME is unset)
+#
+# then uncomment any line and edit. Every value shown below is the
+# actual compiled-in default — uncommenting a line without changing
+# it is a no-op.
+#
+# Skrivro's parser ignores missing keys, malformed lines, and unknown
+# keys (with debug-mode warnings only), so you can leave whatever you
+# don't care about commented out. Edits apply on next restart; there
+# is no hot reload.
+
+# ================= Fonts =================
+# Both font keys are PREPENDED to the built-in CSS font stack, so if
+# the font you pick isn't installed on the system the renderer falls
+# through to the original stack — your setting is a preference, not
+# a hard requirement.
+
+# Editor (monospace) font. Built-in fallback stack:
+#   ui-monospace, JetBrains Mono, Cascadia Code, Fira Code,
+#   Menlo, Monaco, Consolas, monospace
+# edit-font = ui-monospace
+
+# Preview (sans-serif) font. Built-in fallback stack:
+#   -apple-system, BlinkMacSystemFont, Inter, Segoe UI, Roboto,
+#   Helvetica Neue, Arial, sans-serif
+# preview-font = system-ui
+
+# ================= Lengths =================
+# Bare positive numbers (integer or decimal) are treated as pt, so
+# `11` and `11pt` produce the same result. Explicit units (px, rem,
+# em, %, ...) are passed through to CSS unchanged for users who know
+# what they want. Zero or negative values are rejected.
+
+# edit-font-size = 11
+# preview-font-size = 12
+# editor-padding = 10
+
+# ================= Theme =================
+# Only `catppuccin-mocha` is supported in v1. This key exists as an
+# extension point — a future version may support user-supplied themes
+# under $XDG_CONFIG_HOME/skrivro/themes/<name>.conf.
+# theme = catppuccin-mocha
+
+# ================= Asciidoctor =================
+# Asciidoctor safe mode — unsafe / safe / server / secure.
+#
+# Controls which Asciidoctor features are enabled. `unsafe` is the
+# most permissive: includes across directories, docinfo files, book
+# doctype, and arbitrary attribute setting all work. `secure` disables
+# nearly all of it. This is a set-and-forget knob, deliberately not
+# exposed in the UI — once you've chosen a safe mode, runtime display
+# has no value.
+# asciidoc-safe-mode = unsafe
+
+# ================= Status bar =================
+
+# Cursor position format — verbose / compact / ruler
+#   verbose: Ln 42, Col 85    (prose-editor default)
+#   compact: 42:85            (code-editor style)
+#   ruler:   42,85            (Vim ruler style)
+# cursor-position-format = verbose
+
+# Status bar mode pill style — canonical / muted
+#   canonical: bright Catppuccin palette from catppuccin/nvim's
+#              lualine.lua — blue / green / mauve / red / peach
+#   muted:     Normal = surface0 + subtext0, Visual = pink + base;
+#              Insert / Replace / Command stay canonical.
+#              LazyVim-inspired.
+# statusbar-style = canonical

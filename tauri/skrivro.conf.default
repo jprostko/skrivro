@@ -40,6 +40,23 @@
 # preview-font-size = 12
 # editor-padding = 10
 
+# ================= Pane widths =================
+# Maximum width of the editor and preview panes in SINGLE-PANE modes
+# (editor-only and preview-only). These do NOT apply in split mode —
+# in split mode the panes share the window 50/50 via flexbox.
+#
+# Unlike the font-size / padding keys above, width keys REQUIRE an
+# explicit unit. A bare number is rejected because no single unit is
+# universally intuitive for layout. Accepted units include px (pixels),
+# % (of the window), vw (viewport width), rem, em, and ch (the width
+# of the `0` character in the current font). The ch unit is useful for
+# prose: `edit-pane-width = 80ch` gives you roughly 80 characters wide
+# — exact in the monospace editor, approximate in the proportional
+# preview.
+
+# edit-pane-width = 900px
+# preview-pane-width = 900px
+
 # ================= Theme =================
 # Only `catppuccin-mocha` is supported in v1. This key exists as an
 # extension point — a future version may support user-supplied themes

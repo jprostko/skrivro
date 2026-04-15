@@ -37,6 +37,12 @@ fn get_launch_info(state: tauri::State<LaunchInfo>) -> LaunchInfo {
 //   preview-font-size = 15
 //   editor-padding = 16
 //
+//   # Dimensions (pane widths in single-pane modes): unit is REQUIRED.
+//   # A bare number like `900` is rejected because no unit assumption is
+//   # universally intuitive for layout. Common choices: px, %, vw, ch.
+//   edit-pane-width = 900px
+//   preview-pane-width = 80ch
+//
 //   # Asciidoctor safe mode (set-and-forget; not exposed in UI)
 //   asciidoc-safe-mode = unsafe
 //
@@ -67,6 +73,8 @@ struct SkrivroConfig {
     edit_font_size: Option<String>,
     preview_font_size: Option<String>,
     editor_padding: Option<String>,
+    edit_pane_width: Option<String>,
+    preview_pane_width: Option<String>,
     theme: Option<String>,
     asciidoc_safe_mode: Option<String>,
     cursor_position_format: Option<String>,
@@ -131,6 +139,55 @@ fn normalize_length(key: &str, val: &str, line_num: usize) -> Option<String> {
     Some(val.to_string())
 }
 
+/// Normalize a dimension value for the pane-width keys.
+///
+/// Different from `normalize_length`: dimension keys REJECT bare numbers
+/// outright, because no single unit assumption is universally intuitive
+/// for layout measurements. For font sizes and padding, pt is a natural
+/// default (print-typography convention carries over). For widths,
+/// there is no equivalent convention: a user writing `edit-pane-width =
+/// 900` could reasonably mean 900 px, 900 pt (= 1200 px at 96 dpi), or
+/// something else entirely. Ghostty's config format reached the same
+/// conclusion for its window-size option, and we follow their rule:
+/// "a bare value without a suffix is a config error."
+///
+/// Accepted values are anything with a CSS unit suffix — `900px`, `80%`,
+/// `60vw`, `40rem`, `80ch`, etc. We do not maintain an allowlist of
+/// valid CSS units (same rationale as `normalize_length`): the webview
+/// validates far more thoroughly than we ever could, and an allowlist
+/// would be maintenance with a pure downside.
+///
+/// Values that start with `-` are rejected as negatives. CSS would drop
+/// `max-width: -100px` anyway, but catching it at parse time makes the
+/// diagnostic visible in dev builds instead of silently dropping.
+///
+/// Called from `parse_skrivro_config` for exactly two keys:
+/// `edit-pane-width`, `preview-pane-width`.
+#[cfg_attr(not(debug_assertions), allow(unused_variables))]
+fn normalize_dimension(key: &str, val: &str, line_num: usize) -> Option<String> {
+    if val.parse::<f64>().is_ok() {
+        // Bare number — ambiguous, reject with a pointer to valid units
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "[skrivro config] line {}: {} value '{}' requires an explicit unit (px, %, vw, rem, ch, ...). Examples: 900px, 80ch, 60%",
+            line_num, key, val
+        );
+        return None;
+    }
+    if val.starts_with('-') {
+        // Explicit negative like `-100px` — CSS would drop it silently,
+        // so catch it here where the user can see the warning in dev.
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "[skrivro config] line {}: {} value '{}' is negative, skipping",
+            line_num, key, val
+        );
+        return None;
+    }
+    // Has a unit suffix — trust it and let CSS validate at render time.
+    Some(val.to_string())
+}
+
 /// Parse a Skrivro config file's text into a `SkrivroConfig`.
 ///
 /// Parsing rules (per spec):
@@ -147,6 +204,11 @@ fn normalize_length(key: &str, val: &str, line_num: usize) -> Option<String> {
 ///   editor-padding) go through `normalize_length` which maps bare
 ///   positive numbers to pt and rejects zero/negative. See that
 ///   function's doc comment for the full rules.
+/// - Dimension-valued keys (edit-pane-width, preview-pane-width) go
+///   through `normalize_dimension`, which REJECTS bare numbers and
+///   requires an explicit CSS unit. No unit assumption is universally
+///   intuitive for layout widths, so the user must say what they mean.
+///   See that function's doc comment for the full rules.
 /// - One bad line does NOT abort loading the rest of the file
 ///
 /// All warning `eprintln!`s are wrapped in `#[cfg(debug_assertions)]` so
@@ -187,6 +249,8 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
             "edit-font-size" => cfg.edit_font_size = normalize_length(key, val, idx + 1),
             "preview-font-size" => cfg.preview_font_size = normalize_length(key, val, idx + 1),
             "editor-padding" => cfg.editor_padding = normalize_length(key, val, idx + 1),
+            "edit-pane-width" => cfg.edit_pane_width = normalize_dimension(key, val, idx + 1),
+            "preview-pane-width" => cfg.preview_pane_width = normalize_dimension(key, val, idx + 1),
             "theme" => cfg.theme = Some(val.to_string()),
             "asciidoc-safe-mode" => cfg.asciidoc_safe_mode = Some(val.to_string()),
             "cursor-position-format" => cfg.cursor_position_format = Some(val.to_string()),

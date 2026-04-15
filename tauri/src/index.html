@@ -1571,12 +1571,13 @@
   //
   // Apply overrides from the user's skrivro.conf file to :root CSS custom
   // properties and body classes. The CSS variables (--font-mono,
-  // --font-sans, --edit-font-size, --preview-font-size, --editor-padding)
-  // are all consumed by the CM6 theme and the .preview CSS rules, so a
-  // single assignment here propagates to every rendered element that
-  // reads them. No CM6 dispatch effects, no theme reconfiguration dance
-  // — this is why CSS variables are strictly simpler than CM6
-  // Compartments for this use case.
+  // --font-sans, --edit-font-size, --preview-font-size, --editor-padding,
+  // --edit-pane-width, --preview-pane-width) are all consumed by the CM6
+  // theme and the .preview / .editor-pane CSS rules, so a single
+  // assignment here propagates to every rendered element that reads
+  // them. No CM6 dispatch effects, no theme reconfiguration dance —
+  // this is why CSS variables are strictly simpler than CM6 Compartments
+  // for this use case.
   //
   // Runtime-read keys (asciidocSafeMode, cursorPositionFormat) are NOT
   // handled here — render() and formatCursorPosition() read them
@@ -1623,6 +1624,21 @@
     // and .cm-line horizontal padding.
     if (cfg.editorPadding) {
       root.style.setProperty('--editor-padding', cfg.editorPadding);
+    }
+
+    // Pane width overrides: affect only the single-pane display modes
+    // (body.mode-editor, body.mode-preview), which use max-width +
+    // margin: 0 auto to center a reading column. Split mode doesn't
+    // read these vars — each pane is 50% of the window via flexbox.
+    // Values are required to carry an explicit unit by the Rust-side
+    // normalize_dimension helper, so whatever arrives here is already
+    // known to be a valid CSS length string (or has a unit suffix we
+    // trust CSS to validate).
+    if (cfg.editPaneWidth) {
+      root.style.setProperty('--edit-pane-width', cfg.editPaneWidth);
+    }
+    if (cfg.previewPaneWidth) {
+      root.style.setProperty('--preview-pane-width', cfg.previewPaneWidth);
     }
 
     // Status bar mode pill style: canonical (default, bright Catppuccin

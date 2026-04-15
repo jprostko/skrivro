@@ -32,19 +32,27 @@
 
   /* Config-file-overridable tokens — referenced by the CM6 theme in
      tauri/src/index.html (fontSize on &, padding on .cm-content and
-     .cm-line) and by the .preview CSS rule below. Defaults are clean
-     integer pt values: config-file authors overwhelmingly think in
-     points, and keeping all three defaults in the same unit means the
-     shape of a config file matches the shape of these defaults. The
-     previous values (0.9rem / 0.95rem / 10pt) were a mixed-unit
-     leftover from the pre-config-file era. When the user sets
-     edit-font-size, preview-font-size, or editor-padding in
-     skrivro.conf, the frontend's applyUserConfig() function writes
-     the override as an inline style on :root, shadowing these
-     defaults. See memory/project_config_file.md for the full spec. */
+     .cm-line) and by the .preview / .editor-pane CSS rules below.
+
+     Font-size / padding defaults are clean integer pt values: config
+     file authors overwhelmingly think in points, and keeping all
+     three in the same unit means the shape of a config file matches
+     the shape of these defaults. Width defaults are in px because
+     layout measurements are natural in pixels and the historical
+     hardcoded value was 900px. The Rust parser's normalize_length
+     helper assumes pt for bare numbers (font-size / padding), while
+     normalize_dimension requires explicit units (widths) — this
+     split mirrors the difference in defaults here.
+
+     When the user sets one of the corresponding keys in skrivro.conf,
+     the frontend's applyUserConfig() function writes the override as
+     an inline style on :root, shadowing these defaults. See
+     memory/project_config_file.md for the full spec. */
   --edit-font-size: 11pt;
   --preview-font-size: 12pt;
   --editor-padding: 10pt;
+  --edit-pane-width: 900px;
+  --preview-pane-width: 900px;
 }
 
 html, body {
@@ -317,12 +325,12 @@ body.mode-editor .preview      { display: none; }
 body.mode-preview .editor-pane { display: none; }
 
 body.mode-editor .editor-pane {
-  max-width: 900px;
+  max-width: var(--edit-pane-width);
   margin: 0 auto;
   border-right: none;
 }
 body.mode-preview .preview {
-  max-width: 900px;
+  max-width: var(--preview-pane-width);
   margin: 0 auto;
 }
 

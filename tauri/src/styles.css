@@ -32,7 +32,7 @@
 
   /* Config-file-overridable tokens — referenced by the CM6 theme in
      tauri/src/index.html (fontSize on &, padding on .cm-content and
-     .cm-line) and by the .preview / .editor-pane CSS rules below.
+     .cm-line) and by the .preview / .cm-scroller CSS rules below.
 
      Font-size / padding defaults are clean integer pt values: config
      file authors overwhelmingly think in points, and keeping all
@@ -324,10 +324,43 @@ body.no-titlebar .titlebar { display: none; }
 body.mode-editor .preview      { display: none; }
 body.mode-preview .editor-pane { display: none; }
 
+/* Editor-only mode:
+   Apply the width constraint at .cm-scroller rather than at
+   .editor-pane, so that .cm-panels (which is a sibling of .cm-scroller
+   inside .cm-editor) is NOT constrained by --edit-pane-width. The
+   vim Ex command panel and search bar should span the full window
+   in editor-only mode, matching Vim's convention and the status
+   bar's width.
+
+   Why `width: min(..., 100%)` and not `max-width`:
+   .cm-editor is `display: flex !important; flex-direction: column`
+   (set by CM6's baseTheme — we can't easily change it). A flex item's
+   cross-axis size with max-width + `margin: 0 auto` collapses to
+   the item's content size rather than stretching to the max-width.
+   Empty editor with no gutter → content size ~27 px → scroller
+   becomes 27 px wide, with auto margins eating the rest. Verified
+   experimentally via getBoundingClientRect on the running app.
+
+   Explicit width with min() works correctly: the item's cross-axis
+   preferred size is set to min(edit-pane-width, 100%), so it fills
+   the smaller of the two. `margin: 0 auto` on the remaining free
+   space then centers it horizontally within .cm-editor.
+
+   Split mode is unaffected because the rules are scoped to
+   `body.mode-editor` — in split mode, `.editor-pane` is 50% of the
+   window via flexbox and the panel spans that 50% (correct, since
+   the Ex command belongs to the editor half, not the whole window).
+
+   Preview-only mode keeps the constraint on `.preview` itself
+   because `.preview` is our own div (not a CM6 element) and has no
+   sibling panels to worry about — a plain max-width on a block
+   element works the way you'd expect. */
 body.mode-editor .editor-pane {
-  max-width: var(--edit-pane-width);
-  margin: 0 auto;
   border-right: none;
+}
+body.mode-editor .cm-scroller {
+  width: min(var(--edit-pane-width), 100%);
+  margin: 0 auto;
 }
 body.mode-preview .preview {
   max-width: var(--preview-pane-width);

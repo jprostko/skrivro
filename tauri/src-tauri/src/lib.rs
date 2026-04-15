@@ -60,6 +60,15 @@ fn get_launch_info(state: tauri::State<LaunchInfo>) -> LaunchInfo {
 //   # Status bar mode pill style — canonical / muted
 //   statusbar-style = canonical
 //
+//   # Soft column limit: positive integer, character count, no default.
+//   # When set, the Col indicator in the status bar turns peach once the
+//   # cursor's column count on the current line exceeds this value —
+//   # useful for prose workflows with hard column-width conventions
+//   # (80- or 100-char line limits, commit messages, etc.). Tracks the
+//   # document column, not the visual wrap column, so soft-wrapped text
+//   # that exceeds the limit still triggers the indicator.
+//   soft-column-limit = 100
+//
 // Naming convention across three layers:
 //   - Config file:  kebab-case ("edit-font")   — user-facing spec
 //   - Rust struct:  snake_case (`edit_font`)   — Rust convention
@@ -90,6 +99,16 @@ struct SkrivroConfig {
     asciidoc_safe_mode: Option<String>,
     cursor_position_format: Option<String>,
     statusbar_style: Option<String>,
+    // First numeric-typed config key. Previously every field was
+    // `Option<String>` for uniformity, but for a strict positive-
+    // integer value there's no reason to store a string we'd have
+    // to parse on the JS side anyway. Serde serializes Option<u32>
+    // as `null | number`, so the frontend reads userConfig.softColumnLimit
+    // as `undefined | number` directly — no parseInt, no validation.
+    // Rejection logic (non-integer, zero, negative) lives in the
+    // parser's match arm; invalid values leave the field None and
+    // the frontend falls through to "no limit, no over-limit coloring."
+    soft_column_limit: Option<u32>,
 }
 
 /// Resolve the config file path per XDG Base Directory Spec.
@@ -258,6 +277,10 @@ fn normalize_dimension(key: &str, val: &str, line_num: usize) -> Option<String> 
 ///   requires an explicit CSS unit. No unit assumption is universally
 ///   intuitive for layout widths, so the user must say what they mean.
 ///   See that function's doc comment for the full rules.
+/// - `soft-column-limit` is parsed inline as a strict positive
+///   integer (not a CSS length) and stored in `Option<u32>` — the
+///   only numeric-typed field in `SkrivroConfig`. Non-integer, zero,
+///   or negative values are warned and skipped.
 /// - One bad line does NOT abort loading the rest of the file
 ///
 /// All warning `eprintln!`s are wrapped in `#[cfg(debug_assertions)]` so
@@ -307,6 +330,24 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
             "asciidoc-safe-mode" => cfg.asciidoc_safe_mode = Some(val.to_string()),
             "cursor-position-format" => cfg.cursor_position_format = Some(val.to_string()),
             "statusbar-style" => cfg.statusbar_style = Some(val.to_string()),
+            "soft-column-limit" => {
+                // Strict positive integer. Zero or negative is meaningless
+                // (every column would be past the limit / no column could
+                // ever be past it), so we reject both alongside non-numeric
+                // garbage. No-unit parse, no pt inference — this is a
+                // character count, not a CSS length.
+                match val.parse::<u32>() {
+                    Ok(n) if n > 0 => cfg.soft_column_limit = Some(n),
+                    _ => {
+                        #[cfg(debug_assertions)]
+                        eprintln!(
+                            "[skrivro config] line {}: soft-column-limit value '{}' must be a positive integer, skipping",
+                            idx + 1,
+                            val
+                        );
+                    }
+                }
+            }
             _ => {
                 #[cfg(debug_assertions)]
                 eprintln!(

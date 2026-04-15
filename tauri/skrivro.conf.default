@@ -102,3 +102,24 @@
 #              Insert / Replace / Command stay canonical.
 #              LazyVim-inspired.
 # statusbar-style = canonical
+
+# Soft column limit — positive integer, no default. When set, the Col
+# indicator in the status bar turns peach once the cursor's column
+# on the current LOGICAL line exceeds this value. Useful for prose
+# workflows with hard line-width conventions (80- or 100-char commit
+# messages, reStructuredText, Markdown with strict line limits, etc.).
+#
+# Character-based: counts actual characters (codepoints), not bytes
+# or visual cells. Em-dashes, emoji, and accented letters count as 1.
+#
+# Document-column, not visual-column: soft wrap is a display concern
+# and does NOT reset the count. If you type 150 characters on one
+# logical line in a window narrow enough to wrap at 60 characters,
+# the indicator still flags at col > limit — because the count is
+# based on the source document, not the rendered layout.
+#
+# No default: omit this key entirely if you write prose as "one
+# paragraph per line" (where soft wrap handles the visual display
+# and you don't care about source-line length). Set it explicitly
+# if your workflow treats source lines as having a fixed width.
+# soft-column-limit = 100

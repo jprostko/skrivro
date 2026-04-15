@@ -658,3 +658,33 @@ body.is-dirty .statusbar .status-filename::before {
 .statusbar .status-position {
   white-space: nowrap;
 }
+
+/* Soft-column-limit over-limit indicator. When the user has set
+   `soft-column-limit = N` in skrivro.conf and the cursor's column
+   on the current logical line exceeds N, the refreshStatus() JS
+   toggles `.over-limit` on the position slot and this rule paints
+   it.
+
+   Treatment is a peach outline (no fill) plus bold text, rather
+   than a simple text-color change. This gives the indicator a
+   shape cue — a visible border box appearing where there was
+   plain text — so the state change is perceivable even for users
+   whose color vision can't distinguish peach from the default
+   subtext gray by hue alone. The bold weight adds luminance
+   contrast as a secondary non-hue signal. Peach itself is kept
+   for users who CAN see the hue and matches the existing COMMAND
+   mode pill, reading as "caution" rather than "alarm."
+
+   The check is document-column-based, not visual-column-based:
+   soft wrap does not reset the count, so a logical line of 150
+   characters triggers the indicator at col > limit even if the
+   line has wrapped across multiple visual rows. See the soft-
+   column-limit note in memory/project_config_file.md for the
+   full rationale. */
+.statusbar .status-position.over-limit {
+  color: var(--ctp-peach);
+  border: 1px solid var(--ctp-peach);
+  padding: 0 0.4rem;
+  border-radius: 3px;
+  font-weight: 700;
+}

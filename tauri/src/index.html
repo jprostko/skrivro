@@ -445,18 +445,26 @@
   //   ruler:             '42,85'           — Vim ruler style
   // Stored in userConfig.cursorPositionFormat. Unknown values fall back
   // to verbose so a typo in the config doesn't break the status bar.
+  //
+  // Returns { text, col }. The `text` is the display string; `col` is
+  // the raw numeric column so refreshStatus can compare it against
+  // userConfig.softColumnLimit without recomputing. `col` is null in
+  // the pre-editor fallback case where there's no cursor yet — the
+  // caller treats null as "never over-limit."
   const formatCursorPosition = () => {
-    if (!editorView) return 'Ln 1, Col 1';
+    if (!editorView) return { text: 'Ln 1, Col 1', col: null };
     const head = editorView.state.selection.main.head;
     const line = editorView.state.doc.lineAt(head);
     const textBeforeCursor = line.text.slice(0, head - line.from);
-    const colNum = [...textBeforeCursor].length + 1;
+    const col = [...textBeforeCursor].length + 1;
+    let text;
     switch (userConfig.cursorPositionFormat) {
-      case 'compact': return `${line.number}:${colNum}`;
-      case 'ruler':   return `${line.number},${colNum}`;
+      case 'compact': text = `${line.number}:${col}`; break;
+      case 'ruler':   text = `${line.number},${col}`; break;
       case 'verbose':
-      default:        return `Ln ${line.number}, Col ${colNum}`;
+      default:        text = `Ln ${line.number}, Col ${col}`; break;
     }
+    return { text, col };
   };
 
   // Selection info displayed in visual modes in place of cursor position:
@@ -498,18 +506,50 @@
   const refreshStatus = () => {
     if (!statusBar) return;
     const mode = readVimMode();
+    const variant = mode === 'visual' ? readVisualVariant() : null;
+
+    // Mode pill
     if (mode) {
-      const variant = mode === 'visual' ? readVisualVariant() : null;
       statusMode.hidden = false;
       statusMode.dataset.vimMode = mode;
       statusMode.textContent = formatModeLabel(mode, variant);
-      statusPosition.textContent = mode === 'visual'
-        ? formatSelectionInfo(variant)
-        : formatCursorPosition();
     } else {
       statusMode.hidden = true;
-      statusPosition.textContent = formatCursorPosition();
     }
+
+    // Position slot: either vim visual-mode selection info or cursor
+    // position. Over-limit coloring only applies to the cursor position
+    // branch — selection info is a different display mode and the col
+    // concept doesn't map onto it.
+    let overLimit = false;
+    if (mode === 'visual') {
+      statusPosition.textContent = formatSelectionInfo(variant);
+    } else {
+      const { text, col } = formatCursorPosition();
+      statusPosition.textContent = text;
+      // Soft column limit: if the user set a positive integer limit
+      // in skrivro.conf, and the current cursor column is past it,
+      // flag the position slot with .over-limit so CSS can paint it
+      // peach. `col` is null in the pre-editor fallback case, so the
+      // null-check keeps us from flagging over-limit before the editor
+      // has even finished constructing.
+      //
+      // `typeof === 'number'` is the precise guard for softColumnLimit:
+      // Rust's `Option<u32>` serializes to `number | null` (serde
+      // default, no skip_serializing_if), so when the user has no
+      // `soft-column-limit` in their config, `userConfig.softColumnLimit`
+      // is `null`. A naive `!== undefined` check passes for null, and
+      // then `col > null` coerces null to 0, making the condition
+      // effectively `col > 0` — which is always true for any cursor
+      // position ≥ 1, so the over-limit class would be applied
+      // constantly. typeof is the unambiguous fix: only a real number
+      // enables the threshold check.
+      overLimit = col !== null
+        && typeof userConfig.softColumnLimit === 'number'
+        && col > userConfig.softColumnLimit;
+    }
+    statusPosition.classList.toggle('over-limit', overLimit);
+
     statusFilename.textContent = currentName;
   };
 

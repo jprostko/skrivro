@@ -13,6 +13,169 @@ fn get_launch_info(state: tauri::State<LaunchInfo>) -> LaunchInfo {
     state.inner().clone()
 }
 
+// ================= User config file =================
+//
+// Skrivro reads a user-editable flat `key = value` config file at startup
+// for font / size / padding / mode-style overrides. Not required — missing
+// file means "use compiled-in defaults." See memory/project_config_file.md
+// for the full design rationale and spec.
+//
+// File location: $XDG_CONFIG_HOME/skrivro/skrivro.conf, falling back to
+// $HOME/.config/skrivro/skrivro.conf if XDG_CONFIG_HOME is unset.
+//
+// Format example:
+//
+//   # Fonts
+//   edit-font = JetBrains Mono
+//   preview-font = Charter
+//
+//   edit-font-size = 14pt
+//   preview-font-size = 15pt
+//   editor-padding = 16pt
+//
+//   # Asciidoctor safe mode (set-and-forget; not exposed in UI)
+//   asciidoc-safe-mode = unsafe
+//
+//   # Status bar cursor position format — verbose / compact / ruler
+//   cursor-position-format = verbose
+//
+//   # Status bar mode pill style — canonical / muted
+//   statusbar-style = canonical
+//
+// Naming convention across three layers:
+//   - Config file:  kebab-case ("edit-font")   — user-facing spec
+//   - Rust struct:  snake_case (`edit_font`)   — Rust convention
+//   - JSON output:  camelCase  ("editFont")    — via serde rename_all,
+//                                                 for idiomatic JS
+//                                                 dot-access on the
+//                                                 frontend side.
+//
+// The parser's match arm handles kebab→snake mapping by hand; the serde
+// rename attribute handles snake→camel for the JSON boundary. JS code
+// then uses `cfg.editFont`, `cfg.asciidocSafeMode`, etc., without any
+// bracket-notation gymnastics.
+
+#[derive(Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+struct SkrivroConfig {
+    edit_font: Option<String>,
+    preview_font: Option<String>,
+    edit_font_size: Option<String>,
+    preview_font_size: Option<String>,
+    editor_padding: Option<String>,
+    theme: Option<String>,
+    asciidoc_safe_mode: Option<String>,
+    cursor_position_format: Option<String>,
+    statusbar_style: Option<String>,
+}
+
+/// Resolve the config file path per XDG Base Directory Spec.
+///
+/// Checks `$XDG_CONFIG_HOME` first, falling back to `$HOME/.config` if the
+/// XDG var is unset (which is what virtually all Linux setups use). Returns
+/// `None` if neither env var is set — unusual, effectively a sandboxed or
+/// broken environment; we treat it as "no config available" and fall
+/// through to defaults.
+fn skrivro_config_path() -> Option<PathBuf> {
+    let base = env::var("XDG_CONFIG_HOME")
+        .ok()
+        .map(PathBuf::from)
+        .or_else(|| env::var("HOME").ok().map(|h| PathBuf::from(h).join(".config")))?;
+    Some(base.join("skrivro").join("skrivro.conf"))
+}
+
+/// Parse a Skrivro config file's text into a `SkrivroConfig`.
+///
+/// Parsing rules (per spec):
+/// - One `key = value` per line
+/// - Whitespace around `=` is tolerated and stripped
+/// - Full-line comments only — `#` at the start of a trimmed line
+/// - Blank lines ignored
+/// - Unknown keys: warn and skip (forward-compat for future config keys
+///   so older binaries don't choke on newer configs)
+/// - Malformed lines (missing `=`): warn and skip
+/// - Empty values treated as "unset" — struct field stays `None`, frontend
+///   falls through to compiled-in defaults
+/// - One bad line does NOT abort loading the rest of the file
+///
+/// All warning `eprintln!`s are wrapped in `#[cfg(debug_assertions)]` so
+/// they only fire in debug builds (visible during `npm run tauri dev` from
+/// a terminal; compiled out of release builds entirely — zero runtime cost
+/// for end users, and no stderr noise from a launched .desktop entry).
+fn parse_skrivro_config(text: &str) -> SkrivroConfig {
+    let mut cfg = SkrivroConfig::default();
+    for (idx, raw) in text.lines().enumerate() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let Some(eq) = line.find('=') else {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "[skrivro config] line {}: no '=' found, skipping: {}",
+                idx + 1,
+                line
+            );
+            continue;
+        };
+        let key = line[..eq].trim();
+        let val = line[eq + 1..].trim();
+        if val.is_empty() {
+            // Empty value = explicit "unset" → leave the struct field None
+            // and let the frontend fall through to compiled-in defaults.
+            continue;
+        }
+        let val = val.to_string();
+        match key {
+            "edit-font" => cfg.edit_font = Some(val),
+            "preview-font" => cfg.preview_font = Some(val),
+            "edit-font-size" => cfg.edit_font_size = Some(val),
+            "preview-font-size" => cfg.preview_font_size = Some(val),
+            "editor-padding" => cfg.editor_padding = Some(val),
+            "theme" => cfg.theme = Some(val),
+            "asciidoc-safe-mode" => cfg.asciidoc_safe_mode = Some(val),
+            "cursor-position-format" => cfg.cursor_position_format = Some(val),
+            "statusbar-style" => cfg.statusbar_style = Some(val),
+            _ => {
+                #[cfg(debug_assertions)]
+                eprintln!(
+                    "[skrivro config] line {}: unknown key '{}', skipping",
+                    idx + 1,
+                    key
+                );
+            }
+        }
+    }
+    cfg
+}
+
+#[tauri::command]
+fn get_config() -> SkrivroConfig {
+    let Some(path) = skrivro_config_path() else {
+        return SkrivroConfig::default();
+    };
+    match std::fs::read_to_string(&path) {
+        Ok(text) => parse_skrivro_config(&text),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            // Expected common case — no config file, use defaults. Silent.
+            SkrivroConfig::default()
+        }
+        Err(e) => {
+            // Unexpected read error (permission denied, EIO, etc.). Warn
+            // in debug builds and fall through to defaults in either case
+            // so the app still launches.
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "[skrivro config] failed to read {}: {}",
+                path.display(),
+                e
+            );
+            let _ = e;
+            SkrivroConfig::default()
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Wayland app_id workaround: set GLib's program name to the Tauri
@@ -80,7 +243,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![get_launch_info])
+        .invoke_handler(tauri::generate_handler![get_launch_info, get_config])
         .setup(|app| {
 
             // On Linux, webkit2gtk inherits GTK's text-widget context menu,

@@ -29,6 +29,18 @@
 
   --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
+
+  /* Config-file-overridable tokens — referenced by the CM6 theme in
+     tauri/src/index.html (fontSize on &, padding on .cm-content and
+     .cm-line) and by the .preview CSS rule below. Defaults match the
+     historical hardcoded values. When the user sets edit-font-size,
+     preview-font-size, or editor-padding in skrivro.conf, the
+     frontend's applyUserConfig() function writes the override as an
+     inline style on :root, shadowing these defaults. See
+     memory/project_config_file.md for the full config file spec. */
+  --edit-font-size: 0.9rem;
+  --preview-font-size: 0.95rem;
+  --editor-padding: 10pt;
 }
 
 html, body {
@@ -113,7 +125,7 @@ body.no-titlebar .titlebar { display: none; }
   background: var(--ctp-mantle);
   color: var(--ctp-text);
   font-family: var(--font-sans);
-  font-size: 0.95rem;
+  font-size: var(--preview-font-size);
   line-height: 1.65;
   scrollbar-color: var(--ctp-surface1) var(--ctp-base);
   scrollbar-width: thin;
@@ -524,6 +536,26 @@ body.no-statusbar .statusbar { display: none; }
 .statusbar .status-mode-pill[data-vim-mode="visual"]  { background: var(--ctp-mauve);  color: var(--ctp-base); }
 .statusbar .status-mode-pill[data-vim-mode="replace"] { background: var(--ctp-red);    color: var(--ctp-base); }
 .statusbar .status-mode-pill[data-vim-mode="command"] { background: var(--ctp-peach);  color: var(--ctp-base); }
+
+/* Muted mode-pill style — LazyVim-inspired override. Toggled via the
+   `statusbar-style = muted` key in skrivro.conf, which the frontend's
+   applyUserConfig() applies by adding `mode-pill-muted` to the body
+   class. Only Normal and Visual differ from canonical — Insert and
+   Replace stay canonical (green/red) because LazyVim's captures didn't
+   diverge from canonical for those modes, and we never captured LazyVim
+   values for Replace/Command to know what they look like muted. If the
+   user later wants the full LazyVim palette, we can extend these rules
+   — but the canonical values are sane defaults for the uncaptured
+   modes. See memory/project_config_file.md and memory/project_status_bar.md
+   for the full discussion. */
+body.mode-pill-muted .statusbar .status-mode-pill[data-vim-mode="normal"] {
+  background: var(--ctp-surface0);
+  color: var(--ctp-subtext0);
+}
+body.mode-pill-muted .statusbar .status-mode-pill[data-vim-mode="visual"] {
+  background: var(--ctp-pink);
+  color: var(--ctp-base);
+}
 
 .statusbar .status-filename {
   overflow: hidden;

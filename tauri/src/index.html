@@ -323,6 +323,20 @@
   let launchCwd          = '';    // shell CWD at launch, captured from Rust; used as fallback for :w relative.txt
   let inCommandMode      = false; // true while vim's : command panel is focused — flips the mode pill to COMMAND
 
+  // User config file state. Populated at init from the Rust-side
+  // `get_config` command, which reads $XDG_CONFIG_HOME/skrivro/skrivro.conf
+  // (falling back to ~/.config/skrivro/skrivro.conf) and parses the flat
+  // key=value format. All keys are optional; missing keys leave the field
+  // undefined and callers fall through to compiled-in defaults.
+  //
+  // The Rust side uses `#[serde(rename_all = "camelCase")]`, so JS code
+  // accesses keys via dot notation: `userConfig.editFont`,
+  // `userConfig.asciidocSafeMode`, etc. — not bracket notation on
+  // kebab-case strings.
+  //
+  // See memory/project_config_file.md for the full spec.
+  let userConfig         = {};
+
   // Include-preprocessing state. See the Include preprocessing section
   // in Rendering (below) for the full design + SPA-fallback trap story.
   // includeCache: absolute path → raw file content, persists across
@@ -419,18 +433,30 @@
     }
   };
 
-  // Cursor position as 'Ln X, Col Y', 1-indexed, codepoint-aware.
-  // Counts Unicode codepoints (via [...str].length) rather than JS
-  // string length (UTF-16 code units) so emoji and other non-BMP
-  // characters count as 1. Em-dashes, curly quotes, accented letters
-  // all count as 1. Prose-correct by construction.
+  // Cursor position as 'Ln X, Col Y' (or a shorter variant), 1-indexed,
+  // codepoint-aware. Counts Unicode codepoints (via [...str].length)
+  // rather than JS string length (UTF-16 code units) so emoji and other
+  // non-BMP characters count as 1. Em-dashes, curly quotes, accented
+  // letters all count as 1. Prose-correct by construction.
+  //
+  // Format is configurable via `cursor-position-format` in skrivro.conf:
+  //   verbose (default): 'Ln 42, Col 85'  — prose-editor style
+  //   compact:           '42:85'           — terse code-editor style
+  //   ruler:             '42,85'           — Vim ruler style
+  // Stored in userConfig.cursorPositionFormat. Unknown values fall back
+  // to verbose so a typo in the config doesn't break the status bar.
   const formatCursorPosition = () => {
     if (!editorView) return 'Ln 1, Col 1';
     const head = editorView.state.selection.main.head;
     const line = editorView.state.doc.lineAt(head);
     const textBeforeCursor = line.text.slice(0, head - line.from);
     const colNum = [...textBeforeCursor].length + 1;
-    return `Ln ${line.number}, Col ${colNum}`;
+    switch (userConfig.cursorPositionFormat) {
+      case 'compact': return `${line.number}:${colNum}`;
+      case 'ruler':   return `${line.number},${colNum}`;
+      case 'verbose':
+      default:        return `Ln ${line.number}, Col ${colNum}`;
+    }
   };
 
   // Selection info displayed in visual modes in place of cursor position:
@@ -783,7 +809,16 @@
       // working with includes in an unsaved-new buffer.
       let lineMap = null;
       let baseDir = null;
-      const loadOpts = { safe: 'unsafe', sourcemap: true };
+      // Asciidoctor safe mode: config-file override via
+      // userConfig.asciidocSafeMode (set-and-forget knob, no UI), falling
+      // back to 'unsafe' which allows all features (docinfo, book-mode
+      // doctype, includes across directories, etc.). Valid values per
+      // Asciidoctor: unsafe / safe / server / secure. See
+      // memory/project_config_file.md for why safe mode is config-only.
+      const loadOpts = {
+        safe: userConfig.asciidocSafeMode || 'unsafe',
+        sourcemap: true,
+      };
 
       if (currentPath) {
         baseDir = await dirname(currentPath);
@@ -1270,7 +1305,7 @@
       color: 'var(--ctp-text)',
       backgroundColor: 'var(--ctp-base)',
       height: '100%',
-      fontSize: '0.9rem',
+      fontSize: 'var(--edit-font-size)',
     },
     '.cm-scroller': {
       fontFamily: 'var(--font-mono)',
@@ -1280,10 +1315,10 @@
     },
     '.cm-content': {
       caretColor: 'var(--ctp-rosewater)',
-      padding: '10pt 0',
+      padding: 'var(--editor-padding) 0',
     },
     '.cm-line': {
-      padding: '0 10pt',
+      padding: '0 var(--editor-padding)',
     },
     '.cm-cursor, .cm-dropCursor': {
       borderLeftColor: 'var(--ctp-rosewater)',
@@ -1531,6 +1566,97 @@
       }
     }),
   ];
+
+  // ================= User config application =================
+  //
+  // Apply overrides from the user's skrivro.conf file to :root CSS custom
+  // properties and body classes. The CSS variables (--font-mono,
+  // --font-sans, --edit-font-size, --preview-font-size, --editor-padding)
+  // are all consumed by the CM6 theme and the .preview CSS rules, so a
+  // single assignment here propagates to every rendered element that
+  // reads them. No CM6 dispatch effects, no theme reconfiguration dance
+  // — this is why CSS variables are strictly simpler than CM6
+  // Compartments for this use case.
+  //
+  // Runtime-read keys (asciidocSafeMode, cursorPositionFormat) are NOT
+  // handled here — render() and formatCursorPosition() read them
+  // directly from the module-level userConfig each time they run.
+  //
+  // Call order: must run BEFORE `new EditorView(...)` in the init block,
+  // because the CM6 theme extension reads CSS variables at editor
+  // construction time. Overriding afterwards would require a dispatched
+  // reconfigure.
+  //
+  // See memory/project_config_file.md for the spec.
+  const applyUserConfig = (cfg) => {
+    const root = document.documentElement;
+
+    // Font overrides: prepend the user's font to the existing stack so
+    // their choice wins if the font is installed on the system, and the
+    // original fallback chain kicks in if not. Without prepending, a
+    // user who sets `edit-font = Codelia` on a machine without Codelia
+    // installed would get the browser's default monospace (usually ugly)
+    // instead of our curated stack. Read the current stack via
+    // getComputedStyle — it's defined in styles.css, not as a JS
+    // constant, so we can't inline the default here.
+    if (cfg.editFont) {
+      const current = getComputedStyle(root).getPropertyValue('--font-mono').trim();
+      root.style.setProperty('--font-mono', `${cfg.editFont}, ${current}`);
+    }
+    if (cfg.previewFont) {
+      const current = getComputedStyle(root).getPropertyValue('--font-sans').trim();
+      root.style.setProperty('--font-sans', `${cfg.previewFont}, ${current}`);
+    }
+
+    // Font size overrides: direct CSS variable assignment propagates
+    // automatically to the CM6 theme (fontSize: 'var(--edit-font-size)')
+    // and the .preview CSS rule (font-size: var(--preview-font-size)).
+    if (cfg.editFontSize) {
+      root.style.setProperty('--edit-font-size', cfg.editFontSize);
+    }
+    if (cfg.previewFontSize) {
+      root.style.setProperty('--preview-font-size', cfg.previewFontSize);
+    }
+
+    // Editor padding override: referenced by the CM6 theme via the
+    // --editor-padding variable for both .cm-content vertical padding
+    // and .cm-line horizontal padding.
+    if (cfg.editorPadding) {
+      root.style.setProperty('--editor-padding', cfg.editorPadding);
+    }
+
+    // Status bar mode pill style: canonical (default, bright Catppuccin
+    // blue/green/mauve/red/peach from catppuccin/nvim's lualine.lua)
+    // vs muted (LazyVim-inspired, normal = surface0 + subtext0, visual
+    // = pink + base, other modes stay canonical). Implementation is a
+    // body class that CSS conditionally overrides the canonical pill
+    // colors when set. Unknown values fall through to canonical with
+    // a warning.
+    if (cfg.statusbarStyle === 'muted') {
+      document.body.classList.add('mode-pill-muted');
+    } else if (cfg.statusbarStyle && cfg.statusbarStyle !== 'canonical') {
+      console.warn(
+        `[skrivro config] statusbar-style '${cfg.statusbarStyle}' not ` +
+        `recognized (expected 'canonical' or 'muted'), using canonical`
+      );
+    }
+
+    // theme key is parsed and stored but not yet applied — v1 only
+    // supports catppuccin-mocha. If the user specifies anything else,
+    // warn in dev builds and fall through to the default theme.
+    // Future: load theme tokens from
+    // $XDG_CONFIG_HOME/skrivro/themes/<name>.conf.
+    if (cfg.theme && cfg.theme !== 'catppuccin-mocha') {
+      console.warn(
+        `[skrivro config] theme '${cfg.theme}' not supported in v1, ` +
+        `using catppuccin-mocha`
+      );
+    }
+
+    // asciidocSafeMode and cursorPositionFormat are not applied here —
+    // they're read directly from userConfig by render() and
+    // formatCursorPosition() at the points where they take effect.
+  };
 
   // ================= Toggles =================
 
@@ -1926,6 +2052,25 @@
     console.error('Failed to get launch info:', e);
   }
   launchCwd = launchInfo.cwd || '';
+
+  // Query Rust for user config file overrides. Missing / malformed /
+  // unreadable file is not an error — the Rust side silently returns a
+  // default SkrivroConfig with all fields undefined, and we fall through
+  // to compiled-in defaults via applyUserConfig's `if (cfg.X)` guards.
+  //
+  // applyUserConfig MUST run before the EditorView is constructed below,
+  // because the CM6 theme extension reads --edit-font-size and
+  // --editor-padding at construction time. Setting them afterwards
+  // would require a dispatched reconfigure.
+  //
+  // See memory/project_config_file.md for the full spec.
+  try {
+    userConfig = await invoke('get_config');
+  } catch (e) {
+    console.error('Failed to get user config:', e);
+    userConfig = {};
+  }
+  applyUserConfig(userConfig);
 
   // Determine the initial document content.
   let initialDoc = DEFAULT_DOC;

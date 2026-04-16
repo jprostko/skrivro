@@ -71,7 +71,8 @@
 # preview-pane-width = 900px
 
 # ================= Theme =================
-# Bundled themes: catppuccin-mocha (default), dracula, tokyo-night-moon, nord
+# Bundled themes: catppuccin-mocha (default), dracula, gruvbox-dark,
+#                 nord, tokyo-night-moon
 #
 # Set `theme = dracula` to switch. Omit the key (or set it to
 # catppuccin-mocha) for the default.

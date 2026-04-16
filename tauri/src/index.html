@@ -1373,15 +1373,15 @@
 
   const catppuccinTheme = EditorView.theme({
     '&': {
-      color: 'var(--ctp-text)',
-      backgroundColor: 'var(--ctp-base)',
+      color: 'var(--skr-text)',
+      backgroundColor: 'var(--skr-bg)',
       height: '100%',
       fontSize: 'var(--edit-font-size)',
     },
     '.cm-scroller': {
       fontFamily: 'var(--font-mono)',
       lineHeight: '1.6',
-      scrollbarColor: 'var(--ctp-surface1) var(--ctp-base)',
+      scrollbarColor: 'var(--skr-surface-hover) var(--skr-bg)',
       scrollbarWidth: 'thin',
     },
     // CM6 splits editor padding across two elements. .cm-content is
@@ -1396,7 +1396,7 @@
     // "2.5rem" (uniform) or "2.5rem 3rem" (asymmetric start/end) and
     // drop straight in.
     '.cm-content': {
-      caretColor: 'var(--ctp-rosewater)',
+      caretColor: 'var(--skr-cursor)',
       paddingBlock: 'var(--editor-padding-y)',
       paddingInline: '0',
     },
@@ -1405,54 +1405,54 @@
       paddingInline: 'var(--editor-padding-x)',
     },
     '.cm-cursor, .cm-dropCursor': {
-      borderLeftColor: 'var(--ctp-rosewater)',
+      borderLeftColor: 'var(--skr-cursor)',
       borderLeftWidth: '2px',
     },
     '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-      backgroundColor: 'var(--ctp-surface1)',
+      backgroundColor: 'var(--skr-surface-hover)',
     },
     '.cm-gutters': {
-      backgroundColor: 'var(--ctp-base)',
-      color: 'var(--ctp-overlay0)',
+      backgroundColor: 'var(--skr-bg)',
+      color: 'var(--skr-text-faint)',
       border: 'none',
     },
     '.cm-gutterElement': {
       padding: '0 0.5rem 0 1rem',
       minWidth: '2.5rem',
     },
-    '.cm-activeLine': { backgroundColor: 'rgba(49, 50, 68, 0.25)' },
+    '.cm-activeLine': { backgroundColor: 'var(--skr-bg-active-line)' },
     '.cm-activeLineGutter': {
       backgroundColor: 'transparent',
-      color: 'var(--ctp-subtext1)',
+      color: 'var(--skr-text-muted)',
     },
     '.cm-scroller::-webkit-scrollbar': { width: '10px', height: '10px' },
-    '.cm-scroller::-webkit-scrollbar-track': { background: 'var(--ctp-base)' },
+    '.cm-scroller::-webkit-scrollbar-track': { background: 'var(--skr-bg)' },
     '.cm-scroller::-webkit-scrollbar-thumb': {
-      background: 'var(--ctp-surface1)',
+      background: 'var(--skr-surface-hover)',
       borderRadius: '5px',
-      border: '2px solid var(--ctp-base)',
+      border: '2px solid var(--skr-bg)',
     },
-    '.cm-scroller::-webkit-scrollbar-thumb:hover': { background: 'var(--ctp-surface2)' },
+    '.cm-scroller::-webkit-scrollbar-thumb:hover': { background: 'var(--skr-surface-hover)' },
     // Vim block cursor
     '.cm-fat-cursor': {
-      background: 'var(--ctp-rosewater)',
+      background: 'var(--skr-cursor)',
       outline: 'none',
       border: 'none',
     },
     '&:not(.cm-focused) .cm-fat-cursor': {
       background: 'transparent',
-      outline: 'solid 1px var(--ctp-rosewater)',
+      outline: 'solid 1px var(--skr-cursor)',
     },
     // Vim Ex command / search panel at the bottom of the editor.
     // Without these, CM6's built-in dark base theme provides a neutral
     // gray strip and the <input> falls back to the UA's black-on-white
     // field defaults (UA input styling does not inherit from the parent).
     '.cm-panels': {
-      backgroundColor: 'var(--ctp-mantle)',
-      color: 'var(--ctp-text)',
+      backgroundColor: 'var(--skr-bg-panel)',
+      color: 'var(--skr-text)',
     },
     '.cm-panels.cm-panels-bottom': {
-      borderTop: '1px solid var(--ctp-surface0)',
+      borderTop: '1px solid var(--skr-surface)',
     },
     // CM6 (or @replit/codemirror-vim's .cm-vim-panel class) sets 10px
     // of horizontal padding on .cm-panel. The right side shows as a
@@ -1465,8 +1465,8 @@
       paddingRight: '0',
     },
     '.cm-panel input, .cm-textfield': {
-      backgroundColor: 'var(--ctp-surface0)',
-      color: 'var(--ctp-text)',
+      backgroundColor: 'var(--skr-surface)',
+      color: 'var(--skr-text)',
       border: 'none',
       outline: 'none',
       fontFamily: 'var(--font-mono)',
@@ -1490,20 +1490,20 @@
   // ================= Catppuccin highlight style =================
 
   const catppuccinHighlight = HighlightStyle.define([
-    { tag: t.heading1, color: 'var(--ctp-lavender)', fontWeight: 'bold', fontSize: '1.5em' },
-    { tag: t.heading2, color: 'var(--ctp-lavender)', fontWeight: 'bold', fontSize: '1.3em' },
-    { tag: t.heading3, color: 'var(--ctp-mauve)',    fontWeight: 'bold', fontSize: '1.15em' },
-    { tag: t.heading4, color: 'var(--ctp-mauve)',    fontWeight: 'bold' },
-    { tag: t.heading5, color: 'var(--ctp-pink)',     fontWeight: 'bold' },
-    { tag: t.heading6, color: 'var(--ctp-pink)',     fontWeight: 'bold' },
-    { tag: t.strong,        color: 'var(--ctp-text)',    fontWeight: 'bold' },
-    { tag: t.emphasis,      color: 'var(--ctp-text)',    fontStyle: 'italic' },
-    { tag: t.link,          color: 'var(--ctp-blue)',    textDecoration: 'underline' },
-    { tag: t.monospace,     color: 'var(--ctp-peach)' },
-    { tag: t.comment,       color: 'var(--ctp-overlay0)', fontStyle: 'italic' },
-    { tag: t.list,          color: 'var(--ctp-peach)' },
-    { tag: t.attributeName, color: 'var(--ctp-yellow)' },
-    { tag: t.punctuation,   color: 'var(--ctp-overlay1)' },
+    { tag: t.heading1, color: 'var(--skr-accent)', fontWeight: 'bold', fontSize: '1.5em' },
+    { tag: t.heading2, color: 'var(--skr-accent)', fontWeight: 'bold', fontSize: '1.3em' },
+    { tag: t.heading3, color: 'var(--skr-accent-alt)',    fontWeight: 'bold', fontSize: '1.15em' },
+    { tag: t.heading4, color: 'var(--skr-accent-alt)',    fontWeight: 'bold' },
+    { tag: t.heading5, color: 'var(--skr-accent-minor)',     fontWeight: 'bold' },
+    { tag: t.heading6, color: 'var(--skr-accent-minor)',     fontWeight: 'bold' },
+    { tag: t.strong,        color: 'var(--skr-text)',    fontWeight: 'bold' },
+    { tag: t.emphasis,      color: 'var(--skr-text)',    fontStyle: 'italic' },
+    { tag: t.link,          color: 'var(--skr-link)',    textDecoration: 'underline' },
+    { tag: t.monospace,     color: 'var(--skr-emphasis)' },
+    { tag: t.comment,       color: 'var(--skr-text-faint)', fontStyle: 'italic' },
+    { tag: t.list,          color: 'var(--skr-emphasis)' },
+    { tag: t.attributeName, color: 'var(--skr-warning)' },
+    { tag: t.punctuation,   color: 'var(--skr-text-faint)' },
   ]);
 
   // ================= Minimal AsciiDoc stream highlighter =================

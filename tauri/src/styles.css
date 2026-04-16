@@ -1,31 +1,43 @@
 :root {
-  /* Catppuccin Mocha */
-  --ctp-rosewater: #f5e0dc;
-  --ctp-flamingo:  #f2cdcd;
-  --ctp-pink:      #f5c2e7;
-  --ctp-mauve:     #cba6f7;
-  --ctp-red:       #f38ba8;
-  --ctp-maroon:    #eba0ac;
-  --ctp-peach:     #fab387;
-  --ctp-yellow:    #f9e2af;
-  --ctp-green:     #a6e3a1;
-  --ctp-teal:      #94e2d5;
-  --ctp-sky:       #89dceb;
-  --ctp-sapphire:  #74c7ec;
-  --ctp-blue:      #89b4fa;
-  --ctp-lavender:  #b4befe;
-  --ctp-text:      #cdd6f4;
-  --ctp-subtext1:  #bac2de;
-  --ctp-subtext0:  #a6adc8;
-  --ctp-overlay2:  #9399b2;
-  --ctp-overlay1:  #7f849c;
-  --ctp-overlay0:  #6c7086;
-  --ctp-surface2:  #585b70;
-  --ctp-surface1:  #45475a;
-  --ctp-surface0:  #313244;
-  --ctp-base:      #1e1e2e;
-  --ctp-mantle:    #181825;
-  --ctp-crust:     #11111b;
+  /* Skrivro semantic theme — Catppuccin Mocha port
+     24 slots: 7 backgrounds, 2 surfaces, 4 text, 11 accents.
+     See memory/project_theming.md for the full slot schema,
+     palette research (Dracula, Tokyo Night Moon), and the
+     rationale for decoupling from Catppuccin's hue-named tokens.
+     To create a new theme, fill in each slot below with your
+     palette's best match for the PURPOSE described in the comment. */
+
+  /* Backgrounds */
+  --skr-bg:              #1e1e2e; /* primary — body, editor, scrollbar tracks */
+  --skr-bg-panel:        #181825; /* chrome — titlebar, preview, dialogs, CM6 panels */
+  --skr-bg-inset:        #11111b; /* deepest — code blocks, literalblock, error bg */
+  --skr-bg-backdrop:     rgba(17, 17, 27, 0.6); /* dialog overlay */
+  --skr-bg-stripe:       rgba(49, 50, 68, 0.3); /* preview table zebra rows */
+  --skr-bg-active-line:  rgba(49, 50, 68, 0.25); /* CM6 active line highlight */
+  --skr-shadow:          rgba(0, 0, 0, 0.5); /* dialog box-shadow */
+
+  /* Surfaces */
+  --skr-surface:         #313244; /* borders, buttons, inputs, code spans */
+  --skr-surface-hover:   #45475a; /* hover, selection, scrollbar thumb */
+
+  /* Text */
+  --skr-text:            #cdd6f4; /* primary */
+  --skr-text-muted:      #bac2de; /* secondary — titlebar, captions, active gutter */
+  --skr-text-dim:        #a6adc8; /* tertiary — statusbar, labels */
+  --skr-text-faint:      #6c7086; /* dimmest — line numbers, comments, sync at-rest */
+
+  /* Accents */
+  --skr-accent:          #b4befe; /* h1/h2 headings, focus rings, help title */
+  --skr-accent-alt:      #cba6f7; /* h3/h4 headings, quote accent */
+  --skr-accent-minor:    #f5c2e7; /* h5/h6 headings, muted visual mode */
+  --skr-link:            #89b4fa; /* links, info admonition, normal mode pill */
+  --skr-emphasis:        #fab387; /* inline code, dirty indicator, command mode */
+  --skr-warning:         #f9e2af; /* caution admonition, attributes */
+  --skr-error:           #f38ba8; /* errors, replace mode, discard button */
+  --skr-error-hover:     #eba0ac; /* discard button hover */
+  --skr-success:         #a6e3a1; /* tip admonition, insert mode pill */
+  --skr-feedback:        #94e2d5; /* sync indicator flash */
+  --skr-cursor:          #f5e0dc; /* caret, vim block cursor */
 
   --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
@@ -83,8 +95,8 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: var(--ctp-base);
-  color: var(--ctp-text);
+  background: var(--skr-bg);
+  color: var(--skr-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -98,21 +110,21 @@ body { display: flex; flex-direction: column; }
   justify-content: space-between;
   gap: 1rem;
   padding: 0.5rem 1rem;
-  background: var(--ctp-mantle);
-  border-bottom: 1px solid var(--ctp-surface0);
+  background: var(--skr-bg-panel);
+  border-bottom: 1px solid var(--skr-surface);
   font-size: 0.85rem;
-  color: var(--ctp-subtext1);
+  color: var(--skr-text-muted);
   user-select: none;
   flex-shrink: 0;
 }
 .titlebar .name { font-weight: 500; }
 body.is-dirty .titlebar .name::before {
   content: '● ';
-  color: var(--ctp-peach);
+  color: var(--skr-emphasis);
 }
 .titlebar .help-button {
-  background: var(--ctp-surface0);
-  color: var(--ctp-blue);
+  background: var(--skr-surface);
+  color: var(--skr-link);
   border: none;
   border-radius: 4px;
   width: 1.5rem;
@@ -127,11 +139,11 @@ body.is-dirty .titlebar .name::before {
   justify-content: center;
 }
 .titlebar .help-button:hover {
-  background: var(--ctp-surface1);
-  color: var(--ctp-lavender);
+  background: var(--skr-surface-hover);
+  color: var(--skr-accent);
 }
 .titlebar .help-button:focus-visible {
-  outline: 2px solid var(--ctp-lavender);
+  outline: 2px solid var(--skr-accent);
   outline-offset: 2px;
 }
 body.no-titlebar .titlebar { display: none; }
@@ -150,8 +162,8 @@ body.no-titlebar .titlebar { display: none; }
 }
 .editor-pane {
   overflow: hidden;
-  background: var(--ctp-base);
-  border-right: 1px solid var(--ctp-surface0);
+  background: var(--skr-bg);
+  border-right: 1px solid var(--skr-surface);
 }
 .editor-pane .cm-editor { height: 100%; }
 .editor-pane .cm-editor.cm-focused { outline: none; }
@@ -160,12 +172,12 @@ body.no-titlebar .titlebar { display: none; }
   overflow: auto;
   padding-block: var(--preview-padding-y);
   padding-inline: var(--preview-padding-x);
-  background: var(--ctp-mantle);
-  color: var(--ctp-text);
+  background: var(--skr-bg-panel);
+  color: var(--skr-text);
   font-family: var(--font-sans);
   font-size: var(--preview-font-size);
   line-height: 1.65;
-  scrollbar-color: var(--ctp-surface1) var(--ctp-base);
+  scrollbar-color: var(--skr-surface-hover) var(--skr-bg);
   scrollbar-width: thin;
 }
 .preview > :first-child { margin-top: 0; }
@@ -173,41 +185,41 @@ body.no-titlebar .titlebar { display: none; }
 /* ---------- Preview — generic HTML ---------- */
 .preview h1, .preview h2, .preview h3,
 .preview h4, .preview h5, .preview h6 {
-  color: var(--ctp-lavender);
+  color: var(--skr-accent);
   font-weight: 600;
   line-height: 1.25;
   margin-top: 1.6em;
   margin-bottom: 0.6em;
 }
-.preview h1 { font-size: 1.9rem; border-bottom: 1px solid var(--ctp-surface0); padding-bottom: 0.3em; }
-.preview h2 { font-size: 1.5rem; border-bottom: 1px solid var(--ctp-surface0); padding-bottom: 0.25em; }
-.preview h3 { font-size: 1.25rem; color: var(--ctp-mauve); }
-.preview h4 { font-size: 1.1rem;  color: var(--ctp-mauve); }
-.preview h5, .preview h6 { font-size: 1rem; color: var(--ctp-pink); }
+.preview h1 { font-size: 1.9rem; border-bottom: 1px solid var(--skr-surface); padding-bottom: 0.3em; }
+.preview h2 { font-size: 1.5rem; border-bottom: 1px solid var(--skr-surface); padding-bottom: 0.25em; }
+.preview h3 { font-size: 1.25rem; color: var(--skr-accent-alt); }
+.preview h4 { font-size: 1.1rem;  color: var(--skr-accent-alt); }
+.preview h5, .preview h6 { font-size: 1rem; color: var(--skr-accent-minor); }
 
 .preview p { margin: 0.8em 0; }
-.preview a { color: var(--ctp-blue); text-decoration: none; }
+.preview a { color: var(--skr-link); text-decoration: none; }
 .preview a:hover { text-decoration: underline; }
-.preview strong { color: var(--ctp-text); font-weight: 700; }
-.preview em { color: var(--ctp-text); }
+.preview strong { color: var(--skr-text); font-weight: 700; }
+.preview em { color: var(--skr-text); }
 
 .preview code {
   font-family: var(--font-mono);
   font-size: 0.85em;
-  background: var(--ctp-surface0);
-  color: var(--ctp-peach);
+  background: var(--skr-surface);
+  color: var(--skr-emphasis);
   padding: 0.1em 0.35em;
   border-radius: 4px;
 }
 .preview pre {
   font-family: var(--font-mono);
   font-size: 0.85em;
-  background: var(--ctp-crust);
-  color: var(--ctp-text);
+  background: var(--skr-bg-inset);
+  color: var(--skr-text);
   padding: 1em 1.2em;
   border-radius: 6px;
   overflow-x: auto;
-  border: 1px solid var(--ctp-surface0);
+  border: 1px solid var(--skr-surface);
   line-height: 1.5;
   margin: 1em 0;
 }
@@ -222,13 +234,13 @@ body.no-titlebar .titlebar { display: none; }
 .preview .quoteblock blockquote {
   margin: 1em 0;
   padding: 0.5em 1.2em;
-  border-left: 3px solid var(--ctp-mauve);
-  background: var(--ctp-base);
-  color: var(--ctp-subtext1);
+  border-left: 3px solid var(--skr-accent-alt);
+  background: var(--skr-bg);
+  color: var(--skr-text-muted);
   border-radius: 0 4px 4px 0;
 }
 .preview .quoteblock .attribution {
-  color: var(--ctp-subtext0);
+  color: var(--skr-text-dim);
   font-size: 0.85em;
   text-align: right;
   margin-top: 0.5em;
@@ -236,7 +248,7 @@ body.no-titlebar .titlebar { display: none; }
 
 .preview hr {
   border: none;
-  border-top: 1px solid var(--ctp-surface0);
+  border-top: 1px solid var(--skr-surface);
   margin: 2em 0;
 }
 
@@ -260,83 +272,83 @@ body.no-titlebar .titlebar { display: none; }
   width: 100%;
 }
 .preview th, .preview td {
-  border: 1px solid var(--ctp-surface0);
+  border: 1px solid var(--skr-surface);
   padding: 0.5em 0.8em;
   text-align: left;
 }
 .preview th {
-  background: var(--ctp-surface0);
-  color: var(--ctp-lavender);
+  background: var(--skr-surface);
+  color: var(--skr-accent);
 }
-.preview tr:nth-child(even) td { background: rgba(49, 50, 68, 0.3); }
+.preview tr:nth-child(even) td { background: var(--skr-bg-stripe); }
 
 /* ---------- Preview — AsciiDoctor block classes ---------- */
 .preview .listingblock pre,
 .preview .literalblock pre {
-  background: var(--ctp-crust);
+  background: var(--skr-bg-inset);
 }
 .preview .exampleblock > .content {
-  border-left: 3px solid var(--ctp-blue);
+  border-left: 3px solid var(--skr-link);
   padding: 0.5em 1em;
-  background: var(--ctp-base);
+  background: var(--skr-bg);
   border-radius: 0 4px 4px 0;
   margin: 1em 0;
 }
 .preview .sidebarblock {
-  border: 1px solid var(--ctp-surface0);
+  border: 1px solid var(--skr-surface);
   border-radius: 6px;
   padding: 1em 1.2em;
-  background: var(--ctp-base);
+  background: var(--skr-bg);
   margin: 1em 0;
 }
 .preview .admonitionblock { margin: 1em 0; }
 .preview .admonitionblock > table {
   border: none;
-  border-left: 3px solid var(--ctp-yellow);
-  background: var(--ctp-base);
+  border-left: 3px solid var(--skr-warning);
+  background: var(--skr-bg);
   border-radius: 0 4px 4px 0;
 }
 .preview .admonitionblock > table td { border: none; padding: 0.8em 1em; }
-.preview .admonitionblock.note      > table { border-left-color: var(--ctp-blue); }
-.preview .admonitionblock.tip       > table { border-left-color: var(--ctp-green); }
-.preview .admonitionblock.warning   > table { border-left-color: var(--ctp-peach); }
-.preview .admonitionblock.caution   > table { border-left-color: var(--ctp-yellow); }
-.preview .admonitionblock.important > table { border-left-color: var(--ctp-red); }
+.preview .admonitionblock.note      > table { border-left-color: var(--skr-link); }
+.preview .admonitionblock.tip       > table { border-left-color: var(--skr-success); }
+.preview .admonitionblock.warning   > table { border-left-color: var(--skr-emphasis); }
+.preview .admonitionblock.caution   > table { border-left-color: var(--skr-warning); }
+.preview .admonitionblock.important > table { border-left-color: var(--skr-error); }
 .preview .admonitionblock td.icon {
-  color: var(--ctp-subtext1);
+  color: var(--skr-text-muted);
   font-weight: 600;
   width: 2.5em;
   vertical-align: top;
 }
 .preview .title {
-  color: var(--ctp-subtext0);
+  color: var(--skr-text-dim);
   font-style: italic;
   margin-bottom: 0.3em;
 }
 .preview .verseblock pre {
   font-family: inherit;
   white-space: pre-wrap;
-  background: var(--ctp-base);
+  background: var(--skr-bg);
   border: none;
 }
 
 /* ---------- Preview scrollbars (webkit) ---------- */
 .preview::-webkit-scrollbar { width: 10px; height: 10px; }
-.preview::-webkit-scrollbar-track { background: var(--ctp-base); }
+.preview::-webkit-scrollbar-track { background: var(--skr-bg); }
 .preview::-webkit-scrollbar-thumb {
-  background: var(--ctp-surface1);
+  background: var(--skr-surface-hover);
   border-radius: 5px;
-  border: 2px solid var(--ctp-base);
+  border: 2px solid var(--skr-bg);
 }
-.preview::-webkit-scrollbar-thumb:hover { background: var(--ctp-surface2); }
+.preview::-webkit-scrollbar-thumb:hover { background: var(--skr-surface-hover); }
 
 .render-error {
-  color: var(--ctp-red);
+  color: var(--skr-error);
   font-family: var(--font-mono);
   font-size: 0.85em;
-  background: var(--ctp-crust);
+  background: var(--skr-bg-inset);
   padding: 1em;
-  border-left: 3px solid var(--ctp-red);
+  border-left: 3px solid var(--skr-error);
   border-radius: 4px;
 }
 
@@ -398,23 +410,23 @@ body.no-gutter .cm-gutters { display: none; }
 
 /* ---------- Confirm dialog (custom <dialog>) ---------- */
 dialog.confirm-dialog {
-  background: var(--ctp-mantle);
-  color: var(--ctp-text);
-  border: 1px solid var(--ctp-surface0);
+  background: var(--skr-bg-panel);
+  color: var(--skr-text);
+  border: 1px solid var(--skr-surface);
   border-radius: 8px;
   padding: 1.5rem 1.75rem;
   font-family: var(--font-sans);
   font-size: 0.95rem;
   max-width: 420px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 40px var(--skr-shadow);
 }
 dialog.confirm-dialog::backdrop {
-  background: rgba(17, 17, 27, 0.6);
+  background: var(--skr-bg-backdrop);
   backdrop-filter: blur(2px);
 }
 .confirm-dialog .confirm-message {
   margin: 0 0 1.25rem 0;
-  color: var(--ctp-text);
+  color: var(--skr-text);
   line-height: 1.5;
 }
 .confirm-dialog .confirm-actions {
@@ -423,9 +435,9 @@ dialog.confirm-dialog::backdrop {
   justify-content: flex-end;
 }
 .confirm-dialog .confirm-btn {
-  background: var(--ctp-surface0);
-  color: var(--ctp-text);
-  border: 1px solid var(--ctp-surface1);
+  background: var(--skr-surface);
+  color: var(--skr-text);
+  border: 1px solid var(--skr-surface-hover);
   border-radius: 4px;
   padding: 0.45rem 1.1rem;
   font-family: var(--font-sans);
@@ -433,28 +445,28 @@ dialog.confirm-dialog::backdrop {
   cursor: pointer;
 }
 .confirm-dialog .confirm-btn:hover {
-  background: var(--ctp-surface1);
+  background: var(--skr-surface-hover);
 }
 .confirm-dialog .confirm-btn:focus-visible {
-  outline: 2px solid var(--ctp-lavender);
+  outline: 2px solid var(--skr-accent);
   outline-offset: 2px;
 }
 .confirm-dialog .confirm-btn-primary {
-  background: var(--ctp-red);
-  color: var(--ctp-crust);
-  border-color: var(--ctp-red);
+  background: var(--skr-error);
+  color: var(--skr-bg-inset);
+  border-color: var(--skr-error);
   font-weight: 600;
 }
 .confirm-dialog .confirm-btn-primary:hover {
-  background: var(--ctp-maroon);
-  border-color: var(--ctp-maroon);
+  background: var(--skr-error-hover);
+  border-color: var(--skr-error-hover);
 }
 
 /* ---------- Help overlay (custom <dialog>) ---------- */
 dialog.help-dialog {
-  background: var(--ctp-mantle);
-  color: var(--ctp-text);
-  border: 1px solid var(--ctp-surface0);
+  background: var(--skr-bg-panel);
+  color: var(--skr-text);
+  border: 1px solid var(--skr-surface);
   border-radius: 8px;
   padding: 1.5rem 2rem;
   font-family: var(--font-sans);
@@ -464,26 +476,26 @@ dialog.help-dialog {
   width: calc(100% - 4rem);
   max-height: 80vh;
   overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 40px var(--skr-shadow);
   position: relative;
   /* Match the editor/preview scrollbars. Firefox uses the
      scrollbar-* properties; WebKit uses the ::-webkit-scrollbar
      pseudo-elements below. Track is mantle (to match the dialog
      background) rather than base, so it blends into the dialog
      instead of showing a visible column. */
-  scrollbar-color: var(--ctp-surface1) var(--ctp-mantle);
+  scrollbar-color: var(--skr-surface-hover) var(--skr-bg-panel);
   scrollbar-width: thin;
 }
 dialog.help-dialog::-webkit-scrollbar { width: 10px; height: 10px; }
-dialog.help-dialog::-webkit-scrollbar-track { background: var(--ctp-mantle); }
+dialog.help-dialog::-webkit-scrollbar-track { background: var(--skr-bg-panel); }
 dialog.help-dialog::-webkit-scrollbar-thumb {
-  background: var(--ctp-surface1);
+  background: var(--skr-surface-hover);
   border-radius: 5px;
-  border: 2px solid var(--ctp-mantle);
+  border: 2px solid var(--skr-bg-panel);
 }
-dialog.help-dialog::-webkit-scrollbar-thumb:hover { background: var(--ctp-surface2); }
+dialog.help-dialog::-webkit-scrollbar-thumb:hover { background: var(--skr-surface-hover); }
 dialog.help-dialog::backdrop {
-  background: rgba(17, 17, 27, 0.6);
+  background: var(--skr-bg-backdrop);
   backdrop-filter: blur(2px);
 }
 .help-dialog .help-close {
@@ -492,7 +504,7 @@ dialog.help-dialog::backdrop {
   right: 0.75rem;
   background: none;
   border: none;
-  color: var(--ctp-subtext0);
+  color: var(--skr-text-dim);
   font-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
@@ -500,26 +512,26 @@ dialog.help-dialog::backdrop {
   border-radius: 3px;
 }
 .help-dialog .help-close:hover {
-  color: var(--ctp-text);
+  color: var(--skr-text);
 }
 .help-dialog .help-close:focus-visible {
-  outline: 2px solid var(--ctp-lavender);
+  outline: 2px solid var(--skr-accent);
   outline-offset: 2px;
 }
 .help-dialog h2 {
-  color: var(--ctp-lavender);
+  color: var(--skr-accent);
   font-size: 1.05rem;
   font-weight: 600;
   margin: 1.5rem 0 0.5rem 0;
   padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--ctp-surface0);
+  border-bottom: 1px solid var(--skr-surface);
 }
 .help-dialog h2:first-of-type {
   margin-top: 0;
   padding-right: 2.5rem;
 }
 .help-dialog h3 {
-  color: var(--ctp-mauve);
+  color: var(--skr-accent-alt);
   font-size: 0.75rem;
   font-weight: 600;
   margin: 0.85rem 0 0.35rem 0;
@@ -527,7 +539,7 @@ dialog.help-dialog::backdrop {
   letter-spacing: 0.06em;
 }
 .help-dialog .help-note {
-  color: var(--ctp-subtext0);
+  color: var(--skr-text-dim);
   font-size: 0.75rem;
   font-weight: normal;
   text-transform: none;
@@ -546,8 +558,8 @@ dialog.help-dialog::backdrop {
   white-space: nowrap;
 }
 .help-dialog .help-key kbd {
-  background: var(--ctp-surface0);
-  color: var(--ctp-subtext1);
+  background: var(--skr-surface);
+  color: var(--skr-text-muted);
   border-radius: 3px;
   padding: 0.1rem 0.4rem;
   font-family: var(--font-mono);
@@ -557,7 +569,7 @@ dialog.help-dialog::backdrop {
   margin-left: 0.2rem;
 }
 .help-dialog .help-key var {
-  color: var(--ctp-subtext0);
+  color: var(--skr-text-dim);
   font-style: italic;
 }
 
@@ -571,12 +583,12 @@ dialog.help-dialog::backdrop {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.2rem 0.75rem;
-  background: var(--ctp-mantle);
-  border-top: 1px solid var(--ctp-surface0);
+  background: var(--skr-bg-panel);
+  border-top: 1px solid var(--skr-surface);
   font-family: var(--font-mono);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  color: var(--ctp-subtext0);
+  color: var(--skr-text-dim);
   user-select: none;
   flex-shrink: 0;
   min-height: 1.5rem;
@@ -618,11 +630,11 @@ body.mode-preview .statusbar .status-sync-indicator { display: none; }
   flex-shrink: 0;
 }
 .statusbar .status-mode-pill[hidden] { display: none; }
-.statusbar .status-mode-pill[data-vim-mode="normal"]  { background: var(--ctp-blue);   color: var(--ctp-mantle); }
-.statusbar .status-mode-pill[data-vim-mode="insert"]  { background: var(--ctp-green);  color: var(--ctp-base); }
-.statusbar .status-mode-pill[data-vim-mode="visual"]  { background: var(--ctp-mauve);  color: var(--ctp-base); }
-.statusbar .status-mode-pill[data-vim-mode="replace"] { background: var(--ctp-red);    color: var(--ctp-base); }
-.statusbar .status-mode-pill[data-vim-mode="command"] { background: var(--ctp-peach);  color: var(--ctp-base); }
+.statusbar .status-mode-pill[data-vim-mode="normal"]  { background: var(--skr-link);   color: var(--skr-bg-panel); }
+.statusbar .status-mode-pill[data-vim-mode="insert"]  { background: var(--skr-success);  color: var(--skr-bg); }
+.statusbar .status-mode-pill[data-vim-mode="visual"]  { background: var(--skr-accent-alt);  color: var(--skr-bg); }
+.statusbar .status-mode-pill[data-vim-mode="replace"] { background: var(--skr-error);    color: var(--skr-bg); }
+.statusbar .status-mode-pill[data-vim-mode="command"] { background: var(--skr-emphasis);  color: var(--skr-bg); }
 
 /* Muted mode-pill style — LazyVim-inspired override. Toggled via the
    `statusbar-style = muted` key in skrivro.conf, which the frontend's
@@ -636,24 +648,24 @@ body.mode-preview .statusbar .status-sync-indicator { display: none; }
    modes. See memory/project_config_file.md and memory/project_status_bar.md
    for the full discussion. */
 body.mode-pill-muted .statusbar .status-mode-pill[data-vim-mode="normal"] {
-  background: var(--ctp-surface0);
-  color: var(--ctp-subtext0);
+  background: var(--skr-surface);
+  color: var(--skr-text-dim);
 }
 body.mode-pill-muted .statusbar .status-mode-pill[data-vim-mode="visual"] {
-  background: var(--ctp-pink);
-  color: var(--ctp-base);
+  background: var(--skr-accent-minor);
+  color: var(--skr-bg);
 }
 
 .statusbar .status-filename {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--ctp-subtext1);
+  color: var(--skr-text-muted);
   min-width: 0;
 }
 body.is-dirty .statusbar .status-filename::before {
   content: '● ';
-  color: var(--ctp-peach);
+  color: var(--skr-emphasis);
 }
 
 .statusbar .status-filetype,
@@ -683,13 +695,13 @@ body.is-dirty .statusbar .status-filename::before {
    `pointer-events: none` because the indicator isn't clickable in v1 —
    sync is keyboard-only. Prevents accidental hover cursor changes. */
 .statusbar .status-sync-indicator {
-  color: var(--ctp-overlay0);
+  color: var(--skr-text-faint);
   white-space: nowrap;
   pointer-events: none;
 }
 @keyframes sync-flash {
-  0%   { color: var(--ctp-teal); }
-  100% { color: var(--ctp-overlay0); }
+  0%   { color: var(--skr-feedback); }
+  100% { color: var(--skr-text-faint); }
 }
 .statusbar .status-sync-indicator.flashing {
   animation: sync-flash 500ms ease-out;
@@ -718,8 +730,8 @@ body.is-dirty .statusbar .status-filename::before {
    column-limit note in memory/project_config_file.md for the
    full rationale. */
 .statusbar .status-position.over-limit {
-  color: var(--ctp-peach);
-  border: 1px solid var(--ctp-peach);
+  color: var(--skr-emphasis);
+  border: 1px solid var(--skr-emphasis);
   padding: 0 0.4rem;
   border-radius: 3px;
   font-weight: 700;

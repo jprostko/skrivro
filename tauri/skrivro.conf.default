@@ -71,9 +71,18 @@
 # preview-pane-width = 900px
 
 # ================= Theme =================
-# Only `catppuccin-mocha` is supported in v1. This key exists as an
-# extension point — a future version may support user-supplied themes
-# under $XDG_CONFIG_HOME/skrivro/themes/<name>.conf.
+# Bundled themes: catppuccin-mocha (default), dracula
+#
+# Set `theme = dracula` to switch. Omit the key (or set it to
+# catppuccin-mocha) for the default.
+#
+# User-supplied themes: place a .conf file at
+#   $XDG_CONFIG_HOME/skrivro/themes/<name>.conf
+# (or ~/.config/skrivro/themes/<name>.conf) and set `theme = <name>`.
+# A user-supplied file with the same name as a bundled theme overrides
+# the bundled version. See catppuccin-mocha.conf in the source tree's
+# tauri/themes/ directory for the full slot schema with purpose
+# descriptions — copy it, rename, and fill in your palette.
 # theme = catppuccin-mocha
 
 # ================= Asciidoctor =================

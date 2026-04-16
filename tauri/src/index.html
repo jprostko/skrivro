@@ -1769,16 +1769,26 @@
       );
     }
 
-    // theme key is parsed and stored but not yet applied — v1 only
-    // supports catppuccin-mocha. If the user specifies anything else,
-    // warn in dev builds and fall through to the default theme.
-    // Future: load theme tokens from
-    // $XDG_CONFIG_HOME/skrivro/themes/<name>.conf.
-    if (cfg.theme && cfg.theme !== 'catppuccin-mocha') {
-      console.warn(
-        `[skrivro config] theme '${cfg.theme}' not supported in v1, ` +
-        `using catppuccin-mocha`
-      );
+    // Theme colors: when the user selects a non-default theme via
+    // `theme = dracula` (or any name other than catppuccin-mocha), the
+    // Rust side resolves the theme file and attaches the parsed colors
+    // as cfg.themeColors. We iterate the object and write each value
+    // as an inline :root style, overriding the CSS-default Catppuccin
+    // Mocha values. When themeColors is null/undefined (catppuccin-mocha
+    // or unset), this block is skipped and the CSS defaults show through.
+    //
+    // The camelCase→kebab-case conversion (e.g., bgPanel → bg-panel)
+    // maps the serde-generated JSON key names back to CSS custom
+    // property names: userConfig.themeColors.bgPanel sets
+    // --skr-bg-panel on :root.
+    if (cfg.themeColors) {
+      for (const [key, value] of Object.entries(cfg.themeColors)) {
+        if (value != null) {
+          // Convert camelCase to kebab-case: bgPanel → bg-panel
+          const kebab = key.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
+          root.style.setProperty(`--skr-${kebab}`, value);
+        }
+      }
     }
 
     // asciidocSafeMode and cursorPositionFormat are not applied here —

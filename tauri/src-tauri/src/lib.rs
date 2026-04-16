@@ -109,6 +109,143 @@ struct SkrivroConfig {
     // parser's match arm; invalid values leave the field None and
     // the frontend falls through to "no limit, no over-limit coloring."
     soft_column_limit: Option<u32>,
+    // Theme colors resolved by load_theme() in get_config(). When the
+    // user's `theme` key matches a non-default theme (i.e., anything
+    // other than "catppuccin-mocha"), the Rust side loads the theme
+    // file, parses it, and attaches the resolved colors here. The
+    // frontend's applyUserConfig() iterates these and writes each as
+    // an inline :root style, overriding the CSS-default Catppuccin
+    // Mocha values. When the theme is catppuccin-mocha (or unset),
+    // this field is None and the CSS defaults show through untouched.
+    theme_colors: Option<ThemeColors>,
+}
+
+/// 24 semantic theme color slots. Each field maps to a `--skr-*` CSS
+/// custom property. Theme files provide values for these slots in flat
+/// `key = value` format (same parser as skrivro.conf). See
+/// memory/project_theming.md for the full slot schema and purpose of
+/// each.
+///
+/// All fields are `Option<String>` so a theme file that omits a slot
+/// falls through to the CSS-default Catppuccin Mocha value for that
+/// slot. A well-authored theme provides all 24, but a partial theme
+/// (e.g., one that only overrides backgrounds) is valid and won't break.
+#[derive(Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+struct ThemeColors {
+    bg: Option<String>,
+    bg_panel: Option<String>,
+    bg_inset: Option<String>,
+    bg_backdrop: Option<String>,
+    bg_stripe: Option<String>,
+    bg_active_line: Option<String>,
+    shadow: Option<String>,
+    surface: Option<String>,
+    surface_hover: Option<String>,
+    text: Option<String>,
+    text_muted: Option<String>,
+    text_dim: Option<String>,
+    text_faint: Option<String>,
+    accent: Option<String>,
+    accent_alt: Option<String>,
+    accent_minor: Option<String>,
+    link: Option<String>,
+    emphasis: Option<String>,
+    warning: Option<String>,
+    error: Option<String>,
+    error_hover: Option<String>,
+    success: Option<String>,
+    feedback: Option<String>,
+    cursor: Option<String>,
+}
+
+/// Parse a theme file's text into a `ThemeColors`. Same flat key=value
+/// format as skrivro.conf — one pair per line, # comments, blank lines
+/// ignored, unknown keys warned and skipped.
+#[cfg_attr(not(debug_assertions), allow(unused_variables))]
+fn parse_theme_file(text: &str) -> ThemeColors {
+    let mut t = ThemeColors::default();
+    for (idx, raw) in text.lines().enumerate() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let Some(eq) = line.find('=') else {
+            #[cfg(debug_assertions)]
+            eprintln!("[skrivro theme] line {}: no '=' found, skipping: {}", idx + 1, line);
+            continue;
+        };
+        let key = line[..eq].trim();
+        let val = line[eq + 1..].trim();
+        if val.is_empty() {
+            continue;
+        }
+        let val = val.to_string();
+        match key {
+            "bg"              => t.bg = Some(val),
+            "bg-panel"        => t.bg_panel = Some(val),
+            "bg-inset"        => t.bg_inset = Some(val),
+            "bg-backdrop"     => t.bg_backdrop = Some(val),
+            "bg-stripe"       => t.bg_stripe = Some(val),
+            "bg-active-line"  => t.bg_active_line = Some(val),
+            "shadow"          => t.shadow = Some(val),
+            "surface"         => t.surface = Some(val),
+            "surface-hover"   => t.surface_hover = Some(val),
+            "text"            => t.text = Some(val),
+            "text-muted"      => t.text_muted = Some(val),
+            "text-dim"        => t.text_dim = Some(val),
+            "text-faint"      => t.text_faint = Some(val),
+            "accent"          => t.accent = Some(val),
+            "accent-alt"      => t.accent_alt = Some(val),
+            "accent-minor"    => t.accent_minor = Some(val),
+            "link"            => t.link = Some(val),
+            "emphasis"        => t.emphasis = Some(val),
+            "warning"         => t.warning = Some(val),
+            "error"           => t.error = Some(val),
+            "error-hover"     => t.error_hover = Some(val),
+            "success"         => t.success = Some(val),
+            "feedback"        => t.feedback = Some(val),
+            "cursor"          => t.cursor = Some(val),
+            _ => {
+                #[cfg(debug_assertions)]
+                eprintln!("[skrivro theme] line {}: unknown key '{}', skipping", idx + 1, key);
+            }
+        }
+    }
+    t
+}
+
+/// Resolve the theme directory path under XDG config.
+fn skrivro_themes_dir() -> Option<PathBuf> {
+    let base = env::var("XDG_CONFIG_HOME")
+        .ok()
+        .map(PathBuf::from)
+        .or_else(|| env::var("HOME").ok().map(|h| PathBuf::from(h).join(".config")))?;
+    Some(base.join("skrivro").join("themes"))
+}
+
+/// Load a theme by name. Resolution order:
+/// 1. User-supplied file at $XDG_CONFIG_HOME/skrivro/themes/<name>.conf
+/// 2. Bundled theme data embedded at compile time via include_str!()
+/// 3. None — caller falls through to CSS defaults (catppuccin-mocha)
+#[cfg_attr(not(debug_assertions), allow(unused_variables))]
+fn load_theme(name: &str) -> Option<ThemeColors> {
+    // Check for user-supplied theme file first
+    if let Some(dir) = skrivro_themes_dir() {
+        let path = dir.join(format!("{}.conf", name));
+        if let Ok(text) = std::fs::read_to_string(&path) {
+            return Some(parse_theme_file(&text));
+        }
+    }
+    // Fall back to bundled themes
+    match name {
+        "dracula" => Some(parse_theme_file(include_str!("../../themes/dracula.conf"))),
+        _ => {
+            #[cfg(debug_assertions)]
+            eprintln!("[skrivro config] theme '{}' not found (no user file, no bundled data)", name);
+            None
+        }
+    }
 }
 
 /// Resolve the config file path per XDG Base Directory Spec.
@@ -366,7 +503,7 @@ fn get_config() -> SkrivroConfig {
     let Some(path) = skrivro_config_path() else {
         return SkrivroConfig::default();
     };
-    match std::fs::read_to_string(&path) {
+    let mut cfg = match std::fs::read_to_string(&path) {
         Ok(text) => parse_skrivro_config(&text),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             // Expected common case — no config file, use defaults. Silent.
@@ -385,7 +522,19 @@ fn get_config() -> SkrivroConfig {
             let _ = e;
             SkrivroConfig::default()
         }
+    };
+
+    // Resolve theme colors. "catppuccin-mocha" (or unset) → no override
+    // needed, CSS defaults are already Catppuccin Mocha. Any other value
+    // triggers load_theme which checks for a user-supplied .conf first,
+    // then falls back to bundled theme data.
+    if let Some(ref name) = cfg.theme {
+        if name != "catppuccin-mocha" {
+            cfg.theme_colors = load_theme(name);
+        }
     }
+
+    cfg
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

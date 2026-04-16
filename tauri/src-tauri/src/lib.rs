@@ -240,6 +240,8 @@ fn load_theme(name: &str) -> Option<ThemeColors> {
     // Fall back to bundled themes
     match name {
         "dracula" => Some(parse_theme_file(include_str!("../../themes/dracula.conf"))),
+        "tokyo-night-moon" => Some(parse_theme_file(include_str!("../../themes/tokyo-night-moon.conf"))),
+        "nord" => Some(parse_theme_file(include_str!("../../themes/nord.conf"))),
         _ => {
             #[cfg(debug_assertions)]
             eprintln!("[skrivro config] theme '{}' not found (no user file, no bundled data)", name);

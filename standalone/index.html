@@ -1033,7 +1033,7 @@
       // This is also a planned config-file knob — users who prefer a
       // stricter mode can override it via skrivro.conf (see the config
       // spec in memory).
-      const doc = ad.load(getDoc(), { safe: 'unsafe', sourcemap: true });
+      const doc = ad.load(getDoc(), { safe: 'unsafe', sourcemap: true, attributes: { showtitle: true } });
       out.innerHTML = DOMPurify.sanitize(doc.convert({ standalone: false }));
       buildBlockMap(doc);
     } catch (e) {

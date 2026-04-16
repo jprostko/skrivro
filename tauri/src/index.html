@@ -45,6 +45,7 @@
       <span class="status-filename" id="statusFilename">untitled.adoc</span>
     </div>
     <div class="status-right">
+      <span class="status-sync-indicator" id="statusSyncIndicator" aria-hidden="true">→</span>
       <span class="status-filetype" id="statusFiletype">AsciiDoc</span>
       <span class="status-position" id="statusPosition">Ln 1, Col 1</span>
     </div>
@@ -289,11 +290,12 @@
   const helpBtn          = document.getElementById('helpBtn');
   const helpCloseBtn     = document.getElementById('helpCloseBtn');
 
-  const statusBar        = document.getElementById('statusbar');
-  const statusMode       = document.getElementById('statusMode');
-  const statusFilename   = document.getElementById('statusFilename');
-  const statusFiletype   = document.getElementById('statusFiletype');
-  const statusPosition   = document.getElementById('statusPosition');
+  const statusBar           = document.getElementById('statusbar');
+  const statusMode          = document.getElementById('statusMode');
+  const statusFilename      = document.getElementById('statusFilename');
+  const statusFiletype      = document.getElementById('statusFiletype');
+  const statusPosition      = document.getElementById('statusPosition');
+  const statusSyncIndicator = document.getElementById('statusSyncIndicator');
 
   // ================= Prefs =================
 
@@ -1077,8 +1079,37 @@
   // post-include editor position would silently land on the wrong
   // block. For documents with no includes, includeLineMap is null
   // and we use the editor line directly (identity translation).
+  // Flash the status bar's sync indicator — a one-shot CSS animation
+  // that briefly brightens the → glyph from its dim resting color to
+  // the Catppuccin teal, then decays back over ~500ms. The flash
+  // confirms the user's keystroke even when the preview doesn't
+  // visibly move (e.g., the caret line was already at the top of the
+  // visible block, so scrollIntoView is a no-op).
+  //
+  // CSS-animation restart trick: removing and re-adding the `flashing`
+  // class in the same tick doesn't re-trigger the animation because
+  // the browser batches the class changes. Forcing a synchronous
+  // reflow via `void element.offsetWidth` between the remove and the
+  // add flushes the pending style changes, so the subsequent add is
+  // recognized as a state transition and the animation fires again.
+  // This is the canonical pattern for "restart a CSS animation from
+  // JS" — ugly but stable across every browser we target.
+  const flashSync = () => {
+    if (!statusSyncIndicator) return;
+    statusSyncIndicator.classList.remove('flashing');
+    void statusSyncIndicator.offsetWidth;
+    statusSyncIndicator.classList.add('flashing');
+  };
+
   const syncPreviewToCaret = () => {
     if (!blockMap.length || !editorView) return;
+    // Flash the sync indicator after the guards pass — the guards
+    // protect against no-op invocations (empty document, pre-init
+    // editor) where the sync command is semantically meaningless.
+    // Any invocation that gets past them is a "real" sync attempt
+    // that deserves feedback, regardless of whether the preview
+    // actually ends up scrolling to a new position.
+    flashSync();
     const pos = editorView.state.selection.main.head;
     const editorCaretLine = editorView.state.doc.lineAt(pos).number;
     const caretLine = includeLineMap

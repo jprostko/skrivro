@@ -584,18 +584,20 @@ dialog.help-dialog::backdrop {
 body.no-statusbar .statusbar { display: none; }
 
 /* Preview-only mode: hide editor-specific status bar slots. The vim
-   mode pill and the Ln/Col cursor readout both describe state that
-   only makes sense when the editor is visible and receiving input.
-   In preview-only mode the editor is `display: none` (see the
-   display-modes section above), so its cursor and vim mode are not
-   user-actionable — showing them just invites muscle-memory attempts
-   at vim commands that go nowhere. Hiding via CSS only: the CM6
-   instance is still alive in the DOM with its full vim state intact,
-   so when the user switches back to editor or split the mode pill
-   and cursor readout reappear exactly where they left off. No JS
-   state shuffling, no save/restore dance — just visibility toggling. */
+   mode pill, the Ln/Col cursor readout, and the scroll-sync indicator
+   all describe state that only makes sense when the editor is visible
+   and receiving input. In preview-only mode the editor is
+   `display: none` (see the display-modes section above), so its
+   cursor, vim mode, and sync action are not user-actionable — showing
+   them just invites muscle-memory attempts at vim commands that go
+   nowhere. Hiding via CSS only: the CM6 instance is still alive in
+   the DOM with its full vim state intact, so when the user switches
+   back to editor or split the mode pill, cursor readout, and sync
+   indicator reappear exactly where they left off. No JS state
+   shuffling, no save/restore dance — just visibility toggling. */
 body.mode-preview .statusbar .status-mode-pill,
-body.mode-preview .statusbar .status-position { display: none; }
+body.mode-preview .statusbar .status-position,
+body.mode-preview .statusbar .status-sync-indicator { display: none; }
 
 .statusbar .status-left,
 .statusbar .status-right {
@@ -657,6 +659,40 @@ body.is-dirty .statusbar .status-filename::before {
 .statusbar .status-filetype,
 .statusbar .status-position {
   white-space: nowrap;
+}
+
+/* Sync indicator — a small rightwards arrow that lives quietly in the
+   right-hand status bar cluster and briefly flashes when the user
+   triggers the scroll-sync action (Ctrl+Alt+L, :syncpreview, or gz in
+   vim normal mode). Confirms the action happened even when the preview
+   doesn't visibly move — e.g., when the caret line is already at the
+   top of the visible block and scrollIntoView is a no-op.
+
+   At rest: dim overlay0, easy to ignore but visible as part of the
+   status bar layout. The → glyph matches the editor→preview data-flow
+   direction in split mode.
+
+   On flash: the `.flashing` class triggers a one-shot animation that
+   spikes the color to Catppuccin teal (the "info / confirmation" slot
+   in the palette) and decays back to overlay0 over 500ms. Teal was
+   chosen over green because green reads as "entered INSERT mode" in
+   the status bar's existing color vocabulary, whereas teal is uniquely
+   associated with one-off action feedback. The decay curve is ease-out
+   so the initial spike is immediate and the fade is gentle.
+
+   `pointer-events: none` because the indicator isn't clickable in v1 —
+   sync is keyboard-only. Prevents accidental hover cursor changes. */
+.statusbar .status-sync-indicator {
+  color: var(--ctp-overlay0);
+  white-space: nowrap;
+  pointer-events: none;
+}
+@keyframes sync-flash {
+  0%   { color: var(--ctp-teal); }
+  100% { color: var(--ctp-overlay0); }
+}
+.statusbar .status-sync-indicator.flashing {
+  animation: sync-flash 500ms ease-out;
 }
 
 /* Soft-column-limit over-limit indicator. When the user has set

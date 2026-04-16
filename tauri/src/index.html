@@ -893,6 +893,7 @@
         const name = await basename(currentPath);
         const docname = name.replace(/\.[^.]+$/, '');
         loadOpts.attributes = {
+          ...loadOpts.attributes,
           docname,
           docfile: currentPath,
           docdir: baseDir,

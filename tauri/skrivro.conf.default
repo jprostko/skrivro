@@ -133,3 +133,28 @@
 # and you don't care about source-line length). Set it explicitly
 # if your workflow treats source lines as having a fixed width.
 # soft-column-limit = 100
+
+# ================= Session =================
+
+# Restore last session on launch — true / false (default false).
+#
+# When true, launching Skrivro without a CLI argument reopens the
+# file that was open at the time of the previous clean exit. The
+# file path is persisted in a platform-appropriate state file:
+#
+#   Linux:   ~/.local/share/com.skrivro.editor/state.json
+#   macOS:   ~/Library/Application Support/com.skrivro.editor/state.json
+#   Windows: %LOCALAPPDATA%\com.skrivro.editor\state.json
+#
+# Precedence: a CLI argument (skrivro foo.adoc) always wins over
+# session restore. Crash recovery via the autosave draft also takes
+# priority — if you were mid-edit when the app died, you get the
+# draft restored (not the pre-crash file reloaded from disk). Session
+# restore only fires on a clean launch with no CLI arg and no draft.
+#
+# If the restored path is missing or unreadable, Skrivro silently
+# falls back to a blank buffer — no error dialog, but the next file
+# operation updates the state as normal.
+#
+# Accepted forms: true/false, yes/no, on/off, 1/0 (case-insensitive).
+# restore-session = false

@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
 
@@ -109,6 +109,14 @@ struct SkrivroConfig {
     // parser's match arm; invalid values leave the field None and
     // the frontend falls through to "no limit, no over-limit coloring."
     soft_column_limit: Option<u32>,
+    // When true, launch restores the last-opened file's path from
+    // session state at $APP_LOCAL_DATA/state.json. Default false —
+    // normal launches start blank. Crash recovery via the autosave
+    // draft is independent of this setting and takes priority over
+    // it; session-restore only fires when no draft is present.
+    // See the Session state section below for the state file format
+    // and the get_session_state / set_session_state commands.
+    restore_session: Option<bool>,
     // Theme colors resolved by load_theme() in get_config(). When the
     // user's `theme` key matches a non-default theme (i.e., anything
     // other than "catppuccin-mocha"), the Rust side loads the theme
@@ -488,6 +496,24 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
                     }
                 }
             }
+            "restore-session" => {
+                // Boolean-valued key. Accept common spellings of true/false
+                // so users don't have to remember one specific form. The
+                // frontend reads cfg.restoreSession as `undefined | true | false`
+                // and treats undefined the same as false (default off).
+                match val.to_lowercase().as_str() {
+                    "true" | "yes" | "on" | "1" => cfg.restore_session = Some(true),
+                    "false" | "no" | "off" | "0" => cfg.restore_session = Some(false),
+                    _ => {
+                        #[cfg(debug_assertions)]
+                        eprintln!(
+                            "[skrivro config] line {}: restore-session value '{}' must be true or false, skipping",
+                            idx + 1,
+                            val
+                        );
+                    }
+                }
+            }
             _ => {
                 #[cfg(debug_assertions)]
                 eprintln!(
@@ -538,6 +564,137 @@ fn get_config() -> SkrivroConfig {
     }
 
     cfg
+}
+
+// ================= Session state =================
+//
+// Machine-local state persisted across clean exits. Currently just
+// stores the last-opened file path for the restore-session feature —
+// when `restore-session = true` is set in skrivro.conf and no CLI
+// argument is given at launch and no crash-recovery draft is present,
+// the frontend loads the file at `lastFilePath` from here.
+//
+// File location uses Tauri's platform-appropriate app-local-data dir
+// rather than a hardcoded XDG path. This works correctly on all three
+// platforms out of the box:
+//
+//   Linux:   ~/.local/share/com.skrivro.editor/state.json
+//   macOS:   ~/Library/Application Support/com.skrivro.editor/state.json
+//   Windows: %LOCALAPPDATA%\com.skrivro.editor\state.json
+//
+// (Note: the existing config file code in skrivro_config_path still
+// hardcodes XDG_CONFIG_HOME + HOME env vars, which works on Linux but
+// is non-idiomatic on macOS and effectively broken on Windows where
+// neither env var is typically set. That's a separate cleanup item —
+// see memory/project_pending_features.md. New code added here uses
+// Tauri's abstraction correctly.)
+//
+// Format:
+//   {
+//     "version": 1,
+//     "lastFilePath": "/absolute/path/to/file.adoc" | null
+//   }
+//
+// The version field is forward-compat insurance for a future multi-
+// document model or added state (cursor position, scroll, window
+// geometry). On read, unknown versions fall through to the default
+// (no state) so a newer state.json written by a future build doesn't
+// crash an older binary reading it.
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+struct SessionState {
+    #[serde(default)]
+    version: u32,
+    #[serde(default)]
+    last_file_path: Option<String>,
+}
+
+/// Resolve the state file path under Tauri's platform-appropriate
+/// app-local-data directory. Returns `None` if Tauri can't locate
+/// the directory (extremely unusual — would mean a broken install
+/// environment). Callers treat `None` as "no state available."
+fn session_state_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    use tauri::Manager;
+    app.path().app_local_data_dir().ok().map(|d| d.join("state.json"))
+}
+
+#[tauri::command]
+fn get_session_state(app: tauri::AppHandle) -> SessionState {
+    let Some(path) = session_state_path(&app) else {
+        return SessionState::default();
+    };
+    let text = match std::fs::read_to_string(&path) {
+        Ok(t) => t,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            // Expected common case — no prior session. Silent.
+            return SessionState::default();
+        }
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "[skrivro session] failed to read {}: {}",
+                path.display(),
+                e
+            );
+            let _ = e;
+            return SessionState::default();
+        }
+    };
+    let state: SessionState = match serde_json::from_str(&text) {
+        Ok(s) => s,
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "[skrivro session] failed to parse {}: {}",
+                path.display(),
+                e
+            );
+            let _ = e;
+            return SessionState::default();
+        }
+    };
+    // Unknown version → treat as no state, don't crash. Lets a future
+    // schema bump coexist safely with older binaries.
+    if state.version != 1 {
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "[skrivro session] unknown state version {} in {}, ignoring",
+            state.version,
+            path.display()
+        );
+        return SessionState::default();
+    }
+    state
+}
+
+#[tauri::command]
+fn set_session_state(
+    app: tauri::AppHandle,
+    state: SessionState,
+) -> Result<(), String> {
+    let Some(path) = session_state_path(&app) else {
+        return Err("no app-local-data dir available".to_string());
+    };
+    // Ensure parent dir exists — on a fresh install the directory may
+    // not have been created yet. Safe to call repeatedly.
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("mkdir {}: {}", parent.display(), e))?;
+    }
+    let text = serde_json::to_string_pretty(&state).map_err(|e| e.to_string())?;
+    // Atomic write: write to a sibling temp file, then rename. If the
+    // process dies mid-write, the original state.json is untouched;
+    // the orphan .tmp file will be overwritten next time. Rename is
+    // atomic within a directory on POSIX and on Windows (NTFS).
+    let mut tmp = path.clone().into_os_string();
+    tmp.push(".tmp");
+    let tmp_path = PathBuf::from(tmp);
+    std::fs::write(&tmp_path, &text)
+        .map_err(|e| format!("write {}: {}", tmp_path.display(), e))?;
+    std::fs::rename(&tmp_path, &path)
+        .map_err(|e| format!("rename {} -> {}: {}", tmp_path.display(), path.display(), e))?;
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -607,7 +764,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![get_launch_info, get_config])
+        .invoke_handler(tauri::generate_handler![
+            get_launch_info,
+            get_config,
+            get_session_state,
+            set_session_state
+        ])
         .setup(|app| {
 
             // On Linux, webkit2gtk inherits GTK's text-widget context menu,

@@ -1183,6 +1183,21 @@
     try { localStorage.removeItem(LS_KEY); } catch {}
   };
 
+  // Persist the "current file" state for the restore-session feature.
+  // Fire-and-forget: we don't await this in most callers because the
+  // write is small and a failure is non-fatal (next session just starts
+  // blank, which is what would happen without the feature anyway).
+  // `path` is the absolute file path, or null for an untitled buffer.
+  const writeSessionState = async (path) => {
+    try {
+      await invoke('set_session_state', {
+        state: { version: 1, lastFilePath: path }
+      });
+    } catch (e) {
+      console.error('Failed to persist session state:', e);
+    }
+  };
+
   // Resolves the initial doc + name (from saved draft, or defaults).
   // Side-effect: may set currentName and currentPath.
   const resolveInitialDoc = () => {
@@ -1300,6 +1315,7 @@
         setDirty(false);
         clearDraft();
         clearIncludeCache();
+        writeSessionState(currentPath);
         updateTitle();
         render();
       } catch (e) {
@@ -1330,6 +1346,7 @@
       currentName = await basename(selected);
       setDirty(false);
       clearDraft();
+      writeSessionState(currentPath);
       updateTitle();
     } catch (e) {
       console.error(e);
@@ -1344,6 +1361,7 @@
       setDirty(false);
       clearDraft();
       clearIncludeCache();
+      writeSessionState(null);
       updateTitle();
       render();
       editorView.focus();
@@ -1966,6 +1984,7 @@
         currentName = await basename(targetPath);
         setDirty(false);
         clearDraft();
+        writeSessionState(currentPath);
         updateTitle();
       } catch (e) {
         console.error(e);
@@ -1996,6 +2015,7 @@
         setDirty(false);
         clearDraft();
         clearIncludeCache();
+        writeSessionState(currentPath);
         updateTitle();
         render();
       } catch (e) {
@@ -2236,26 +2256,70 @@
   }
   applyUserConfig(userConfig);
 
-  // Determine the initial document content.
+  // Determine the initial document content. Priority order:
+  //   1. CLI argument — always wins, even over crash recovery
+  //   2. Autosave draft — crash recovery, always wins over session restore
+  //   3. Session restore — only if `restore-session = true` in the user
+  //      config AND a prior clean exit left a non-null lastFilePath
+  //      AND that file exists/is readable now
+  //   4. Default blank buffer
   let initialDoc = DEFAULT_DOC;
   let hasDraft = false;
   if (launchInfo.initial_file) {
-    // CLI argument wins — skip draft restore entirely.
+    // CLI argument wins — skip draft and session-restore entirely.
     try {
       initialDoc = await readTextFile(launchInfo.initial_file);
       currentPath = launchInfo.initial_file;
       currentName = await basename(launchInfo.initial_file);
+      // Record the CLI-opened file as the current session state,
+      // so a subsequent launch without CLI args (and with
+      // restore-session enabled) will pick up where this session
+      // left off. Fire-and-forget — failure doesn't block launch.
+      writeSessionState(currentPath);
     } catch (e) {
       console.error('Failed to load file from CLI argument:', e);
-      // Fall back to draft / default
+      // Fall back to draft / default (skip session restore — a CLI arg
+      // that failed to load is a different failure mode than a normal
+      // launch, and we don't want to silently substitute a different
+      // file than the user asked for).
       const r = resolveInitialDoc();
       initialDoc = r.doc;
       hasDraft = r.hasDraft;
     }
   } else {
+    // No CLI arg — try draft first (crash recovery), then session
+    // restore if configured, then default.
     const r = resolveInitialDoc();
-    initialDoc = r.doc;
-    hasDraft = r.hasDraft;
+    if (r.hasDraft) {
+      initialDoc = r.doc;
+      hasDraft = true;
+    } else if (userConfig.restoreSession) {
+      try {
+        const state = await invoke('get_session_state');
+        if (state && state.lastFilePath) {
+          try {
+            initialDoc = await readTextFile(state.lastFilePath);
+            currentPath = state.lastFilePath;
+            currentName = await basename(state.lastFilePath);
+          } catch (e) {
+            // File was deleted, moved, or is unreadable. Fall through
+            // to blank buffer rather than surfacing an error dialog.
+            // State is intentionally NOT cleared here — if the file
+            // comes back (network mount, temporary permission issue)
+            // the next launch will pick it up. Next file operation
+            // will overwrite state with the new current file anyway.
+            console.error(
+              'Session restore: failed to read',
+              state.lastFilePath,
+              e
+            );
+            initialDoc = DEFAULT_DOC;
+          }
+        }
+      } catch (e) {
+        console.error('Session restore: failed to read state:', e);
+      }
+    }
   }
 
   editorView = new EditorView({

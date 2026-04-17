@@ -1155,6 +1155,13 @@
   const scheduleAutosave = () => {
     clearTimeout(autosaveTimer);
     autosaveTimer = setTimeout(() => {
+      // Defense in depth: if the buffer transitioned back to clean
+      // (e.g., via save) between when the timer was scheduled and
+      // when it fires, skip the write. clearDraft in the save path
+      // already cancels pending timers, so this guard is belt-and-
+      // suspenders against any future code path that clears dirty
+      // without going through clearDraft.
+      if (!dirty) return;
       try {
         localStorage.setItem(LS_KEY, JSON.stringify({
           content: getDoc(),
@@ -1166,6 +1173,13 @@
     }, 500);
   };
   const clearDraft = () => {
+    // Cancel any pending autosave write. Without this, a scheduled
+    // timer could fire AFTER clearDraft removes the LS entry, re-
+    // writing a stale draft (e.g., user types → autosave scheduled
+    // for t=500ms, user saves at t=100ms → clearDraft runs, but the
+    // pending timer at t=500ms resurrects the draft).
+    clearTimeout(autosaveTimer);
+    autosaveTimer = null;
     try { localStorage.removeItem(LS_KEY); } catch {}
   };
 
@@ -2165,7 +2179,17 @@
   // window becomes uncloseable.
   const appWindow = getCurrentWindow();
   appWindow.onCloseRequested((event) => {
-    if (!dirty) return; // library auto-calls destroy() to close
+    if (!dirty) {
+      // Clean close — also clear the autosave draft so the next
+      // launch starts clean. "Clean" here means dirty=false at
+      // close time, which is the normal path after save/open/new/
+      // reload. clearDraft is a no-op if nothing was scheduled or
+      // stored, so calling it unconditionally is cheap insurance
+      // against stale-draft edge cases (e.g., a race between the
+      // autosave debounce and a save that happens within 500ms).
+      clearDraft();
+      return; // library auto-calls destroy() to close
+    }
     event.preventDefault();
     askConfirm('You have unsaved changes. Discard them?', () => {
       // "Discard" means actually discard — clear the autosave draft

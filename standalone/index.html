@@ -1,4 +1,18 @@
 <!doctype html>
+<!--
+  Skrivro — standalone single-file version.
+
+  FEATURE-FROZEN as of 2026-04-17. This version receives bug fixes
+  for shared-core behavior (CM6, Asciidoctor rendering) but no new
+  features. Tauri is the sole active development target; for config
+  file support, theming, include:: directives, and all future
+  features, see the tauri/ directory.
+
+  Kept in the repo for environments where installing a binary isn't
+  practical — single HTML file, zero install, runs in any modern
+  browser. Needs network on first load (ES modules from esm.sh),
+  caches thereafter.
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">

@@ -699,7 +699,15 @@ fn set_session_state(
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("mkdir {}: {}", parent.display(), e))?;
     }
-    let text = serde_json::to_string_pretty(&state).map_err(|e| e.to_string())?;
+    let mut text = serde_json::to_string_pretty(&state).map_err(|e| e.to_string())?;
+    // Append a trailing newline for POSIX compliance. serde_json's
+    // to_string_pretty doesn't add one; without it, `cat state.json`
+    // leaves the zsh `%` no-newline indicator, git-diff shows
+    // "No newline at end of file", and any tool that expects text
+    // files to end with \n sees the file as malformed. The body is
+    // LF-throughout on all platforms (serde_json doesn't produce
+    // CRLF), so appending LF stays consistent.
+    text.push('\n');
     // Atomic write: write to a sibling temp file, then rename. If the
     // process dies mid-write, the original state.json is untouched;
     // the orphan .tmp file will be overwritten next time. Rename is

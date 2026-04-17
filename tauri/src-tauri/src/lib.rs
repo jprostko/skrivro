@@ -20,8 +20,12 @@ fn get_launch_info(state: tauri::State<LaunchInfo>) -> LaunchInfo {
 // file means "use compiled-in defaults." See memory/project_config_file.md
 // for the full design rationale and spec.
 //
-// File location: $XDG_CONFIG_HOME/skrivro/skrivro.conf, falling back to
-// $HOME/.config/skrivro/skrivro.conf if XDG_CONFIG_HOME is unset.
+// File location (resolved via Tauri's app_config_dir, which joins the
+// platform's config root with the identifier from tauri.conf.json):
+//   Linux:   $XDG_CONFIG_HOME/com.skrivro.editor/skrivro.conf
+//            (or $HOME/.config/com.skrivro.editor/skrivro.conf if unset)
+//   macOS:   ~/Library/Application Support/com.skrivro.editor/skrivro.conf
+//   Windows: %APPDATA%\com.skrivro.editor\skrivro.conf
 //
 // Format example:
 //
@@ -223,23 +227,30 @@ fn parse_theme_file(text: &str) -> ThemeColors {
     t
 }
 
-/// Resolve the theme directory path under XDG config.
-fn skrivro_themes_dir() -> Option<PathBuf> {
-    let base = env::var("XDG_CONFIG_HOME")
-        .ok()
-        .map(PathBuf::from)
-        .or_else(|| env::var("HOME").ok().map(|h| PathBuf::from(h).join(".config")))?;
-    Some(base.join("skrivro").join("themes"))
+/// Resolve the user-supplied themes directory. Uses Tauri's app_config_dir,
+/// which resolves to:
+///   Linux:   $XDG_CONFIG_HOME/com.skrivro.editor/themes/
+///            (or $HOME/.config/com.skrivro.editor/themes/ if unset)
+///   macOS:   ~/Library/Application Support/com.skrivro.editor/themes/
+///   Windows: %APPDATA%\com.skrivro.editor\themes\
+///
+/// The "com.skrivro.editor" component comes from the identifier field in
+/// tauri.conf.json, so renaming the app there propagates to all path
+/// resolution automatically. Returns `None` only if Tauri can't locate
+/// the user's config directory (broken environment).
+fn skrivro_themes_dir(app: &tauri::AppHandle) -> Option<PathBuf> {
+    use tauri::Manager;
+    app.path().app_config_dir().ok().map(|d| d.join("themes"))
 }
 
 /// Load a theme by name. Resolution order:
-/// 1. User-supplied file at $XDG_CONFIG_HOME/skrivro/themes/<name>.conf
+/// 1. User-supplied file at <app_config_dir>/themes/<name>.conf
 /// 2. Bundled theme data embedded at compile time via include_str!()
 /// 3. None — caller falls through to CSS defaults (catppuccin-mocha)
 #[cfg_attr(not(debug_assertions), allow(unused_variables))]
-fn load_theme(name: &str) -> Option<ThemeColors> {
+fn load_theme(name: &str, app: &tauri::AppHandle) -> Option<ThemeColors> {
     // Check for user-supplied theme file first
-    if let Some(dir) = skrivro_themes_dir() {
+    if let Some(dir) = skrivro_themes_dir(app) {
         let path = dir.join(format!("{}.conf", name));
         if let Ok(text) = std::fs::read_to_string(&path) {
             return Some(parse_theme_file(&text));
@@ -259,19 +270,27 @@ fn load_theme(name: &str) -> Option<ThemeColors> {
     }
 }
 
-/// Resolve the config file path per XDG Base Directory Spec.
+/// Resolve the config file path using Tauri's app_config_dir, which gives
+/// the platform-appropriate directory joined with our app identifier:
 ///
-/// Checks `$XDG_CONFIG_HOME` first, falling back to `$HOME/.config` if the
-/// XDG var is unset (which is what virtually all Linux setups use). Returns
-/// `None` if neither env var is set — unusual, effectively a sandboxed or
-/// broken environment; we treat it as "no config available" and fall
-/// through to defaults.
-fn skrivro_config_path() -> Option<PathBuf> {
-    let base = env::var("XDG_CONFIG_HOME")
-        .ok()
-        .map(PathBuf::from)
-        .or_else(|| env::var("HOME").ok().map(|h| PathBuf::from(h).join(".config")))?;
-    Some(base.join("skrivro").join("skrivro.conf"))
+///   Linux:   $XDG_CONFIG_HOME/com.skrivro.editor/skrivro.conf
+///            (or $HOME/.config/com.skrivro.editor/skrivro.conf if unset)
+///   macOS:   ~/Library/Application Support/com.skrivro.editor/skrivro.conf
+///   Windows: %APPDATA%\com.skrivro.editor\skrivro.conf
+///
+/// Previously this function used hardcoded env::var("XDG_CONFIG_HOME") +
+/// $HOME fallback, which worked on Linux but was non-idiomatic on macOS
+/// and effectively broken on Windows (where neither env var is typically
+/// set in cmd.exe or PowerShell). Switching to app_config_dir fixes both
+/// platforms and uses the identifier from tauri.conf.json as the subdir
+/// name, so rename in tauri.conf.json propagates everywhere.
+///
+/// Returns `None` only in a broken environment where Tauri can't resolve
+/// the user's config directory — we treat that as "no config available"
+/// and fall through to defaults.
+fn skrivro_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    use tauri::Manager;
+    app.path().app_config_dir().ok().map(|d| d.join("skrivro.conf"))
 }
 
 /// Normalize a length value for the font-size / padding keys.
@@ -528,8 +547,8 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
 }
 
 #[tauri::command]
-fn get_config() -> SkrivroConfig {
-    let Some(path) = skrivro_config_path() else {
+fn get_config(app: tauri::AppHandle) -> SkrivroConfig {
+    let Some(path) = skrivro_config_path(&app) else {
         return SkrivroConfig::default();
     };
     let mut cfg = match std::fs::read_to_string(&path) {
@@ -559,7 +578,7 @@ fn get_config() -> SkrivroConfig {
     // then falls back to bundled theme data.
     if let Some(ref name) = cfg.theme {
         if name != "catppuccin-mocha" {
-            cfg.theme_colors = load_theme(name);
+            cfg.theme_colors = load_theme(name, &app);
         }
     }
 
@@ -582,12 +601,10 @@ fn get_config() -> SkrivroConfig {
 //   macOS:   ~/Library/Application Support/com.skrivro.editor/state.json
 //   Windows: %LOCALAPPDATA%\com.skrivro.editor\state.json
 //
-// (Note: the existing config file code in skrivro_config_path still
-// hardcodes XDG_CONFIG_HOME + HOME env vars, which works on Linux but
-// is non-idiomatic on macOS and effectively broken on Windows where
-// neither env var is typically set. That's a separate cleanup item —
-// see memory/project_pending_features.md. New code added here uses
-// Tauri's abstraction correctly.)
+// Both skrivro_config_path and skrivro_themes_dir use the same Tauri
+// abstraction (app_config_dir) so config, themes, and state all resolve
+// to the correct platform locations without any platform-specific
+// env-var lookups in our code.
 //
 // Format:
 //   {

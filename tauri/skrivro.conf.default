@@ -1,13 +1,21 @@
 # Skrivro config file — every key with its compiled-in default value,
 # all commented out. This file ships with the source tree as a
-# reference; to customize Skrivro, copy it to:
+# reference; to customize Skrivro, copy it to the platform-appropriate
+# location:
 #
-#   $XDG_CONFIG_HOME/skrivro/skrivro.conf
-#   (or ~/.config/skrivro/skrivro.conf if $XDG_CONFIG_HOME is unset)
+#   Linux:   $XDG_CONFIG_HOME/com.skrivro.editor/skrivro.conf
+#            (or ~/.config/com.skrivro.editor/skrivro.conf if unset)
+#   macOS:   ~/Library/Application Support/com.skrivro.editor/skrivro.conf
+#   Windows: %APPDATA%\com.skrivro.editor\skrivro.conf
 #
 # then uncomment any line and edit. Every value shown below is the
 # actual compiled-in default — uncommenting a line without changing
 # it is a no-op.
+#
+# User-supplied themes live alongside this file in a themes/ subdir,
+# e.g., Linux: ~/.config/com.skrivro.editor/themes/<name>.conf
+# A user-supplied theme with the same name as a bundled theme overrides
+# the bundled version.
 #
 # Skrivro's parser ignores missing keys, malformed lines, and unknown
 # keys (with debug-mode warnings only), so you can leave whatever you
@@ -77,13 +85,16 @@
 # Set `theme = dracula` to switch. Omit the key (or set it to
 # catppuccin-mocha) for the default.
 #
-# User-supplied themes: place a .conf file at
-#   $XDG_CONFIG_HOME/skrivro/themes/<name>.conf
-# (or ~/.config/skrivro/themes/<name>.conf) and set `theme = <name>`.
-# A user-supplied file with the same name as a bundled theme overrides
-# the bundled version. See catppuccin-mocha.conf in the source tree's
-# tauri/themes/ directory for the full slot schema with purpose
-# descriptions — copy it, rename, and fill in your palette.
+# User-supplied themes: place a .conf file in the themes/ subdir
+# alongside this config file:
+#   Linux:   ~/.config/com.skrivro.editor/themes/<name>.conf
+#   macOS:   ~/Library/Application Support/com.skrivro.editor/themes/<name>.conf
+#   Windows: %APPDATA%\com.skrivro.editor\themes\<name>.conf
+# then set `theme = <name>` here. A user-supplied file with the same
+# name as a bundled theme overrides the bundled version. See
+# catppuccin-mocha.conf in the source tree's tauri/themes/ directory
+# for the full slot schema with purpose descriptions — copy it, rename,
+# and fill in your palette.
 # theme = catppuccin-mocha
 
 # ================= Asciidoctor =================

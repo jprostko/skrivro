@@ -1750,9 +1750,10 @@
     //
     // Each variable's value is the user's raw string — one or two
     // whitespace-separated CSS length tokens. The Rust-side
-    // normalize_length helper has already validated the token count
-    // (max 2) and appended `pt` to any bare numbers, so whatever
-    // arrives here is ready to substitute directly into CSS.
+    // normalize_length helper has already validated token count
+    // (max 2) and rejected any bare numbers, so whatever arrives
+    // here has unit suffixes and is ready to substitute directly
+    // into CSS.
     if (cfg.editorPaddingX) {
       root.style.setProperty('--editor-padding-x', cfg.editorPaddingX);
     }
@@ -1777,9 +1778,10 @@
     // these vars — each pane is 50% of the window via flexbox.
     //
     // Values are required to carry an explicit unit by the Rust-side
-    // normalize_dimension helper, so whatever arrives here is already
-    // known to be a valid CSS length string (or at least has a unit
-    // suffix we trust CSS to validate).
+    // normalize_length helper (the same helper now used for font
+    // sizes and padding), so whatever arrives here is already known
+    // to be a valid CSS length string (or at least has a unit suffix
+    // we trust CSS to validate).
     if (cfg.editPaneWidth) {
       root.style.setProperty('--edit-pane-width', cfg.editPaneWidth);
     }

@@ -33,25 +33,25 @@ fn get_launch_info(state: tauri::State<LaunchInfo>) -> LaunchInfo {
 //   edit-font = JetBrains Mono
 //   preview-font = Charter
 //
-//   # Lengths (font sizes): a bare positive number is assumed to be pt,
-//   # so `14` and `14pt` produce the same result. An explicit unit (px,
-//   # rem, em, %, ...) is passed through to CSS unchanged.
-//   edit-font-size = 14
-//   preview-font-size = 15
+//   # All length-typed values (font sizes, padding, pane widths) require
+//   # an explicit CSS unit. Bare numbers are rejected — the rule is
+//   # uniform across every length-typed key. Valid units: pt, px, rem,
+//   # em, %, vw, vh, ch, ex, etc. (we don't maintain an allowlist; the
+//   # webview's CSS engine is the ultimate validator).
+//   edit-font-size = 14pt
+//   preview-font-size = 15pt
 //
 //   # Padding (editor and preview, x / y axes). Each key accepts one or
 //   # two values. One value: applied uniformly to both ends of the axis.
 //   # Two values: reading order — for x it's `left right`, for y it's
-//   # `top bottom`. Bare numbers are assumed pt; any value with an
-//   # explicit unit passes through. Three or more values are rejected.
+//   # `top bottom`. Three or more values are rejected. Every token
+//   # needs a unit.
 //   editor-padding-x = 2.5rem
 //   editor-padding-y = 2rem
 //   preview-padding-x = 2.5rem
 //   preview-padding-y = 2rem
 //
-//   # Dimensions (pane widths in single-pane modes): unit is REQUIRED.
-//   # A bare number like `900` is rejected because no unit assumption is
-//   # universally intuitive for layout. Common choices: px, %, vw, ch.
+//   # Pane widths (single-pane modes). Common choices: px, %, vw, ch.
 //   edit-pane-width = 900px
 //   preview-pane-width = 80ch
 //
@@ -293,39 +293,49 @@ fn skrivro_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
     app.path().app_config_dir().ok().map(|d| d.join("skrivro.conf"))
 }
 
-/// Normalize a length value for the font-size / padding keys.
+/// Normalize a length value for every length-typed config key (font
+/// sizes, padding, pane widths). All length values REQUIRE an explicit
+/// unit suffix — bare numbers are rejected because no single unit
+/// assumption is universally intuitive across the different length
+/// categories, and requiring units makes user intent unambiguous
+/// without parser heuristics.
 ///
-/// Users writing a config file overwhelmingly think in points, so a bare
-/// positive number (integer or decimal) is treated as pt — `14` becomes
-/// `14pt`, `10.5` becomes `10.5pt`. Any value that does NOT parse as a
-/// bare number is passed through unchanged on the assumption that it
-/// already carries a CSS unit suffix (`14px`, `1.1rem`, `16em`, `80%`,
-/// etc.). We deliberately do not maintain an allowlist of valid CSS
-/// length units: the CSS engine in the webview already validates far
-/// more thoroughly than we ever could, and a user who types `14potato`
-/// will see their setting silently drop — which is noisier than getting
-/// zero help from us but less noisy than a false-positive reject from
-/// an outdated allowlist.
-///
-/// Zero or negative values are rejected with a debug warning. CSS
-/// length ≤ 0 is almost never what the user intended (no editor wants
-/// a negative font size), and trying to render `font-size: -5pt` would
-/// drop the declaration anyway. Rejecting in the parser makes the
-/// diagnostic visible in dev builds instead of leaving the user to
-/// puzzle out why their setting "didn't work."
+/// Accepted values are anything with a CSS unit suffix: `14pt`, `2rem`,
+/// `900px`, `80%`, `60vw`, `80ch`, `1.1em`, etc. We do not maintain an
+/// allowlist of valid CSS units — the webview validates far more
+/// thoroughly than we ever could, and an allowlist would be maintenance
+/// burden with only downside (false positives when new units are added
+/// to CSS).
 ///
 /// Multi-token support: `max_tokens` caps the number of whitespace-
-/// separated values the key accepts. Font-size keys pass `1` (only a
-/// single length makes sense for `font-size`). Padding-x / padding-y
-/// keys pass `2` (one value for uniform, two for asymmetric start/end).
-/// Values exceeding the cap are rejected with a debug warning. Each
-/// token is normalized independently using the rules above — so
-/// `editor-padding-y = 10 20` becomes `10pt 20pt`, and
-/// `editor-padding-y = 2rem 10` becomes `2rem 10pt`.
+/// separated values the key accepts.
+/// - Font-size keys pass `1` (only a single length makes sense).
+/// - Pane-width keys pass `1` (single length, no reading-order split).
+/// - Padding keys pass `2` (one value for uniform, two for asymmetric
+///   start/end in reading order).
 ///
-/// Called from `parse_skrivro_config` for the font-size keys
-/// (`edit-font-size`, `preview-font-size`, max_tokens=1) and the
-/// padding keys (`edit/preview-padding-x/y`, max_tokens=2).
+/// Each token is validated independently — any bare number or leading-
+/// minus value causes the whole value to be rejected.
+///
+/// Rejection cases (all emit a debug warning):
+/// - More than `max_tokens` whitespace-separated tokens.
+/// - Any token is a bare number (parses as f64 with no trailing unit).
+///   Examples that trigger: `14`, `2.5`, `.5`, `1e2`.
+/// - Any token starts with `-`. CSS would drop negative lengths
+///   silently; catching at parse time makes the diagnostic visible
+///   in dev builds.
+///
+/// Called from `parse_skrivro_config` for:
+/// - Font-size keys (`edit-font-size`, `preview-font-size`, max_tokens=1)
+/// - Padding keys (`edit/preview-padding-x/y`, max_tokens=2)
+/// - Pane-width keys (`edit/preview-pane-width`, max_tokens=1)
+///
+/// Historical note: previously split into two functions (normalize_length
+/// for font sizes + padding with `bare = pt` convention, and
+/// normalize_dimension for pane widths with strict unit requirement).
+/// Merged when the bare-number convention was dropped in favor of
+/// "all length values require units." See memory/project_config_file.md
+/// for the decision rationale.
 #[cfg_attr(not(debug_assertions), allow(unused_variables))]
 fn normalize_length(key: &str, val: &str, line_num: usize, max_tokens: usize) -> Option<String> {
     let tokens: Vec<&str> = val.split_whitespace().collect();
@@ -346,77 +356,32 @@ fn normalize_length(key: &str, val: &str, line_num: usize, max_tokens: usize) ->
         );
         return None;
     }
-    let mut out = Vec::with_capacity(tokens.len());
     for token in &tokens {
-        if let Ok(n) = token.parse::<f64>() {
-            if n > 0.0 {
-                // Bare positive number — assume pt
-                out.push(format!("{}pt", token));
-            } else {
-                // Zero or negative → almost certainly a mistake
-                #[cfg(debug_assertions)]
-                eprintln!(
-                    "[skrivro config] line {}: {} token '{}' must be positive, skipping whole value '{}'",
-                    line_num, key, token, val
-                );
-                return None;
-            }
-        } else {
-            // Not a bare number — trust the user's unit suffix (or let
-            // CSS drop it if they typed garbage).
-            out.push(token.to_string());
+        // Reject bare numbers (no unit suffix). f64::parse accepts integer,
+        // decimal, and scientific forms (14, 14.5, .5, 1e5); any of those
+        // without a trailing unit triggers rejection.
+        if token.parse::<f64>().is_ok() {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "[skrivro config] line {}: {} token '{}' requires an explicit unit (pt, px, rem, em, %, vw, ch, ...). Examples: 14pt, 2.5rem, 80ch, 900px",
+                line_num, key, token
+            );
+            return None;
+        }
+        // Reject negative values like `-2rem` or `-100px`. CSS would drop
+        // these silently; catching at parse time surfaces the diagnostic.
+        if token.starts_with('-') {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "[skrivro config] line {}: {} token '{}' is negative, skipping",
+                line_num, key, token
+            );
+            return None;
         }
     }
-    Some(out.join(" "))
-}
-
-/// Normalize a dimension value for the pane-width keys.
-///
-/// Different from `normalize_length`: dimension keys REJECT bare numbers
-/// outright, because no single unit assumption is universally intuitive
-/// for layout measurements. For font sizes and padding, pt is a natural
-/// default (print-typography convention carries over). For widths,
-/// there is no equivalent convention: a user writing `edit-pane-width =
-/// 900` could reasonably mean 900 px, 900 pt (= 1200 px at 96 dpi), or
-/// something else entirely. Ghostty's config format reached the same
-/// conclusion for its window-size option, and we follow their rule:
-/// "a bare value without a suffix is a config error."
-///
-/// Accepted values are anything with a CSS unit suffix — `900px`, `80%`,
-/// `60vw`, `40rem`, `80ch`, etc. We do not maintain an allowlist of
-/// valid CSS units (same rationale as `normalize_length`): the webview
-/// validates far more thoroughly than we ever could, and an allowlist
-/// would be maintenance with a pure downside.
-///
-/// Values that start with `-` are rejected as negatives. CSS would drop
-/// `max-width: -100px` anyway, but catching it at parse time makes the
-/// diagnostic visible in dev builds instead of silently dropping.
-///
-/// Called from `parse_skrivro_config` for exactly two keys:
-/// `edit-pane-width`, `preview-pane-width`.
-#[cfg_attr(not(debug_assertions), allow(unused_variables))]
-fn normalize_dimension(key: &str, val: &str, line_num: usize) -> Option<String> {
-    if val.parse::<f64>().is_ok() {
-        // Bare number — ambiguous, reject with a pointer to valid units
-        #[cfg(debug_assertions)]
-        eprintln!(
-            "[skrivro config] line {}: {} value '{}' requires an explicit unit (px, %, vw, rem, ch, ...). Examples: 900px, 80ch, 60%",
-            line_num, key, val
-        );
-        return None;
-    }
-    if val.starts_with('-') {
-        // Explicit negative like `-100px` — CSS would drop it silently,
-        // so catch it here where the user can see the warning in dev.
-        #[cfg(debug_assertions)]
-        eprintln!(
-            "[skrivro config] line {}: {} value '{}' is negative, skipping",
-            line_num, key, val
-        );
-        return None;
-    }
-    // Has a unit suffix — trust it and let CSS validate at render time.
-    Some(val.to_string())
+    // All tokens passed validation — trust the user's units and let CSS
+    // validate at render time if they typed something exotic.
+    Some(tokens.join(" "))
 }
 
 /// Parse a Skrivro config file's text into a `SkrivroConfig`.
@@ -431,19 +396,15 @@ fn normalize_dimension(key: &str, val: &str, line_num: usize) -> Option<String> 
 /// - Malformed lines (missing `=`): warn and skip
 /// - Empty values treated as "unset" — struct field stays `None`, frontend
 ///   falls through to compiled-in defaults
-/// - Length-valued keys go through `normalize_length` which maps bare
-///   positive numbers to pt, passes through explicit-unit values, and
-///   rejects zero/negative. The helper takes a `max_tokens` argument:
-///   font-size keys (`edit-font-size`, `preview-font-size`) pass `1`
-///   since CSS font-size is single-valued; padding keys
-///   (`editor/preview-padding-x/y`) pass `2` to accept both
-///   `= 2rem` (uniform) and `= 2rem 3rem` (asymmetric start/end) forms.
-///   See that function's doc comment for the full rules.
-/// - Dimension-valued keys (edit-pane-width, preview-pane-width) go
-///   through `normalize_dimension`, which REJECTS bare numbers and
-///   requires an explicit CSS unit. No unit assumption is universally
-///   intuitive for layout widths, so the user must say what they mean.
-///   See that function's doc comment for the full rules.
+/// - All length-valued keys (font sizes, padding, pane widths) go
+///   through `normalize_length`, which REJECTS bare numbers (an
+///   explicit CSS unit is required) and rejects negative values. The
+///   helper takes a `max_tokens` argument: font-size and pane-width
+///   keys pass `1` (single length only); padding keys pass `2` to
+///   accept both `= 2rem` (uniform) and `= 2rem 3rem` (asymmetric
+///   start/end) forms. See that function's doc comment for the full
+///   rules and the rationale for dropping the historical `bare = pt`
+///   convention.
 /// - `soft-column-limit` is parsed inline as a strict positive
 ///   integer (not a CSS length) and stored in `Option<u32>` — the
 ///   only numeric-typed field in `SkrivroConfig`. Non-integer, zero,
@@ -491,8 +452,8 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
             "editor-padding-y" => cfg.editor_padding_y = normalize_length(key, val, idx + 1, 2),
             "preview-padding-x" => cfg.preview_padding_x = normalize_length(key, val, idx + 1, 2),
             "preview-padding-y" => cfg.preview_padding_y = normalize_length(key, val, idx + 1, 2),
-            "edit-pane-width" => cfg.edit_pane_width = normalize_dimension(key, val, idx + 1),
-            "preview-pane-width" => cfg.preview_pane_width = normalize_dimension(key, val, idx + 1),
+            "edit-pane-width" => cfg.edit_pane_width = normalize_length(key, val, idx + 1, 1),
+            "preview-pane-width" => cfg.preview_pane_width = normalize_length(key, val, idx + 1, 1),
             "theme" => cfg.theme = Some(val.to_string()),
             "asciidoc-safe-mode" => cfg.asciidoc_safe_mode = Some(val.to_string()),
             "cursor-position-format" => cfg.cursor_position_format = Some(val.to_string()),

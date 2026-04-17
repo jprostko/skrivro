@@ -28,10 +28,12 @@
 # falls through to the original stack — your setting is a preference,
 # not a hard requirement.
 #
-# Font size keys: a bare positive number (integer or decimal) is
-# assumed to be pt, so `14` and `14pt` produce the same result. An
-# explicit unit (px, rem, em, %, ...) passes through to CSS
-# unchanged. Zero or negative values are rejected.
+# ALL length-typed values (font sizes, padding, pane widths) REQUIRE
+# an explicit CSS unit. Bare numbers are rejected — writing `14` for
+# a font size is invalid; write `14pt` (or `14px`, `1rem`, etc.).
+# The CSS `pt` unit is the same as the typographic point used by
+# Word, PowerPoint, and other print-oriented tools: 1/72 inch.
+# Zero and negative values are also rejected.
 
 # Editor (monospace) font. Built-in fallback stack:
 #   ui-monospace, JetBrains Mono, Cascadia Code, Fira Code,
@@ -51,8 +53,8 @@
 # `-y` for vertical (top/bottom). Each key accepts one or two values.
 # One value applies uniformly to both ends of the axis. Two values
 # are in reading order: for `-y` that's `top bottom`, for `-x` that's
-# `left right`. Bare numbers in any position default to pt; explicit
-# units pass through. Three or more values are rejected.
+# `left right`. Every token requires an explicit unit (same rule as
+# font sizes). Three or more values are rejected.
 #
 # Example (asymmetric top vs. bottom):
 #   editor-padding-y = 2rem 3rem     # top = 2rem, bottom = 3rem
@@ -63,12 +65,10 @@
 # Pane width keys apply only in single-pane modes (editor-only and
 # preview-only) and cap the reading column at that width, centering
 # it in the window. They do NOT apply in split mode — each pane
-# already shares the window 50/50 via flexbox. Width values REQUIRE
-# an explicit unit (bare numbers are rejected); accepted units
-# include px, %, vw, rem, em, and ch. The `ch` unit is useful for
-# prose: `edit-pane-width = 80ch` gives roughly 80 characters wide
-# — exact in the monospace editor, approximate in the proportional
-# preview.
+# already shares the window 50/50 via flexbox. Common unit choices:
+# px, %, vw, rem, em, and ch. The `ch` unit is useful for prose:
+# `edit-pane-width = 80ch` gives roughly 80 characters wide — exact
+# in the monospace editor, approximate in the proportional preview.
 
 # editor-padding-x = 2.5rem
 # editor-padding-y = 2rem

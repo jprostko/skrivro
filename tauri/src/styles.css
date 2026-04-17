@@ -73,10 +73,11 @@
      as-is and the browser does the rest.
 
      Users overriding these via skrivro.conf can write any CSS unit
-     they want — the Rust parser's normalize_length helper only
-     applies the "bare number = pt" rule when the value has no unit
-     suffix, so `editor-padding-x = 1.1rem 2rem` passes straight
-     through.
+     they want, as long as they include one — the Rust parser's
+     normalize_length helper rejects bare numbers outright, so
+     `editor-padding-x = 1.1rem 2rem` works while `editor-padding-x
+     = 10 20` does not. See lib.rs::normalize_length for the full
+     rules.
 
      When the user sets one of the corresponding keys in skrivro.conf,
      the frontend's applyUserConfig() function writes the override as

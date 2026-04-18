@@ -165,6 +165,17 @@ struct SkrivroConfig {
     // See the Session state section below for the state file format
     // and the get_session_state / set_session_state commands.
     restore_session: Option<bool>,
+    // UI language — "auto" (default if unset; detect from browser
+    // locale), "en" (force English), or "sv" (force Swedish). When
+    // the config specifies "en" or "sv" explicitly, that overrides
+    // the auto-detect and gets passed to the frontend via the
+    // initialization_script. When unset or "auto", the frontend
+    // picks the language from navigator.language at startup.
+    //
+    // Unknown languages fall back to English (no-op translation).
+    // Swedish is currently the only non-English locale with a
+    // translation table.
+    language: Option<String>,
     // Theme colors resolved by load_theme() in get_config(). When the
     // user's `theme` key matches a non-default theme (i.e., anything
     // other than "catppuccin-mocha"), the Rust side loads the theme
@@ -540,6 +551,26 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
                     }
                 }
             }
+            "language" => {
+                // Accepted: auto (default; detect from browser locale), en,
+                // sv. Unknown languages are rejected with a debug warning —
+                // rather than silently falling back to English, we'd rather
+                // surface the typo so the user knows their intent wasn't
+                // honored. `auto` is represented as None in the struct
+                // (since it means "no override, let the frontend decide").
+                match val.to_lowercase().as_str() {
+                    "auto" => cfg.language = None,
+                    "en" | "sv" => cfg.language = Some(val.to_lowercase()),
+                    _ => {
+                        #[cfg(debug_assertions)]
+                        eprintln!(
+                            "[skrivro config] line {}: language value '{}' not recognized — accepted: auto, en, sv. Skipping.",
+                            idx + 1,
+                            val
+                        );
+                    }
+                }
+            }
             _ => {
                 #[cfg(debug_assertions)]
                 eprintln!(
@@ -761,31 +792,70 @@ fn set_session_state(
 //   - Theme name isn't resolvable (not bundled, no user file)
 //   - JSON serialization of ThemeColors fails (shouldn't happen)
 
-/// Compute the initial theme state as (native_bg_hex, init_script_js).
-/// See the module-level comment above for the design rationale.
-fn compute_initial_theme_state(app: &tauri::AppHandle) -> (String, String) {
+/// Compute the initial app state as (native_bg_hex, init_script_js).
+/// The init script combines two FOUC-prevention concerns:
+///
+///   1. Theme override — sets `window.__SKRIVRO_INITIAL_THEME__` with
+///      resolved theme color values so the frontend's inline script
+///      can apply CSS variable overrides before first paint. See the
+///      module-level comment above for the theme-FOUC rationale.
+///
+///   2. Language override — sets `window.__SKRIVRO_LANG_OVERRIDE__` to
+///      the user's explicit `language` config value, if any. When
+///      unset, the frontend auto-detects from `navigator.language` and
+///      falls back to English for unsupported locales. Presence of the
+///      override wins over auto-detect. See the inline script at the
+///      end of index.html's body for the frontend resolution logic.
+///
+/// Either or both parts may be empty. The combined script string is
+/// passed verbatim to `WebviewWindowBuilder::initialization_script`,
+/// which runs at document-start before any HTML is parsed — so the
+/// globals are available to the inline scripts that consume them.
+fn compute_initial_state(app: &tauri::AppHandle) -> (String, String) {
     let mocha_bg = "#1e1e2e".to_string();
-    let empty_script = String::new();
 
+    // Read config once, use it to compute both the theme state and the
+    // language override. Returns (native_bg_hex, combined_init_script).
+    // On any config-read failure, returns Mocha bg + empty script —
+    // same fallback semantics as before the language additions.
     let Some(path) = skrivro_config_path(app) else {
-        return (mocha_bg, empty_script);
+        return (mocha_bg, String::new());
     };
     let Ok(text) = std::fs::read_to_string(&path) else {
-        return (mocha_bg, empty_script);
+        return (mocha_bg, String::new());
     };
     let cfg = parse_skrivro_config(&text);
-    let Some(theme_name) = cfg.theme else {
-        return (mocha_bg, empty_script);
-    };
-    if theme_name == "catppuccin-mocha" {
-        return (mocha_bg, empty_script);
-    }
-    let Some(colors) = load_theme(&theme_name, app) else {
-        return (mocha_bg, empty_script);
+
+    // Script parts accumulate into one init script; empty script when
+    // neither theme override nor language override is configured.
+    let mut parts: Vec<String> = Vec::new();
+
+    // Theme part — compute bg color and generate theme override script.
+    let bg = match cfg.theme.as_deref() {
+        None => mocha_bg.clone(),
+        Some("catppuccin-mocha") => mocha_bg.clone(),
+        Some(theme_name) => match load_theme(theme_name, app) {
+            Some(colors) => {
+                parts.push(generate_theme_init_script(&colors));
+                colors.bg.clone().unwrap_or_else(|| mocha_bg.clone())
+            }
+            None => mocha_bg.clone(),
+        },
     };
 
-    let bg = colors.bg.clone().unwrap_or(mocha_bg);
-    let init_script = generate_theme_init_script(&colors);
+    // Language part — emit a global only if config explicitly set it;
+    // otherwise the frontend's inline script auto-detects from
+    // navigator.language at startup. serde_json handles escaping, so
+    // the embedded string is safe regardless of future locale
+    // names with special chars.
+    if let Some(lang) = cfg.language.as_ref() {
+        parts.push(format!(
+            "window.__SKRIVRO_LANG_OVERRIDE__ = {};",
+            serde_json::to_string(lang).unwrap_or_else(|_| "null".to_string())
+        ));
+    }
+
+    let init_script = parts.join("\n");
     (bg, init_script)
 }
 
@@ -958,9 +1028,10 @@ pub fn run() {
             // the user's selected theme. This eliminates the FOUC flash
             // that would otherwise occur between the Catppuccin Mocha
             // compiled-in CSS defaults and the user's applied theme
-            // overrides. See compute_initial_theme_state above for the
-            // full rationale.
-            let (bg_hex, init_script) = compute_initial_theme_state(&app.handle());
+            // overrides. See compute_initial_state above for the full
+            // rationale. The init script also carries the language
+            // override (if any) for localization FOUC prevention.
+            let (bg_hex, init_script) = compute_initial_state(&app.handle());
             let bg_color = parse_hex_color(&bg_hex)
                 .unwrap_or(tauri::webview::Color(30, 30, 46, 255)); // #1e1e2e fallback
 

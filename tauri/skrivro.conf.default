@@ -190,3 +190,32 @@
 #
 # Accepted forms: true/false, yes/no, on/off, 1/0 (case-insensitive).
 # restore-session = false
+
+# ================= Language =================
+
+# UI language for the status bar labels, help dialog, and confirm
+# dialogs — auto / en / sv. Default auto (detect from browser/system
+# locale; sv for Swedish locale, en for everything else).
+#
+# This localizes the user-facing text in Skrivro's own chrome only.
+# It does NOT translate:
+#   - Vim Ex commands (:w, :open, :saveas, :syncpreview, etc.) — these
+#     stay English because they're input syntax, same rule real Vim
+#     follows regardless of locale
+#   - Keyboard shortcut names (Ctrl+S on Linux/Windows, ⌃⌥T on Mac) —
+#     physical key identifiers, not translatable text
+#   - Your document content or AsciiDoc rendered output — Skrivro
+#     doesn't touch document text at all
+#
+# Supported values:
+#   auto  — detect from navigator.language (sv* → Swedish; everything
+#           else → English). Default if this key is unset.
+#   en    — force English regardless of system locale
+#   sv    — force Swedish regardless of system locale
+#
+# Unknown values (e.g. `language = de`) are rejected with a debug
+# warning and fall through to auto-detect. If you want a language
+# other than English or Swedish, there's no translation for it yet —
+# the translation table lives in tauri/src/index.html's STRINGS_SV
+# and is easy to extend if someone contributes a translation.
+# language = auto

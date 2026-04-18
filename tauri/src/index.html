@@ -222,6 +222,36 @@
     </div>
   </dialog>
 
+  <!-- Language resolution + static-text translation. Runs at end of
+       body (after all static elements are in the DOM) but before the
+       module script, synchronously, blocking first paint. This is the
+       language equivalent of the theme-FOUC-prevention script in head.
+       Resolves the language once: explicit config override (set by
+       Tauri's initialization_script from the Rust-side compute_initial_state)
+       wins; otherwise auto-detects from navigator.language with English
+       fallback for anything other than Swedish. The resolved value
+       lands on window.__SKRIVRO_LANG__ which the module script reads.
+
+       For Swedish, translates the static status bar text ("Ln 1, Col 1"
+       and "0 words") in-place before first paint — no "Ln flashes then
+       turns to Rad" experience. Module-side translation handles the
+       rest (mode pill on transition, help dialog on init, confirm
+       dialog on show). -->
+  <script>
+    (function() {
+      var override = window.__SKRIVRO_LANG_OVERRIDE__;
+      var auto = /^sv/i.test(navigator.language || '');
+      var lang = (override === 'en' || override === 'sv') ? override
+                                                          : (auto ? 'sv' : 'en');
+      window.__SKRIVRO_LANG__ = lang;
+      if (lang !== 'sv') return;
+      var pos = document.getElementById('statusPosition');
+      if (pos) pos.textContent = 'Rad 1, Kol 1';
+      var wc = document.getElementById('statusWordCount');
+      if (wc) wc.textContent = '0 ord';
+    })();
+  </script>
+
 <script type="module">
   // Side-effect CSS import. Vite processes this as part of the module
   // graph: in dev, it serves styles.css via the dev server (transformed
@@ -332,6 +362,169 @@
   const statusPosition      = document.getElementById('statusPosition');
   const statusSyncIndicator = document.getElementById('statusSyncIndicator');
   const statusWordCount     = document.getElementById('statusWordCount');
+
+  // ================= Localization =================
+  //
+  // Minimal pragmatic translation system — English and Swedish only,
+  // no i18n framework, no JSON loader, no runtime language switching.
+  // Language is resolved once by the inline <script> at end of body
+  // (which reads the Rust-side config override or falls back to
+  // navigator.language auto-detect), landing on window.__SKRIVRO_LANG__.
+  //
+  // NOT translated (stays English everywhere):
+  // - Ex commands (:w, :open, :syncpreview, etc.) — input syntax, same
+  //   rule real Vim follows (Swedish vim users still type :w, not :skriv)
+  // - Keyboard shortcut names (Ctrl+S, ⌃⌥T on Mac, etc.) — physical key
+  //   identifiers, not translatable text
+  // - Filename strings like untitled.adoc — filenames don't localize
+  // - App name "Skrivro" — already a Swedish word
+  //
+  // To extend to a new language later: add a STRINGS_<LANG> map, update
+  // the resolution logic in the inline <script>, extend the Rust-side
+  // config parser to accept the new language code, done. If the map
+  // grows past ~100-200 entries or multiple languages accumulate, this
+  // should graduate to a proper i18n setup. For now it's tractable.
+  const lang = window.__SKRIVRO_LANG__ || 'en';
+
+  const STRINGS_SV = {
+    // Status bar — mode pill labels. NORMAL and V-BLOCK stay unchanged
+    // (NORMAL is the same word in Swedish; BLOCK is the same in Swedish
+    // as well — the abbreviated "V-" prefix is language-neutral).
+    'INSERT': 'INFOGA',
+    'REPLACE': 'ERSÄTT',
+    'COMMAND': 'KOMMANDO',
+    'VISUAL': 'VISUELL',
+    'V-LINE': 'V-RAD',
+
+    // Status bar — cursor position prefixes and content-count labels
+    'Ln': 'Rad',
+    'Col': 'Kol',
+    'word': 'ord',
+    'words': 'ord',
+    'line': 'rad',
+    'lines': 'rader',
+    'char': 'tecken',
+    'chars': 'tecken',  // neuter noun — same plural form as singular
+
+    // Confirm dialog — message and button labels
+    'You have unsaved changes. Discard them?': 'Du har osparade ändringar. Kasta dem?',
+    'Discard': 'Kasta',
+    'Cancel': 'Avbryt',
+
+    // Help dialog — top-level h2 headings (textContent-matched)
+    'Keyboard shortcuts': 'Kortkommandon',
+    'Vim Ex commands (vim mode only)': 'Vim Ex-kommandon <span class="help-note">(endast i vim-läge)</span>',
+    'Vim normal mode (vim mode only)': 'Vim normalläge <span class="help-note">(endast i vim-läge)</span>',
+
+    // Help dialog — h3 section headings. "File" repeats under both
+    // Keyboard shortcuts and Vim Ex commands; DOM sweep translates both
+    // occurrences since it matches by textContent.
+    'File': 'Fil',
+    'Display': 'Visning',
+    'Navigation': 'Navigering',
+    'Quit': 'Avsluta',
+    'Preview': 'Förhandsvisning',
+    'Modes': 'Lägen',
+    'Commands': 'Kommandon',
+
+    // Help dialog — keyboard shortcut descriptions
+    'Save': 'Spara',
+    'Save as': 'Spara som',
+    'Open': 'Öppna',
+    'New': 'Ny',
+    'Toggle titlebar': 'Växla titelrad',
+    'Toggle gutter': 'Växla radnummermarginal',
+    'Toggle vim mode': 'Växla vim-läge',
+    'Split mode (editor + preview)': 'Delat läge (redigerare + förhandsvisning)',
+    'Editor only': 'Endast redigerare',
+    'Preview only': 'Endast förhandsvisning',
+    'Toggle this help': 'Växla denna hjälp',
+    'Toggle status bar': 'Växla statusfält',
+    'Sync preview to cursor': 'Synka förhandsvisning till markör',
+
+    // Help dialog — Vim Ex command descriptions
+    'Save current file': 'Spara aktuell fil',
+    'Write buffer contents to a path (current buffer association unchanged)': 'Skriv buffertinnehåll till en sökväg (aktuell buffertassociation oförändrad)',
+    'Save as + rename the buffer': 'Spara som + byt namn på bufferten',
+    'Reload current file from disk': 'Ladda om aktuell fil från disken',
+    'Open a different file (refuses if dirty)': 'Öppna en annan fil (vägrar om osparad)',
+    'Force reload or open, discarding dirty buffer': 'Tvinga omladdning eller öppning, kasta osparad buffert',
+    'New empty buffer': 'Ny tom buffert',
+    'Show the file picker dialog': 'Visa fildialogen',
+
+    // Help dialog — Vim Quit command descriptions
+    'Quit (confirm if dirty)': 'Avsluta (bekräfta om osparad)',
+    'Force quit, discard changes without prompting': 'Tvinga avsluta, kasta ändringar utan att fråga',
+    'Save and quit (always writes, updates mtime)': 'Spara och avsluta (skriver alltid, uppdaterar mtime)',
+    'Save only if dirty, then quit (mtime untouched on clean buffer)': 'Spara endast om osparad, sedan avsluta (mtime orörd för ren buffert)',
+    'Force save even if clean, then quit': 'Tvinga spara även om ren, sedan avsluta',
+    'Quit all (single-window alias for :q)': 'Avsluta alla (alias för :q för enstaka fönster)',
+    'Force quit all': 'Tvinga avsluta alla',
+    'Save all, quit all': 'Spara alla, avsluta alla',
+    'Save if dirty (all), quit all': 'Spara om osparad (alla), avsluta alla',
+
+    // Help dialog — Vim Preview command descriptions
+    'Snap preview to the block containing the caret line': 'Snäpp förhandsvisning till blocket som innehåller markörraden',
+
+    // Help dialog — Vim normal mode / Modes
+    'Insert mode (before / after cursor)': 'Infogningsläge (före / efter markör)',
+    'Visual mode (character-wise)': 'Visuellt läge (teckenvis)',
+    'Visual line mode': 'Visuellt radläge',
+    'Visual block mode (Ctrl+V is reserved for browser paste)': 'Visuellt blockläge (<kbd>Ctrl+V</kbd> är reserverat för webbläsarens klistra in)',
+    'Replace mode': 'Ersättningsläge',
+    'Ex command line': 'Ex-kommandorad',
+    'Return to normal mode': 'Återgå till normalläge',
+
+    // Help dialog — Vim normal mode Commands
+    'Snap preview to cursor (same as :syncpreview)': 'Snäpp förhandsvisning till markör (samma som :syncpreview)',
+    'Save if dirty, quit (same as :x)': 'Spara om osparad, avsluta (samma som :x)',
+    'Force quit, discard changes (same as :q!)': 'Tvinga avsluta, kasta ändringar (samma som :q!)',
+  };
+
+  // Translation helper. Returns the Swedish string if current language
+  // is 'sv' and the map contains an entry; otherwise returns the input
+  // unchanged. Missing entries are silently un-translated — acceptable
+  // for partial coverage.
+  //
+  // Named `tr` rather than the conventional `t` because `t` is already
+  // taken as module-level import alias for @lezer/highlight's `tags`
+  // (`import { tags as t }`). Renaming our helper to `tr` is simpler
+  // than renaming the deeply-used Lezer import.
+  const tr = (en) => {
+    if (lang !== 'sv') return en;
+    return STRINGS_SV[en] ?? en;
+  };
+
+  // Translate the help dialog's static content in-place. Runs once at
+  // init since the dialog DOM doesn't change at runtime. Also handles
+  // the confirm dialog's buttons (Cancel / Discard) which are static
+  // in HTML too but only visible when the dialog is opened — no FOUC
+  // concern, just needs to be done before the first confirm shows up.
+  //
+  // Uses innerHTML (not textContent) because a handful of translation
+  // entries contain embedded <kbd> elements that should render as
+  // keyboard-key hints in Swedish too (e.g., "Visual block mode
+  // (<kbd>Ctrl+V</kbd>...)"). All translation values are author-
+  // controlled so there's no XSS concern from the innerHTML write.
+  const translateStaticText = () => {
+    if (lang !== 'sv') return;
+    const selectors = [
+      '.help-dialog h2',
+      '.help-dialog h3',
+      '.help-dialog .help-desc',
+      '#confirmCancelBtn',
+      '#confirmOkBtn',
+    ];
+    selectors.forEach((sel) => {
+      document.querySelectorAll(sel).forEach((el) => {
+        const key = el.textContent.trim();
+        const value = STRINGS_SV[key];
+        if (value !== undefined) {
+          el.innerHTML = value;
+        }
+      });
+    });
+  };
 
   // ================= Prefs =================
 
@@ -460,14 +653,14 @@
 
   const formatModeLabel = (mode, variant) => {
     switch (mode) {
-      case 'insert':  return 'INSERT';
-      case 'replace': return 'REPLACE';
-      case 'command': return 'COMMAND';
+      case 'insert':  return tr('INSERT');
+      case 'replace': return tr('REPLACE');
+      case 'command': return tr('COMMAND');
       case 'visual':
-        if (variant === 'line')  return 'V-LINE';
-        if (variant === 'block') return 'V-BLOCK';
-        return 'VISUAL';
-      default: return 'NORMAL';
+        if (variant === 'line')  return tr('V-LINE');
+        if (variant === 'block') return tr('V-BLOCK');  // V-BLOCK same in Swedish
+        return tr('VISUAL');
+      default: return tr('NORMAL');  // NORMAL same in Swedish
     }
   };
 
@@ -490,7 +683,7 @@
   // the pre-editor fallback case where there's no cursor yet — the
   // caller treats null as "never over-limit."
   const formatCursorPosition = () => {
-    if (!editorView) return { text: 'Ln 1, Col 1', col: null };
+    if (!editorView) return { text: `${tr('Ln')} 1, ${tr('Col')} 1`, col: null };
     const head = editorView.state.selection.main.head;
     const line = editorView.state.doc.lineAt(head);
     const textBeforeCursor = line.text.slice(0, head - line.from);
@@ -500,7 +693,7 @@
       case 'compact': text = `${line.number}:${col}`; break;
       case 'ruler':   text = `${line.number},${col}`; break;
       case 'verbose':
-      default:        text = `Ln ${line.number}, Col ${col}`; break;
+      default:        text = `${tr('Ln')} ${line.number}, ${tr('Col')} ${col}`; break;
     }
     return { text, col };
   };
@@ -537,8 +730,8 @@
     }
 
     const chars = [...doc.sliceString(from, to)].length;
-    if (lines > 1) return `${lines} lines, ${chars} chars`;
-    return `${chars} chars`;
+    if (lines > 1) return `${lines} ${tr('lines')}, ${chars} ${tr('chars')}`;
+    return `${chars} ${tr('chars')}`;
   };
 
   const refreshStatus = () => {
@@ -614,7 +807,7 @@
     if (!statusWordCount) return;
     const text = out.textContent || '';
     const count = text.trim().split(/\s+/).filter(w => w.length > 0).length;
-    const label = count === 1 ? 'word' : 'words';
+    const label = count === 1 ? tr('word') : tr('words');
     statusWordCount.textContent = `${count.toLocaleString()} ${label}`;
   };
 
@@ -1366,7 +1559,7 @@
 
   const confirmDiscard = (onOk) => {
     if (!dirty) { onOk(); return; }
-    askConfirm('You have unsaved changes. Discard them?', onOk);
+    askConfirm(tr('You have unsaved changes. Discard them?'), onOk);
   };
 
   // Internal: load a file from a given absolute path into the editor.
@@ -2325,7 +2518,7 @@
       return; // library auto-calls destroy() to close
     }
     event.preventDefault();
-    askConfirm('You have unsaved changes. Discard them?', () => {
+    askConfirm(tr('You have unsaved changes. Discard them?'), () => {
       // "Discard" means actually discard — clear the autosave draft
       // so the next launch starts clean. Without this, the draft
       // restoration would bring the "discarded" changes back.
@@ -2387,6 +2580,7 @@
   applyStatusBar();
   applyDisplayMode();
   applyMacModifierLabels();
+  translateStaticText();
 
   // Query Rust for launch-time info (CLI argument, shell CWD). If a file
   // path was passed on the command line, that wins over the autosave draft.

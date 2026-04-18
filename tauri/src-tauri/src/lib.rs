@@ -685,6 +685,92 @@ fn set_session_state(
     Ok(())
 }
 
+// ================= Initial theme state (FOUC prevention) =================
+//
+// The default CSS in index.html uses Catppuccin Mocha values. If the user
+// has selected a different theme via skrivro.conf, there's a visible flash
+// between the first HTML paint (Mocha defaults) and when the frontend's
+// applyUserConfig() finishes the async get_config round-trip and applies
+// the selected theme's color overrides.
+//
+// To eliminate the flash, we do two things at window-creation time:
+//   1. Set the native window's background_color to the selected theme's
+//      `bg` slot value (so the native frame doesn't briefly show Mocha
+//      before the webview paints).
+//   2. Inject an initialization_script (runs at document-start, before
+//      any HTML parsing) that sets `window.__SKRIVRO_INITIAL_THEME__` to
+//      a JSON object with all theme slot values. An inline script in
+//      index.html's <body> reads this global and applies the values to
+//      :root via document.documentElement.style.setProperty() before the
+//      stylesheet is applied and first paint occurs.
+//
+// Both steps require knowing the user's theme BEFORE the window exists,
+// so this runs synchronously during setup() before the WebviewWindowBuilder
+// constructs the window.
+//
+// Fallbacks (all yield Mocha bg + empty init script, matching the
+// compiled-in CSS defaults):
+//   - No skrivro.conf on disk
+//   - Config doesn't specify a `theme` key
+//   - Theme is "catppuccin-mocha" (matches CSS defaults already — no
+//     override needed)
+//   - Theme name isn't resolvable (not bundled, no user file)
+//   - JSON serialization of ThemeColors fails (shouldn't happen)
+
+/// Compute the initial theme state as (native_bg_hex, init_script_js).
+/// See the module-level comment above for the design rationale.
+fn compute_initial_theme_state(app: &tauri::AppHandle) -> (String, String) {
+    let mocha_bg = "#1e1e2e".to_string();
+    let empty_script = String::new();
+
+    let Some(path) = skrivro_config_path(app) else {
+        return (mocha_bg, empty_script);
+    };
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return (mocha_bg, empty_script);
+    };
+    let cfg = parse_skrivro_config(&text);
+    let Some(theme_name) = cfg.theme else {
+        return (mocha_bg, empty_script);
+    };
+    if theme_name == "catppuccin-mocha" {
+        return (mocha_bg, empty_script);
+    }
+    let Some(colors) = load_theme(&theme_name, app) else {
+        return (mocha_bg, empty_script);
+    };
+
+    let bg = colors.bg.clone().unwrap_or(mocha_bg);
+    let init_script = generate_theme_init_script(&colors);
+    (bg, init_script)
+}
+
+/// Generate a JS snippet that sets `window.__SKRIVRO_INITIAL_THEME__` to
+/// a JSON object with the theme's color values. The object keys are
+/// camelCase via serde's `rename_all = "camelCase"` attribute on
+/// `ThemeColors`; the inline script in index.html converts them to
+/// kebab-case when setting `--skr-*` CSS custom properties.
+fn generate_theme_init_script(colors: &ThemeColors) -> String {
+    match serde_json::to_string(colors) {
+        Ok(json) => format!("window.__SKRIVRO_INITIAL_THEME__ = {};", json),
+        Err(_) => String::new(),
+    }
+}
+
+/// Parse a hex color string like "#1e1e2e" into a Tauri Color (RGBA with
+/// alpha=255). Returns `None` for malformed input; callers should fall
+/// back to a sensible default.
+fn parse_hex_color(hex: &str) -> Option<tauri::webview::Color> {
+    let hex = hex.trim_start_matches('#');
+    if hex.len() != 6 {
+        return None;
+    }
+    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+    Some(tauri::webview::Color(r, g, b, 255))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Wayland app_id workaround: set GLib's program name to the Tauri
@@ -766,6 +852,33 @@ pub fn run() {
             set_session_state
         ])
         .setup(|app| {
+            // Create the main window programmatically (rather than via
+            // tauri.conf.json's app.windows array) so we can compute the
+            // background_color and initialization_script dynamically from
+            // the user's selected theme. This eliminates the FOUC flash
+            // that would otherwise occur between the Catppuccin Mocha
+            // compiled-in CSS defaults and the user's applied theme
+            // overrides. See compute_initial_theme_state above for the
+            // full rationale.
+            let (bg_hex, init_script) = compute_initial_theme_state(&app.handle());
+            let bg_color = parse_hex_color(&bg_hex)
+                .unwrap_or(tauri::webview::Color(30, 30, 46, 255)); // #1e1e2e fallback
+
+            let mut builder = tauri::WebviewWindowBuilder::new(
+                app,
+                "main",
+                tauri::WebviewUrl::App("index.html".into()),
+            )
+            .title("Skrivro")
+            .inner_size(1280.0, 720.0)
+            .decorations(false)
+            .background_color(bg_color);
+
+            if !init_script.is_empty() {
+                builder = builder.initialization_script(&init_script);
+            }
+
+            let window = builder.build()?;
 
             // On Linux, webkit2gtk inherits GTK's text-widget context menu,
             // which includes an "Insert Unicode Control Character" submenu
@@ -783,10 +896,6 @@ pub fn run() {
             // active — also stays, since IME users genuinely need it.
             #[cfg(target_os = "linux")]
             {
-                use tauri::Manager;
-                let window = app
-                    .get_webview_window("main")
-                    .ok_or("main window not found")?;
                 window.with_webview(|webview| {
                     use webkit2gtk::{
                         ContextMenuAction, ContextMenuExt, ContextMenuItemExt, WebViewExt,
@@ -808,7 +917,7 @@ pub fn run() {
             // Suppress unused-variable warning on non-Linux platforms where
             // the cfg-gated block above does not compile.
             #[cfg(not(target_os = "linux"))]
-            let _ = app;
+            let _ = window;
 
             Ok(())
         })

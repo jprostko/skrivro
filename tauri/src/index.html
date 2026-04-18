@@ -25,6 +25,27 @@
       } catch(e) {}
     })();
   </script>
+  <!-- Theme FOUC prevention: reads window.__SKRIVRO_INITIAL_THEME__, which
+       Tauri's initialization_script set at document-start (before any HTML
+       parsing) with the user-selected theme's color values. Applies those
+       as :root inline CSS overrides. Inline styles win over stylesheet
+       values at any specificity, so the CSS defaults in styles.css get
+       overridden on first paint — no visible transition from Catppuccin
+       Mocha defaults to the user's theme.
+       See lib.rs::compute_initial_theme_state for the Rust-side half. -->
+  <script>
+    (function() {
+      var theme = window.__SKRIVRO_INITIAL_THEME__;
+      if (!theme) return;
+      var s = document.documentElement.style;
+      for (var k in theme) {
+        var v = theme[k];
+        if (v == null) continue;
+        var kebab = k.replace(/[A-Z]/g, function(m) { return '-' + m.toLowerCase(); });
+        s.setProperty('--skr-' + kebab, v);
+      }
+    })();
+  </script>
   <header class="titlebar">
     <div><span class="name" id="name">untitled.adoc</span></div>
     <button type="button" id="helpBtn" class="help-button"

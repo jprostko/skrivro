@@ -10,16 +10,7 @@
   },
   "app": {
     "enableGTKAppId": true,
-    "windows": [
-      {
-        "label": "main",
-        "title": "Skrivro",
-        "width": 1280,
-        "height": 720,
-        "decorations": false,
-        "backgroundColor": "#1e1e2e"
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": {
         "default-src": "'self'",

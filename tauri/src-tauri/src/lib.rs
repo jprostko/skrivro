@@ -887,6 +887,59 @@ pub fn run() {
     tauri::Builder::default()
         .manage(launch_info)
         .manage(PendingOpens::default())
+        // Single-instance plugin must be registered FIRST — before any
+        // other plugin or state that depends on app identity. When a
+        // second `skrivro foo.adoc` is launched while an existing
+        // instance is running, the plugin intercepts: second process
+        // sends its argv + cwd to the first via IPC and exits, and
+        // the callback here fires on the first instance with the
+        // second's args. We route the incoming file path through the
+        // same PendingOpens + event-emit pipeline used for file
+        // associations on macOS. The frontend's live listener
+        // (skrivro:open-file) picks it up and opens the file in the
+        // existing window, with a dirty-buffer confirmDiscard prompt
+        // if needed.
+        //
+        // On macOS this plugin is largely a no-op — macOS enforces
+        // single-instance for .app bundles at the OS level, so a
+        // second "process" doesn't actually spawn to forward args.
+        // The file-association path for Mac uses RunEvent::Opened
+        // (see the .run() callback at the end of this function).
+        .plugin(tauri_plugin_single_instance::init(|app_handle, argv, cwd| {
+            use tauri::{Emitter, Manager};
+
+            // Bring the existing window to the front so the user sees
+            // the action. set_focus behavior on Wayland is subject to
+            // compositor focus-stealing-prevention rules; on Hyprland
+            // the default setup honors app-initiated focus requests
+            // from the same session.
+            if let Some(window) = app_handle.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+
+            // Resolve the file argument (if any). argv[0] is the
+            // executable path; argv[1] is the first file arg by
+            // convention. Relative paths resolve against the SECOND
+            // instance's cwd (not the first's) — that matches what
+            // the user typed from their shell.
+            if let Some(arg) = argv.get(1) {
+                let p = std::path::PathBuf::from(arg);
+                let resolved = if p.is_absolute() {
+                    p.to_string_lossy().to_string()
+                } else {
+                    std::path::PathBuf::from(&cwd)
+                        .join(&p)
+                        .to_string_lossy()
+                        .to_string()
+                };
+
+                let pending = app_handle.state::<PendingOpens>();
+                let mut list = pending.0.lock().unwrap();
+                list.push(resolved.clone());
+                let _ = app_handle.emit("skrivro:open-file", resolved);
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())

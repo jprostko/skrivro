@@ -23,6 +23,17 @@ tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-shell = "2"
+# tauri-plugin-single-instance: enforces one PID per Skrivro launch on
+# Linux and Windows (macOS already enforces this at the OS level for
+# .app bundles). When a second `skrivro foo.adoc` is launched, the
+# plugin intercepts: the second process sends its argv + cwd to the
+# first running instance via IPC and then exits, and the first
+# instance's callback routes the file path through the same
+# PendingOpens + skrivro:open-file emit pipeline that file
+# associations use. Net effect: "open another .adoc while Skrivro is
+# running" routes to the existing window on all three platforms
+# instead of spawning a second instance on Linux/Windows.
+tauri-plugin-single-instance = "2"
 # tauri-plugin-window-state: first-party Tauri plugin that persists
 # window size, position, maximized state, and fullscreen state across
 # launches. Saves state on close/resize/move events to a JSON file in

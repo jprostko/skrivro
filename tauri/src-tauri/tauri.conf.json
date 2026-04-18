@@ -9,7 +9,7 @@
     "beforeBuildCommand": "npm run build"
   },
   "app": {
-    "enableGTKAppId": false,
+    "enableGTKAppId": true,
     "windows": [
       {
         "label": "main",

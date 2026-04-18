@@ -1939,6 +1939,37 @@
     savePrefs();
     applyStatusBar();
   };
+
+  // Rewrite the help dialog's modifier keys on Mac. Apple convention
+  // is symbols with no separator — ⌃S, ⌃⇧N, ⌃⌥T — matching what users
+  // see in the macOS menu bar, System Settings, and Apple's own
+  // documentation. Linux and Windows keep the Ctrl+Shift+N form because
+  // that's what's printed on their physical keys and what every other
+  // app on those platforms shows.
+  //
+  // Platform detection: navigator.userAgent string matches /Mac/i.
+  // Good enough for this narrow purpose; no @tauri-apps/plugin-os
+  // dependency needed. Runs once at init since the help dialog's DOM
+  // is static — no need to re-run on each dialog open.
+  //
+  // Selector scope: .help-dialog kbd. Other <kbd> elements elsewhere
+  // (if added later) would need to opt in by being inside .help-dialog
+  // or by extending this function's selector.
+  //
+  // Keys we translate: Ctrl → ⌃, Alt → ⌥, Shift → ⇧. Other Mac key
+  // symbols (Return ↵, Tab ⇥, Escape ⎋, Backspace ⌫) aren't used in
+  // our current help dialog but could be added to this function if
+  // we ever show them as shortcuts.
+  const applyMacModifierLabels = () => {
+    if (!/Mac/i.test(navigator.userAgent)) return;
+    document.querySelectorAll('.help-dialog kbd').forEach((kbd) => {
+      kbd.textContent = kbd.textContent
+        .replace(/\bCtrl\b/g, '⌃')
+        .replace(/\bAlt\b/g, '⌥')
+        .replace(/\bShift\b/g, '⇧')
+        .replace(/\+/g, '');
+    });
+  };
   const toggleVim = () => {
     prefs.vimMode = !prefs.vimMode;
     savePrefs();
@@ -2355,6 +2386,7 @@
   applyGutter();
   applyStatusBar();
   applyDisplayMode();
+  applyMacModifierLabels();
 
   // Query Rust for launch-time info (CLI argument, shell CWD). If a file
   // path was passed on the command line, that wins over the autosave draft.

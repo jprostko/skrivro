@@ -48,6 +48,7 @@
       <span class="status-sync-indicator" id="statusSyncIndicator" aria-hidden="true">→</span>
       <span class="status-filetype" id="statusFiletype">AsciiDoc</span>
       <span class="status-position" id="statusPosition">Ln 1, Col 1</span>
+      <span class="status-word-count" id="statusWordCount">0 words</span>
     </div>
   </footer>
 
@@ -296,6 +297,7 @@
   const statusFiletype      = document.getElementById('statusFiletype');
   const statusPosition      = document.getElementById('statusPosition');
   const statusSyncIndicator = document.getElementById('statusSyncIndicator');
+  const statusWordCount     = document.getElementById('statusWordCount');
 
   // ================= Prefs =================
 
@@ -553,6 +555,33 @@
     statusPosition.classList.toggle('over-limit', overLimit);
 
     statusFilename.textContent = currentName;
+  };
+
+  // Count words in the rendered preview's text content. Visible only in
+  // preview-only display mode (see the CSS `.status-word-count` rules),
+  // but computed on every render regardless so the value is current the
+  // moment the user switches into preview mode — no "stale until first
+  // render-in-preview" surprise.
+  //
+  // Reading from the rendered DOM rather than the AsciiDoc source means
+  // directive syntax (`include::`, attribute references, `:toc: left`)
+  // doesn't inflate the count with non-content tokens. The count
+  // reflects what a reader of the rendered document actually sees.
+  //
+  // For documents with includes, the count reflects the fully-expanded
+  // preview — opening book.adoc (which include::s chapters) shows the
+  // book-total, opening chapter-03.adoc directly shows that chapter.
+  //
+  // Format uses toLocaleString() with no arg so thousands separators
+  // match the user's browser locale (comma in en-US, space in sv-SE,
+  // dot in de-DE, etc.). Singular "1 word" vs plural "N words" handled
+  // explicitly — "1 words" reads as broken.
+  const updateWordCount = () => {
+    if (!statusWordCount) return;
+    const text = out.textContent || '';
+    const count = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+    const label = count === 1 ? 'word' : 'words';
+    statusWordCount.textContent = `${count.toLocaleString()} ${label}`;
   };
 
   // ================= Helpers =================
@@ -985,11 +1014,16 @@
       }
 
       buildBlockMap(doc);
+      updateWordCount();
     } catch (e) {
       console.error('render failed:', e);
       out.innerHTML =
         `<pre class="render-error">Render error: ${escapeHtml(e.message || String(e))}</pre>`;
       blockMap = [];
+      // Intentionally not updating word count on render error — the
+      // error message's word count is meaningless, so leaving the
+      // previous successful value feels less jarring than showing
+      // "3 words" for whatever text is in the <pre class="render-error">.
     }
   };
   const scheduleRender = () => {

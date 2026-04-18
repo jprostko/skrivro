@@ -612,6 +612,15 @@ body.mode-preview .statusbar .status-mode-pill,
 body.mode-preview .statusbar .status-position,
 body.mode-preview .statusbar .status-sync-indicator { display: none; }
 
+/* Word count is the inverse of the slots above — hidden in editor/split
+   modes (where Ln/Col and the vim mode pill are the primary right-
+   cluster content), shown in preview-only mode where those slots are
+   hidden and the right cluster has room. Keeps the status bar focused
+   on cursor-position feedback while editing, and on content-size
+   feedback while reading/reviewing. */
+.statusbar .status-word-count { display: none; }
+body.mode-preview .statusbar .status-word-count { display: inline-block; }
+
 .statusbar .status-left,
 .statusbar .status-right {
   display: flex;

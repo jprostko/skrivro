@@ -46,8 +46,15 @@
       }
     })();
   </script>
-  <header class="titlebar">
-    <div><span class="name" id="name">untitled.adoc</span></div>
+  <!-- data-tauri-drag-region makes the titlebar a mouse-drag handle for
+       moving the window, needed on decorationless Mac builds where there's
+       otherwise no app-level way to drag. The help button inside remains
+       clickable — Tauri's drag-region handling excludes interactive
+       elements (buttons, inputs, etc.) from triggering drag. Users who
+       hide the titlebar via Ctrl+Alt+T lose the drag region along with
+       it; that's an accepted tradeoff of the "minimal UI" toggle. -->
+  <header class="titlebar" data-tauri-drag-region>
+    <div data-tauri-drag-region><span class="name" id="name">untitled.adoc</span></div>
     <button type="button" id="helpBtn" class="help-button"
             aria-label="Show keyboard shortcuts and commands help (Ctrl+Alt+H)">?</button>
   </header>
@@ -60,12 +67,17 @@
   <!-- Status bar: mode pill (vim-only) + filename on the left;
        file type + cursor position on the right. Toggled by Ctrl+Alt+B.
        See memory/project_status_bar.md for the design spec. -->
-  <footer class="statusbar" id="statusbar">
-    <div class="status-left">
+  <!-- data-tauri-drag-region: second drag handle for the window, so users
+       who hide the titlebar via Ctrl+Alt+T still have a way to drag. All
+       status bar slots are non-interactive (mode pill, filename, filetype,
+       position, word count, sync indicator — all display-only spans with
+       no click handlers), so nothing gets swallowed by the drag behavior. -->
+  <footer class="statusbar" id="statusbar" data-tauri-drag-region>
+    <div class="status-left" data-tauri-drag-region>
       <span class="status-mode-pill" id="statusMode" data-vim-mode="normal" hidden>NORMAL</span>
       <span class="status-filename" id="statusFilename">untitled.adoc</span>
     </div>
-    <div class="status-right">
+    <div class="status-right" data-tauri-drag-region>
       <span class="status-sync-indicator" id="statusSyncIndicator" aria-hidden="true">→</span>
       <span class="status-filetype" id="statusFiletype">AsciiDoc</span>
       <span class="status-position" id="statusPosition">Ln 1, Col 1</span>

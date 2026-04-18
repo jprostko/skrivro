@@ -845,6 +845,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             get_launch_info,
             get_config,
@@ -879,6 +880,26 @@ pub fn run() {
             }
 
             let window = builder.build()?;
+
+            // Restore window state (size, position, maximized, fullscreen)
+            // from the tauri-plugin-window-state saved state, if any. On
+            // first launch or after `rm`ing the plugin's state file, this
+            // is a no-op and the window keeps the inner_size(1280, 720)
+            // default from the builder above. On subsequent launches, the
+            // window is reshaped/moved to match wherever the user had it
+            // when they last closed Skrivro.
+            //
+            // There is a brief reshape visible at launch as the default
+            // size/position snaps to the restored values — accepted as a
+            // minor cosmetic cost for the persistence win. If this becomes
+            // annoying, the fix is to read the plugin's saved state
+            // manually before building the window and pass the restored
+            // values into .inner_size() / .position(), rather than
+            // restoring after build.
+            {
+                use tauri_plugin_window_state::{StateFlags, WindowExt};
+                let _ = window.restore_state(StateFlags::all());
+            }
 
             // On Linux, webkit2gtk inherits GTK's text-widget context menu,
             // which includes an "Insert Unicode Control Character" submenu

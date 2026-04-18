@@ -23,6 +23,14 @@ tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-shell = "2"
+# tauri-plugin-window-state: first-party Tauri plugin that persists
+# window size, position, maximized state, and fullscreen state across
+# launches. Saves state on close/resize/move events to a JSON file in
+# the app's config dir, restores via WindowExt::restore_state at setup.
+# No frontend integration needed for the auto-save/restore flow; the
+# only code-side wiring is the .plugin() registration in the Builder
+# and the .restore_state() call after window construction in setup().
+tauri-plugin-window-state = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 

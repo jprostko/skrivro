@@ -258,10 +258,10 @@ fn load_theme(name: &str, app: &tauri::AppHandle) -> Option<ThemeColors> {
     }
     // Fall back to bundled themes
     match name {
-        "dracula" => Some(parse_theme_file(include_str!("../../themes/dracula.conf"))),
-        "tokyo-night-moon" => Some(parse_theme_file(include_str!("../../themes/tokyo-night-moon.conf"))),
-        "nord" => Some(parse_theme_file(include_str!("../../themes/nord.conf"))),
-        "gruvbox-dark" => Some(parse_theme_file(include_str!("../../themes/gruvbox-dark.conf"))),
+        "dracula" => Some(parse_theme_file(include_str!("../../themes/dracula.conf.default"))),
+        "tokyo-night-moon" => Some(parse_theme_file(include_str!("../../themes/tokyo-night-moon.conf.default"))),
+        "nord" => Some(parse_theme_file(include_str!("../../themes/nord.conf.default"))),
+        "gruvbox-dark" => Some(parse_theme_file(include_str!("../../themes/gruvbox-dark.conf.default"))),
         _ => {
             #[cfg(debug_assertions)]
             eprintln!("[skrivro config] theme '{}' not found (no user file, no bundled data)", name);

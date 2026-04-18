@@ -1368,6 +1368,28 @@
     askConfirm('You have unsaved changes. Discard them?', onOk);
   };
 
+  // Internal: load a file from a given absolute path into the editor.
+  // Does NOT guard against a dirty buffer — callers are responsible for
+  // running this inside a confirmDiscard wrapper if appropriate.
+  // Used by openFile (file-picker dialog), the drag-drop handler, and
+  // could be reused by future entry points like recent-files menus.
+  const loadFileFromPath = async (path) => {
+    try {
+      const content = await readTextFile(path);
+      setDoc(content);
+      currentPath = path;
+      currentName = await basename(path);
+      setDirty(false);
+      clearDraft();
+      clearIncludeCache();
+      writeSessionState(currentPath);
+      updateTitle();
+      render();
+    } catch (e) {
+      console.error('Failed to load file:', path, e);
+    }
+  };
+
   const openFile = () => {
     confirmDiscard(async () => {
       try {
@@ -1375,16 +1397,7 @@
           multiple: false,
         });
         if (!selected) return; // user cancelled
-        const content = await readTextFile(selected);
-        setDoc(content);
-        currentPath = selected;
-        currentName = await basename(selected);
-        setDirty(false);
-        clearDraft();
-        clearIncludeCache();
-        writeSessionState(currentPath);
-        updateTitle();
-        render();
+        await loadFileFromPath(selected);
       } catch (e) {
         console.error(e);
       }
@@ -2287,6 +2300,28 @@
       clearDraft();
       appWindow.destroy();
     });
+  });
+
+  // Drag-and-drop: user drops one or more files onto the Skrivro window
+  // from a file manager → open the first one in the editor, same flow
+  // as Ctrl+O would use. Ignores subsequent files (Skrivro is single-
+  // document). The dirty-buffer check goes through confirmDiscard just
+  // like openFile, so an accidental drop during unsaved work produces
+  // the same Discard/Cancel dialog the user is already used to.
+  //
+  // Directories or non-text files fail at readTextFile inside
+  // loadFileFromPath — the catch in that function logs to console and
+  // leaves the existing buffer untouched. No visible error to the
+  // user; the dropped-file just doesn't load, buffer stays as it was.
+  // If this becomes a frequent confusion point we could surface a
+  // toast or dialog, but for now the silent-on-invalid behavior
+  // matches how openFile handles readTextFile errors.
+  appWindow.onDragDropEvent((event) => {
+    if (event.payload.type !== 'drop') return;
+    const paths = event.payload.paths;
+    if (!paths || paths.length === 0) return;
+    const path = paths[0];
+    confirmDiscard(() => loadFileFromPath(path));
   });
 
   // ================= Init =================

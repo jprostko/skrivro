@@ -176,5 +176,17 @@
 # falls back to a blank buffer — no error dialog, but the next file
 # operation updates the state as normal.
 #
+# First-enable behavior: the state file is updated on every file
+# operation (open, save-as, new, :e filename) regardless of whether
+# this setting is on. This setting only controls whether state gets
+# READ at launch. So if you have ever opened a file in Skrivro and
+# then flip this from false to true, your next launch will open the
+# file that was most recently touched — which may not be what you
+# expect if you haven't opened anything recently. To start fresh
+# from the moment you enable restore-session, delete the state file
+# before the next launch (see path above for your platform). Matches
+# how VS Code, most browsers, and most editors behave — session
+# state is always tracked; restoring it is a separate choice.
+#
 # Accepted forms: true/false, yes/no, on/off, 1/0 (case-insensitive).
 # restore-session = false

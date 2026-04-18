@@ -16,7 +16,8 @@
         "title": "Skrivro",
         "width": 1280,
         "height": 720,
-        "decorations": false
+        "decorations": false,
+        "backgroundColor": "#1e1e2e"
       }
     ],
     "security": {

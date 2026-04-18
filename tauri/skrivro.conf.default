@@ -21,6 +21,13 @@
 # keys (with debug-mode warnings only), so you can leave whatever you
 # don't care about commented out. Edits apply on next restart; there
 # is no hot reload.
+#
+# Duplicate keys: last declaration wins. If you end up with two
+# uncommented lines for the same key (e.g., two `theme = ...` lines
+# left over while trying out different themes), the lower one takes
+# effect. The parser iterates top-to-bottom and each assignment
+# overwrites the previous. Same behavior as Ghostty and most flat
+# config formats.
 
 # ================= Fonts =================
 # Font family keys are PREPENDED to the built-in CSS font stack, so

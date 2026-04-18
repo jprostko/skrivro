@@ -299,6 +299,7 @@
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import { basename, dirname, resolve, isAbsolute } from '@tauri-apps/api/path';
   import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+  import { listen } from '@tauri-apps/api/event';
 
   // ================= Constants =================
 
@@ -2324,6 +2325,30 @@
     confirmDiscard(() => loadFileFromPath(path));
   });
 
+  // File-association open events: on macOS, if the user does
+  // `open -a Skrivro foo.adoc` (or double-clicks an .adoc with Skrivro
+  // as handler) while Skrivro is ALREADY RUNNING, the Rust-side
+  // RunEvent::Opened handler fires and emits this event. We load the
+  // dropped file in the existing instance, same flow as drag-drop.
+  //
+  // The cold-launch case (Skrivro NOT already running when the user
+  // triggers the file open) is handled at init-time above by
+  // take_pending_opens — any paths that arrived before this listener
+  // was registered are picked up there. This listener handles every
+  // subsequent open event for the lifetime of the app.
+  //
+  // On Linux and Windows, RunEvent::Opened doesn't fire (file assoc
+  // there passes the file as a CLI arg which respawns the app, not
+  // sends an event to an existing instance). For those platforms,
+  // "open another file while Skrivro is running" requires a separate
+  // single-instance mechanism (tauri-plugin-single-instance) which we
+  // haven't wired up. Pending feature; not part of this work.
+  listen('skrivro:open-file', (event) => {
+    const path = event.payload;
+    if (typeof path !== 'string' || !path) return;
+    confirmDiscard(() => loadFileFromPath(path));
+  });
+
   // ================= Init =================
 
   applyTitlebar();
@@ -2362,11 +2387,29 @@
 
   // Determine the initial document content. Priority order:
   //   1. CLI argument — always wins, even over crash recovery
-  //   2. Autosave draft — crash recovery, always wins over session restore
-  //   3. Session restore — only if `restore-session = true` in the user
+  //   2. OS-dispatched file open (macOS AppleEvents via RunEvent::Opened,
+  //      delivered to us through invoke('take_pending_opens')) — same
+  //      user intent as a CLI arg, just a different transport
+  //   3. Autosave draft — crash recovery, always wins over session restore
+  //   4. Session restore — only if `restore-session = true` in the user
   //      config AND a prior clean exit left a non-null lastFilePath
   //      AND that file exists/is readable now
-  //   4. Default blank buffer
+  //   5. Default blank buffer
+  //
+  // Drain pending OS-dispatched opens regardless of whether we'll use
+  // them — the list should never accumulate across launches.
+  let pendingOpen = null;
+  try {
+    const pending = await invoke('take_pending_opens');
+    if (pending && pending.length > 0) {
+      pendingOpen = pending[0];
+      // If more than one file was dispatched (e.g., multi-select open),
+      // ignore the rest — Skrivro is single-document.
+    }
+  } catch (e) {
+    console.error('Failed to take pending opens:', e);
+  }
+
   let initialDoc = DEFAULT_DOC;
   let hasDraft = false;
   if (launchInfo.initial_file) {
@@ -2386,6 +2429,21 @@
       // that failed to load is a different failure mode than a normal
       // launch, and we don't want to silently substitute a different
       // file than the user asked for).
+      const r = resolveInitialDoc();
+      initialDoc = r.doc;
+      hasDraft = r.hasDraft;
+    }
+  } else if (pendingOpen) {
+    // OS told us to open this file (macOS `open -a Skrivro foo.adoc` or
+    // double-click with Skrivro as handler). Same user intent as a CLI
+    // arg; same behavior — take precedence over draft / session restore.
+    try {
+      initialDoc = await readTextFile(pendingOpen);
+      currentPath = pendingOpen;
+      currentName = await basename(pendingOpen);
+      writeSessionState(currentPath);
+    } catch (e) {
+      console.error('Failed to load file from OS open event:', pendingOpen, e);
       const r = resolveInitialDoc();
       initialDoc = r.doc;
       hasDraft = r.hasDraft;

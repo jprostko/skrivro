@@ -41,6 +41,15 @@
       "icons/icon.ico"
     ],
     "category": "Productivity",
+    "fileAssociations": [
+      {
+        "ext": ["adoc", "asciidoc"],
+        "name": "AsciiDoc",
+        "description": "AsciiDoc document",
+        "mimeType": "text/x-asciidoc",
+        "role": "Editor"
+      }
+    ],
     "linux": {
       "deb": {
         "desktopTemplate": "../com.skrivro.editor.desktop"

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 #[derive(Serialize, Clone)]
 struct LaunchInfo {
@@ -11,6 +12,49 @@ struct LaunchInfo {
 #[tauri::command]
 fn get_launch_info(state: tauri::State<LaunchInfo>) -> LaunchInfo {
     state.inner().clone()
+}
+
+// ================= File association opens =================
+//
+// On macOS, file associations work via AppleEvents, not CLI arguments.
+// When a user runs `open -a Skrivro foo.adoc` or double-clicks an
+// .adoc file in Finder (with Skrivro set as handler), macOS launches
+// Skrivro and sends an AppleEvent — Tauri surfaces this as
+// RunEvent::Opened { urls }. The CLI argv is typically empty in this
+// scenario, so our existing launchInfo.initial_file mechanism doesn't
+// see the file.
+//
+// Linux and Windows don't need this path — on those platforms, file
+// associations are invoked by passing the file as a CLI argument to
+// the app, which launchInfo.initial_file already handles.
+//
+// Two-stage handling for the macOS AppleEvents case:
+//
+// 1. Cold-launch (Skrivro not running): Mac launches the app. Tauri
+//    fires RunEvent::Opened possibly before the frontend has
+//    registered its event listener. To avoid dropping the event, the
+//    RunEvent handler pushes the paths into PendingOpens. The
+//    frontend, during init, calls take_pending_opens() to drain any
+//    cold-launch paths and opens the first one.
+//
+// 2. Already-running (Skrivro is open, user triggers another file):
+//    Mac activates the running app and sends the event. Tauri fires
+//    RunEvent::Opened again; the handler both pushes to PendingOpens
+//    (in case something's still initializing) AND emits a Tauri event
+//    that the frontend's live listener catches to open the file in
+//    the existing instance.
+//
+// Both paths converge on frontend's loadFileFromPath, wrapped in
+// confirmDiscard so a dropped-in-during-unsaved-work file gets the
+// same discard prompt as Ctrl+O would.
+
+#[derive(Default)]
+struct PendingOpens(Mutex<Vec<String>>);
+
+#[tauri::command]
+fn take_pending_opens(state: tauri::State<PendingOpens>) -> Vec<String> {
+    let mut list = state.0.lock().unwrap();
+    std::mem::take(&mut *list)
 }
 
 // ================= User config file =================
@@ -842,6 +886,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .manage(launch_info)
+        .manage(PendingOpens::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
@@ -850,7 +895,8 @@ pub fn run() {
             get_launch_info,
             get_config,
             get_session_state,
-            set_session_state
+            set_session_state,
+            take_pending_opens
         ])
         .setup(|app| {
             // Create the main window programmatically (rather than via
@@ -942,6 +988,44 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // Handle RunEvent::Opened for macOS AppleEvents file opens
+            // (see the PendingOpens section near the top of this file
+            // for the full design rationale). RunEvent::Opened is
+            // gated to macOS and iOS in Tauri's source — it does not
+            // exist as a variant on Linux or Windows. On those
+            // platforms file associations pass the file as a CLI
+            // argument handled by launch_info.
+            //
+            // The cfg gate here mirrors the gate on the variant
+            // definition itself (see app.rs:232-238 in tauri 2.10.x).
+            // Without the gate, this code fails to compile on
+            // Linux/Windows with "variant not found in RunEvent".
+            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            if let tauri::RunEvent::Opened { urls } = &event {
+                use tauri::{Emitter, Manager};
+                let pending = app_handle.state::<PendingOpens>();
+                let mut list = pending.0.lock().unwrap();
+                for url in urls {
+                    // url.to_file_path() succeeds for file:// URLs,
+                    // fails for other schemes (http://, custom://, etc.).
+                    // We only care about local files.
+                    if let Ok(path) = url.to_file_path() {
+                        let path_str = path.to_string_lossy().to_string();
+                        list.push(path_str.clone());
+                        // Emit for any frontend listener (already-running
+                        // case). If the frontend isn't listening yet
+                        // (cold-launch), the event is a no-op and the
+                        // path sits in PendingOpens for the frontend to
+                        // drain during init.
+                        let _ = app_handle.emit("skrivro:open-file", path_str);
+                    }
+                }
+            }
+            // Suppress unused warnings on platforms where the above
+            // cfg-gated block doesn't compile.
+            let _ = (app_handle, event);
+        });
 }

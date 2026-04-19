@@ -8,7 +8,8 @@
     "build": "vite build",
     "tauri": "tauri",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "prepare": "cd .. && husky tauri/.husky"
   },
   "dependencies": {
     "@asciidoctor/core": "^3",
@@ -25,11 +26,16 @@
     "dompurify": "^3.3.3",
     "font-awesome": "^4.7.0"
   },
+  "lint-staged": {
+    "tauri/src/**/*.ts": "eslint"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tauri-apps/cli": "^2",
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.58.2",
     "vite": "^8"

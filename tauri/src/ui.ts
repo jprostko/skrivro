@@ -11,7 +11,7 @@ import { prefs, savePrefs } from './prefs.js';
 import { isMac } from './i18n.js';
 import { editorView, setVimMode, getCM } from './editor.js';
 import { currentName } from './io.js';
-import { userConfig } from './config.js';
+import { userConfig, type SkrivroConfig } from './config.js';
 
 // ================= DOM refs =================
 
@@ -414,7 +414,7 @@ export const setDisplayMode = (mode) => {
 // reconfigure.
 //
 // See memory/project_config_file.md for the spec.
-export const applyUserConfig = (cfg) => {
+export const applyUserConfig = (cfg: SkrivroConfig) => {
   const root = document.documentElement;
 
   // Font overrides: prepend the user's font to the existing stack so

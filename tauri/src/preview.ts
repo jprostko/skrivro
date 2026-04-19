@@ -18,9 +18,10 @@ import { updateWordCount } from './ui.js';
 
 const ad = Asciidoctor();
 
-// DOM refs owned by preview.js
-const out = document.getElementById('out');
-const statusSyncIndicator = document.getElementById('statusSyncIndicator');
+// DOM refs owned by preview.ts. Non-null assertions (`!`) because
+// both IDs are in our HTML and the module runs after body parse.
+const out = document.getElementById('out')!;
+const statusSyncIndicator = document.getElementById('statusSyncIndicator')!;
 
 const escapeHtml = (s) =>
   s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));

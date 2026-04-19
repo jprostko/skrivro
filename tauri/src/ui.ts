@@ -15,22 +15,21 @@ import { userConfig, type SkrivroConfig } from './config.js';
 
 // ================= DOM refs =================
 
-const out                 = document.getElementById('out');
-const host                = document.getElementById('src-host');
-const statusBar           = document.getElementById('statusbar');
-const statusMode          = document.getElementById('statusMode');
-const statusFilename      = document.getElementById('statusFilename');
-const statusPosition      = document.getElementById('statusPosition');
-const statusWordCount     = document.getElementById('statusWordCount');
-// Cast helpDlg to HTMLDialogElement so the showModal() / close() /
-// open accesses below type-check. document.getElementById returns
-// HTMLElement | null, which carries neither the dialog-specific
-// methods/properties nor a non-null guarantee; the element is known
-// to exist in our HTML and this module script runs after body parse,
-// so the cast is safe.
+// Non-null assertions (`!`) on every DOM query: every ID is in our
+// HTML, the module script runs after body parse, so getElementById
+// returning null is impossible at runtime. helpDlg additionally
+// casts to HTMLDialogElement (the cast subsumes the non-null
+// assertion) so its showModal / close / open accesses type-check.
+const out                 = document.getElementById('out')!;
+const host                = document.getElementById('src-host')!;
+const statusBar           = document.getElementById('statusbar')!;
+const statusMode          = document.getElementById('statusMode')!;
+const statusFilename      = document.getElementById('statusFilename')!;
+const statusPosition      = document.getElementById('statusPosition')!;
+const statusWordCount     = document.getElementById('statusWordCount')!;
 const helpDlg             = document.getElementById('helpDialog') as HTMLDialogElement;
-const helpBtn             = document.getElementById('helpBtn');
-const helpCloseBtn        = document.getElementById('helpCloseBtn');
+const helpBtn             = document.getElementById('helpBtn')!;
+const helpCloseBtn        = document.getElementById('helpCloseBtn')!;
 
 // ================= Status bar =================
 //

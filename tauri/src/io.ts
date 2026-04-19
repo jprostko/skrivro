@@ -24,19 +24,19 @@ export const DEFAULT_DOC  = '';
 
 // ================= DOM refs =================
 
-const nameEl           = document.getElementById('name');
-// Cast confirmDlg to HTMLDialogElement so the showModal() / close()
-// calls below type-check. document.getElementById returns
-// HTMLElement | null, which carries neither the dialog-specific
-// methods nor a non-null guarantee; the element is known to exist in
-// our HTML and this module script runs after body parse, so the cast
-// is safe. Other confirm-dialog refs stay as HTMLElement — they use
-// only addEventListener (available on all HTMLElements) and focus()
-// (available on HTMLOrSVGElement, which HTMLElement inherits).
+// Non-null assertions (`!`) on every DOM query: every ID is in our
+// HTML, the module script runs after body parse, so getElementById
+// returning null is impossible at runtime. The `!` tells TS strict
+// null checks to trust us rather than requiring defensive null
+// branches at each use site.
+const nameEl           = document.getElementById('name')!;
+// confirmDlg additionally casts to HTMLDialogElement so showModal() /
+// close() type-check (those methods are on HTMLDialogElement, not
+// HTMLElement). The cast subsumes the non-null assertion.
 const confirmDlg       = document.getElementById('confirmDialog') as HTMLDialogElement;
-const confirmMsgEl     = document.getElementById('confirmMessage');
-const confirmOkBtn     = document.getElementById('confirmOkBtn');
-const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+const confirmMsgEl     = document.getElementById('confirmMessage')!;
+const confirmOkBtn     = document.getElementById('confirmOkBtn')!;
+const confirmCancelBtn = document.getElementById('confirmCancelBtn')!;
 
 // ================= Current-file state (live bindings) =================
 

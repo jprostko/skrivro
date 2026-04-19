@@ -220,7 +220,9 @@ void appWindow.onDragDropEvent((event) => {
   if (event.payload.type !== 'drop') return;
   const paths = event.payload.paths;
   if (!paths || paths.length === 0) return;
-  const path = paths[0];
+  // paths[0] is `string | undefined` under noUncheckedIndexedAccess,
+  // but the length guard above proves it's present.
+  const path = paths[0]!;
   confirmDiscard(() => loadFileFromPath(path));
 });
 
@@ -303,7 +305,12 @@ let pendingOpen: string | null = null;
 try {
   const pending = await invoke<string[]>('take_pending_opens');
   if (pending && pending.length > 0) {
-    pendingOpen = pending[0];
+    // `pending[0] ?? null` converts the `string | undefined` that
+    // noUncheckedIndexedAccess yields into the `string | null` shape
+    // pendingOpen is declared with. The length guard makes the
+    // undefined branch unreachable at runtime; the ?? null is for
+    // the type system.
+    pendingOpen = pending[0] ?? null;
     // If more than one file was dispatched (e.g., multi-select open),
     // ignore the rest — Skrivro is single-document.
   }

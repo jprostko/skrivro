@@ -230,7 +230,10 @@ const asciidocLang = StreamLanguage.define({
       const h = stream.match(/(={1,6})\s+/);
       if (h && typeof h !== 'boolean') {
         stream.skipToEnd();
-        return 'heading' + h[1].length;
+        // `h[1]!` — noUncheckedIndexedAccess types capture groups as
+        // `string | undefined`, but the regex has one required capture
+        // group so the match array always has at least 2 elements.
+        return 'heading' + h[1]!.length;
       }
       // Document / block attribute entry: :name: value
       if (stream.match(/:[\w-]+:/)) {

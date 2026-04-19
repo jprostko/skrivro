@@ -175,7 +175,9 @@ const applyIncludeAttrs = (content: string, attrs: Record<string, string>): stri
     for (const line of lines) {
       if (line.trim().length === 0) continue;
       const m = line.match(/^( *)/);
-      if (m) minIndent = Math.min(minIndent, m[1].length);
+      // `m[1]!` — required capture group, always present when match
+      // succeeds. Non-null assertion satisfies noUncheckedIndexedAccess.
+      if (m) minIndent = Math.min(minIndent, m[1]!.length);
     }
     if (!isFinite(minIndent)) minIndent = 0;
     const pad = ' '.repeat(target);
@@ -257,7 +259,11 @@ const expandRecursively = async (
   for (const line of lines) {
     const m = line.match(includeRe);
     if (m) {
-      out.push(await expandOneInclude(m[1].trim(), m[2], baseDir, cycle));
+      // `m[1]!` is the target path (required capture group in
+      // includeRe); `m[2]` is the attribute blob which has default
+      // empty-string semantics via the `[^\]]*` match — undefined
+      // would mean the match failed, but we just guarded against that.
+      out.push(await expandOneInclude(m[1]!.trim(), m[2]!, baseDir, cycle));
     } else {
       out.push(line);
     }
@@ -298,11 +304,14 @@ const preprocessSource = async (
   let flatLine = 1;
 
   for (let i = 0; i < rootLines.length; i++) {
-    const line = rootLines[i];
+    // `rootLines[i]!` — the loop bound i < rootLines.length makes
+    // index access safe at runtime, but noUncheckedIndexedAccess
+    // can't narrow based on loop bounds.
+    const line = rootLines[i]!;
     const m = line.match(includeRe);
     if (m) {
       lineMap[i] = flatLine;
-      let expanded = await expandOneInclude(m[1].trim(), m[2], baseDir, new Set());
+      let expanded = await expandOneInclude(m[1]!.trim(), m[2]!, baseDir, new Set());
       if (expanded.length > 0) {
         // Normalize to always end with exactly one newline so the
         // next root line starts on a fresh flat line, and line
@@ -581,9 +590,12 @@ const buildBlockMap = (doc: AsciidoctorDocument) => {
     const n = Math.min(ast.length, dom.length);
     for (let i = 0; i < n; i++) {
       try {
-        const line = ast[i].getSourceLocation().getLineNumber();
+        // Both ast[i] and dom[i] are safe here because the loop
+        // runs only to i < n = min(ast.length, dom.length). The `!`
+        // assertions document that invariant for the type system.
+        const line = ast[i]!.getSourceLocation().getLineNumber();
         if (typeof line === 'number') {
-          map.push({ line, el: dom[i] });
+          map.push({ line, el: dom[i]! });
         }
       } catch {}
     }
@@ -651,14 +663,18 @@ export const syncPreviewToCaret = () => {
   let lo = 0, hi = blockMap.length - 1, found = 0;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
-    if (blockMap[mid].line <= caretLine) {
+    // blockMap[mid] and blockMap[found] both safe: mid = (lo+hi)>>1
+    // with lo ≥ 0, hi < blockMap.length; found starts 0 and only
+    // advances to a valid mid. noUncheckedIndexedAccess can't prove
+    // any of that, so the `!` documents the invariant.
+    if (blockMap[mid]!.line <= caretLine) {
       found = mid;
       lo = mid + 1;
     } else {
       hi = mid - 1;
     }
   }
-  const target = blockMap[found].el;
+  const target = blockMap[found]!.el;
   if (target) target.scrollIntoView({ block: 'start' });
 };
 

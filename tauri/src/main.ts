@@ -390,4 +390,8 @@ createEditor(host, initialDoc, {
 if (hasDraft) setDirty(true);
 updateTitle();
 render();
-editorView.focus();
+// Non-null assertion: createEditor has just run above and assigned
+// the editor.ts live binding, so editorView is guaranteed non-null
+// here. strict mode's null typing doesn't track the assignment
+// across module boundaries.
+editorView!.focus();

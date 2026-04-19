@@ -250,10 +250,12 @@ export const newFile = () => {
     writeSessionState(null);
     updateTitle();
     render();
-    editorView.focus();
+    // Non-null assertion safe here — newFile is user-invoked, only
+    // reachable after createEditor has run.
+    editorView!.focus();
     // Move cursor to end
-    editorView.dispatch({
-      selection: { anchor: editorView.state.doc.length },
+    editorView!.dispatch({
+      selection: { anchor: editorView!.state.doc.length },
     });
   });
 };

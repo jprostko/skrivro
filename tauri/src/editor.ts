@@ -26,8 +26,12 @@ import { prefs } from './prefs.js';
 // Re-exports used by other modules (io for Vim.defineEx, ui for getCM).
 export { Vim, getCM };
 
-// Live binding — assigned by createEditor, read by every other module.
-export let editorView = null;
+// Live binding — null until createEditor runs, then holds the
+// EditorView instance. Typed as `EditorView | null` so importers
+// must narrow before accessing instance members; this is a deliberate
+// safety net for the "accessed before init" case (e.g., a module
+// top-level side effect that fires too early).
+export let editorView: EditorView | null = null;
 
 // Guards programmatic setDoc dispatches from triggering the
 // updateListener's dirty/render/autosave chain. Flipped true inside
@@ -37,6 +41,12 @@ let suppressDocEvents = false;
 export const getDoc = () => editorView ? editorView.state.doc.toString() : '';
 
 export const setDoc = (text) => {
+  // Guard against being called before the editor exists. In practice
+  // every caller (io.ts file-open / new / reload paths) runs after
+  // createEditor has completed, but the type-level null check is
+  // necessary for strict mode, so we surface the guard here rather
+  // than sprinkling non-null assertions at each use site below.
+  if (!editorView) return;
   suppressDocEvents = true;
   try {
     editorView.dispatch({
@@ -346,6 +356,10 @@ export const createEditor = (parent, initialDoc, callbacks) => {
 // Runtime vim toggle — reconfigure the vim compartment so vim mode
 // can be flipped on/off without a full editor rebuild.
 export const setVimMode = (on) => {
+  // Same "null before init" guard as setDoc. toggleVim in ui.ts is
+  // user-triggered, so the editor has always been created by then —
+  // this is type-level armor against the unreachable case.
+  if (!editorView) return;
   editorView.dispatch({
     effects: vimCompartment.reconfigure(on ? [vim()] : []),
   });

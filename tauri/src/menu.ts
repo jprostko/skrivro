@@ -53,6 +53,15 @@ const closeAction = () => {
   void getCurrentWindow().close();
 };
 
+// Toggle Full Screen action. Extracted from the menu builder so the
+// `action` property gets a sync `() => void` (the menu API rejects
+// async functions there per @typescript-eslint/no-misused-promises).
+const toggleFullscreen = async () => {
+  const win = getCurrentWindow();
+  const isFs = await win.isFullscreen();
+  await win.setFullscreen(!isFs);
+};
+
 export const installMenu = async () => {
   // --- App menu (Skrivro) ---
   const appMenu = await Submenu.new({
@@ -150,9 +159,10 @@ export const installMenu = async () => {
   // --- View menu ---
   // Surfaces our app's display toggles and modes via the menu, with the
   // Cmd+Ctrl+letter accelerators we chose for Mac in commit c57e42e.
-  // Toggle Full Screen at the bottom is a PredefinedMenuItem; muda's
-  // Fullscreen variant maps to NSWindow's toggleFullScreen: which works
-  // on borderless windows.
+  // Enter/Exit Full Screen lives under Window — better conceptual fit
+  // with the other window-state ops (Minimize / Zoom / Close) than with
+  // these content-presentation toggles, and matches how third-party Mac
+  // apps like Ghostty group their menu.
   const viewMenu = await Submenu.new({
     text: 'View',
     items: [
@@ -198,17 +208,41 @@ export const installMenu = async () => {
         accelerator: 'Cmd+Ctrl+L',
         action: syncPreviewToCaret,
       }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
-      await PredefinedMenuItem.new({ item: 'Fullscreen' }),
     ],
   });
 
   // --- Window menu ---
-  // Custom Minimize and Close items (the predefined variants would hit the
-  // performMiniaturize: / performClose: beep on our borderless window).
-  // Maximize (= Zoom on Mac) is predefined and works fine.
-  // macOS auto-injects Move & Resize / Full Screen Tile / Remove Window from
-  // Set into this menu — we don't define those.
+  // Custom Minimize, Zoom, Enter/Exit Full Screen, and Close items. The
+  // predefined variants for all four hit the same root cause as the
+  // original Cmd+M / Cmd+W beep: they map to NSWindow selectors
+  // (performMiniaturize: / zoom: / toggleFullScreen: / performClose:)
+  // that gate on style mask bits stripped by `decorations: false`.
+  // Calling minimize() / toggleMaximize() / setFullscreen() / close()
+  // programmatically via Tauri's JS API bypasses the gate.
+  //
+  // The fullscreen item is created out-of-line so the post-install
+  // syncFullscreenText() helper below can update its text via
+  // setText() to follow macOS convention ("Enter Full Screen" /
+  // "Exit Full Screen"). No dedicated fullscreen event in Tauri 2 —
+  // we hook onResized which fires after the transition completes.
+  //
+  // The accelerator 'Cmd+Ctrl+F' binds ⌃⌘F (canonical macOS fullscreen
+  // shortcut). On modern MacBooks, macOS auto-renders this in the menu
+  // as 🌐F (Globe/Fn glyph) — same binding, modern display style.
+  // Both ⌃⌘F and fn+F at the keyboard trigger our action. We can't
+  // bind to fn/Globe directly: muda's parser doesn't accept it, muda's
+  // macOS bridge doesn't translate it, and Apple reserved the Fn key
+  // for system applications in macOS 12. Three independent gates,
+  // all closed.
+  //
+  // macOS auto-injects Move & Resize / Full Screen Tile / Remove
+  // Window from Set into this menu — we don't define those.
+  const fullscreenItem = await MenuItem.new({
+    text: 'Enter Full Screen', // overwritten by syncFullscreenText() below
+    accelerator: 'Cmd+Ctrl+F',
+    action: () => { void toggleFullscreen(); },
+  });
+
   const windowMenu = await Submenu.new({
     text: 'Window',
     items: [
@@ -217,7 +251,11 @@ export const installMenu = async () => {
         accelerator: 'Cmd+M',
         action: () => { void getCurrentWindow().minimize(); },
       }),
-      await PredefinedMenuItem.new({ item: 'Maximize' }),
+      await MenuItem.new({
+        text: 'Zoom',
+        action: () => { void getCurrentWindow().toggleMaximize(); },
+      }),
+      fullscreenItem,
       await PredefinedMenuItem.new({ item: 'Separator' }),
       await MenuItem.new({
         text: 'Close Window',
@@ -247,4 +285,18 @@ export const installMenu = async () => {
     items: [appMenu, fileMenu, editMenu, viewMenu, windowMenu, helpMenu],
   });
   await menu.setAsAppMenu();
+
+  // Sync the Window > Enter/Exit Full Screen menu item's text to the
+  // current window state, then keep it in sync. Tauri 2 has no
+  // dedicated fullscreen event; onResized fires after the macOS
+  // fullscreen transition completes, which is the moment we want the
+  // text to flip anyway. Listener lives for the app's lifetime — no
+  // unlisten needed in this single-window app.
+  const win = getCurrentWindow();
+  const syncFullscreenText = async () => {
+    const isFs = await win.isFullscreen();
+    await fullscreenItem.setText(isFs ? 'Exit Full Screen' : 'Enter Full Screen');
+  };
+  await syncFullscreenText();
+  await win.onResized(() => { void syncFullscreenText(); });
 };

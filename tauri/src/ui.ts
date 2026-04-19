@@ -564,14 +564,20 @@ host.addEventListener('keyup', refreshStatus);
 // Tracking focus/blur on the input is the simplest signal — no
 // MutationObserver needed. The panel input is the only <input>
 // inside the editor host, so a tag-name check is precise enough.
+// `e.target instanceof HTMLInputElement` narrows EventTarget to the
+// specific <input> type we care about. Equivalent to the prior
+// `e.target.tagName === 'INPUT'` check but type-aware: TS sees
+// e.target as HTMLInputElement inside the guard block, and no cast
+// is needed to access input-specific methods/properties later if we
+// ever add any.
 host.addEventListener('focusin', (e) => {
-  if (e.target && e.target.tagName === 'INPUT') {
+  if (e.target instanceof HTMLInputElement) {
     inCommandMode = true;
     refreshStatus();
   }
 });
 host.addEventListener('focusout', (e) => {
-  if (e.target && e.target.tagName === 'INPUT') {
+  if (e.target instanceof HTMLInputElement) {
     inCommandMode = false;
     refreshStatus();
   }

@@ -615,7 +615,12 @@ export const syncPreviewToCaret = () => {
 // the shell plugin will only hand off web URLs to the OS, not e.g.
 // file:// URLs that could be used to open arbitrary local files.
 out.addEventListener('click', (e) => {
-  const a = e.target.closest && e.target.closest('a');
+  // e.target is typed as EventTarget, which doesn't have closest().
+  // Narrow to Element to get closest() — and to guard against the
+  // runtime case where the target is something exotic (a Document or
+  // Window, say) that isn't in the DOM tree.
+  if (!(e.target instanceof Element)) return;
+  const a = e.target.closest('a');
   if (!a) return;
   const href = a.getAttribute('href');
   if (!href) return;

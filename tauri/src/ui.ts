@@ -99,7 +99,7 @@ const readVisualVariant = () => {
   }
 };
 
-const formatModeLabel = (mode, variant) => {
+const formatModeLabel = (mode: string | null, variant: string | null) => {
   switch (mode) {
     case 'insert':  return tr('INSERT');
     case 'replace': return tr('REPLACE');
@@ -150,7 +150,7 @@ const formatCursorPosition = () => {
 //   single-line char selection:  '87 chars'
 //   multi-line char / V-LINE:    '3 lines, 240 chars'
 //   V-BLOCK:                     '3 × 5' (rows × cols)
-const formatSelectionInfo = (variant) => {
+const formatSelectionInfo = (variant: string | null) => {
   if (!editorView) return '';
   const state = editorView.state;
   const sel = state.selection.main;
@@ -389,7 +389,7 @@ export const applyDisplayMode = () => {
   for (const m of DISPLAY_MODES) cl.remove(`mode-${m}`);
   cl.add(`mode-${prefs.displayMode}`);
 };
-export const setDisplayMode = (mode) => {
+export const setDisplayMode = (mode: string) => {
   if (!DISPLAY_MODES.includes(mode)) return;
   prefs.displayMode = mode;
   savePrefs();

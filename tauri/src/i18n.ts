@@ -33,7 +33,11 @@ export const lang = window.__SKRIVRO_LANG__ || 'en';
 // gate, not a fingerprint. No @tauri-apps/plugin-os dependency needed.
 export const isMac = /Mac/i.test(navigator.userAgent);
 
-export const STRINGS_SV = {
+// Record<string, string> annotation lets tr() and translateStaticText
+// index this table with dynamic keys at runtime. Without the
+// annotation TS infers the narrow literal shape of the object and
+// rejects string-indexed lookups under strict mode.
+export const STRINGS_SV: Record<string, string> = {
   // Status bar — mode pill labels. NORMAL and V-BLOCK stay unchanged
   // (NORMAL is the same word in Swedish; BLOCK is the same in Swedish
   // as well — the abbreviated "V-" prefix is language-neutral).
@@ -137,7 +141,7 @@ export const STRINGS_SV = {
 // taken as module-level import alias for @lezer/highlight's `tags`
 // (`import { tags as t }`). Renaming our helper to `tr` is simpler
 // than renaming the deeply-used Lezer import.
-export const tr = (en) => {
+export const tr = (en: string): string => {
   if (lang !== 'sv') return en;
   return STRINGS_SV[en] ?? en;
 };

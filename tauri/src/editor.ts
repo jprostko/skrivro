@@ -40,7 +40,7 @@ let suppressDocEvents = false;
 
 export const getDoc = () => editorView ? editorView.state.doc.toString() : '';
 
-export const setDoc = (text) => {
+export const setDoc = (text: string) => {
   // Guard against being called before the editor exists. In practice
   // every caller (io.ts file-open / new / reload paths) runs after
   // createEditor has completed, but the type-level null check is
@@ -222,9 +222,13 @@ const asciidocLang = StreamLanguage.define({
       }
       // Line comment
       if (stream.match(/\/\/.*$/)) return 'comment';
-      // Heading: 1..6 leading '=' followed by space + content
+      // Heading: 1..6 leading '=' followed by space + content.
+      // CM6's stream.match returns `true | RegExpMatchArray`
+      // depending on overload — we need the RegExpMatchArray form
+      // to access h[1] (the `={1,6}` capture group), so narrow with
+      // `typeof h !== 'boolean'` before indexing.
       const h = stream.match(/(={1,6})\s+/);
-      if (h) {
+      if (h && typeof h !== 'boolean') {
         stream.skipToEnd();
         return 'heading' + h[1].length;
       }
@@ -278,7 +282,17 @@ export const vimCompartment = new Compartment();
 
 // ================= Editor extensions =================
 
-const makeExtensions = (callbacks) => [
+// Callbacks passed through createEditor → makeExtensions, wired into
+// the CM6 updateListener. onDocChange fires when the document
+// actually changed (not on suppressDocEvents-guarded setDoc calls);
+// onSelectionChange fires on either doc or selection change (drives
+// the status bar refresh).
+export interface EditorCallbacks {
+  onDocChange?: () => void;
+  onSelectionChange?: () => void;
+}
+
+const makeExtensions = (callbacks: EditorCallbacks) => [
   // vim must come before the default keymap so it wins when enabled
   vimCompartment.of(prefs.vimMode ? [vim()] : []),
 
@@ -344,7 +358,11 @@ const makeExtensions = (callbacks) => [
 // bar refresh). Call order: must be invoked AFTER applyUserConfig
 // so the theme extension sees the user's CSS variable overrides at
 // construction time.
-export const createEditor = (parent, initialDoc, callbacks) => {
+export const createEditor = (
+  parent: HTMLElement,
+  initialDoc: string,
+  callbacks: EditorCallbacks,
+) => {
   editorView = new EditorView({
     doc: initialDoc,
     parent,
@@ -355,7 +373,7 @@ export const createEditor = (parent, initialDoc, callbacks) => {
 
 // Runtime vim toggle — reconfigure the vim compartment so vim mode
 // can be flipped on/off without a full editor rebuild.
-export const setVimMode = (on) => {
+export const setVimMode = (on: boolean) => {
   // Same "null before init" guard as setDoc. toggleVim in ui.ts is
   // user-triggered, so the editor has always been created by then —
   // this is type-level armor against the unreachable case.

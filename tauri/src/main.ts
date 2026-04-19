@@ -377,7 +377,7 @@ if (launchInfo.initial_file) {
   }
 }
 
-const host = document.getElementById('src-host');
+const host = document.getElementById('src-host')!;
 createEditor(host, initialDoc, {
   onDocChange: () => {
     setDirty(true);

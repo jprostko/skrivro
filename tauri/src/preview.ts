@@ -3,7 +3,10 @@
 // sync. Owns the preview <div> DOM element and the block-map used for
 // sync-once navigation from editor caret to preview position.
 
-import Asciidoctor from '@asciidoctor/core';
+import Asciidoctor, {
+  type Document as AsciidoctorDocument,
+  type AbstractBlock,
+} from '@asciidoctor/core';
 import DOMPurify from 'dompurify';
 
 import { readTextFile } from '@tauri-apps/plugin-fs';
@@ -547,16 +550,18 @@ let blockMap: BlockMapEntry[] = [];
 // querySelectorAll). The i-th matching AST block aligns with the
 // i-th matching DOM element.
 //
-// `any` typing on doc / ast / block is honest about the Asciidoctor
-// plugin's types: the published @asciidoctor/core package ships
-// community types that don't fully cover the AST walk methods we
-// use (getBlocks, getContext, getSourceLocation). Writing our own
-// interface for these would be speculative; `any` matches what's
-// actually exposed.
-const buildBlockMap = (doc: any) => {
+// Types sourced from @asciidoctor/core's bundled type declarations.
+// Document extends AbstractBlock, so `doc: AsciidoctorDocument` and
+// `block: AbstractBlock` line up naturally. One caveat: the bundled
+// definition for AbstractBlock.getBlocks() returns `any[]` (not a
+// typed AbstractBlock[] union), so the children yielded by walk()
+// inside this function stay effectively untyped. We still get
+// autocomplete and arg-checking for the methods we call on `doc`
+// and the typed param of `walk`, which is what the typing buys us.
+const buildBlockMap = (doc: AsciidoctorDocument) => {
   try {
-    const ast: any[] = [];
-    const walk = (block: any) => {
+    const ast: AbstractBlock[] = [];
+    const walk = (block: AbstractBlock) => {
       if (!block || typeof block.getBlocks !== 'function') return;
       for (const child of block.getBlocks()) {
         let ctx = null;

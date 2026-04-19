@@ -23,12 +23,21 @@ const ad = Asciidoctor();
 const out = document.getElementById('out')!;
 const statusSyncIndicator = document.getElementById('statusSyncIndicator')!;
 
-const escapeHtml = (s) =>
-  s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+// Escape HTML metacharacters for safe interpolation into an HTML
+// string (the render-error fallback below injects into innerHTML).
+// The Record<string, string> type on the lookup is what lets TS
+// accept the dynamic `ESCAPE_MAP[c]` index — an object literal with
+// specific keys can't be indexed by arbitrary strings under strict
+// mode. `?? c` fallback is defensive; the regex only matches the
+// three characters we have mappings for, so the fallback is
+// unreachable at runtime.
+const ESCAPE_MAP: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
+const escapeHtml = (s: string) =>
+  s.replace(/[&<>]/g, (c: string) => ESCAPE_MAP[c] ?? c);
 
 // ================= Render timer =================
 
-let renderTimer = null;
+let renderTimer: ReturnType<typeof setTimeout> | null = null;
 
 // ================= Include preprocessing state =================
 //
@@ -58,11 +67,18 @@ let renderTimer = null;
 // can translate editor cursor positions to flat-source line numbers.
 // Without it, scroll-sync would point at wrong blocks after the
 // first include expansion.
-let includeCache = new Map();
-let includeLineMap = null;
+// Absolute file path (string) → raw file content (string). The
+// explicit `Map<string, string>` annotation prevents TS from
+// inferring `Map<any, any>` under strict mode.
+let includeCache = new Map<string, string>();
+
+// Editor line (1-indexed) → flat-source line (1-indexed). Null when
+// the current render didn't go through include preprocessing (no
+// current file, so no baseDir to resolve includes against).
+let includeLineMap: number[] | null = null;
 
 export const clearIncludeCache = () => {
-  includeCache = new Map();
+  includeCache = new Map<string, string>();
   includeLineMap = null;
 };
 
@@ -175,7 +191,12 @@ const applyIncludeAttrs = (content: string, attrs: Record<string, string>): stri
 // comment-style placeholder rather than throwing — a broken include
 // shouldn't crash the render, it should just show "Unresolved
 // include" where the content would have been.
-const expandOneInclude = async (target, attrsRaw, baseDir, cycle) => {
+const expandOneInclude = async (
+  target: string,
+  attrsRaw: string,
+  baseDir: string,
+  cycle: Set<string>,
+): Promise<string> => {
   try {
     const resolvedPath = await resolve(baseDir, target);
     if (cycle.has(resolvedPath)) {
@@ -210,7 +231,11 @@ const expandOneInclude = async (target, attrsRaw, baseDir, cycle) => {
     }
     return content;
   } catch (e) {
-    return `// Unresolved include: ${target} (${(e && e.message) || e})`;
+    // Catch variable is `unknown` under strict mode's
+    // useUnknownInCatchVariables. Narrow to extract a displayable
+    // message rather than accessing .message on unknown.
+    const msg = e instanceof Error ? e.message : String(e);
+    return `// Unresolved include: ${target} (${msg})`;
   }
 };
 
@@ -218,7 +243,11 @@ const expandOneInclude = async (target, attrsRaw, baseDir, cycle) => {
 // expanded include. This variant does NOT build a line map — nested
 // includes are invisible to the editor's cursor position, so their
 // internal line coordinates aren't needed for scroll sync.
-const expandRecursively = async (source, baseDir, cycle) => {
+const expandRecursively = async (
+  source: string,
+  baseDir: string,
+  cycle: Set<string>,
+): Promise<string> => {
   const includeRe = /^include::([^\[\n]+)\[([^\]]*)\]\s*$/;
   const lines = source.split('\n');
   const out = [];
@@ -246,7 +275,10 @@ const expandRecursively = async (source, baseDir, cycle) => {
 // the mapping points to the FIRST line of expanded content — so
 // scroll-syncing on an `include::chapter-05/content.adoc[]` line
 // jumps the preview to the top of chapter 5.
-const preprocessSource = async (rootSource, baseDir) => {
+const preprocessSource = async (
+  rootSource: string,
+  baseDir: string,
+): Promise<{ source: string; lineMap: number[] }> => {
   const includeRe = /^include::([^\[\n]+)\[([^\]]*)\]\s*$/;
   // split('\n') on a string ending with '\n' produces a trailing
   // empty element. That's not a real line of content — it's the
@@ -463,8 +495,11 @@ export const render = async () => {
     updateWordCount();
   } catch (e) {
     console.error('render failed:', e);
+    // Catch variable is `unknown` under strict mode. Narrow to Error
+    // to pull a message, else coerce to string as a last resort.
+    const msg = e instanceof Error ? e.message : String(e);
     out.innerHTML =
-      `<pre class="render-error">Render error: ${escapeHtml(e.message || String(e))}</pre>`;
+      `<pre class="render-error">Render error: ${escapeHtml(msg)}</pre>`;
     blockMap = [];
     // Intentionally not updating word count on render error — the
     // error message's word count is meaningless, so leaving the
@@ -474,7 +509,7 @@ export const render = async () => {
 };
 
 export const scheduleRender = () => {
-  clearTimeout(renderTimer);
+  if (renderTimer !== null) clearTimeout(renderTimer);
   renderTimer = setTimeout(render, 100);
 };
 
@@ -499,7 +534,10 @@ const DOM_BLOCK_SELECTOR = [
   '.openblock', 'table.tableblock',
 ].join(', ');
 
-let blockMap = []; // Array<{ line: number, el: Element }>, sorted by line
+// Entries stored in source-line order, populated by buildBlockMap and
+// consumed by syncPreviewToCaret's binary search.
+interface BlockMapEntry { line: number; el: Element; }
+let blockMap: BlockMapEntry[] = [];
 
 // Walk the parsed AST and the rendered DOM in parallel, building a
 // map from source line to preview block element. Walks the tree
@@ -508,10 +546,17 @@ let blockMap = []; // Array<{ line: number, el: Element }>, sorted by line
 // document order in both the AST walk and the rendered HTML (via
 // querySelectorAll). The i-th matching AST block aligns with the
 // i-th matching DOM element.
-const buildBlockMap = (doc) => {
+//
+// `any` typing on doc / ast / block is honest about the Asciidoctor
+// plugin's types: the published @asciidoctor/core package ships
+// community types that don't fully cover the AST walk methods we
+// use (getBlocks, getContext, getSourceLocation). Writing our own
+// interface for these would be speculative; `any` matches what's
+// actually exposed.
+const buildBlockMap = (doc: any) => {
   try {
-    const ast = [];
-    const walk = (block) => {
+    const ast: any[] = [];
+    const walk = (block: any) => {
       if (!block || typeof block.getBlocks !== 'function') return;
       for (const child of block.getBlocks()) {
         let ctx = null;

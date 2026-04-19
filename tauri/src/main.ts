@@ -64,7 +64,6 @@ import { readTextFile } from '@tauri-apps/plugin-fs';
 import { basename } from '@tauri-apps/api/path';
 
 import { isMac, tr, translateStaticText } from './i18n.js';
-import { prefs } from './prefs.js';
 import {
   userConfig, setUserConfig,
   type LaunchInfo, type SessionState, type SkrivroConfig,
@@ -76,7 +75,7 @@ import {
   loadFileFromPath, confirmDiscard, askConfirm,
   writeSessionState, resolveInitialDoc,
   setLaunchCwd, setCurrentPath, setCurrentName,
-  updateTitle, dirty, currentPath,
+  updateTitle, dirty,
   DEFAULT_DOC,
 } from './io.js';
 // ui.js has top-level side effects (help dialog listeners, host-level
@@ -156,10 +155,14 @@ window.addEventListener('keydown', (e) => {
   // Standalone used Ctrl+Alt+O / Ctrl+Alt+N to avoid colliding with the
   // browser's own open-file and new-window shortcuts; Tauri has no such
   // collision, so we move them onto the conventional keys.
+  // `void` prefix on each async-returning call: fire-and-forget is
+  // the intent (the keydown handler doesn't await anything), and the
+  // prefix makes that explicit for both readers and the no-floating-
+  // promises lint rule.
   else if (k === 's' && e.shiftKey) {
-    e.preventDefault(); saveFileAs();
+    e.preventDefault(); void saveFileAs();
   } else if (k === 's') {
-    e.preventDefault(); saveFile();
+    e.preventDefault(); void saveFile();
   } else if (k === 'o') {
     e.preventDefault(); openFile();
   } else if (k === 'n') {
@@ -175,10 +178,15 @@ window.addEventListener('keydown', (e) => {
 // capabilities — without it, destroy() silently fails and the
 // window becomes uncloseable.
 const appWindow = getCurrentWindow();
-appWindow.onCloseRequested((event) => {
+// `void` prefix on the listener-registration Promise: Tauri's
+// onCloseRequested/onDragDropEvent/listen APIs return a Promise that
+// resolves to an unlisten function. We never call unlisten (the
+// listeners live for the app's lifetime), so fire-and-forget is the
+// correct semantics.
+void appWindow.onCloseRequested((event) => {
   if (!dirty) {
     // Clean close — no-op here; the Tauri library auto-calls destroy()
-    // to complete the close after the handler returns. We let io.js's
+    // to complete the close after the handler returns. We let io.ts's
     // clean-exit paths (saveFile, newFile, etc.) manage the autosave
     // draft; by the time a clean close happens, there shouldn't be a
     // stale draft to clear.
@@ -187,10 +195,10 @@ appWindow.onCloseRequested((event) => {
   event.preventDefault();
   askConfirm(tr('You have unsaved changes. Discard them?'), () => {
     // "Discard" means actually discard. clearDraft is called by the
-    // quitForce path in io.js; for the close-X variant we inline it
+    // quitForce path in io.ts; for the close-X variant we inline it
     // by importing from io. Keep the action minimal: the window
     // destroys itself, which triggers process exit.
-    appWindow.destroy();
+    void appWindow.destroy();
   });
 });
 
@@ -208,7 +216,7 @@ appWindow.onCloseRequested((event) => {
 // If this becomes a frequent confusion point we could surface a
 // toast or dialog, but for now the silent-on-invalid behavior
 // matches how openFile handles readTextFile errors.
-appWindow.onDragDropEvent((event) => {
+void appWindow.onDragDropEvent((event) => {
   if (event.payload.type !== 'drop') return;
   const paths = event.payload.paths;
   if (!paths || paths.length === 0) return;
@@ -234,7 +242,7 @@ appWindow.onDragDropEvent((event) => {
 // "open another file while Skrivro is running" is now routed to
 // the existing window via tauri-plugin-single-instance which also
 // emits this same skrivro:open-file event.
-listen('skrivro:open-file', (event) => {
+void listen('skrivro:open-file', (event) => {
   const path = event.payload;
   if (typeof path !== 'string' || !path) return;
   confirmDiscard(() => loadFileFromPath(path));
@@ -315,7 +323,7 @@ if (launchInfo.initial_file) {
     // so a subsequent launch without CLI args (and with
     // restore-session enabled) will pick up where this session
     // left off. Fire-and-forget — failure doesn't block launch.
-    writeSessionState(launchInfo.initial_file);
+    void writeSessionState(launchInfo.initial_file);
   } catch (e) {
     console.error('Failed to load file from CLI argument:', e);
     // Fall back to draft / default (skip session restore — a CLI arg
@@ -334,7 +342,7 @@ if (launchInfo.initial_file) {
     initialDoc = await readTextFile(pendingOpen);
     setCurrentPath(pendingOpen);
     setCurrentName(await basename(pendingOpen));
-    writeSessionState(pendingOpen);
+    void writeSessionState(pendingOpen);
   } catch (e) {
     console.error('Failed to load file from OS open event:', pendingOpen, e);
     const r = resolveInitialDoc();
@@ -389,7 +397,7 @@ createEditor(host, initialDoc, {
 
 if (hasDraft) setDirty(true);
 updateTitle();
-render();
+void render();
 // Non-null assertion: createEditor has just run above and assigned
 // the editor.ts live binding, so editorView is guaranteed non-null
 // here. strict mode's null typing doesn't track the assignment

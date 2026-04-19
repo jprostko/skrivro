@@ -242,7 +242,7 @@ const asciidocLang = StreamLanguage.define({
         return 'emphasis';
       }
       // Unordered list markers: *, **, ***, -
-      if (stream.match(/[*\-]+\s+/)) return 'list';
+      if (stream.match(/[*-]+\s+/)) return 'list';
       // Ordered list markers: ., .., ...
       if (stream.match(/\.{1,5}\s+/)) return 'list';
       // Horizontal rule: '''
@@ -341,13 +341,17 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   // base keymap
   keymap.of([...defaultKeymap, ...historyKeymap]),
 
-  // change listener -> callback chain (set up by main.js)
+  // change listener -> callback chain (set up by main.ts). Optional
+  // call (`?.()`) replaces the short-circuit-and-invoke pattern so the
+  // no-unused-expressions rule sees a clear function call rather than
+  // a logical-and expression whose right-hand side happens to be a
+  // call.
   EditorView.updateListener.of((update) => {
     if (update.docChanged && !suppressDocEvents) {
-      callbacks.onDocChange && callbacks.onDocChange();
+      callbacks.onDocChange?.();
     }
     if (update.docChanged || update.selectionSet) {
-      callbacks.onSelectionChange && callbacks.onSelectionChange();
+      callbacks.onSelectionChange?.();
     }
   }),
 ];

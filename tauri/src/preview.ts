@@ -251,7 +251,7 @@ const expandRecursively = async (
   baseDir: string,
   cycle: Set<string>,
 ): Promise<string> => {
-  const includeRe = /^include::([^\[\n]+)\[([^\]]*)\]\s*$/;
+  const includeRe = /^include::([^[\n]+)\[([^\]]*)\]\s*$/;
   const lines = source.split('\n');
   const out = [];
   for (const line of lines) {
@@ -282,7 +282,7 @@ const preprocessSource = async (
   rootSource: string,
   baseDir: string,
 ): Promise<{ source: string; lineMap: number[] }> => {
-  const includeRe = /^include::([^\[\n]+)\[([^\]]*)\]\s*$/;
+  const includeRe = /^include::([^[\n]+)\[([^\]]*)\]\s*$/;
   // split('\n') on a string ending with '\n' produces a trailing
   // empty element. That's not a real line of content — it's the
   // representation of "the source ends with a newline." Drop it so

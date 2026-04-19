@@ -197,9 +197,14 @@ export const loadFileFromPath = async (path: string) => {
     setDirty(false);
     clearDraft();
     clearIncludeCache();
-    writeSessionState(currentPath);
+    // `void` prefix on fire-and-forget async calls: writeSessionState
+    // is async (awaits invoke(...)) but failure is non-fatal and
+    // handled internally; render is async but we don't need its result.
+    // Prefix makes the fire-and-forget intent explicit for both readers
+    // and the no-floating-promises lint rule.
+    void writeSessionState(currentPath);
     updateTitle();
-    render();
+    void render();
   } catch (e) {
     console.error('Failed to load file:', path, e);
   }
@@ -241,7 +246,7 @@ export const saveFileAs = async () => {
     currentName = await basename(selected);
     setDirty(false);
     clearDraft();
-    writeSessionState(currentPath);
+    void writeSessionState(currentPath);
     updateTitle();
   } catch (e) {
     console.error(e);
@@ -256,9 +261,9 @@ export const newFile = () => {
     setDirty(false);
     clearDraft();
     clearIncludeCache();
-    writeSessionState(null);
+    void writeSessionState(null);
     updateTitle();
-    render();
+    void render();
     // Non-null assertion safe here — newFile is user-invoked, only
     // reachable after createEditor has run.
     editorView!.focus();
@@ -276,7 +281,7 @@ export const reloadFile = async () => {
     setDirty(false);
     clearDraft();
     clearIncludeCache();
-    render();
+    void render();
   } catch (e) {
     console.error(e);
   }
@@ -353,7 +358,7 @@ Vim.defineEx('write', 'w', async (_cm: any, params: VimExParams) => {
     }
   } else {
     // :w or :w! — save to current file
-    saveFile();
+    void saveFile();
   }
 });
 
@@ -375,7 +380,7 @@ Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
       currentName = await basename(targetPath);
       setDirty(false);
       clearDraft();
-      writeSessionState(currentPath);
+      void writeSessionState(currentPath);
       updateTitle();
     } catch (e) {
       console.error(e);
@@ -384,7 +389,7 @@ Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
     // :saveas (no args) — non-standard: show the save dialog. Real Vim
     // errors with "Argument required" here, but a dialog is friendlier
     // for a GUI editor and matches what Ctrl+Shift+S does.
-    saveFileAs();
+    void saveFileAs();
   }
 });
 
@@ -406,15 +411,15 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
       setDirty(false);
       clearDraft();
       clearIncludeCache();
-      writeSessionState(currentPath);
+      void writeSessionState(currentPath);
       updateTitle();
-      render();
+      void render();
     } catch (e) {
       console.error(e);
     }
   } else {
     // :e or :e! — reload current file from disk
-    reloadFile();
+    void reloadFile();
   }
 });
 
@@ -470,13 +475,16 @@ Vim.defineEx('syncpreview', 'syncp', () => {
 // return without closing, so a cancelled save never drops the user
 // out of the editor unexpectedly.
 
+// getCurrentWindow().close() and .destroy() return Promise<void>. We
+// don't care about the result — once fired, the app is going away —
+// so `void` prefix marks them fire-and-forget.
 const quitClean = () => {
-  getCurrentWindow().close();
+  void getCurrentWindow().close();
 };
 
 const quitForce = () => {
   clearDraft();
-  getCurrentWindow().destroy();
+  void getCurrentWindow().destroy();
 };
 
 const quitHandler = (_cm: any, params: VimExParams) => {
@@ -487,7 +495,7 @@ const quitHandler = (_cm: any, params: VimExParams) => {
 const writeAndQuit = async () => {
   await saveFile();
   if (dirty) return; // save failed or user cancelled save-as dialog
-  getCurrentWindow().close();
+  void getCurrentWindow().close();
 };
 
 const exitIfDirty = async (_cm: any, params: VimExParams) => {
@@ -495,7 +503,7 @@ const exitIfDirty = async (_cm: any, params: VimExParams) => {
     await saveFile();
     if (dirty) return; // save failed or user cancelled save-as dialog
   }
-  getCurrentWindow().close();
+  void getCurrentWindow().close();
 };
 
 // Note on aliases: Vim.defineEx(name, shortName, handler) requires

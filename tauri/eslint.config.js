@@ -84,6 +84,28 @@ export default tseslint.config(
           caughtErrorsIgnorePattern: '^_',
         },
       ],
+
+      // Allow `} catch {}` with no body. We use that pattern for silent
+      // failures where the only sensible behavior is to proceed —
+      // localStorage unavailable, JSON.parse on malformed state, and a
+      // few Tauri calls where we've already decided the catch is a
+      // no-op. Requiring a comment or a `_err` parameter at each site
+      // would be defensive noise.
+      'no-empty': ['error', { allowEmptyCatch: true }],
+
+      // no-misused-promises's default `checksVoidReturn: true` flags
+      // every async function passed to a void-expecting callback slot
+      // (event listeners, confirm-dialog callbacks, Vim.defineEx
+      // handlers). We use that pattern INTENTIONALLY — async handlers
+      // are the whole point of these call sites, and each body has
+      // its own try/catch. Turning off `arguments` specifically keeps
+      // the rule's other checks (returns, variables, properties) which
+      // still catch the bugs we want it to catch. See typescript-
+      // eslint's no-misused-promises docs for the option shape.
+      '@typescript-eslint/no-misused-promises': [
+        'error',
+        { checksVoidReturn: { arguments: false } },
+      ],
     },
   },
 );

@@ -40,19 +40,19 @@ const confirmCancelBtn = document.getElementById('confirmCancelBtn')!;
 
 // ================= Current-file state (live bindings) =================
 
-export let currentPath = null;
-export let currentName = DEFAULT_NAME;
-export let dirty       = false;
+export let currentPath: string | null = null;
+export let currentName: string         = DEFAULT_NAME;
+export let dirty: boolean              = false;
 
 // Shell CWD captured at launch time, used as a fallback for relative
-// :w / :e arguments when no file is currently open. Set by main.js
+// :w / :e arguments when no file is currently open. Set by main.ts
 // via setLaunchCwd after invoke('get_launch_info').
-export let launchCwd = '';
-export const setLaunchCwd = (cwd) => { launchCwd = cwd; };
+export let launchCwd: string = '';
+export const setLaunchCwd = (cwd: string) => { launchCwd = cwd; };
 
-// Setters used by main.js's launch path — avoid exposing raw reassignment.
-export const setCurrentPath = (p) => { currentPath = p; };
-export const setCurrentName = (n) => { currentName = n; };
+// Setters used by main.ts's launch path — avoid exposing raw reassignment.
+export const setCurrentPath = (p: string | null) => { currentPath = p; };
+export const setCurrentName = (n: string)        => { currentName = n; };
 
 // ================= Title / dirty =================
 
@@ -68,7 +68,7 @@ export const updateTitle = () => {
   refreshStatus();
 };
 
-export const setDirty = (d) => {
+export const setDirty = (d: boolean) => {
   if (dirty === d) return;
   dirty = d;
   updateTitle();
@@ -76,10 +76,14 @@ export const setDirty = (d) => {
 
 // ================= Autosave draft =================
 
-let autosaveTimer = null;
+// `ReturnType<typeof setTimeout>` handles both DOM (number) and Node
+// (Timer) environments. Our Vite+webview environment is DOM, so this
+// resolves to number, but the typeof wrapper keeps the code portable
+// if we ever run under different typings.
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const scheduleAutosave = () => {
-  clearTimeout(autosaveTimer);
+  if (autosaveTimer !== null) clearTimeout(autosaveTimer);
   autosaveTimer = setTimeout(() => {
     // Defense in depth: if the buffer transitioned back to clean
     // (e.g., via save) between when the timer was scheduled and
@@ -105,7 +109,7 @@ export const clearDraft = () => {
   // writing a stale draft (e.g., user types → autosave scheduled
   // for t=500ms, user saves at t=100ms → clearDraft runs, but the
   // pending timer at t=500ms resurrects the draft).
-  clearTimeout(autosaveTimer);
+  if (autosaveTimer !== null) clearTimeout(autosaveTimer);
   autosaveTimer = null;
   try { localStorage.removeItem(LS_KEY); } catch {}
 };
@@ -115,7 +119,7 @@ export const clearDraft = () => {
 // write is small and a failure is non-fatal (next session just starts
 // blank, which is what would happen without the feature anyway).
 // `path` is the absolute file path, or null for an untitled buffer.
-export const writeSessionState = async (path) => {
+export const writeSessionState = async (path: string | null) => {
   try {
     await invoke('set_session_state', {
       state: { version: 1, lastFilePath: path }
@@ -144,7 +148,12 @@ export const resolveInitialDoc = () => {
 
 // ================= Confirm dialog =================
 
-let pendingConfirmOk = null;
+// Callback stashed between askConfirm and the OK-button click handler.
+// Null when no confirm is pending. Typed so strict mode sees both the
+// assignment site (null or function) and the invocation site (function
+// after null check).
+type ConfirmCallback = () => void;
+let pendingConfirmOk: ConfirmCallback | null = null;
 confirmOkBtn.addEventListener('click', () => {
   const cb = pendingConfirmOk;
   pendingConfirmOk = null;
@@ -156,14 +165,14 @@ confirmCancelBtn.addEventListener('click', () => {
   confirmDlg.close();
 });
 
-export const askConfirm = (message, onOk) => {
+export const askConfirm = (message: string, onOk: ConfirmCallback) => {
   confirmMsgEl.textContent = message;
   pendingConfirmOk = onOk;
   confirmDlg.showModal();
   confirmOkBtn.focus();
 };
 
-export const confirmDiscard = (onOk) => {
+export const confirmDiscard = (onOk: ConfirmCallback) => {
   if (!dirty) { onOk(); return; }
   askConfirm(tr('You have unsaved changes. Discard them?'), onOk);
 };
@@ -172,14 +181,14 @@ export const confirmDiscard = (onOk) => {
 
 // POSIX convention: text files end in a newline. Applied at every
 // write-to-disk site (not to autosave draft or render input).
-const ensureTrailingNewline = (text) => text.endsWith('\n') ? text : text + '\n';
+const ensureTrailingNewline = (text: string) => text.endsWith('\n') ? text : text + '\n';
 
 // Internal: load a file from a given absolute path into the editor.
 // Does NOT guard against a dirty buffer — callers are responsible for
 // running this inside a confirmDiscard wrapper if appropriate.
 // Used by openFile (file-picker dialog), the drag-drop handler, and
 // could be reused by future entry points like recent-files menus.
-export const loadFileFromPath = async (path) => {
+export const loadFileFromPath = async (path: string) => {
   try {
     const content = await readTextFile(path);
     setDoc(content);
@@ -280,7 +289,7 @@ export const reloadFile = async () => {
 // - If there is no current file, relative paths resolve against the
 //   shell CWD captured at launch time (from Rust).
 // - If neither is available, the raw argument is returned as a last resort.
-const resolveArgPath = async (arg) => {
+const resolveArgPath = async (arg: string): Promise<string> => {
   if (await isAbsolute(arg)) return arg;
   if (currentPath) {
     return await resolve(await dirname(currentPath), arg);
@@ -308,14 +317,23 @@ const resolveArgPath = async (arg) => {
 // Returns { bang: boolean, arg: string|null } where arg is the
 // argument text with the leading ! stripped and whitespace trimmed,
 // or null if no argument was given.
-const parseExArgs = (params) => {
+// The vim plugin calls Ex handlers with (cm, params) where params
+// carries argString among other fields. The plugin's types aren't
+// formally exposed, so we use `any` for cm (we never reference it)
+// and a structural type for params. Broader `any` on params would
+// work but loses the intent documentation that argString is the
+// field we care about.
+interface VimExParams {
+  argString?: string;
+}
+const parseExArgs = (params: VimExParams) => {
   let s = ((params && params.argString) || '').trim();
   const bang = s.startsWith('!');
   if (bang) s = s.slice(1).trim();
   return { bang, arg: s || null };
 };
 
-Vim.defineEx('write', 'w', async (cm, params) => {
+Vim.defineEx('write', 'w', async (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   // Bang has no additional effect in our :w path — vim's :w! forces
   // write to a readonly file, and Skrivro has no readonly concept.
@@ -339,7 +357,7 @@ Vim.defineEx('write', 'w', async (cm, params) => {
   }
 });
 
-Vim.defineEx('saveas', 'sav', async (cm, params) => {
+Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   // Bang has no additional effect — vim's :saveas! forces overwrite
   // of an existing file, and Skrivro's writeTextFile has no such
@@ -370,7 +388,7 @@ Vim.defineEx('saveas', 'sav', async (cm, params) => {
   }
 });
 
-Vim.defineEx('edit', 'e', async (cm, params) => {
+Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
   const { bang, arg } = parseExArgs(params);
   // Refuse to discard a dirty buffer without the force bang. Applies
   // to both :e (reload current file from disk) and :e filename (open
@@ -461,7 +479,7 @@ const quitForce = () => {
   getCurrentWindow().destroy();
 };
 
-const quitHandler = (cm, params) => {
+const quitHandler = (_cm: any, params: VimExParams) => {
   if (parseExArgs(params).bang) quitForce();
   else quitClean();
 };
@@ -472,7 +490,7 @@ const writeAndQuit = async () => {
   getCurrentWindow().close();
 };
 
-const exitIfDirty = async (cm, params) => {
+const exitIfDirty = async (_cm: any, params: VimExParams) => {
   if (dirty || parseExArgs(params).bang) {
     await saveFile();
     if (dirty) return; // save failed or user cancelled save-as dialog

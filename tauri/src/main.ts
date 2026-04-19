@@ -65,7 +65,10 @@ import { basename } from '@tauri-apps/api/path';
 
 import { isMac, tr, translateStaticText } from './i18n.js';
 import { prefs } from './prefs.js';
-import { userConfig, setUserConfig } from './config.js';
+import {
+  userConfig, setUserConfig,
+  type LaunchInfo, type SessionState, type SkrivroConfig,
+} from './config.js';
 import { createEditor, editorView } from './editor.js';
 import { render, scheduleRender, syncPreviewToCaret } from './preview.js';
 import {
@@ -248,9 +251,9 @@ translateStaticText();
 
 // Query Rust for launch-time info (CLI argument, shell CWD). If a file
 // path was passed on the command line, that wins over the autosave draft.
-let launchInfo = { initial_file: null, cwd: '' };
+let launchInfo: LaunchInfo = { initial_file: null, cwd: '' };
 try {
-  launchInfo = await invoke('get_launch_info');
+  launchInfo = await invoke<LaunchInfo>('get_launch_info');
 } catch (e) {
   console.error('Failed to get launch info:', e);
 }
@@ -268,7 +271,7 @@ setLaunchCwd(launchInfo.cwd || '');
 //
 // See memory/project_config_file.md for the full spec.
 try {
-  setUserConfig(await invoke('get_config'));
+  setUserConfig(await invoke<SkrivroConfig>('get_config'));
 } catch (e) {
   console.error('Failed to get user config:', e);
   setUserConfig({});
@@ -288,9 +291,9 @@ applyUserConfig(userConfig);
 //
 // Drain pending OS-dispatched opens regardless of whether we'll use
 // them — the list should never accumulate across launches.
-let pendingOpen = null;
+let pendingOpen: string | null = null;
 try {
-  const pending = await invoke('take_pending_opens');
+  const pending = await invoke<string[]>('take_pending_opens');
   if (pending && pending.length > 0) {
     pendingOpen = pending[0];
     // If more than one file was dispatched (e.g., multi-select open),
@@ -347,7 +350,7 @@ if (launchInfo.initial_file) {
     hasDraft = true;
   } else if (userConfig.restoreSession) {
     try {
-      const state = await invoke('get_session_state');
+      const state = await invoke<SessionState>('get_session_state');
       if (state && state.lastFilePath) {
         try {
           initialDoc = await readTextFile(state.lastFilePath);

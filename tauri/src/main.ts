@@ -82,6 +82,7 @@ import {
 // keyup / focusin / focusout, attaches to #src-host). Importing it is
 // what registers those listeners. The exported functions are used
 // below in the keyboard shortcut handler and the init sequence.
+import { installMenu } from './menu.js';
 import {
   applyTitlebar, applyGutter, applyStatusBar, applyDisplayMode,
   applyMacModifierLabels, applyUserConfig,
@@ -251,6 +252,17 @@ void listen('skrivro:open-file', (event) => {
 });
 
 // ================= Init =================
+
+// Install the macOS menu bar before any user-visible state. The menu
+// only ships on Mac — Linux/Windows would render Tauri menus in-window
+// (below the titlebar), which doesn't fit our borderless keyboard-first
+// layout there. See menu.ts and pending-features #21 for the full
+// rationale (custom items needed because the default menu's Minimize /
+// Close / Quit selectors don't work cleanly with `decorations: false`
+// or our dirty-buffer flow).
+if (isMac) {
+  await installMenu();
+}
 
 applyTitlebar();
 applyGutter();

@@ -1,11 +1,12 @@
 {
   "identifier": "default",
-  "description": "Default permissions for Skrivro. IMPORTANT: the core:window:allow-close, allow-destroy, allow-set-title, and allow-start-dragging entries below are NOT redundant with core:default — they are not included in core:window:default and must be granted explicitly. Removing allow-close/allow-destroy will silently break window closes (including the dirty-confirm close handler, because Tauri's onCloseRequested library internally calls destroy() after the handler). Removing allow-set-title will break window title updates (because Tauri does not auto-sync document.title to the native window title — setTitle() is explicit). Removing allow-start-dragging will silently break the data-tauri-drag-region attribute — mouse drag on the titlebar does nothing at all.",
+  "description": "Default permissions for Skrivro. IMPORTANT: the core:window:allow-close, allow-destroy, allow-minimize, allow-set-title, and allow-start-dragging entries below are NOT redundant with core:default — they are not included in core:window:default and must be granted explicitly. Removing allow-close/allow-destroy will silently break window closes (including the dirty-confirm close handler, because Tauri's onCloseRequested library internally calls destroy() after the handler). Removing allow-minimize will break the macOS Window > Minimize menu item. Removing allow-set-title will break window title updates (because Tauri does not auto-sync document.title to the native window title — setTitle() is explicit). Removing allow-start-dragging will silently break the data-tauri-drag-region attribute — mouse drag on the titlebar does nothing at all.",
   "windows": ["main"],
   "permissions": [
     "core:default",
     "core:window:allow-close",
     "core:window:allow-destroy",
+    "core:window:allow-minimize",
     "core:window:allow-set-title",
     "core:window:allow-start-dragging",
     "dialog:default",

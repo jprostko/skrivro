@@ -13,8 +13,7 @@
     "skipLibCheck": true,
     "useDefineForClassFields": true,
 
-    "strict": false,
-    "noImplicitAny": false,
+    "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true

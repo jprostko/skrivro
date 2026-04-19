@@ -573,6 +573,15 @@ dialog.help-dialog::backdrop {
   color: var(--skr-text-dim);
   font-style: italic;
 }
+/* Hide elements marked Mac-only by default. The applyMacModifierLabels
+   function strips the .mac-only class on Mac so the elements become
+   visible there. Used in the help dialog to advertise Mac-specific
+   alternative bindings (e.g., Ctrl+V for V-BLOCK works on Mac because
+   paste is Cmd+V, but doesn't on Linux/Windows where Ctrl+V is
+   intercepted by the webview's paste handler before reaching Vim). */
+.mac-only {
+  display: none;
+}
 
 /* ---------- Status bar ---------- */
 /* Canonical Catppuccin mode colors (blue/green/mauve/red/peach) sourced

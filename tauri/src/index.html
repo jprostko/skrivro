@@ -109,9 +109,9 @@
       <div class="help-desc">Save</div>
       <div class="help-key"><kbd>Ctrl+Shift+S</kbd></div>
       <div class="help-desc">Save as</div>
-      <div class="help-key"><kbd>Ctrl+Alt+O</kbd></div>
+      <div class="help-key"><kbd>Ctrl+O</kbd></div>
       <div class="help-desc">Open</div>
-      <div class="help-key"><kbd>Ctrl+Alt+N</kbd></div>
+      <div class="help-key"><kbd>Ctrl+N</kbd></div>
       <div class="help-desc">New</div>
     </div>
 
@@ -201,8 +201,8 @@
       <div class="help-desc">Visual mode (character-wise)</div>
       <div class="help-key"><kbd>V</kbd></div>
       <div class="help-desc">Visual line mode</div>
-      <div class="help-key"><kbd>Ctrl+Q</kbd></div>
-      <div class="help-desc">Visual block mode (<kbd>Ctrl+V</kbd> is reserved for browser paste)</div>
+      <div class="help-key"><kbd class="vim mac-only">Ctrl+V</kbd> <kbd class="vim">Ctrl+Q</kbd></div>
+      <div class="help-desc">Visual block mode</div>
       <div class="help-key"><kbd>R</kbd></div>
       <div class="help-desc">Replace mode</div>
       <div class="help-key"><kbd>:</kbd></div>
@@ -374,7 +374,7 @@
   // NOT translated (stays English everywhere):
   // - Ex commands (:w, :open, :syncpreview, etc.) — input syntax, same
   //   rule real Vim follows (Swedish vim users still type :w, not :skriv)
-  // - Keyboard shortcut names (Ctrl+S, ⌃⌥T on Mac, etc.) — physical key
+  // - Keyboard shortcut names (Ctrl+S, ⌘⌃T on Mac, etc.) — physical key
   //   identifiers, not translatable text
   // - Filename strings like untitled.adoc — filenames don't localize
   // - App name "Skrivro" — already a Swedish word
@@ -385,6 +385,18 @@
   // grows past ~100-200 entries or multiple languages accumulate, this
   // should graduate to a proper i18n setup. For now it's tractable.
   const lang = window.__SKRIVRO_LANG__ || 'en';
+
+  // Mac detection for keyboard conventions. On Mac, the app's shortcut
+  // modifier is Cmd (metaKey), not Ctrl — matching every native Mac app.
+  // Ctrl on Mac is deliberately left alone so Vim can keep its own
+  // Ctrl-based bindings (Ctrl+V for V-BLOCK, Ctrl+W for window commands,
+  // Ctrl+R for redo, Ctrl+D/U/F/B for scrolling, etc.). Linux and Windows
+  // stay strict on Ctrl; metaKey on those platforms is the Super/Win key,
+  // which is WM-reserved and almost never reaches a userland app anyway.
+  //
+  // navigator.userAgent match is good enough — this is a broad platform
+  // gate, not a fingerprint. No @tauri-apps/plugin-os dependency needed.
+  const isMac = /Mac/i.test(navigator.userAgent);
 
   const STRINGS_SV = {
     // Status bar — mode pill labels. NORMAL and V-BLOCK stay unchanged
@@ -470,7 +482,7 @@
     'Insert mode (before / after cursor)': 'Infogningsläge (före / efter markör)',
     'Visual mode (character-wise)': 'Visuellt läge (teckenvis)',
     'Visual line mode': 'Visuellt radläge',
-    'Visual block mode (Ctrl+V is reserved for browser paste)': 'Visuellt blockläge (<kbd>Ctrl+V</kbd> är reserverat för webbläsarens klistra in)',
+    'Visual block mode': 'Visuellt blockläge',
     'Replace mode': 'Ersättningsläge',
     'Ex command line': 'Ex-kommandorad',
     'Return to normal mode': 'Återgå till normalläge',
@@ -501,11 +513,11 @@
   // in HTML too but only visible when the dialog is opened — no FOUC
   // concern, just needs to be done before the first confirm shows up.
   //
-  // Uses innerHTML (not textContent) because a handful of translation
-  // entries contain embedded <kbd> elements that should render as
-  // keyboard-key hints in Swedish too (e.g., "Visual block mode
-  // (<kbd>Ctrl+V</kbd>...)"). All translation values are author-
-  // controlled so there's no XSS concern from the innerHTML write.
+  // Uses innerHTML (not textContent) so future translation entries can
+  // embed <kbd> elements or other inline markup without requiring a code
+  // change. No current entry uses this, but the door's open. All
+  // translation values are author-controlled so there's no XSS concern
+  // from the innerHTML write.
   const translateStaticText = () => {
     if (lang !== 'sv') return;
     const selectors = [
@@ -2134,31 +2146,64 @@
   };
 
   // Rewrite the help dialog's modifier keys on Mac. Apple convention
-  // is symbols with no separator — ⌃S, ⌃⇧N, ⌃⌥T — matching what users
+  // is symbols with no separator — ⌘S, ⌘⇧N, ⌘⌃T — matching what users
   // see in the macOS menu bar, System Settings, and Apple's own
   // documentation. Linux and Windows keep the Ctrl+Shift+N form because
   // that's what's printed on their physical keys and what every other
   // app on those platforms shows.
   //
-  // Platform detection: navigator.userAgent string matches /Mac/i.
-  // Good enough for this narrow purpose; no @tauri-apps/plugin-os
-  // dependency needed. Runs once at init since the help dialog's DOM
-  // is static — no need to re-run on each dialog open.
+  // Two distinct mappings, switched by a CSS class on the <kbd>:
+  //
+  //   App-shortcut <kbd>s (default — no `vim` class). The keydown handler
+  //   binds these. On Mac it accepts only metaKey (Cmd) as primary and
+  //   ctrlKey (Ctrl) as secondary, so "Ctrl+Alt+T" in source maps to:
+  //     Ctrl  → ⌘   (primary modifier on Mac is Cmd, not Ctrl)
+  //     Alt   → ⌃   (secondary modifier on Mac is Ctrl, not Option —
+  //                  see "Keyboard shortcuts" block below for why Option
+  //                  doesn't work: macOS layout-level character composition
+  //                  breaks letter-matching, plus several Cmd+Option+letter
+  //                  combos are OS-reserved at the system level)
+  //     Shift → ⇧
+  //
+  //   Vim-binding <kbd>s (kbd class="vim"). These represent literal
+  //   physical keys that Vim binds inside the editor — we don't capture
+  //   them in our keydown handler. So "Ctrl+Q" in a vim kbd really means
+  //   physical Control+Q, not Cmd+Q. Different mapping needed:
+  //     Ctrl  → ⌃   (literal Control symbol, the actual key Vim uses)
+  //     Alt   → ⌥   (literal Option symbol)
+  //     Shift → ⇧
+  //   Without this distinction, V-BLOCK's "Ctrl+Q" would render as ⌘Q,
+  //   which on Mac is Quit — actively misleading the reader. Mark a kbd
+  //   as a vim binding by adding class="vim" in the source HTML.
+  //
+  // Other Mac key symbols (Return ↵, Tab ⇥, Escape ⎋, Backspace ⌫)
+  // aren't used in our current help dialog but could be added to this
+  // function if we ever show them as shortcuts.
+  //
+  // Also strips the .mac-only class from any element inside the help
+  // dialog. Those elements are hidden by default via styles.css's
+  // `.mac-only { display: none; }` rule; removing the class on Mac
+  // makes them visible. Used for advertising Mac-specific alternative
+  // bindings — e.g., V-BLOCK's Ctrl+V kbd, which only actually works
+  // on Mac (Linux/Windows webviews intercept Ctrl+V for paste before
+  // it reaches Vim).
+  //
+  // Runs once at init since the help dialog's DOM is static — no need
+  // to re-run on each dialog open.
   //
   // Selector scope: .help-dialog kbd. Other <kbd> elements elsewhere
   // (if added later) would need to opt in by being inside .help-dialog
   // or by extending this function's selector.
-  //
-  // Keys we translate: Ctrl → ⌃, Alt → ⌥, Shift → ⇧. Other Mac key
-  // symbols (Return ↵, Tab ⇥, Escape ⎋, Backspace ⌫) aren't used in
-  // our current help dialog but could be added to this function if
-  // we ever show them as shortcuts.
   const applyMacModifierLabels = () => {
-    if (!/Mac/i.test(navigator.userAgent)) return;
+    if (!isMac) return;
+    document.querySelectorAll('.help-dialog .mac-only').forEach((el) => {
+      el.classList.remove('mac-only');
+    });
     document.querySelectorAll('.help-dialog kbd').forEach((kbd) => {
+      const isVim = kbd.classList.contains('vim');
       kbd.textContent = kbd.textContent
-        .replace(/\bCtrl\b/g, '⌃')
-        .replace(/\bAlt\b/g, '⌥')
+        .replace(/\bCtrl\b/g, isVim ? '⌃' : '⌘')
+        .replace(/\bAlt\b/g, isVim ? '⌥' : '⌃')
         .replace(/\bShift\b/g, '⇧')
         .replace(/\+/g, '');
     });
@@ -2188,40 +2233,78 @@
 
   // ================= Keyboard shortcuts =================
   // Capture phase so we beat CM6's internal keymap + vim bindings.
+  //
+  // Primary modifier (the "this is an app shortcut" key) is platform-strict:
+  // on Mac it's metaKey (Cmd); on Linux/Windows it's ctrlKey. This leaves
+  // Ctrl+letter on Mac alone so Vim's Ctrl-based bindings (Ctrl+V for
+  // V-BLOCK, Ctrl+W for window commands, Ctrl+R for redo, Ctrl+D/U/F/B
+  // for scrolling, Ctrl+O/I for jumplist, etc.) flow through to the
+  // CM6 vim plugin unimpeded. On Linux/Windows, metaKey is the Super/Win
+  // key, which is WM-reserved and virtually never reaches userland, so
+  // ignoring it there is a no-op with cleaner semantics.
+  //
+  // Secondary modifier (the disambiguator for toggle/mode shortcuts) is
+  // also platform-strict: altKey (Alt) on Linux/Windows; ctrlKey (Ctrl)
+  // on Mac. Why Ctrl and not Option on Mac? macOS US/Dvorak layouts map
+  // Option+letter to Unicode glyphs at the layout level (Option+V → √,
+  // Option+T → †, Option+B → ∫, etc.), and the webview's keydown event
+  // reports e.key as the COMPOSED character even when Cmd is also held —
+  // so e.key for Cmd+Option+V is "√", not "v", and a literal letter
+  // match like `k === 'v'` silently fails. Verified empirically on
+  // macOS Dvorak. Ctrl doesn't compose, so Cmd+Ctrl+V reports e.key="v"
+  // cleanly. Bonus: macOS reserves several Cmd+Option+letter combos at
+  // the system level (Cmd+Option+D toggles Dock auto-hide, Cmd+Option+H
+  // hides other apps, etc.), so Option would have been a minefield even
+  // without the composition bug. Cmd+Ctrl has fewer system collisions
+  // (Cmd+Ctrl+F fullscreen, Cmd+Ctrl+Q lock screen, Cmd+Ctrl+D look up
+  // word, Cmd+Ctrl+Space emoji picker — none of our letters collide).
+  // Critically: Cmd+Ctrl+letter is a distinct chord from Vim's plain
+  // Ctrl+letter, so Vim's namespace stays intact.
+  //
+  // Net effect: exactly one app-shortcut chord per platform.
+  //   Mac:           Cmd+letter (primary), Cmd+Ctrl+letter (secondary)
+  //   Linux/Windows: Ctrl+letter (primary), Ctrl+Alt+letter (secondary)
   window.addEventListener('keydown', (e) => {
-    const mod = e.ctrlKey || e.metaKey;
+    const mod = isMac ? e.metaKey : e.ctrlKey;
     if (!mod) return;
+    const second = isMac ? e.ctrlKey : e.altKey;
     const k = (e.key || '').toLowerCase();
 
-    // Alt-modified shortcuts first — so Ctrl+Alt+S (split) doesn't match plain Ctrl+S (save).
-    if (e.altKey && k === 'n') {
-      e.preventDefault(); newFile();
-    } else if (e.altKey && k === 'v') {
+    // Secondary-modifier shortcuts first — so Ctrl+Alt+S / Cmd+Ctrl+S (split)
+    // doesn't match plain Ctrl+S / Cmd+S (save).
+    if (second && k === 'v') {
       e.preventDefault(); toggleVim();
-    } else if (e.altKey && k === 'g') {
+    } else if (second && k === 'g') {
       e.preventDefault(); toggleGutter();
-    } else if (e.altKey && k === 's') {
+    } else if (second && k === 's') {
       e.preventDefault(); setDisplayMode('split');
-    } else if (e.altKey && k === 'e') {
+    } else if (second && k === 'e') {
       e.preventDefault(); setDisplayMode('editor');
-    } else if (e.altKey && k === 'p') {
+    } else if (second && k === 'p') {
       e.preventDefault(); setDisplayMode('preview');
-    } else if (e.altKey && k === 't') {
+    } else if (second && k === 't') {
       e.preventDefault(); toggleTitlebar();
-    } else if (e.altKey && k === 'b') {
+    } else if (second && k === 'b') {
       e.preventDefault(); toggleStatusBar();
-    } else if (e.altKey && k === 'o') {
-      e.preventDefault(); openFile();
-    } else if (e.altKey && k === 'l') {
+    } else if (second && k === 'l') {
       e.preventDefault(); syncPreviewToCaret();
-    } else if (e.altKey && k === 'h') {
+    } else if (second && k === 'h') {
       e.preventDefault(); toggleHelp();
     }
-    // Non-alt shortcuts.
+    // Primary-only shortcuts. Save/Open/New use the primary modifier alone
+    // because those are universal cross-platform conventions (Ctrl+S /
+    // Cmd+S for save, Ctrl+O / Cmd+O for open, Ctrl+N / Cmd+N for new).
+    // Standalone used Ctrl+Alt+O / Ctrl+Alt+N to avoid colliding with the
+    // browser's own open-file and new-window shortcuts; Tauri has no such
+    // collision, so we move them onto the conventional keys.
     else if (k === 's' && e.shiftKey) {
       e.preventDefault(); saveFileAs();
     } else if (k === 's') {
       e.preventDefault(); saveFile();
+    } else if (k === 'o') {
+      e.preventDefault(); openFile();
+    } else if (k === 'n') {
+      e.preventDefault(); newFile();
     }
   }, { capture: true });
 
@@ -2473,14 +2556,26 @@
     console.error('Vim.map ZZ/ZQ failed:', e);
   }
 
-  // Note on visual block mode: Ctrl+V is intercepted by the webkit2gtk
-  // paste handler in the Tauri webview before it reaches CM6's key
-  // handler, so Ctrl+V is unreachable as a vim binding here. The plugin
-  // already ships Ctrl+Q as a native default binding for V-BLOCK entry
-  // (see @replit/codemirror-vim's defaultKeymap — it's the same
-  // workaround Vim itself uses on Windows, where Ctrl+V is also the
-  // system paste shortcut), so no remapping is needed on our side:
-  // users press Ctrl+Q to enter V-BLOCK. Help overlay documents this.
+  // Note on visual block mode: Ctrl+V is intercepted by the webview's
+  // paste handler on Linux (webkit2gtk) and Windows (WebView2) before
+  // it reaches CM6's key handler, so Ctrl+V is unreachable as a vim
+  // binding on those platforms. The plugin's defaultKeymap binds both
+  // Ctrl+V and Ctrl+Q to V-BLOCK as a cross-platform compat measure
+  // (Vim itself uses Ctrl+Q on Windows, where Ctrl+V is system paste).
+  // On Linux/Windows, the dual binding is invisible — only Ctrl+Q
+  // reaches Vim — so users press Ctrl+Q.
+  //
+  // On Mac, paste is Cmd+V, so physical Ctrl+V flows through to Vim
+  // cleanly and both keys enter V-BLOCK. We tried Vim.unmap('<C-q>',
+  // 'normal') to remove the redundant Ctrl+Q binding on Mac (so
+  // V-BLOCK would have exactly one entry key matching the canonical
+  // Vim convention) — the call doesn't throw but also doesn't unbind
+  // the key, presumably because plugin-default bindings live outside
+  // the user-keymap layer that Vim.unmap operates on. The plugin's
+  // API isn't documented enough to know the right approach, so we
+  // accept the dual-binding reality on Mac and have the help dialog
+  // advertise both keys (the Ctrl+V kbd is marked .mac-only so it
+  // only shows on Mac; Linux/Windows users still see only Ctrl+Q).
 
   // Default regex engine to Vim magic-mode translation instead of raw
   // JavaScript RegExp. The plugin ships with pcre=true (shown in the

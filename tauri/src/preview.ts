@@ -68,8 +68,15 @@ export const clearIncludeCache = () => {
 // Parse the attributes inside `include::target[attrs]` into a keyed
 // object. Positional attributes (values without `=`) are ignored —
 // the AsciiDoc include directive doesn't use positional attrs.
-const parseIncludeAttrs = (raw) => {
-  const attrs = {};
+//
+// Return type is Record<string, string>: all keys are strings, all
+// values are strings. TS's Record doesn't model "key might be absent
+// at runtime" — attrs.leveloffset is typed as string even when the
+// raw didn't include that key, so downstream `if (attrs.leveloffset)`
+// truthiness checks still do the right runtime work while TS's
+// narrowing accepts them.
+const parseIncludeAttrs = (raw: string): Record<string, string> => {
+  const attrs: Record<string, string> = {};
   if (!raw) return attrs;
   for (const part of raw.split(',')) {
     const eq = part.indexOf('=');
@@ -85,7 +92,7 @@ const parseIncludeAttrs = (raw) => {
 // Handles lines=, tag=/tags=, and indent=. (leveloffset= is applied
 // later by the caller since it needs to wrap the recursively-expanded
 // content, not the raw pre-expansion content.)
-const applyIncludeAttrs = (content, attrs) => {
+const applyIncludeAttrs = (content: string, attrs: Record<string, string>): string => {
   // lines=N..M or lines=N..M;X..Y — keep specified 1-indexed ranges.
   // Open-ended ranges like `lines=5..` mean "from line 5 to end".
   if (attrs.lines) {
@@ -313,7 +320,18 @@ export const render = async () => {
     // doctype, includes across directories, etc.). Valid values per
     // Asciidoctor: unsafe / safe / server / secure. See
     // memory/project_config_file.md for why safe mode is config-only.
-    const loadOpts = {
+    //
+    // attributes is typed as Record<string, unknown> so we can spread
+    // additional keys (docname, docfile, docdir) onto it below without
+    // TS narrowing it to the initial `{ showtitle: boolean }` literal
+    // shape. Asciidoctor attribute values span strings, numbers, and
+    // booleans depending on the attribute, so unknown is the right
+    // width here.
+    const loadOpts: {
+      safe: string;
+      sourcemap: boolean;
+      attributes: Record<string, unknown>;
+    } = {
       safe: userConfig.asciidocSafeMode || 'unsafe',
       sourcemap: true,
       attributes: { showtitle: true },

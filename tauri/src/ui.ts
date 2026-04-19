@@ -22,7 +22,13 @@ const statusMode          = document.getElementById('statusMode');
 const statusFilename      = document.getElementById('statusFilename');
 const statusPosition      = document.getElementById('statusPosition');
 const statusWordCount     = document.getElementById('statusWordCount');
-const helpDlg             = document.getElementById('helpDialog');
+// Cast helpDlg to HTMLDialogElement so the showModal() / close() /
+// open accesses below type-check. document.getElementById returns
+// HTMLElement | null, which carries neither the dialog-specific
+// methods/properties nor a non-null guarantee; the element is known
+// to exist in our HTML and this module script runs after body parse,
+// so the cast is safe.
+const helpDlg             = document.getElementById('helpDialog') as HTMLDialogElement;
 const helpBtn             = document.getElementById('helpBtn');
 const helpCloseBtn        = document.getElementById('helpCloseBtn');
 

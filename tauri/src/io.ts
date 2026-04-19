@@ -25,7 +25,15 @@ export const DEFAULT_DOC  = '';
 // ================= DOM refs =================
 
 const nameEl           = document.getElementById('name');
-const confirmDlg       = document.getElementById('confirmDialog');
+// Cast confirmDlg to HTMLDialogElement so the showModal() / close()
+// calls below type-check. document.getElementById returns
+// HTMLElement | null, which carries neither the dialog-specific
+// methods nor a non-null guarantee; the element is known to exist in
+// our HTML and this module script runs after body parse, so the cast
+// is safe. Other confirm-dialog refs stay as HTMLElement — they use
+// only addEventListener (available on all HTMLElements) and focus()
+// (available on HTMLOrSVGElement, which HTMLElement inherits).
+const confirmDlg       = document.getElementById('confirmDialog') as HTMLDialogElement;
 const confirmMsgEl     = document.getElementById('confirmMessage');
 const confirmOkBtn     = document.getElementById('confirmOkBtn');
 const confirmCancelBtn = document.getElementById('confirmCancelBtn');

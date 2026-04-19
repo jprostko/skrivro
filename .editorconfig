@@ -1,0 +1,33 @@
+# EditorConfig: consistent formatting across editors / IDEs / platforms.
+# See https://editorconfig.org/ — most modern editors (VS Code, Vim,
+# Emacs, Zed, JetBrains, Sublime, Helix, etc.) pick this up either
+# natively or via a small plugin.
+
+# root = true stops the editor's config lookup here rather than walking
+# up to parent directories. Avoids being overridden by any ~/.editorconfig
+# a contributor might have.
+root = true
+
+# Defaults for every file: 2-space indentation, LF line endings,
+# UTF-8, trim trailing whitespace, ensure trailing newline.
+# This covers our .js / .ts / .html / .css / .json / .toml / .conf files
+# — essentially everything except Rust and Markdown.
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Rust uses 4-space indentation per rustfmt's default. Our lib.rs and
+# related files follow that convention; the [*] block's 2-space
+# default would override it without this block.
+[*.rs]
+indent_size = 4
+
+# Markdown: preserve trailing whitespace. A double-space at end of line
+# is a meaningful syntax element (forces a <br>), and trim-trailing
+# would silently break it.
+[*.md]
+trim_trailing_whitespace = false

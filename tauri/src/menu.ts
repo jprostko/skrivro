@@ -5,28 +5,40 @@
 // a menu bar (Tauri menus would render in-window on those platforms, which
 // doesn't fit a borderless keyboard-first editor).
 //
-// Why we need a custom menu at all:
-//   1. Tauri's default Mac menu has Window > Minimize / Close items wired to
-//      NSWindow.performMiniaturize: / performClose:. On a `decorations: false`
-//      window those selectors check the window style mask, find the
-//      "miniaturizable" / "closable" bits missing, and beep. Our menu uses
-//      custom items that call getCurrentWindow().minimize() / .close()
-//      programmatically (which don't gate on style mask) instead.
-//   2. The default Quit item calls NSApplication.terminate: directly,
-//      bypassing our window's onCloseRequested handler. Means a dirty buffer
-//      is silently exited without the discard-changes confirm dialog. Our
-//      custom Quit calls getCurrentWindow().close() which DOES route through
-//      onCloseRequested → confirmDiscard. Single-window app, so closing the
-//      window = quitting the app.
-//   3. The default File menu is bare ("Close Window" only). We populate it
-//      with New / Open / Save / Save As / Reload so Mac users can discover
-//      and invoke file operations through the menu instead of needing to know
-//      the keyboard shortcuts.
+// Window chrome on Mac (set in lib.rs): decorations(true). The window has
+// the standard Mac chrome (title bar, three traffic lights) — visually
+// the "Fisher-Price" Mac look. Hiding the chrome to recover the borderless
+// aesthetic is a follow-up step (Ghostty's Cocoa pattern: titlebarAppearsTransparent + titleVisibility = .hidden + standardWindowButton(...) .isHidden + NSTitlebarContainerView .isHidden). Once that lands, the
+// window has the .titled / .closable / .miniaturizable / .resizable
+// style mask bits AppKit needs for native menu integration AND
+// presents visually as borderless.
 //
-// See pending-features item #21 for the broader analysis. Item #24 covers the
-// related silent-Ex-failure pattern that affects the Reload menu item's
-// underlying reloadFile() call (we wrap with confirmDiscard here to avoid the
-// silent-refuse case until #24 is actually fixed).
+// The implication for this file: most Window menu items are
+// PredefinedMenuItem instances — they wire to canonical NSWindow
+// selectors (performMiniaturize: / zoom: / toggleFullScreen:) which
+// work because the style mask has the bits. The predefined Fullscreen
+// item additionally gets AppKit's Big Sur shortcut substitution: shown
+// as 🌐F on modern MacBooks, with hardware Fn+F routing to it.
+//
+// Why we still need a custom menu (rather than letting Tauri use its
+// default) — two reasons remain:
+//   1. Predefined Quit calls NSApplication.terminate: directly, which
+//      bypasses our window's onCloseRequested handler. A dirty buffer
+//      would be silently exited without the discard-changes confirm
+//      dialog. Our custom Quit calls getCurrentWindow().close() which
+//      DOES route through onCloseRequested → confirmDiscard. Single-
+//      window app, so closing the window = quitting the app. Same
+//      routing reason for File > Close Window and Window > Close
+//      Window — all three share closeAction below.
+//   2. The default File menu is bare ("Close Window" only). We populate
+//      it with New / Open / Save / Save As / Reload so Mac users can
+//      discover and invoke file operations through the menu instead of
+//      needing to know the keyboard shortcuts.
+//
+// See pending-features item #21 for the broader analysis. Item #24 covers
+// the related silent-Ex-failure pattern that affects the Reload menu
+// item's underlying reloadFile() call (we wrap with confirmDiscard here
+// to avoid the silent-refuse case until #24 is actually fixed).
 
 import {
   Menu,
@@ -51,15 +63,6 @@ import { syncPreviewToCaret } from './preview.js';
 // Defined once so the three menu items can share it.
 const closeAction = () => {
   void getCurrentWindow().close();
-};
-
-// Toggle Full Screen action. Extracted from the menu builder so the
-// `action` property gets a sync `() => void` (the menu API rejects
-// async functions there per @typescript-eslint/no-misused-promises).
-const toggleFullscreen = async () => {
-  const win = getCurrentWindow();
-  const isFs = await win.isFullscreen();
-  await win.setFullscreen(!isFs);
 };
 
 export const installMenu = async () => {
@@ -212,50 +215,32 @@ export const installMenu = async () => {
   });
 
   // --- Window menu ---
-  // Custom Minimize, Zoom, Enter/Exit Full Screen, and Close items. The
-  // predefined variants for all four hit the same root cause as the
-  // original Cmd+M / Cmd+W beep: they map to NSWindow selectors
-  // (performMiniaturize: / zoom: / toggleFullScreen: / performClose:)
-  // that gate on style mask bits stripped by `decorations: false`.
-  // Calling minimize() / toggleMaximize() / setFullscreen() / close()
-  // programmatically via Tauri's JS API bypasses the gate.
+  // Minimize, Maximize (Mac calls it Zoom), and Fullscreen are all
+  // PredefinedMenuItem instances. They wire to the canonical NSWindow
+  // selectors (performMiniaturize: / zoom: / toggleFullScreen:) which
+  // work because lib.rs gives the Mac window the .titled / .closable /
+  // .miniaturizable / .resizable style mask bits via decorations(true).
+  // The predefined Fullscreen item additionally gets AppKit's Big Sur
+  // shortcut substitution for free: shown as 🌐F on modern MacBooks
+  // (Globe glyph instead of the canonical ⌃⌘F caret form), with
+  // hardware Fn+F routing to it. AppKit also handles the Enter/Exit
+  // text flip internally — no setText / onResized listener needed
+  // on our side.
   //
-  // The fullscreen item is created out-of-line so the post-install
-  // syncFullscreenText() helper below can update its text via
-  // setText() to follow macOS convention ("Enter Full Screen" /
-  // "Exit Full Screen"). No dedicated fullscreen event in Tauri 2 —
-  // we hook onResized which fires after the transition completes.
+  // Close Window stays custom: predefined Close routes through
+  // performClose: which doesn't invoke our onCloseRequested handler
+  // for the dirty-buffer confirm dialog. Custom item shares closeAction
+  // with File > Close Window and App > Quit so the three entry points
+  // all route through the same confirm path.
   //
-  // The accelerator 'Cmd+Ctrl+F' binds ⌃⌘F (canonical macOS fullscreen
-  // shortcut). On modern MacBooks, macOS auto-renders this in the menu
-  // as 🌐F (Globe/Fn glyph) — same binding, modern display style.
-  // Both ⌃⌘F and fn+F at the keyboard trigger our action. We can't
-  // bind to fn/Globe directly: muda's parser doesn't accept it, muda's
-  // macOS bridge doesn't translate it, and Apple reserved the Fn key
-  // for system applications in macOS 12. Three independent gates,
-  // all closed.
-  //
-  // macOS auto-injects Move & Resize / Full Screen Tile / Remove
-  // Window from Set into this menu — we don't define those.
-  const fullscreenItem = await MenuItem.new({
-    text: 'Enter Full Screen', // overwritten by syncFullscreenText() below
-    accelerator: 'Cmd+Ctrl+F',
-    action: () => { void toggleFullscreen(); },
-  });
-
+  // macOS auto-injects Move & Resize / Full Screen Tile / Remove Window
+  // from Set into this menu — we don't define those.
   const windowMenu = await Submenu.new({
     text: 'Window',
     items: [
-      await MenuItem.new({
-        text: 'Minimize',
-        accelerator: 'Cmd+M',
-        action: () => { void getCurrentWindow().minimize(); },
-      }),
-      await MenuItem.new({
-        text: 'Zoom',
-        action: () => { void getCurrentWindow().toggleMaximize(); },
-      }),
-      fullscreenItem,
+      await PredefinedMenuItem.new({ item: 'Minimize' }),
+      await PredefinedMenuItem.new({ item: 'Maximize' }),
+      await PredefinedMenuItem.new({ item: 'Fullscreen' }),
       await PredefinedMenuItem.new({ item: 'Separator' }),
       await MenuItem.new({
         text: 'Close Window',
@@ -285,18 +270,4 @@ export const installMenu = async () => {
     items: [appMenu, fileMenu, editMenu, viewMenu, windowMenu, helpMenu],
   });
   await menu.setAsAppMenu();
-
-  // Sync the Window > Enter/Exit Full Screen menu item's text to the
-  // current window state, then keep it in sync. Tauri 2 has no
-  // dedicated fullscreen event; onResized fires after the macOS
-  // fullscreen transition completes, which is the moment we want the
-  // text to flip anyway. Listener lives for the app's lifetime — no
-  // unlisten needed in this single-window app.
-  const win = getCurrentWindow();
-  const syncFullscreenText = async () => {
-    const isFs = await win.isFullscreen();
-    await fullscreenItem.setText(isFs ? 'Exit Full Screen' : 'Enter Full Screen');
-  };
-  await syncFullscreenText();
-  await win.onResized(() => { void syncFullscreenText(); });
 };

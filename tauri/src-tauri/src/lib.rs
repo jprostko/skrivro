@@ -1013,7 +1013,29 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin({
+            // Configure the plugin to exclude DECORATIONS from the
+            // state it saves and restores. The plugin's on_window_ready
+            // hook automatically calls restore_state(state_flags) for
+            // every window, using the flags set here. Without this
+            // configuration, the plugin would restore the saved
+            // decorations value (false from prior runs) on top of our
+            // builder-time setting (true on macOS), which on macOS
+            // strips the .titled / .closable bits AppKit needs for
+            // predefined Minimize / Maximize / Fullscreen menu items
+            // and the Big Sur Fn+F shortcut routing.
+            //
+            // Decorations is a build-time platform decision in our app
+            // (false on Linux/Windows, true on macOS — see the
+            // WebviewWindowBuilder section below), not a user-toggleable
+            // runtime preference. The plugin's grab-bag default of
+            // saving everything is a footgun for apps that don't
+            // expose a runtime "hide title bar" toggle.
+            use tauri_plugin_window_state::{Builder, StateFlags};
+            Builder::default()
+                .with_state_flags(StateFlags::all() & !StateFlags::DECORATIONS)
+                .build()
+        })
         .invoke_handler(tauri::generate_handler![
             get_launch_info,
             get_config,
@@ -1042,8 +1064,20 @@ pub fn run() {
             )
             .title("Skrivro")
             .inner_size(1280.0, 720.0)
-            .decorations(false)
             .background_color(bg_color);
+
+            // Mac gets decorations(true) to land the full style mask
+            // (.titled / .closable / .miniaturizable / .resizable) that
+            // AppKit's predefined menu items need. Linux / Windows stay
+            // decorations(false) (Hyprland tiling WM / consistency).
+            #[cfg(target_os = "macos")]
+            {
+                builder = builder.decorations(true);
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                builder = builder.decorations(false);
+            }
 
             if !init_script.is_empty() {
                 builder = builder.initialization_script(&init_script);
@@ -1051,13 +1085,15 @@ pub fn run() {
 
             let window = builder.build()?;
 
-            // Restore window state (size, position, maximized, fullscreen)
-            // from the tauri-plugin-window-state saved state, if any. On
-            // first launch or after `rm`ing the plugin's state file, this
-            // is a no-op and the window keeps the inner_size(1280, 720)
-            // default from the builder above. On subsequent launches, the
-            // window is reshaped/moved to match wherever the user had it
-            // when they last closed Skrivro.
+            // Window state restore (size, position, maximized, fullscreen,
+            // visible) happens automatically via the tauri-plugin-window-state
+            // plugin's on_window_ready hook, using the StateFlags configured
+            // at plugin registration above (excludes DECORATIONS — see the
+            // plugin block for why). On first launch or after `rm`ing the
+            // plugin's state file, the restore is a no-op and the window
+            // keeps the inner_size(1280, 720) default from the builder.
+            // On subsequent launches, the window is reshaped/moved to
+            // match wherever the user had it when they last closed Skrivro.
             //
             // There is a brief reshape visible at launch as the default
             // size/position snaps to the restored values — accepted as a
@@ -1065,11 +1101,7 @@ pub fn run() {
             // annoying, the fix is to read the plugin's saved state
             // manually before building the window and pass the restored
             // values into .inner_size() / .position(), rather than
-            // restoring after build.
-            {
-                use tauri_plugin_window_state::{StateFlags, WindowExt};
-                let _ = window.restore_state(StateFlags::all());
-            }
+            // letting the plugin restore after build.
 
             // On Linux, webkit2gtk inherits GTK's text-widget context menu,
             // which includes an "Insert Unicode Control Character" submenu

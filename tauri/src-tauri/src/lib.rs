@@ -885,6 +885,76 @@ fn parse_hex_color(hex: &str) -> Option<tauri::webview::Color> {
     Some(tauri::webview::Color(r, g, b, 255))
 }
 
+// ================= macOS chrome hiding =================
+//
+// Hides the standard macOS window chrome (title bar text, three traffic
+// light buttons) without stripping the underlying NSWindowStyleMask
+// bits. This is the Ghostty pattern from HiddenTitlebarTerminalWindow.swift:
+// keep .titled / .closable / .miniaturizable / .resizable so AppKit's
+// menu integration (predefined Minimize / Maximize / Fullscreen items,
+// Big Sur Fn+F shortcut routing) works, but visually present as
+// borderless to match the app's keyboard-first aesthetic.
+//
+// Three Cocoa calls do the work:
+//   1. setTitlebarAppearsTransparent: YES — title bar background blends
+//      with the window content, no visible bar.
+//   2. setTitleVisibility: NSWindowTitleHidden — title text doesn't
+//      render. Tauri sets the window title to "Skrivro" via the
+//      WebviewWindowBuilder, which would otherwise show in the bar.
+//   3. standardWindowButton(.closeButton/.miniaturizeButton/.zoomButton)
+//      .setHidden: YES — the three traffic lights individually.
+//
+// Ghostty additionally walks the view tree to find NSTitlebarContainerView
+// and hides it ("nuke from orbit"), to handle a macOS edge case where
+// a thin chrome strip can remain after the above calls. We're not
+// doing that yet — start with the basic three calls and see whether
+// the strip actually appears in our app. If it does, add the subview
+// walk in a follow-up.
+//
+// Re-application on title set or fullscreen exit: also a Ghostty
+// belt-and-suspenders step we're skipping initially. We don't change
+// the window title at runtime (the document filename lives in our
+// app's own titlebar widget, not the native title), and Tauri's
+// fullscreen exit path may or may not re-show chrome. Test first;
+// add re-apply hooks only if needed.
+#[cfg(target_os = "macos")]
+fn hide_macos_chrome(window: &tauri::WebviewWindow) -> tauri::Result<()> {
+    use objc2::rc::Retained;
+    use objc2_app_kit::{NSWindow, NSWindowButton, NSWindowTitleVisibility};
+
+    let ns_window_ptr = window.ns_window()?;
+    // SAFETY: window.ns_window() returns the raw NSWindow pointer Tauri
+    // owns for this WebviewWindow. The NSWindow lives for the duration
+    // of the window (well past this setup-time call), so casting to a
+    // short-lived &NSWindow reference is safe. We don't retain or
+    // outlive the underlying Tauri-owned object.
+    let ns_window: &NSWindow = unsafe { &*ns_window_ptr.cast::<NSWindow>() };
+
+    // Wrap with Retained to satisfy objc2's expected receiver type for
+    // the methods below. This bumps the retain count for the duration
+    // of our calls and releases on drop — no ownership transfer.
+    let ns_window: Retained<NSWindow> = unsafe { Retained::retain(ns_window as *const NSWindow as *mut NSWindow) }
+        .expect("ns_window pointer is non-null");
+
+    // Method calls on Retained<NSWindow> don't require an unsafe block
+    // in objc2 0.6 — the wrapper already maintains the invariants. The
+    // only unsafe ops in this function are the raw pointer deref and
+    // the Retained::retain call above.
+    ns_window.setTitlebarAppearsTransparent(true);
+    ns_window.setTitleVisibility(NSWindowTitleVisibility::Hidden);
+    for kind in [
+        NSWindowButton::CloseButton,
+        NSWindowButton::MiniaturizeButton,
+        NSWindowButton::ZoomButton,
+    ] {
+        if let Some(button) = ns_window.standardWindowButton(kind) {
+            button.setHidden(true);
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Wayland app_id workaround: set GLib's program name to the Tauri
@@ -1102,6 +1172,21 @@ pub fn run() {
             // manually before building the window and pass the restored
             // values into .inner_size() / .position(), rather than
             // letting the plugin restore after build.
+
+            // Hide the visible Mac chrome (title bar + traffic lights).
+            // We keep the .titled / .closable / .miniaturizable bits in
+            // the style mask (set via decorations(true) above) so AppKit's
+            // predefined menu items work, but visually present as
+            // borderless. See hide_macos_chrome above for the full
+            // rationale and the three Cocoa calls it makes.
+            #[cfg(target_os = "macos")]
+            {
+                if let Err(e) = hide_macos_chrome(&window) {
+                    #[cfg(debug_assertions)]
+                    eprintln!("[skrivro chrome] failed to hide macOS chrome: {}", e);
+                    let _ = e;
+                }
+            }
 
             // On Linux, webkit2gtk inherits GTK's text-widget context menu,
             // which includes an "Insert Unicode Control Character" submenu

@@ -45,6 +45,18 @@ tauri-plugin-window-state = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# macOS-only dependencies. `objc2` and `objc2-app-kit` power direct Cocoa
+# calls we use to hide standard window chrome while keeping the NSWindow
+# style mask bits intact (Ghostty's pattern for "borderless-looking but
+# with native AppKit integration"). See the hide_macos_chrome function
+# in lib.rs for the full rationale. objc2 is already pulled in
+# transitively on Mac via muda; declaring it directly lets us `use`
+# the bindings from our own source.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = "0.3"
+objc2-foundation = "0.3"
+
 # Linux-only dependencies. All already present in the transitive tree via
 # wry/gtk/webkit2gtk, declared directly here so we can `use` them from our
 # own source.

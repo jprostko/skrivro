@@ -93,6 +93,14 @@ export const STRINGS_SV: Record<string, string> = {
   'Toggle status bar': 'Växla statusfält',
   'Sync preview to cursor': 'Synka förhandsvisning till markör',
 
+  // Help dialog — placeholder labels inside <kbd><var>...</var></kbd>
+  // syntax examples (e.g. ":w <var>filename</var>"). Translated even
+  // though the surrounding Ex command stays English, because the
+  // placeholder names a user-supplied value rather than being part
+  // of the command syntax. Distinct from actual filename strings
+  // (e.g. untitled.adoc), which don't localize per the rules above.
+  'filename': 'filnamn',
+
   // Help dialog — Vim Ex command descriptions
   'Save current file': 'Spara aktuell fil',
   'Write buffer contents to a path (current buffer association unchanged)': 'Skriv buffertinnehåll till en sökväg (aktuell buffertassociation oförändrad)',
@@ -163,6 +171,11 @@ export const translateStaticText = () => {
     '.help-dialog h2',
     '.help-dialog h3',
     '.help-dialog .help-desc',
+    // <var> placeholders inside .help-key kbd examples (e.g. the
+    // "filename" in ":w <var>filename</var>"). Surrounding kbd
+    // contents stay English (Ex commands and key names don't
+    // translate) but the placeholder label is a user-facing word.
+    '.help-dialog .help-key var',
     '#confirmCancelBtn',
     '#confirmOkBtn',
   ];

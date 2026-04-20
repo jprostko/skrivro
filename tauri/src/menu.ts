@@ -47,6 +47,7 @@ import {
   Submenu,
 } from '@tauri-apps/api/menu';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
 
 import {
   openFile, saveFile, saveFileAs, newFile, reloadFile, confirmDiscard,
@@ -162,10 +163,12 @@ export const installMenu = async () => {
   // --- View menu ---
   // Surfaces our app's display toggles and modes via the menu, with the
   // Cmd+Ctrl+letter accelerators we chose for Mac in commit c57e42e.
-  // Enter/Exit Full Screen lives under Window — better conceptual fit
-  // with the other window-state ops (Minimize / Zoom / Close) than with
-  // these content-presentation toggles, and matches how third-party Mac
-  // apps like Ghostty group their menu.
+  // Enter/Exit Full Screen is here (Apple HIG convention, matching
+  // every Apple first-party app and runtime-menu Tauri apps like Yaak).
+  // Placing Fullscreen in the Window menu instead of here breaks
+  // AppKit's Fn+F → Fullscreen-menu-item registration in ways our
+  // workarounds couldn't fix cleanly (Ghostty gets away with Fullscreen
+  // in Window because their NIB-loading path registers differently).
   const viewMenu = await Submenu.new({
     text: 'View',
     items: [
@@ -211,21 +214,20 @@ export const installMenu = async () => {
         accelerator: 'Cmd+Ctrl+L',
         action: syncPreviewToCaret,
       }),
+      await PredefinedMenuItem.new({ item: 'Separator' }),
+      await PredefinedMenuItem.new({ item: 'Fullscreen' }),
     ],
   });
 
   // --- Window menu ---
-  // Minimize, Maximize (Mac calls it Zoom), and Fullscreen are all
-  // PredefinedMenuItem instances. They wire to the canonical NSWindow
-  // selectors (performMiniaturize: / zoom: / toggleFullScreen:) which
-  // work because lib.rs gives the Mac window the .titled / .closable /
-  // .miniaturizable / .resizable style mask bits via decorations(true).
-  // The predefined Fullscreen item additionally gets AppKit's Big Sur
-  // shortcut substitution for free: shown as 🌐F on modern MacBooks
-  // (Globe glyph instead of the canonical ⌃⌘F caret form), with
-  // hardware Fn+F routing to it. AppKit also handles the Enter/Exit
-  // text flip internally — no setText / onResized listener needed
-  // on our side.
+  // Minimize and Maximize (Mac calls it Zoom) are PredefinedMenuItem
+  // instances. They wire to the canonical NSWindow selectors
+  // (performMiniaturize: / zoom:) which work because lib.rs gives the
+  // Mac window the .titled / .closable / .miniaturizable / .resizable
+  // style mask bits via decorations(true).
+  //
+  // Fullscreen lives in View, not here (Apple HIG + empirical: putting
+  // it here broke AppKit's Fn+F → Fullscreen-menu-item registration).
   //
   // Close Window stays custom: predefined Close routes through
   // performClose: which doesn't invoke our onCloseRequested handler
@@ -233,14 +235,30 @@ export const installMenu = async () => {
   // with File > Close Window and App > Quit so the three entry points
   // all route through the same confirm path.
   //
-  // macOS auto-injects Move & Resize / Full Screen Tile / Remove Window
-  // from Set into this menu — we don't define those.
+  // macOS auto-injects Move & Resize / Full Screen Tile / Fill /
+  // Center / Remove Window from Set / Bring All to Front / per-window
+  // list when this submenu is registered as NSApp.windowsMenu —
+  // which happens automatically because we set the submenu id to the
+  // canonical __tauri_window_menu__ value below (Tauri's init_app_menu
+  // handles the set_as_windows_menu_for_nsapp call for us).
   const windowMenu = await Submenu.new({
+    // Tauri's init_app_menu helper (tauri-2.10.3/src/app.rs:2336-2351)
+    // looks for this exact literal id and, when found, calls
+    // Submenu::set_as_windows_menu_for_nsapp on the same main-thread
+    // turn as init_for_nsapp (setMainMenu). Without this id, Tauri's
+    // helper skips the setWindowsMenu call and we'd have to invoke it
+    // ourselves — but a manual invoke on a later runloop turn breaks
+    // AppKit's Big-Sur Fn+F → Fullscreen-menu-item registration.
+    // Using the canonical id is what lets Tauri keep both calls on
+    // the same turn, which is what Yaak does (via WINDOW_SUBMENU_ID
+    // constant in their Rust-side menu setup). Constant value:
+    // pub const WINDOW_SUBMENU_ID: &str = "__tauri_window_menu__";
+    // (tauri-2.10.3/src/menu/menu.rs:19).
+    id: '__tauri_window_menu__',
     text: 'Window',
     items: [
       await PredefinedMenuItem.new({ item: 'Minimize' }),
       await PredefinedMenuItem.new({ item: 'Maximize' }),
-      await PredefinedMenuItem.new({ item: 'Fullscreen' }),
       await PredefinedMenuItem.new({ item: 'Separator' }),
       await MenuItem.new({
         text: 'Close Window',
@@ -256,6 +274,10 @@ export const installMenu = async () => {
   // uses elsewhere (Cmd+Ctrl+H on Mac after the platform-strict modifier
   // remap in c57e42e).
   const helpMenu = await Submenu.new({
+    // Sibling of the Window menu id above — Tauri's init_app_menu
+    // helper also handles set_as_help_menu_for_nsapp for this id.
+    // HELP_SUBMENU_ID = "__tauri_help_menu__" (tauri-2.10.3/src/menu/menu.rs:21).
+    id: '__tauri_help_menu__',
     text: 'Help',
     items: [
       await MenuItem.new({
@@ -270,4 +292,18 @@ export const installMenu = async () => {
     items: [appMenu, fileMenu, editMenu, viewMenu, windowMenu, helpMenu],
   });
   await menu.setAsAppMenu();
+
+  // Re-apply collectionBehavior flags in case the invisible helper
+  // NSWindow was created lazily (after hide_macos_chrome's setup-time
+  // pass). See the Rust side for details.
+  await invoke('apply_collection_behavior');
+
+  // No manual setWindowsMenu/setMainMenu calls needed. With the
+  // Window and Help submenus carrying Tauri's canonical
+  // __tauri_window_menu__ / __tauri_help_menu__ ids above, Tauri's
+  // init_app_menu (invoked synchronously inside menu.setAsAppMenu)
+  // calls set_as_windows_menu_for_nsapp and set_as_help_menu_for_nsapp
+  // on the same main-thread turn as init_for_nsapp. This is what
+  // other Tauri apps like Yaak do via the Rust-side WINDOW_SUBMENU_ID
+  // / HELP_SUBMENU_ID constants.
 };

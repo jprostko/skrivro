@@ -920,7 +920,9 @@ fn parse_hex_color(hex: &str) -> Option<tauri::webview::Color> {
 #[cfg(target_os = "macos")]
 fn hide_macos_chrome(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     use objc2::rc::Retained;
-    use objc2_app_kit::{NSWindow, NSWindowButton, NSWindowTitleVisibility};
+    use objc2_app_kit::{
+        NSWindow, NSWindowButton, NSWindowCollectionBehavior, NSWindowTitleVisibility,
+    };
 
     let ns_window_ptr = window.ns_window()?;
     // SAFETY: window.ns_window() returns the raw NSWindow pointer Tauri
@@ -952,7 +954,78 @@ fn hide_macos_chrome(window: &tauri::WebviewWindow) -> tauri::Result<()> {
         }
     }
 
+    // Add collectionBehavior flags AppKit checks before auto-injecting
+    // the Window menu's Move & Resize submenu / Full Screen Tile
+    // submenu / Bring All to Front / per-window list items. tao creates
+    // the window with collectionBehavior=0 (default) on current
+    // versions, which empirically makes AppKit skip those auto-inject
+    // items on macOS 26.
+    //
+    //   - FullScreenPrimary: marks this as a primary fullscreen-capable
+    //     window. Apple's documented canonical flag for apps that want
+    //     native fullscreen integration.
+    //   - FullScreenAllowsTiling: opts in to the Sequoia/Tahoe window
+    //     tiling features. This is the specific flag AppKit uses to
+    //     decide whether to auto-inject the Move & Resize submenu.
+    //
+    // Apply to ALL windows in the app (not just our main one). The
+    // menu-diag dump surfaced a second invisible helper NSWindow that
+    // Tauri/wry creates internally, with collectionBehavior=0x0. If
+    // AppKit's auto-inject iterates NSApp.windows and bails when any
+    // window lacks tiling flags, that invisible helper would suppress
+    // auto-inject even after we fix our main window. Setting the flags
+    // on every window (real and helper) rules that out.
+    //
+    // OR'd with current behavior rather than overwriting in case tao
+    // sets anything else we'd want to preserve.
+    let mtm = objc2::MainThreadMarker::from(&*ns_window);
+    let app = objc2_app_kit::NSApplication::sharedApplication(mtm);
+    let windows = app.windows();
+    for i in 0..windows.count() {
+        if let Some(any_window) = windows.objectAtIndex(i).downcast_ref::<NSWindow>() {
+            let current = any_window.collectionBehavior();
+            any_window.setCollectionBehavior(
+                current
+                    | NSWindowCollectionBehavior::FullScreenPrimary
+                    | NSWindowCollectionBehavior::FullScreenAllowsTiling,
+            );
+        }
+    }
+
     Ok(())
+}
+
+// Re-apply collectionBehavior flags on every NSWindow. Same logic as
+// the setup-time pass inside hide_macos_chrome, exposed as a Tauri
+// command so JS can call it after the frontend has fully initialized.
+// Needed because wry creates an invisible helper NSWindow lazily —
+// AFTER hide_macos_chrome runs at setup — and AppKit's Window-menu
+// auto-inject machinery iterates NSApp.windows and bails if any
+// window lacks the tiling flags. Calling this from JS after
+// installMenu() catches the helper once it's been created.
+#[tauri::command]
+fn apply_collection_behavior() {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2::MainThreadMarker;
+        use objc2_app_kit::{NSApplication, NSWindow, NSWindowCollectionBehavior};
+
+        let Some(mtm) = MainThreadMarker::new() else {
+            return;
+        };
+        let app = NSApplication::sharedApplication(mtm);
+        let windows = app.windows();
+        for i in 0..windows.count() {
+            if let Some(any_window) = windows.objectAtIndex(i).downcast_ref::<NSWindow>() {
+                let current = any_window.collectionBehavior();
+                any_window.setCollectionBehavior(
+                    current
+                        | NSWindowCollectionBehavior::FullScreenPrimary
+                        | NSWindowCollectionBehavior::FullScreenAllowsTiling,
+                );
+            }
+        }
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -1087,20 +1160,19 @@ pub fn run() {
             // Configure the plugin to exclude DECORATIONS from the
             // state it saves and restores. The plugin's on_window_ready
             // hook automatically calls restore_state(state_flags) for
-            // every window, using the flags set here. Without this
-            // configuration, the plugin would restore the saved
-            // decorations value (false from prior runs) on top of our
-            // builder-time setting (true on macOS), which on macOS
-            // strips the .titled / .closable bits AppKit needs for
-            // predefined Minimize / Maximize / Fullscreen menu items
-            // and the Big Sur Fn+F shortcut routing.
+            // every window using these flags.
             //
             // Decorations is a build-time platform decision in our app
             // (false on Linux/Windows, true on macOS — see the
-            // WebviewWindowBuilder section below), not a user-toggleable
-            // runtime preference. The plugin's grab-bag default of
-            // saving everything is a footgun for apps that don't
-            // expose a runtime "hide title bar" toggle.
+            // WebviewWindowBuilder below), not a user-toggleable
+            // runtime preference. Letting the plugin restore a stale
+            // saved value on top of our build-time setting on macOS
+            // would strip the .titled / .closable bits AppKit needs
+            // for predefined menu items and Big Sur Fn+F routing.
+            //
+            // The plugin's grab-bag default of saving everything is a
+            // footgun for apps that don't expose the corresponding
+            // runtime toggles.
             use tauri_plugin_window_state::{Builder, StateFlags};
             Builder::default()
                 .with_state_flags(StateFlags::all() & !StateFlags::DECORATIONS)
@@ -1111,7 +1183,8 @@ pub fn run() {
             get_config,
             get_session_state,
             set_session_state,
-            take_pending_opens
+            take_pending_opens,
+            apply_collection_behavior
         ])
         .setup(|app| {
             // Create the main window programmatically (rather than via

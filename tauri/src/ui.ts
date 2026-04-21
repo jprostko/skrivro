@@ -10,7 +10,7 @@ import { tr } from './i18n.js';
 import { prefs, savePrefs } from './prefs.js';
 import { isMac } from './i18n.js';
 import { editorView, setVimMode, getCM } from './editor.js';
-import { currentBuffer } from './io.js';
+import { currentBuffer, setBufferFormat, type Format } from './io.js';
 import { userConfig, type SkrivroConfig } from './config.js';
 
 // ================= DOM refs =================
@@ -25,6 +25,7 @@ const host                = document.getElementById('src-host')!;
 const statusBar           = document.getElementById('statusbar')!;
 const statusMode          = document.getElementById('statusMode')!;
 const statusFilename      = document.getElementById('statusFilename')!;
+const statusFiletype      = document.getElementById('statusFiletype')!;
 const statusPosition      = document.getElementById('statusPosition')!;
 const statusWordCount     = document.getElementById('statusWordCount')!;
 const helpDlg             = document.getElementById('helpDialog') as HTMLDialogElement;
@@ -230,6 +231,31 @@ export const refreshStatus = () => {
   statusPosition.classList.toggle('over-limit', overLimit);
 
   statusFilename.textContent = currentBuffer.name;
+  statusFiletype.textContent = FORMAT_LABELS[currentBuffer.format];
+};
+
+// Human-readable display name for the filetype slot in the status bar.
+// Paralleled by FORMAT_DISPLAY_NAME in io.ts (used by the :format
+// readback); kept in sync by convention since the set is three entries.
+const FORMAT_LABELS: Record<Format, string> = {
+  asciidoc: 'AsciiDoc',
+  markdown: 'Markdown',
+  text: 'Text',
+};
+
+// Cycle through formats in a fixed order: asciidoc → markdown → text
+// → asciidoc. Bound to Ctrl+Alt+R / Cmd+Ctrl+R. The mutation work
+// (compartment reconfigure, status refresh, re-render) is centralized
+// in setBufferFormat — this just picks the next value and delegates.
+const FORMAT_CYCLE: readonly Format[] = ['asciidoc', 'markdown', 'text'];
+export const toggleFormat = () => {
+  const idx = FORMAT_CYCLE.indexOf(currentBuffer.format);
+  // indexOf returns -1 for unknown values. Treat that as "snap back
+  // to asciidoc" rather than propagating the -1 into the next
+  // lookup, which would pick index 0 anyway but via a bug-adjacent
+  // path. Explicit fallback documents the intent.
+  const nextIdx = idx === -1 ? 0 : (idx + 1) % FORMAT_CYCLE.length;
+  setBufferFormat(FORMAT_CYCLE[nextIdx]!);
 };
 
 // Count words in the rendered preview's text content. Visible only in

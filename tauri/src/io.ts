@@ -12,7 +12,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { basename, dirname, resolve, isAbsolute } from '@tauri-apps/api/path';
 import { invoke } from '@tauri-apps/api/core';
 
-import { Vim, getCM, getDoc, setDoc, editorView } from './editor.js';
+import { Vim, getCM, getDoc, setDoc, editorView, setEditorLanguage } from './editor.js';
 import { render, syncPreviewToCaret } from './preview.js';
 import { asciidoctorRenderer } from './renderer.js';
 import { userConfig } from './config.js';
@@ -191,6 +191,29 @@ export const setDirty = (d: boolean) => {
   if (currentBuffer.dirty === d) return;
   currentBuffer.dirty = d;
   updateTitle();
+};
+
+// Canonical mutation helper for currentBuffer.format. Call this
+// rather than assigning the field directly so the three side effects
+// that should always follow a format change stay in one place:
+//
+//   1. CM6 language compartment reconfigure (via editor.ts) — swaps
+//      the active syntax highlighter. Today always resolves to
+//      asciidocLang, but this is where future language choices land.
+//   2. Status bar refresh — the filetype slot shows the new format's
+//      display name.
+//   3. Preview re-render — since the renderer eventually dispatches
+//      on format, the preview should reflect the new choice.
+//
+// No-op when the requested format equals the current one, so
+// rapid repeated calls (e.g., Ex command + keyboard both hitting
+// the same format) don't thrash.
+export const setBufferFormat = (format: Format) => {
+  if (currentBuffer.format === format) return;
+  currentBuffer.format = format;
+  setEditorLanguage(format);
+  refreshStatus();
+  void render();
 };
 
 // ================= Autosave draft =================
@@ -597,6 +620,56 @@ Vim.defineEx('open', 'op', () => {
 Vim.defineEx('syncpreview', 'syncp', () => {
   syncPreviewToCaret();
 });
+
+// ================= Format commands =================
+//
+// :format (no arg) shows the current format.
+// :format <name> sets the format — asciidoc / markdown / text.
+// Unknown values surface an E-style error in the vim panel.
+//
+// :asciidoc / :markdown / :text are direct one-shot aliases so the
+// user doesn't have to remember the `:format <name>` form. Each
+// sets the buffer's format to the command name.
+
+// Narrow an arbitrary string to the Format union, or null if it
+// isn't one of the three accepted values. Used by :format's
+// validation path.
+const parseFormat = (s: string): Format | null => {
+  const lower = s.toLowerCase();
+  if (lower === 'asciidoc' || lower === 'markdown' || lower === 'text') {
+    return lower;
+  }
+  return null;
+};
+
+// Human-readable name for the format, used in the :format (no arg)
+// readback and in error messages. Parallels FORMAT_LABELS in ui.ts;
+// duplicated here rather than imported to avoid a circular import
+// (ui.ts already imports from io.ts). The set is three entries —
+// keeping it in sync manually is trivial.
+const FORMAT_DISPLAY_NAME: Record<Format, string> = {
+  asciidoc: 'AsciiDoc',
+  markdown: 'Markdown',
+  text: 'Text',
+};
+
+Vim.defineEx('format', 'format', (_cm: any, params: VimExParams) => {
+  const { arg } = parseExArgs(params);
+  if (!arg) {
+    vimMessage(`Format: ${FORMAT_DISPLAY_NAME[currentBuffer.format]}`);
+    return;
+  }
+  const fmt = parseFormat(arg);
+  if (!fmt) {
+    vimMessage(`E474: Invalid format "${arg}" (expected asciidoc, markdown, or text)`);
+    return;
+  }
+  setBufferFormat(fmt);
+});
+
+Vim.defineEx('asciidoc', 'asciidoc', () => { setBufferFormat('asciidoc'); });
+Vim.defineEx('markdown', 'markdown', () => { setBufferFormat('markdown'); });
+Vim.defineEx('text', 'text', () => { setBufferFormat('text'); });
 
 // ================= Quit commands (Tauri only) =================
 //

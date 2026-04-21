@@ -87,7 +87,7 @@ import {
   applyTitlebar, applyGutter, applyStatusBar, applyDisplayMode,
   applyMacModifierLabels, applyUserConfig,
   toggleTitlebar, toggleGutter, toggleStatusBar, toggleVim, toggleHelp,
-  setDisplayMode, refreshStatus,
+  toggleFormat, setDisplayMode, refreshStatus,
 } from './ui.js';
 
 // ================= Keyboard shortcuts =================
@@ -149,6 +149,12 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault(); syncPreviewToCaret();
   } else if (second && k === 'h') {
     e.preventDefault(); toggleHelp();
+  } else if (second && k === 'r') {
+    // Format toggle (R for Representation — cycles the active buffer
+    // format: AsciiDoc → Markdown → Text → AsciiDoc). F would be the
+    // obvious letter but Cmd+Ctrl+F on Mac is the Fullscreen menu
+    // shortcut that AppKit intercepts before the webview sees it.
+    e.preventDefault(); toggleFormat();
   }
   // Primary-only shortcuts. Save/Open/New use the primary modifier alone
   // because those are universal cross-platform conventions (Ctrl+S /

@@ -24,6 +24,7 @@ import { tags as t } from '@lezer/highlight';
 import { vim, Vim, getCM } from '@replit/codemirror-vim';
 
 import { prefs } from './prefs.js';
+import type { Format } from './io.js';
 
 // Re-exports used by other modules (io for Vim.defineEx, ui for getCM).
 export { Vim, getCM };
@@ -296,6 +297,25 @@ export const vimCompartment = new Compartment();
 // format — adding support for other formats will swap in a different
 // language extension via languageCompartment.reconfigure(newLang).
 export const languageCompartment = new Compartment();
+
+// Reconfigure the language compartment for a given format. Called
+// by io.ts's setBufferFormat whenever the buffer's format changes.
+// Today every format resolves to asciidocLang since that's the only
+// language extension we ship — the call is effectively a no-op at
+// runtime, but the plumbing lives here so adding a second language
+// (e.g., markdown() from @codemirror/lang-markdown) means branching
+// in this function rather than wiring a new dispatch at every
+// call site.
+export const setEditorLanguage = (_format: Format) => {
+  if (!editorView) return;
+  // Placeholder branch — all three formats use asciidocLang until a
+  // second language extension exists. Extend this to pick per-format
+  // when markdown support lands.
+  const lang = asciidocLang;
+  editorView.dispatch({
+    effects: languageCompartment.reconfigure(lang),
+  });
+};
 
 // ================= Editor extensions =================
 

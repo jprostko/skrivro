@@ -13,7 +13,8 @@ import { basename, dirname, resolve, isAbsolute } from '@tauri-apps/api/path';
 import { invoke } from '@tauri-apps/api/core';
 
 import { Vim, getCM, getDoc, setDoc, editorView } from './editor.js';
-import { render, clearIncludeCache, syncPreviewToCaret } from './preview.js';
+import { render, syncPreviewToCaret } from './preview.js';
+import { asciidoctorRenderer } from './renderer.js';
 import { tr } from './i18n.js';
 import { refreshStatus } from './ui.js';
 
@@ -275,7 +276,7 @@ export const loadFileFromPath = async (path: string) => {
     currentBuffer.name = await basename(path);
     setDirty(false);
     clearDraft();
-    clearIncludeCache();
+    asciidoctorRenderer.clearCache();
     // `void` prefix on fire-and-forget async calls: writeSessionState
     // is async (awaits invoke(...)) but failure is non-fatal and
     // handled internally; render is async but we don't need its result.
@@ -348,7 +349,7 @@ export const newFile = () => {
     currentBuffer.name = DEFAULT_NAME;
     setDirty(false);
     clearDraft();
-    clearIncludeCache();
+    asciidoctorRenderer.clearCache();
     void writeSessionState(null);
     updateTitle();
     void render();
@@ -368,7 +369,7 @@ export const reloadFile = async () => {
     setDoc(await readTextFile(currentBuffer.path));
     setDirty(false);
     clearDraft();
-    clearIncludeCache();
+    asciidoctorRenderer.clearCache();
     void render();
   } catch (e) {
     console.error(e);
@@ -514,7 +515,7 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
       currentBuffer.name = await basename(sourcePath);
       setDirty(false);
       clearDraft();
-      clearIncludeCache();
+      asciidoctorRenderer.clearCache();
       void writeSessionState(currentBuffer.path);
       updateTitle();
       void render();

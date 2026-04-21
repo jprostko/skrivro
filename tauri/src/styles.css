@@ -353,6 +353,31 @@ body.no-titlebar .titlebar { display: none; }
   border-radius: 4px;
 }
 
+/* Text-mode preview: TextRenderer emits a single <pre class="text-verbatim">
+   that is the entire document body, not a listing block inside a larger
+   document. Without scoped styling it inherits .preview pre rules meant
+   for code samples — a rounded card with its own background, padding,
+   and left-edge accent — which look wrong when the "card" IS the whole
+   pane. Override: flush everything and let the preview pane's own
+   padding be the only layer of inset. pre-wrap wraps long lines at
+   whitespace while preserving explicit newlines, matching the editor
+   pane's word-wrap behavior. Font family and size track the editor
+   settings so both panes present the same characters at the same visual
+   weight — text mode is a mirror of what you typed, not a transformed
+   rendering of it. */
+.preview .text-verbatim {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: var(--edit-font-size);
+  color: var(--skr-text);
+}
+
 /* Disable programming ligatures in monospace contexts.
    JetBrains Mono, Fira Code, etc. enable them by default. */
 .cm-content, .preview code, .preview pre {

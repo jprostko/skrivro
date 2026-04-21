@@ -15,6 +15,7 @@ import Asciidoctor, {
   type AbstractBlock,
 } from '@asciidoctor/core';
 import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { basename, dirname, resolve } from '@tauri-apps/api/path';
@@ -543,5 +544,105 @@ export const asciidoctorRenderer: Renderer = {
 
   clearCache() {
     includeCache = new Map<string, string>();
+  },
+};
+
+// ================= MarkedRenderer =================
+//
+// Renders GitHub-Flavored Markdown via marked. No include-style
+// preprocessing (Markdown has no direct equivalent of AsciiDoc's
+// include:: directive), no per-path cache, no scroll-sync block
+// map in this first cut — an empty map means syncPreviewToCaret
+// returns silently for Markdown buffers, which is the intended
+// "not supported yet" behavior. A fuller block map using marked's
+// token tree is possible if/when scroll sync is needed here.
+
+// marked options applied on every render:
+//   gfm: true     — tables, strikethrough, task lists, autolinks,
+//                   fenced code blocks
+//   breaks: false — a single newline in source does NOT become a
+//                   <br> in output; paragraphs still break on blank
+//                   lines. Matches how most documentation is
+//                   authored (soft-wrapped prose that should re-flow
+//                   in the rendered output). GitHub itself uses
+//                   breaks=true for comments/issues and breaks=false
+//                   for repository Markdown; we're in
+//                   documentation-rendering territory so false.
+//   async: false  — marked supports async extensions; we have none,
+//                   so this forces synchronous output (string, not
+//                   Promise<string>) and TypeScript narrows the
+//                   return type accordingly.
+const MARKED_OPTIONS = { gfm: true, breaks: false, async: false } as const;
+
+export const markedRenderer: Renderer = {
+  // Not declared async because nothing in the body awaits anything;
+  // marked.parse with async: false is synchronous and DOMPurify is
+  // also synchronous. Return Promise.resolve to match the Renderer
+  // interface's Promise-returning contract.
+  render(source: string, _context: RenderContext): Promise<RenderResult> {
+    // marked.parse with async: false returns string synchronously;
+    // the overload resolution narrows the return type so no cast
+    // is needed. DOMPurify sanitization matches the AsciidoctorRenderer
+    // path — same HTML-injection protections for either format.
+    const rawHtml = marked.parse(source, MARKED_OPTIONS);
+    const html = DOMPurify.sanitize(rawHtml);
+
+    return Promise.resolve({
+      html,
+      // Scroll-sync block map: empty for now. syncPreviewToCaret
+      // guards on blockMap.length, so an empty map silently no-ops
+      // the sync action in Markdown buffers.
+      buildBlockMap: () => [],
+      // No source transformation happens in Markdown rendering (unlike
+      // AsciiDoc's include expansion), so editor and output line
+      // coordinates coincide — identity translation is correct.
+      translateEditorLine: (editorLine: number) => editorLine,
+    });
+  },
+
+  clearCache() {
+    // No per-path state to invalidate.
+  },
+};
+
+// ================= TextRenderer =================
+//
+// Pass-through renderer for buffers the user has marked as plain
+// text. The preview mirrors the source verbatim in a monospace
+// block — no parsing, no transformation. AsciiDoc or Markdown
+// syntax typed in a text-mode buffer stays literal in the preview.
+
+// HTML-entity escape for interpolation into the <pre> output. Same
+// set of metacharacters preview.ts's error-display path escapes,
+// kept as a local helper here so TextRenderer doesn't reach into
+// another module. Record<string, string> typing satisfies strict
+// mode's noUncheckedIndexedAccess; the `?? c` fallback is defensive
+// and unreachable given the regex class.
+const TEXT_ESCAPE_MAP: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
+const escapeForPre = (s: string): string =>
+  s.replace(/[&<>]/g, (c) => TEXT_ESCAPE_MAP[c] ?? c);
+
+export const textRenderer: Renderer = {
+  // Not declared async for the same reason as markedRenderer — no
+  // awaits inside, Promise.resolve matches the interface contract.
+  render(source: string, _context: RenderContext): Promise<RenderResult> {
+    // Wrap the escaped source in <pre class="text-verbatim">. The
+    // class is a hook for future styling — CSS can target it to
+    // adjust font or spacing specifically in text mode without
+    // touching the generic <pre> used by AsciiDoc listing blocks.
+    // DOMPurify pass is redundant here (our escape produces only
+    // entity references, no injection vectors) but cheap and keeps
+    // the output path uniform with the other renderers.
+    const html = DOMPurify.sanitize(`<pre class="text-verbatim">${escapeForPre(source)}</pre>`);
+
+    return Promise.resolve({
+      html,
+      buildBlockMap: () => [],
+      translateEditorLine: (editorLine: number) => editorLine,
+    });
+  },
+
+  clearCache() {
+    // No state.
   },
 };

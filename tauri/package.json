@@ -24,7 +24,8 @@
     "@tauri-apps/plugin-fs": "^2",
     "@tauri-apps/plugin-shell": "^2.3.5",
     "dompurify": "^3.3.3",
-    "font-awesome": "^4.7.0"
+    "font-awesome": "^4.7.0",
+    "marked": "^18.0.2"
   },
   "lint-staged": {
     "tauri/src/**/*.ts": "eslint"

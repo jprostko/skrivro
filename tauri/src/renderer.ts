@@ -21,6 +21,7 @@ import { readTextFile } from '@tauri-apps/plugin-fs';
 import { basename, dirname, resolve } from '@tauri-apps/api/path';
 
 import { userConfig } from './config.js';
+import type { Format } from './io.js';
 
 // ================= Public interface =================
 
@@ -645,4 +646,38 @@ export const textRenderer: Renderer = {
   clearCache() {
     // No state.
   },
+};
+
+// ================= Dispatch =================
+//
+// Format → Renderer mapping. The single call site in preview.ts's
+// render() reads currentBuffer.format, calls getRenderer, and
+// invokes render on whatever comes back. Adding a new format means
+// adding a Renderer implementation above and a case here; preview.ts
+// doesn't change.
+//
+// The switch is exhaustive over the Format union — TypeScript will
+// flag any missing case if Format gains a new member.
+export const getRenderer = (format: Format): Renderer => {
+  switch (format) {
+    case 'markdown': return markedRenderer;
+    case 'text':     return textRenderer;
+    case 'asciidoc': return asciidoctorRenderer;
+  }
+};
+
+// Invalidate every renderer's per-path cache. Called from io.ts on
+// file operations that change the buffer's identity (open, save-as,
+// new, reload, :e filename) so stale cached state doesn't bleed
+// across buffers. Only asciidoctorRenderer has a cache worth
+// clearing today; markdown and text no-op. Calling the set lets
+// io.ts stay agnostic about which renderer holds cacheable state.
+const ALL_RENDERERS: readonly Renderer[] = [
+  asciidoctorRenderer,
+  markedRenderer,
+  textRenderer,
+];
+
+export const clearAllRendererCaches = (): void => {
+  for (const r of ALL_RENDERERS) r.clearCache();
 };

@@ -12,7 +12,7 @@ import { dirname, resolve } from '@tauri-apps/api/path';
 
 import { getDoc, editorView } from './editor.js';
 import { currentBuffer } from './io.js';
-import { asciidoctorRenderer, type BlockMapEntry } from './renderer.js';
+import { getRenderer, type BlockMapEntry } from './renderer.js';
 import { updateWordCount } from './ui.js';
 
 // DOM refs owned by preview.ts. Non-null assertions (`!`) because
@@ -50,7 +50,11 @@ let translateEditorLine: (editorLine: number) => number = (n) => n;
 export const render = async () => {
   try {
     const source = getDoc();
-    const result = await asciidoctorRenderer.render(source, { path: currentBuffer.path });
+    // Format-keyed dispatch — the active renderer is chosen per-
+    // render based on currentBuffer.format, which is populated from
+    // file extension (or the default-format config) and can be
+    // changed at runtime via the format toggle / Ex commands.
+    const result = await getRenderer(currentBuffer.format).render(source, { path: currentBuffer.path });
 
     // Image path post-processing.
     //

@@ -575,6 +575,143 @@ export const asciidoctorRenderer: Renderer = {
 //                   return type accordingly.
 const MARKED_OPTIONS = { gfm: true, breaks: false, async: false } as const;
 
+// ================= GFM alerts extension =================
+//
+// GitHub Flavored Markdown extends the blockquote syntax with
+// "alerts" — blockquotes whose first line is `[!TYPE]` where TYPE is
+// one of NOTE / TIP / IMPORTANT / WARNING / CAUTION. GitHub renders
+// them as colored callouts with a labeled title. Base `marked`
+// treats them as ordinary blockquotes, producing `[!IMPORTANT]` as
+// visible text on the first line — correct per CommonMark, wrong
+// per GFM. This block-level extension intercepts the pattern,
+// strips the marker line, and emits custom markup styled by CSS.
+//
+// Extension shape: tokenizer + renderer pair registered via
+// marked.use. The tokenizer runs BEFORE marked's standard
+// blockquote tokenizer (extensions have priority), so if the
+// pattern matches we claim the input; otherwise marked's default
+// handling takes over and the blockquote renders normally.
+
+// The five recognized alert types. Per the GFM spec the marker is
+// case-sensitive — only exact uppercase `[!NOTE]` / `[!TIP]` etc.
+// are recognized. Anything else (lowercase, typo, custom type)
+// falls through to the default blockquote path and renders as a
+// regular blockquote.
+const GFM_ALERT_TYPES = ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'] as const;
+type GfmAlertType = (typeof GFM_ALERT_TYPES)[number];
+
+// Regex for the top of a GFM alert block.
+//   ^           — must be at start of a line
+//   > ?         — blockquote marker (space optional, matches GitHub's lenient form)
+//   \[!(\w+)\]  — the type tag, captured (case matters; see comment above)
+//   [^\n]*      — rest of the first line (GitHub ignores content here, but we allow it)
+//   \n          — the newline ending that line
+//   ((?:>[^\n]*(?:\n|$))*) — remaining blockquote lines, captured
+const GFM_ALERT_RE = /^> ?\[!(\w+)\][^\n]*\n((?:> ?[^\n]*(?:\n|$))*)/;
+
+// Octicon SVG markup per alert type, copied verbatim from GitHub's
+// markdown API output (POST /markdown with GFM alerts as input).
+// Inlined in the rendered HTML so the glyphs inherit `fill:
+// currentColor` from the title's color rule — single color rule
+// colors border, title text, AND icon together without extra
+// per-icon styling.
+const GFM_ALERT_OCTICONS: Record<GfmAlertType, string> = {
+  NOTE: '<svg class="octicon octicon-info mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>',
+  TIP: '<svg class="octicon octicon-light-bulb mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>',
+  IMPORTANT: '<svg class="octicon octicon-report mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>',
+  WARNING: '<svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>',
+  CAUTION: '<svg class="octicon octicon-stop mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>',
+};
+
+// Register the extension at module load. marked.use merges the
+// tokenizer + renderer into marked's global config. Called once;
+// subsequent marked.parse calls pick it up automatically.
+marked.use({
+  extensions: [
+    {
+      name: 'gfmAlert',
+      level: 'block',
+      // Fast-path detector — marked calls start() on the input to
+      // decide whether to invoke the tokenizer. Return the index
+      // where the token begins, or undefined to skip. Matching
+      // "> [!" covers the pattern's entry point without running
+      // the full regex on every block.
+      start(src: string): number | undefined {
+        const m = /^> ?\[!/m.exec(src);
+        return m ? m.index : undefined;
+      },
+      // Full tokenizer. Returns the alert token, or undefined to
+      // fall through to the default blockquote handler (which
+      // happens when the TYPE tag isn't one of the recognized
+      // values — a typo like `> [!NTO]` or a lowercase `> [!note]`
+      // renders as a normal blockquote with the raw marker visible,
+      // matching GitHub's behavior for unrecognized / wrong-case
+      // markers).
+      //
+      // `this: any` and `token: any` — marked's extension API types
+      // don't narrow cleanly through the `{ extensions: [...] }`
+      // shape, and typing the custom token precisely would require
+      // declaration merging into marked's Tokens namespace. Our
+      // codebase already uses `any` at external-library boundaries
+      // (see eslint.config.js). The property accesses inside are
+      // checked against the local shape we constructed, so the
+      // runtime contract is intact.
+      tokenizer(this: any, src: string) {
+        const match = GFM_ALERT_RE.exec(src);
+        if (!match) return undefined;
+        // No .toUpperCase() — the GFM spec treats the type tag as
+        // case-sensitive. Lowercase `[!note]` or mixed-case `[!Note]`
+        // intentionally fails to match here and falls through to
+        // marked's default blockquote handler.
+        const rawType = match[1] ?? '';
+        if (!GFM_ALERT_TYPES.includes(rawType as GfmAlertType)) return undefined;
+        const type = rawType as GfmAlertType;
+
+        // Strip the leading `> ` (with optional space) from each
+        // remaining line to recover the alert body as ordinary
+        // markdown. Trailing newlines are preserved — downstream
+        // markdown parsing handles paragraph breaks normally.
+        const body = (match[2] ?? '').replace(/^> ?/gm, '');
+
+        // Recursively lex the body so nested markdown (lists,
+        // code, emphasis, links) inside the alert works. `this.lexer`
+        // is marked's lexer context; blockTokens parses the string
+        // as a block-level markdown document.
+        const tokens = this.lexer.blockTokens(body);
+
+        return {
+          type: 'gfmAlert',
+          raw: match[0],
+          alertType: type,
+          tokens,
+        };
+      },
+      // Renderer. marked hands us the token; we return the HTML
+      // string. `this.parser.parse(tokens)` re-serializes the
+      // nested tokens the tokenizer captured, preserving full
+      // markdown semantics inside the alert body.
+      renderer(this: any, token: any): string {
+        const type = token.alertType as GfmAlertType;
+        const lower = type.toLowerCase();
+        // Title shown at the top of the alert block — GitHub uses
+        // capitalized-first-letter form ("Note", "Tip", etc.).
+        const title = type.charAt(0) + type.slice(1).toLowerCase();
+        const icon = GFM_ALERT_OCTICONS[type];
+        const body = this.parser.parse(token.tokens) as string;
+        // Class names match GitHub's rendered HTML (`markdown-alert`
+        // prefix, `markdown-alert-<type>` per variant, title in a
+        // `<p class="markdown-alert-title">`) so downstream tooling
+        // and anyone familiar with GitHub's output recognizes the
+        // shape.
+        return `<div class="markdown-alert markdown-alert-${lower}">` +
+               `<p class="markdown-alert-title">${icon}${title}</p>` +
+               body +
+               '</div>';
+      },
+    },
+  ],
+});
+
 export const markedRenderer: Renderer = {
   // Not declared async because nothing in the body awaits anything;
   // marked.parse with async: false is synchronous and DOMPurify is

@@ -321,6 +321,76 @@ body.no-titlebar .titlebar { display: none; }
   width: 2.5em;
   vertical-align: top;
 }
+
+/* GFM alerts — GitHub's extended blockquote syntax (> [!NOTE], etc.)
+   that our markedRenderer's gfmAlert extension parses into
+   <div class="markdown-alert markdown-alert-note"> (and variants).
+   Class names, HTML structure, and per-type colors mirror GitHub's
+   actual rendered output so a user familiar with GitHub's README
+   rendering sees the same shape and color semantics here.
+   Color semantics per GitHub's Primer tokens:
+     note      → accent    (blue)
+     tip       → success   (green)
+     important → done      (purple/mauve)
+     warning   → attention (yellow)
+     caution   → danger    (red)
+   These match the Primer semantics 1-to-1 using our --skr-* palette
+   slots; our AsciiDoc admonition mapping uses a different palette
+   because AsciiDoc conventions for important/warning/caution
+   disagree with GitHub's. Cross-format divergence is intentional
+   so each format renders like its source-convention upstream. */
+.preview .markdown-alert {
+  margin: 1em 0;
+  padding: 0.8em 1em;
+  border: none;
+  border-left: 3px solid var(--skr-warning);
+  background: var(--skr-bg);
+  border-radius: 0 4px 4px 0;
+}
+.preview .markdown-alert-title {
+  font-weight: 600;
+  margin: 0 0 0.5em 0;
+  /* Flex layout so the inlined Octicon SVG sits alongside the title
+     text with consistent spacing and vertical centering, matching
+     GitHub's rendered output (which also uses display: flex on this
+     element). */
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  /* Capitalize defensively — the token handler already emits
+     Title-cased "Note" / "Tip" / etc., but a future change might
+     not, and this keeps the header visually correct either way. */
+  text-transform: capitalize;
+  /* Color comes from the per-type rules below — each alert variant
+     colors both the left stripe AND the title text with the same
+     semantic slot. The inlined Octicon SVG inherits via
+     `fill: currentColor` (rule below), so the icon color tracks
+     the title color automatically. */
+}
+/* Octicon SVGs inlined inside the title. `fill: currentColor` is
+   what makes the single title-color rule color the icon along with
+   the title text — no per-type icon rules needed. flex-shrink: 0
+   prevents the SVG from being squeezed on narrow containers. */
+.preview .markdown-alert-title .octicon {
+  fill: currentColor;
+  flex-shrink: 0;
+}
+/* Drop the default top/bottom margins on the first/last children
+   so the title and trailing paragraph sit flush with the colored
+   frame, matching how .admonitionblock presents its content. */
+.preview .markdown-alert > :first-child { margin-top: 0; }
+.preview .markdown-alert > :last-child  { margin-bottom: 0; }
+
+.preview .markdown-alert-note      { border-left-color: var(--skr-link); }
+.preview .markdown-alert-note      > .markdown-alert-title { color: var(--skr-link); }
+.preview .markdown-alert-tip       { border-left-color: var(--skr-success); }
+.preview .markdown-alert-tip       > .markdown-alert-title { color: var(--skr-success); }
+.preview .markdown-alert-important { border-left-color: var(--skr-accent-alt); }
+.preview .markdown-alert-important > .markdown-alert-title { color: var(--skr-accent-alt); }
+.preview .markdown-alert-warning   { border-left-color: var(--skr-warning); }
+.preview .markdown-alert-warning   > .markdown-alert-title { color: var(--skr-warning); }
+.preview .markdown-alert-caution   { border-left-color: var(--skr-error); }
+.preview .markdown-alert-caution   > .markdown-alert-title { color: var(--skr-error); }
 .preview .title {
   color: var(--skr-text-dim);
   font-style: italic;

@@ -9,7 +9,7 @@
 //   - createEditor(parent, callbacks) — constructs the EditorView
 //   - getCM re-export — used by status bar for reading vim mode state
 
-import { EditorState, Compartment } from '@codemirror/state';
+import { EditorState, Compartment, type Extension } from '@codemirror/state';
 import {
   EditorView, keymap,
   lineNumbers, highlightActiveLine, highlightActiveLineGutter,
@@ -21,10 +21,11 @@ import {
   HighlightStyle, defaultHighlightStyle, StreamLanguage,
 } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
+import { markdown, markdownLanguage, markdownKeymap } from '@codemirror/lang-markdown';
 import { vim, Vim, getCM } from '@replit/codemirror-vim';
 
 import { prefs } from './prefs.js';
-import type { Format } from './io.js';
+import { currentBuffer, type Format } from './io.js';
 
 // Re-exports used by other modules (io for Vim.defineEx, ui for getCM).
 export { Vim, getCM };
@@ -292,28 +293,44 @@ const asciidocLang = StreamLanguage.define({
 export const vimCompartment = new Compartment();
 
 // Reconfigured when the current buffer's format changes. Holds the
-// language extension (syntax highlighter / tokenizer). Today this
-// is always the AsciiDoc stream highlighter regardless of buffer
-// format — adding support for other formats will swap in a different
-// language extension via languageCompartment.reconfigure(newLang).
+// language extension (syntax highlighter / tokenizer + any language-
+// specific keymap). Switching format dispatches a reconfigure effect
+// via setEditorLanguage — no rebuild of the full extension set.
 export const languageCompartment = new Compartment();
+
+// Pre-built markdown language extension. Combines the GFM+emoji
+// base parser from @codemirror/lang-markdown with the package's
+// markdown-specific keymap (Enter continues lists and blockquotes,
+// Backspace deletes one level of markup). Constructed once at
+// module load rather than per-reconfigure because the extension
+// is stateless and can be reused across buffer switches.
+const markdownLang: Extension = [
+  markdown({ base: markdownLanguage }),
+  keymap.of(markdownKeymap),
+];
+
+// Map a buffer format to the CM6 language extension that should be
+// active in its compartment slot. Text mode uses an empty array —
+// no syntax highlighting, no language-specific keymap, just plain
+// text editing. Exhaustive switch on the Format union so TypeScript
+// flags any missing case if a new format is added.
+const languageFor = (format: Format): Extension => {
+  switch (format) {
+    case 'asciidoc': return asciidocLang;
+    case 'markdown': return markdownLang;
+    case 'text':     return [];
+  }
+};
 
 // Reconfigure the language compartment for a given format. Called
 // by io.ts's setBufferFormat whenever the buffer's format changes.
-// Today every format resolves to asciidocLang since that's the only
-// language extension we ship — the call is effectively a no-op at
-// runtime, but the plumbing lives here so adding a second language
-// (e.g., markdown() from @codemirror/lang-markdown) means branching
-// in this function rather than wiring a new dispatch at every
-// call site.
-export const setEditorLanguage = (_format: Format) => {
+// Safe to call before createEditor has run — the early return skips
+// the dispatch; the initial compartment value (set in makeExtensions)
+// already reflects currentBuffer.format at construction time.
+export const setEditorLanguage = (format: Format) => {
   if (!editorView) return;
-  // Placeholder branch — all three formats use asciidocLang until a
-  // second language extension exists. Extend this to pick per-format
-  // when markdown support lands.
-  const lang = asciidocLang;
   editorView.dispatch({
-    effects: languageCompartment.reconfigure(lang),
+    effects: languageCompartment.reconfigure(languageFor(format)),
   });
 };
 
@@ -366,11 +383,13 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   EditorView.lineWrapping,
 
   // language — the compartment lets the highlighter be swapped at
-  // runtime without rebuilding the full extension set. Today the
-  // slot always holds asciidocLang; swapping happens via
-  // languageCompartment.reconfigure(newLang) when a different format
-  // is introduced.
-  languageCompartment.of(asciidocLang),
+  // runtime via setEditorLanguage when the buffer format changes.
+  // Initial value reflects currentBuffer.format so a launch that
+  // opened a .md file (or restored a markdown buffer) gets the
+  // right language extension at the first paint, without a
+  // momentary AsciiDoc-highlighting flash before setEditorLanguage
+  // could re-dispatch.
+  languageCompartment.of(languageFor(currentBuffer.format)),
 
   // highlighting
   syntaxHighlighting(defaultHighlightStyle, { fallback: true }),

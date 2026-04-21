@@ -5,13 +5,12 @@
 // a menu bar (Tauri menus would render in-window on those platforms, which
 // doesn't fit a borderless keyboard-first editor).
 //
-// Window chrome on Mac (set in lib.rs): decorations(true). The window has
-// the standard Mac chrome (title bar, three traffic lights) — visually
-// the "Fisher-Price" Mac look. Hiding the chrome to recover the borderless
-// aesthetic is a follow-up step (Ghostty's Cocoa pattern: titlebarAppearsTransparent + titleVisibility = .hidden + standardWindowButton(...) .isHidden + NSTitlebarContainerView .isHidden). Once that lands, the
-// window has the .titled / .closable / .miniaturizable / .resizable
-// style mask bits AppKit needs for native menu integration AND
-// presents visually as borderless.
+// Window chrome on Mac (set in lib.rs): decorations(true) + Cocoa-level
+// hiding of the visible chrome (titlebarAppearsTransparent +
+// titleVisibility=.hidden + per-traffic-light standardWindowButton
+// setHidden). The style mask keeps the .titled / .closable /
+// .miniaturizable / .resizable bits AppKit needs for native menu
+// integration, while the window presents visually as borderless.
 //
 // The implication for this file: most Window menu items are
 // PredefinedMenuItem instances — they wire to canonical NSWindow
@@ -35,10 +34,11 @@
 //      discover and invoke file operations through the menu instead of
 //      needing to know the keyboard shortcuts.
 //
-// See pending-features item #21 for the broader analysis. Item #24 covers
-// the related silent-Ex-failure pattern that affects the Reload menu
-// item's underlying reloadFile() call (we wrap with confirmDiscard here
-// to avoid the silent-refuse case until #24 is actually fixed).
+// Reload menu item wraps reloadFile() in confirmDiscard so a dirty
+// buffer prompts via our GUI confirm dialog. reloadFile() itself
+// doesn't check dirty — it unconditionally overwrites the buffer —
+// so without the wrapper the menu item would silently discard unsaved
+// changes.
 
 import {
   Menu,
@@ -122,15 +122,14 @@ export const installMenu = async () => {
       }),
       await MenuItem.new({
         // No keyboard shortcut: Cmd+E is taken by View > Editor Only, and
-        // there's no other obvious pick. Vim users can still type :e (or
-        // :e! on a dirty buffer — see pending-features #24 about :e's
-        // current silent-refuse behavior).
+        // there's no other obvious pick. Vim users can still type :e
+        // (or :e! to force-discard a dirty buffer) for the same action.
         text: 'Reload from Disk',
         action: () => {
-          // Wrap with confirmDiscard so a dirty buffer prompts the user
-          // rather than inheriting reloadFile's no-check overwrite. This
-          // sidesteps the silent-refuse pattern documented in pending-
-          // features #24 for the menu-driven entry point.
+          // Wrap with confirmDiscard so a dirty buffer prompts via our
+          // GUI confirm dialog. reloadFile itself doesn't check dirty;
+          // without this wrapper, the menu item would silently discard
+          // unsaved changes.
           confirmDiscard(() => { void reloadFile(); });
         },
       }),

@@ -60,12 +60,11 @@ export default tseslint.config(
       // We use `any` deliberately at external-library boundaries
       // (Asciidoctor AST walk children — @asciidoctor/core's own types
       // declare getBlocks() as any[]; and @replit/codemirror-vim's cm
-      // parameter in Vim Ex handlers, which we never reference). See
-      // the project_pending_features.md item #20 DONE stub for the
-      // rationale. Turning off no-explicit-any AND the no-unsafe-*
-      // family that cascades from it, because they only add value if
-      // you can commit to zero any — which we can't without the
-      // upstream type libraries tightening their own declarations.
+      // parameter in Vim Ex handlers, which we never reference).
+      // Turning off no-explicit-any AND the no-unsafe-* family that
+      // cascades from it, because they only add value if you can
+      // commit to zero any — which we can't without the upstream type
+      // libraries tightening their own declarations.
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',

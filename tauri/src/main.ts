@@ -256,10 +256,9 @@ void listen('skrivro:open-file', (event) => {
 // Install the macOS menu bar before any user-visible state. The menu
 // only ships on Mac — Linux/Windows would render Tauri menus in-window
 // (below the titlebar), which doesn't fit our borderless keyboard-first
-// layout there. See menu.ts and pending-features #21 for the full
-// rationale (custom items needed because the default menu's Minimize /
-// Close / Quit selectors don't work cleanly with `decorations: false`
-// or our dirty-buffer flow).
+// layout there. Custom items are needed because the default menu's
+// Minimize / Close / Quit selectors don't route through our dirty-buffer
+// confirm flow; see menu.ts for the full rationale.
 if (isMac) {
   await installMenu();
 }

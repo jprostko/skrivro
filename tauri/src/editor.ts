@@ -1,8 +1,10 @@
 // ================= Editor =================
 // CM6 editor setup, AsciiDoc stream highlighter, Catppuccin theme +
-// highlight style, and vim compartment. Exports:
+// highlight style, and runtime compartments. Exports:
 //   - editorView (live binding, null until createEditor runs)
-//   - vimCompartment (for runtime reconfiguration via toggleVim)
+//   - vimCompartment (reconfigured when the user toggles vim mode)
+//   - languageCompartment (reconfigured when the buffer's format
+//     changes — holds asciidocLang today, swappable in place)
 //   - getDoc / setDoc (document read/write helpers)
 //   - createEditor(parent, callbacks) — constructs the EditorView
 //   - getCM re-export — used by status bar for reading vim mode state
@@ -279,9 +281,21 @@ const asciidocLang = StreamLanguage.define({
   },
 });
 
-// ================= Vim compartment =================
-// Reconfigured at runtime when the user toggles vim mode.
+// ================= Runtime compartments =================
+// Compartments let specific extension slots be reconfigured on a live
+// editor state without rebuilding the full extension set. Each slot
+// has its own Compartment — reconfiguring one leaves the others
+// untouched.
+
+// Reconfigured when the user toggles vim mode.
 export const vimCompartment = new Compartment();
+
+// Reconfigured when the current buffer's format changes. Holds the
+// language extension (syntax highlighter / tokenizer). Today this
+// is always the AsciiDoc stream highlighter regardless of buffer
+// format — adding support for other formats will swap in a different
+// language extension via languageCompartment.reconfigure(newLang).
+export const languageCompartment = new Compartment();
 
 // ================= Editor extensions =================
 
@@ -331,8 +345,12 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   bracketMatching(),
   EditorView.lineWrapping,
 
-  // language — minimal adoc stream highlighter
-  asciidocLang,
+  // language — the compartment lets the highlighter be swapped at
+  // runtime without rebuilding the full extension set. Today the
+  // slot always holds asciidocLang; swapping happens via
+  // languageCompartment.reconfigure(newLang) when a different format
+  // is introduced.
+  languageCompartment.of(asciidocLang),
 
   // highlighting
   syntaxHighlighting(defaultHighlightStyle, { fallback: true }),

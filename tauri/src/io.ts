@@ -1,9 +1,10 @@
 // ================= I/O =================
 // File I/O, dirty-buffer tracking, title + filename state, autosave
 // draft, session state, the vim Ex command set, and the quit-command
-// helpers. Owns the current-file state (currentPath, currentName,
-// dirty) as live bindings so other modules can read current state
-// without needing setters.
+// helpers. Owns the current buffer's per-buffer state on a single
+// `currentBuffer: Buffer` object. Other modules read fields directly;
+// mutations use `setDirty(d)` (which also triggers updateTitle) or
+// direct property assignment for path / name.
 
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
@@ -38,21 +39,42 @@ const confirmMsgEl     = document.getElementById('confirmMessage')!;
 const confirmOkBtn     = document.getElementById('confirmOkBtn')!;
 const confirmCancelBtn = document.getElementById('confirmCancelBtn')!;
 
-// ================= Current-file state (live bindings) =================
+// ================= Current buffer state =================
+//
+// Per-buffer state lives on a single `currentBuffer: Buffer` object
+// rather than as scattered module-level `let` exports. This prepares
+// for two pending changes that were known at the time of this
+// refactor:
+//
+//   1. A `format` field to select between AsciiDoc / Markdown / Text
+//      renderers, if/when we add Markdown support.
+//   2. Multi-window support, where each window's context would own
+//      its own Buffer — no module-global rework needed when that
+//      lands, just one-buffer-per-window instead of the current
+//      one-buffer-period.
+//
+// `currentBuffer` is exported as const, which pins the reference but
+// lets callers read and mutate fields. For dirty specifically, use
+// `setDirty(d)` — it also triggers updateTitle() to keep the status
+// bar / title in sync. path and name are plain assignments.
 
-export let currentPath: string | null = null;
-export let currentName: string         = DEFAULT_NAME;
-export let dirty: boolean              = false;
+export interface Buffer {
+  path: string | null;
+  name: string;
+  dirty: boolean;
+}
+
+export const currentBuffer: Buffer = {
+  path: null,
+  name: DEFAULT_NAME,
+  dirty: false,
+};
 
 // Shell CWD captured at launch time, used as a fallback for relative
 // :w / :e arguments when no file is currently open. Set by main.ts
 // via setLaunchCwd after invoke('get_launch_info').
 export let launchCwd: string = '';
 export const setLaunchCwd = (cwd: string) => { launchCwd = cwd; };
-
-// Setters used by main.ts's launch path — avoid exposing raw reassignment.
-export const setCurrentPath = (p: string | null) => { currentPath = p; };
-export const setCurrentName = (n: string)        => { currentName = n; };
 
 // ================= Ex command panel messages =================
 //
@@ -114,9 +136,9 @@ const errMsg = (e: unknown): string => {
 // ================= Title / dirty =================
 
 export const updateTitle = () => {
-  nameEl.textContent = currentName;
-  document.body.classList.toggle('is-dirty', dirty);
-  const title = `${dirty ? '● ' : ''}${currentName} — Skrivro`;
+  nameEl.textContent = currentBuffer.name;
+  document.body.classList.toggle('is-dirty', currentBuffer.dirty);
+  const title = `${currentBuffer.dirty ? '● ' : ''}${currentBuffer.name} — Skrivro`;
   document.title = title;
   // Tauri 2 does not auto-sync document.title to the native window
   // title, unlike browsers. We have to set it explicitly.
@@ -126,8 +148,8 @@ export const updateTitle = () => {
 };
 
 export const setDirty = (d: boolean) => {
-  if (dirty === d) return;
-  dirty = d;
+  if (currentBuffer.dirty === d) return;
+  currentBuffer.dirty = d;
   updateTitle();
 };
 
@@ -148,12 +170,12 @@ export const scheduleAutosave = () => {
     // already cancels pending timers, so this guard is belt-and-
     // suspenders against any future code path that clears dirty
     // without going through clearDraft.
-    if (!dirty) return;
+    if (!currentBuffer.dirty) return;
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
         content: getDoc(),
-        name:    currentName,
-        path:    currentPath,
+        name:    currentBuffer.name,
+        path:    currentBuffer.path,
         ts:      Date.now(),
       }));
     } catch {}
@@ -187,15 +209,15 @@ export const writeSessionState = async (path: string | null) => {
 };
 
 // Resolves the initial doc + name (from saved draft, or defaults).
-// Side-effect: may set currentName and currentPath.
+// Side-effect: may set currentBuffer.name and currentBuffer.path.
 export const resolveInitialDoc = () => {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
       const d = JSON.parse(raw);
       if (typeof d.content === 'string' && d.content.length > 0) {
-        currentName = d.name || DEFAULT_NAME;
-        if (d.path) currentPath = d.path;
+        currentBuffer.name = d.name || DEFAULT_NAME;
+        if (d.path) currentBuffer.path = d.path;
         return { doc: d.content, hasDraft: true };
       }
     }
@@ -230,7 +252,7 @@ export const askConfirm = (message: string, onOk: ConfirmCallback) => {
 };
 
 export const confirmDiscard = (onOk: ConfirmCallback) => {
-  if (!dirty) { onOk(); return; }
+  if (!currentBuffer.dirty) { onOk(); return; }
   askConfirm(tr('You have unsaved changes. Discard them?'), onOk);
 };
 
@@ -249,8 +271,8 @@ export const loadFileFromPath = async (path: string) => {
   try {
     const content = await readTextFile(path);
     setDoc(content);
-    currentPath = path;
-    currentName = await basename(path);
+    currentBuffer.path = path;
+    currentBuffer.name = await basename(path);
     setDirty(false);
     clearDraft();
     clearIncludeCache();
@@ -259,7 +281,7 @@ export const loadFileFromPath = async (path: string) => {
     // handled internally; render is async but we don't need its result.
     // Prefix makes the fire-and-forget intent explicit for both readers
     // and the no-floating-promises lint rule.
-    void writeSessionState(currentPath);
+    void writeSessionState(currentBuffer.path);
     updateTitle();
     void render();
   } catch (e) {
@@ -282,14 +304,14 @@ export const openFile = () => {
 };
 
 export const saveFile = async () => {
-  if (!currentPath) return saveFileAs();
+  if (!currentBuffer.path) return saveFileAs();
   try {
-    await writeTextFile(currentPath, ensureTrailingNewline(getDoc()));
+    await writeTextFile(currentBuffer.path, ensureTrailingNewline(getDoc()));
     setDirty(false);
     clearDraft();
   } catch (e) {
     console.error(e);
-    vimMessage(`E212: Can't open file for writing: ${currentPath} (${errMsg(e)})`);
+    vimMessage(`E212: Can't open file for writing: ${currentBuffer.path} (${errMsg(e)})`);
   }
 };
 
@@ -297,15 +319,15 @@ export const saveFileAs = async () => {
   let selected: string | null = null;
   try {
     selected = await save({
-      defaultPath: currentPath || currentName,
+      defaultPath: currentBuffer.path || currentBuffer.name,
     });
     if (!selected) return; // user cancelled — silent, the user knows
     await writeTextFile(selected, ensureTrailingNewline(getDoc()));
-    currentPath = selected;
-    currentName = await basename(selected);
+    currentBuffer.path = selected;
+    currentBuffer.name = await basename(selected);
     setDirty(false);
     clearDraft();
-    void writeSessionState(currentPath);
+    void writeSessionState(currentBuffer.path);
     updateTitle();
   } catch (e) {
     console.error(e);
@@ -322,8 +344,8 @@ export const saveFileAs = async () => {
 export const newFile = () => {
   confirmDiscard(() => {
     setDoc('');
-    currentPath = null;
-    currentName = DEFAULT_NAME;
+    currentBuffer.path = null;
+    currentBuffer.name = DEFAULT_NAME;
     setDirty(false);
     clearDraft();
     clearIncludeCache();
@@ -341,16 +363,16 @@ export const newFile = () => {
 };
 
 export const reloadFile = async () => {
-  if (!currentPath) return;
+  if (!currentBuffer.path) return;
   try {
-    setDoc(await readTextFile(currentPath));
+    setDoc(await readTextFile(currentBuffer.path));
     setDirty(false);
     clearDraft();
     clearIncludeCache();
     void render();
   } catch (e) {
     console.error(e);
-    vimMessage(`E484: Can't open file ${currentPath} (${errMsg(e)})`);
+    vimMessage(`E484: Can't open file ${currentBuffer.path} (${errMsg(e)})`);
   }
 };
 
@@ -363,8 +385,8 @@ export const reloadFile = async () => {
 // - If neither is available, the raw argument is returned as a last resort.
 const resolveArgPath = async (arg: string): Promise<string> => {
   if (await isAbsolute(arg)) return arg;
-  if (currentPath) {
-    return await resolve(await dirname(currentPath), arg);
+  if (currentBuffer.path) {
+    return await resolve(await dirname(currentBuffer.path), arg);
   }
   if (launchCwd) {
     return await resolve(launchCwd, arg);
@@ -449,11 +471,11 @@ Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
     try {
       targetPath = await resolveArgPath(arg);
       await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
-      currentPath = targetPath;
-      currentName = await basename(targetPath);
+      currentBuffer.path = targetPath;
+      currentBuffer.name = await basename(targetPath);
       setDirty(false);
       clearDraft();
-      void writeSessionState(currentPath);
+      void writeSessionState(currentBuffer.path);
       updateTitle();
     } catch (e) {
       console.error(e);
@@ -476,7 +498,7 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
   // to both :e (reload current file from disk) and :e filename (open
   // a new one). Match vim's exact wording — users who know the E37
   // code from vim recognise it instantly.
-  if (dirty && !bang) {
+  if (currentBuffer.dirty && !bang) {
     vimMessage('E37: No write since last change (add ! to override)');
     return;
   }
@@ -488,12 +510,12 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
       sourcePath = await resolveArgPath(arg);
       const content = await readTextFile(sourcePath);
       setDoc(content);
-      currentPath = sourcePath;
-      currentName = await basename(sourcePath);
+      currentBuffer.path = sourcePath;
+      currentBuffer.name = await basename(sourcePath);
       setDirty(false);
       clearDraft();
       clearIncludeCache();
-      void writeSessionState(currentPath);
+      void writeSessionState(currentBuffer.path);
       updateTitle();
       void render();
     } catch (e) {
@@ -580,14 +602,14 @@ const quitHandler = (_cm: any, params: VimExParams) => {
 
 const writeAndQuit = async () => {
   await saveFile();
-  if (dirty) return; // save failed or user cancelled save-as dialog
+  if (currentBuffer.dirty) return; // save failed or user cancelled save-as dialog
   void getCurrentWindow().close();
 };
 
 const exitIfDirty = async (_cm: any, params: VimExParams) => {
-  if (dirty || parseExArgs(params).bang) {
+  if (currentBuffer.dirty || parseExArgs(params).bang) {
     await saveFile();
-    if (dirty) return; // save failed or user cancelled save-as dialog
+    if (currentBuffer.dirty) return; // save failed or user cancelled save-as dialog
   }
   void getCurrentWindow().close();
 };

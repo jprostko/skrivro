@@ -10,7 +10,7 @@ import { tr } from './i18n.js';
 import { prefs, savePrefs } from './prefs.js';
 import { isMac } from './i18n.js';
 import { editorView, setVimMode, getCM } from './editor.js';
-import { currentName } from './io.js';
+import { currentBuffer } from './io.js';
 import { userConfig, type SkrivroConfig } from './config.js';
 
 // ================= DOM refs =================
@@ -229,7 +229,7 @@ export const refreshStatus = () => {
   }
   statusPosition.classList.toggle('over-limit', overLimit);
 
-  statusFilename.textContent = currentName;
+  statusFilename.textContent = currentBuffer.name;
 };
 
 // Count words in the rendered preview's text content. Visible only in

@@ -74,8 +74,8 @@ import {
   setDirty, scheduleAutosave, openFile, saveFile, saveFileAs, newFile,
   loadFileFromPath, confirmDiscard, askConfirm,
   writeSessionState, resolveInitialDoc,
-  setLaunchCwd, setCurrentPath, setCurrentName,
-  updateTitle, dirty,
+  setLaunchCwd, currentBuffer,
+  updateTitle,
   DEFAULT_DOC,
 } from './io.js';
 // ui.js has top-level side effects (help dialog listeners, host-level
@@ -185,7 +185,7 @@ const appWindow = getCurrentWindow();
 // listeners live for the app's lifetime), so fire-and-forget is the
 // correct semantics.
 void appWindow.onCloseRequested((event) => {
-  if (!dirty) {
+  if (!currentBuffer.dirty) {
     // Clean close — no-op here; the Tauri library auto-calls destroy()
     // to complete the close after the handler returns. We let io.ts's
     // clean-exit paths (saveFile, newFile, etc.) manage the autosave
@@ -335,8 +335,8 @@ if (launchInfo.initial_file) {
   // CLI argument wins — skip draft and session-restore entirely.
   try {
     initialDoc = await readTextFile(launchInfo.initial_file);
-    setCurrentPath(launchInfo.initial_file);
-    setCurrentName(await basename(launchInfo.initial_file));
+    currentBuffer.path = launchInfo.initial_file;
+    currentBuffer.name = await basename(launchInfo.initial_file);
     // Record the CLI-opened file as the current session state,
     // so a subsequent launch without CLI args (and with
     // restore-session enabled) will pick up where this session
@@ -358,8 +358,8 @@ if (launchInfo.initial_file) {
   // arg; same behavior — take precedence over draft / session restore.
   try {
     initialDoc = await readTextFile(pendingOpen);
-    setCurrentPath(pendingOpen);
-    setCurrentName(await basename(pendingOpen));
+    currentBuffer.path = pendingOpen;
+    currentBuffer.name = await basename(pendingOpen);
     void writeSessionState(pendingOpen);
   } catch (e) {
     console.error('Failed to load file from OS open event:', pendingOpen, e);
@@ -380,8 +380,8 @@ if (launchInfo.initial_file) {
       if (state && state.lastFilePath) {
         try {
           initialDoc = await readTextFile(state.lastFilePath);
-          setCurrentPath(state.lastFilePath);
-          setCurrentName(await basename(state.lastFilePath));
+          currentBuffer.path = state.lastFilePath;
+          currentBuffer.name = await basename(state.lastFilePath);
         } catch (e) {
           // File was deleted, moved, or is unreadable. Fall through
           // to blank buffer rather than surfacing an error dialog.

@@ -15,7 +15,7 @@ import { basename, dirname, resolve } from '@tauri-apps/api/path';
 import { convertFileSrc } from '@tauri-apps/api/core';
 
 import { getDoc, editorView } from './editor.js';
-import { currentPath } from './io.js';
+import { currentBuffer } from './io.js';
 import { userConfig } from './config.js';
 import { updateWordCount } from './ui.js';
 
@@ -351,7 +351,7 @@ export const render = async () => {
   try {
     let source = getDoc();
     // Pre-expand `include::` directives if we know where the document
-    // lives on disk. Without a currentPath, we have no base directory
+    // lives on disk. Without a path, we have no base directory
     // for resolving relative include paths, so we skip preprocessing
     // and let Asciidoctor see the raw source — which for any document
     // with includes means the SPA-fallback trap will bleed our own
@@ -382,8 +382,8 @@ export const render = async () => {
       attributes: { showtitle: true },
     };
 
-    if (currentPath) {
-      baseDir = await dirname(currentPath);
+    if (currentBuffer.path) {
+      baseDir = await dirname(currentBuffer.path);
       const result = await preprocessSource(source, baseDir);
       source = result.source;
       lineMap = result.lineMap;
@@ -406,15 +406,15 @@ export const render = async () => {
       // Without a correct {docname}, the ifeval evaluates as
       // "" == "index" = false, the override doesn't fire, and
       // image paths resolve relative to the wrong directory. Setting
-      // docname to the basename (without extension) of currentPath
-      // makes the ifeval pattern work as the document author
+      // docname to the basename (without extension) of the current
+      // path makes the ifeval pattern work as the document author
       // intended.
-      const name = await basename(currentPath);
+      const name = await basename(currentBuffer.path);
       const docname = name.replace(/\.[^.]+$/, '');
       loadOpts.attributes = {
         ...loadOpts.attributes,
         docname,
-        docfile: currentPath,
+        docfile: currentBuffer.path,
         docdir: baseDir,
       };
     }

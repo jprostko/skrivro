@@ -365,7 +365,7 @@ body.no-titlebar .titlebar { display: none; }
    settings so both panes present the same characters at the same visual
    weight — text mode is a mirror of what you typed, not a transformed
    rendering of it. */
-.preview .text-verbatim {
+.preview pre.text-verbatim {
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -374,7 +374,14 @@ body.no-titlebar .titlebar { display: none; }
   box-shadow: none;
   white-space: pre-wrap;
   font-family: var(--font-mono);
+  /* font-size + line-height explicitly track the editor's so the two
+     panes present text at the same visual size and density. Selector
+     uses `pre.text-verbatim` rather than `.text-verbatim` to bump
+     specificity above the generic `.preview pre` rule (0,2,1 vs 0,1,1)
+     and guard against any surprise that might leave the 0.85em from
+     that rule winning for font-size. */
   font-size: var(--edit-font-size);
+  line-height: 1.6;
   color: var(--skr-text);
 }
 

@@ -406,6 +406,18 @@ if (launchInfo.initial_file) {
   }
 }
 
+// If no launch path set currentBuffer.path, we're starting with a
+// blank untitled buffer. Apply the user-configured default-format
+// (from skrivro.conf) to currentBuffer.format. The initial value
+// set in io.ts's currentBuffer declaration is always 'asciidoc'
+// because userConfig isn't populated yet at module-load time;
+// this is the first opportunity, now that get_config has resolved.
+// No-op when a launch path already set currentBuffer.path — its
+// format came from extension detection and should win.
+if (!currentBuffer.path) {
+  currentBuffer.format = detectFormat(null);
+}
+
 const host = document.getElementById('src-host')!;
 createEditor(host, initialDoc, {
   onDocChange: () => {

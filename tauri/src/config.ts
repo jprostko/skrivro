@@ -107,6 +107,7 @@ export interface SkrivroConfig {
   asciidocSafeMode?: string;
   cursorPositionFormat?: string;
   statusbarStyle?: string;
+  defaultFormat?: string;
 
   // Numeric: Option<u32> in Rust serializes to `null | number`.
   softColumnLimit?: number | null;

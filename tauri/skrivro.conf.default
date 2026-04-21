@@ -106,6 +106,28 @@
 # and fill in your palette.
 # theme = catppuccin-mocha
 
+# ================= Format =================
+
+# Default format assigned to a blank untitled buffer — asciidoc /
+# markdown / text (default asciidoc).
+#
+# Applies only when a launch has no file to open: no CLI argument,
+# no OS-dispatched file-open event, and either no saved session to
+# restore or an empty one. File-extension detection always wins:
+# opening foo.md is markdown regardless of what this key says.
+# Saving an untitled buffer with a specific extension (via :saveas
+# foo.md or the save-as dialog) switches it accordingly.
+#
+# 'text' is anything that isn't AsciiDoc or GitHub-flavored Markdown
+# — loose notes, untitled-without-extension scratchpads, or files
+# like .txt / .cpp / .js / .css / .html that aren't a supported
+# markup format. Intended for users whose primary habit is writing
+# plain prose without formatting.
+#
+# Unknown values (e.g. `default-format = pandoc`) are rejected with
+# a debug warning and fall through to asciidoc.
+# default-format = asciidoc
+
 # ================= Asciidoctor =================
 # Asciidoctor safe mode — unsafe / safe / server / secure.
 #

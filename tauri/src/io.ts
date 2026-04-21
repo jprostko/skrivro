@@ -15,6 +15,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Vim, getCM, getDoc, setDoc, editorView } from './editor.js';
 import { render, syncPreviewToCaret } from './preview.js';
 import { asciidoctorRenderer } from './renderer.js';
+import { userConfig } from './config.js';
 import { tr } from './i18n.js';
 import { refreshStatus } from './ui.js';
 
@@ -78,8 +79,12 @@ export const currentBuffer: Buffer = {
 // Detect the markup format for a given path based on its file
 // extension. Case-insensitive so FOO.ADOC and foo.adoc are treated
 // the same. Paths without a recognized markup extension fall to
-// 'text'; a null path (untitled buffer) falls to 'asciidoc' — the
-// app's default format, matching DEFAULT_NAME's .adoc extension.
+// 'text'. A null path (untitled buffer) reads userConfig.defaultFormat
+// — set via the `default-format` key in skrivro.conf — and falls
+// through to 'asciidoc' when unset or if the config value isn't
+// one of the recognized formats. File-extension detection ALWAYS
+// wins over the config default: opening foo.md is markdown
+// regardless of what default-format says.
 //
 // Only GFM is supported under 'markdown' — other markdown flavors
 // (Pandoc, MultiMarkdown, etc.) still use .md as their conventional
@@ -87,7 +92,18 @@ export const currentBuffer: Buffer = {
 // produce imperfect results for flavor-specific syntax. Documented
 // as a limitation rather than something we try to auto-detect.
 export const detectFormat = (path: string | null): Format => {
-  if (!path) return 'asciidoc';
+  if (!path) {
+    // userConfig.defaultFormat is validated Rust-side (accepted:
+    // asciidoc / markdown / text), so anything non-null here should
+    // be one of those. JS-side narrowing adds a belt-and-suspenders
+    // check for any value that slipped through or was mutated
+    // after parse.
+    const configured = userConfig.defaultFormat;
+    if (configured === 'asciidoc' || configured === 'markdown' || configured === 'text') {
+      return configured;
+    }
+    return 'asciidoc';
+  }
   const lower = path.toLowerCase();
   if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'markdown';
   if (lower.endsWith('.adoc') || lower.endsWith('.asciidoc')) return 'asciidoc';

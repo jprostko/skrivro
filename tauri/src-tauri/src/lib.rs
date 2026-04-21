@@ -147,6 +147,15 @@ struct SkrivroConfig {
     asciidoc_safe_mode: Option<String>,
     cursor_position_format: Option<String>,
     statusbar_style: Option<String>,
+    // Format assigned to an untitled buffer (one with no file on
+    // disk). Accepted values: asciidoc, markdown, text. When set,
+    // a fresh launch with no CLI argument and no session-restore
+    // file — i.e., a brand-new blank buffer — starts in this
+    // format rather than the compiled-in 'asciidoc' default.
+    // File-extension detection always wins: opening foo.md is
+    // always markdown regardless of this setting. Unknown values
+    // are rejected with a debug warning and the field stays None.
+    default_format: Option<String>,
     // First numeric-typed config key. Previously every field was
     // `Option<String>` for uniformity, but for a strict positive-
     // integer value there's no reason to store a string we'd have
@@ -515,6 +524,26 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
             "asciidoc-safe-mode" => cfg.asciidoc_safe_mode = Some(val.to_string()),
             "cursor-position-format" => cfg.cursor_position_format = Some(val.to_string()),
             "statusbar-style" => cfg.statusbar_style = Some(val.to_string()),
+            "default-format" => {
+                // Accepted: asciidoc, markdown, text. Unknown values
+                // are rejected with a debug warning rather than silently
+                // treated as a fallback — a typo should surface rather
+                // than be swallowed. Field stays None on rejection and
+                // the frontend falls through to the compiled-in default.
+                match val.to_lowercase().as_str() {
+                    "asciidoc" | "markdown" | "text" => {
+                        cfg.default_format = Some(val.to_lowercase())
+                    }
+                    _ => {
+                        #[cfg(debug_assertions)]
+                        eprintln!(
+                            "[skrivro config] line {}: default-format value '{}' not recognized — accepted: asciidoc, markdown, text. Skipping.",
+                            idx + 1,
+                            val
+                        );
+                    }
+                }
+            }
             "soft-column-limit" => {
                 // Strict positive integer. Zero or negative is meaningless
                 // (every column would be past the limit / no column could

@@ -11,7 +11,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { basename, dirname, resolve, isAbsolute } from '@tauri-apps/api/path';
 import { invoke } from '@tauri-apps/api/core';
 
-import { Vim, getDoc, setDoc, editorView } from './editor.js';
+import { Vim, getCM, getDoc, setDoc, editorView } from './editor.js';
 import { render, clearIncludeCache, syncPreviewToCaret } from './preview.js';
 import { tr } from './i18n.js';
 import { refreshStatus } from './ui.js';
@@ -53,6 +53,63 @@ export const setLaunchCwd = (cwd: string) => { launchCwd = cwd; };
 // Setters used by main.ts's launch path — avoid exposing raw reassignment.
 export const setCurrentPath = (p: string | null) => { currentPath = p; };
 export const setCurrentName = (n: string)        => { currentName = n; };
+
+// ================= Ex command panel messages =================
+//
+// Surfaces error/info messages to the user via the CM6 vim panel — the
+// same bottom bar where the plugin itself shows errors like "Not an
+// editor command :foo" and "Invalid regex". Use this anywhere we would
+// otherwise console.error() silently and leave the user wondering why
+// a command did nothing.
+//
+// Mechanism: cm.openNotification is the plugin's documented hook (see
+// its .d.ts line 665). Class `cm-vim-message` matches the plugin's own
+// convention so our messages and the plugin's built-in errors share
+// styling; inline white-space:pre preserves any formatting in the
+// message text. The plugin inlines color:red on its own notifications,
+// which collides with every non-Mocha theme — styles.css overrides
+// .cm-vim-message color to the theme's --skr-error slot, which also
+// retheme's the plugin's own errors as a side benefit.
+//
+// Duration 5000ms auto-dismiss. Shorter than the plugin's own 15000ms
+// default for errors because 15s is a long time to stare at a short
+// message like "E37: No write since last change". Still enough time
+// to read a verbose E212 with a long path. Safe to call from any code
+// path; if the editor isn't ready yet we no-op silently rather than
+// throw.
+const vimMessage = (text: string) => {
+  if (!editorView) return;
+  const cm = getCM(editorView);
+  if (!cm) return;
+  const div = document.createElement('div');
+  div.className = 'cm-vim-message';
+  div.style.whiteSpace = 'pre';
+  div.textContent = text;
+  cm.openNotification(div, { bottom: true, duration: 5000 });
+};
+
+// Extract a human-readable message from an unknown thrown value. The
+// catch blocks below hand the result to vimMessage so the user sees
+// "E212: Can't open file for writing: /path (Permission denied)"
+// instead of console-only [object Object] variants.
+//
+// Tauri's fs plugin wraps OS-level errors with a verbose
+// "failed to open file at path: <path> with error: <os msg>" prefix
+// (or "failed to write to file at path: ..." on writes). Since our
+// Exxx: message already cites the path, that prefix is pure noise —
+// stripping it leaves just the meaningful OS error, e.g.:
+//
+//   before: "failed to open file at path: /foo with error: No such file..."
+//   after:  "No such file..."
+//
+// If the thrown value doesn't match that shape (non-Tauri exception,
+// native JS error, etc.) the replace is a no-op and the original
+// message passes through unchanged.
+const TAURI_FS_PREFIX = /^failed to [^:]+: .+? with error: /;
+const errMsg = (e: unknown): string => {
+  const raw = e instanceof Error ? e.message : String(e);
+  return raw.replace(TAURI_FS_PREFIX, '');
+};
 
 // ================= Title / dirty =================
 
@@ -232,15 +289,17 @@ export const saveFile = async () => {
     clearDraft();
   } catch (e) {
     console.error(e);
+    vimMessage(`E212: Can't open file for writing: ${currentPath} (${errMsg(e)})`);
   }
 };
 
 export const saveFileAs = async () => {
+  let selected: string | null = null;
   try {
-    const selected = await save({
+    selected = await save({
       defaultPath: currentPath || currentName,
     });
-    if (!selected) return; // user cancelled
+    if (!selected) return; // user cancelled — silent, the user knows
     await writeTextFile(selected, ensureTrailingNewline(getDoc()));
     currentPath = selected;
     currentName = await basename(selected);
@@ -250,6 +309,13 @@ export const saveFileAs = async () => {
     updateTitle();
   } catch (e) {
     console.error(e);
+    // `selected` is captured outside the try so the message can cite
+    // the target path even if the write threw after the dialog
+    // resolved. If the dialog itself threw, selected is still null
+    // and we fall back to a generic message.
+    vimMessage(selected
+      ? `E212: Can't open file for writing: ${selected} (${errMsg(e)})`
+      : `E212: Can't open file for writing (${errMsg(e)})`);
   }
 };
 
@@ -284,6 +350,7 @@ export const reloadFile = async () => {
     void render();
   } catch (e) {
     console.error(e);
+    vimMessage(`E484: Can't open file ${currentPath} (${errMsg(e)})`);
   }
 };
 
@@ -350,14 +417,19 @@ Vim.defineEx('write', 'w', async (_cm: any, params: VimExParams) => {
     // `:w` still saves to the original file. Relative paths resolve
     // against the current file's directory (or the shell CWD at
     // launch if no current file).
+    let targetPath: string | null = null;
     try {
-      const targetPath = await resolveArgPath(arg);
+      targetPath = await resolveArgPath(arg);
       await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
     } catch (e) {
       console.error(e);
+      vimMessage(targetPath
+        ? `E212: Can't open file for writing: ${targetPath} (${errMsg(e)})`
+        : `E212: Can't open file for writing (${errMsg(e)})`);
     }
   } else {
-    // :w or :w! — save to current file
+    // :w or :w! — save to current file. Error reporting happens inside
+    // saveFile / saveFileAs.
     void saveFile();
   }
 });
@@ -373,8 +445,9 @@ Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
     // path. Matches Vim semantics: this is the buffer-renaming
     // counterpart to :w filename's pure-write. Relative paths resolve
     // the same way as :w filename.
+    let targetPath: string | null = null;
     try {
-      const targetPath = await resolveArgPath(arg);
+      targetPath = await resolveArgPath(arg);
       await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
       currentPath = targetPath;
       currentName = await basename(targetPath);
@@ -384,11 +457,15 @@ Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
       updateTitle();
     } catch (e) {
       console.error(e);
+      vimMessage(targetPath
+        ? `E212: Can't open file for writing: ${targetPath} (${errMsg(e)})`
+        : `E212: Can't open file for writing (${errMsg(e)})`);
     }
   } else {
     // :saveas (no args) — non-standard: show the save dialog. Real Vim
     // errors with "Argument required" here, but a dialog is friendlier
-    // for a GUI editor and matches what Ctrl+Shift+S does.
+    // for a GUI editor and matches what Ctrl+Shift+S does. Error
+    // reporting happens inside saveFileAs.
     void saveFileAs();
   }
 });
@@ -397,13 +474,18 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
   const { bang, arg } = parseExArgs(params);
   // Refuse to discard a dirty buffer without the force bang. Applies
   // to both :e (reload current file from disk) and :e filename (open
-  // a new one).
-  if (dirty && !bang) return;
+  // a new one). Match vim's exact wording — users who know the E37
+  // code from vim recognise it instantly.
+  if (dirty && !bang) {
+    vimMessage('E37: No write since last change (add ! to override)');
+    return;
+  }
   if (arg) {
     // :e filename or :e! filename — open specific file by path.
     // Same vim-style path resolution as :w filename.
+    let sourcePath: string | null = null;
     try {
-      const sourcePath = await resolveArgPath(arg);
+      sourcePath = await resolveArgPath(arg);
       const content = await readTextFile(sourcePath);
       setDoc(content);
       currentPath = sourcePath;
@@ -416,9 +498,13 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
       void render();
     } catch (e) {
       console.error(e);
+      vimMessage(sourcePath
+        ? `E484: Can't open file ${sourcePath} (${errMsg(e)})`
+        : `E484: Can't open file (${errMsg(e)})`);
     }
   } else {
-    // :e or :e! — reload current file from disk
+    // :e or :e! — reload current file from disk. Error reporting
+    // happens inside reloadFile.
     void reloadFile();
   }
 });

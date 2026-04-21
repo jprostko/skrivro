@@ -409,6 +409,41 @@ body.mode-preview .preview {
 /* ---------- Gutter (line numbers) toggle ---------- */
 body.no-gutter .cm-gutters { display: none; }
 
+/* ---------- Vim Ex command panel notifications ---------- */
+/* @replit/codemirror-vim hardcodes `color: red` inline on its own
+   notification divs (see plugin's showConfirm / openNotification code
+   path). That collides with every theme — Catppuccin Latte, Tokyo
+   Night Day, and any user palette that doesn't use a browser-red for
+   errors. Override to the theme's --skr-error slot so plugin errors
+   ("Not an editor command :foo", "Invalid regex", etc.) and our own
+   Ex error messages (see vimMessage in io.ts) both render in
+   theme-appropriate color. `!important` is required to beat the
+   inline style the plugin sets.
+
+   white-space: pre-wrap overrides the plugin's inline `white-space:
+   pre`. In split-pane mode the Ex panel is constrained to the editor
+   pane's width, so long single-line messages get clipped at the
+   centerline between editor and preview. pre-wrap lets them wrap at
+   spaces instead of clipping, and still preserves the plugin's own
+   multi-line formatted output (marks, registers, `:set all`) because
+   those use explicit \n breaks that pre-wrap honors. */
+.cm-vim-message {
+  color: var(--skr-error) !important;
+  white-space: pre-wrap !important;
+}
+
+/* Vertically center the Ex panel's content. The plugin sets the panel
+   to `display: flex` with `minHeight: 1.3em` and zero vertical
+   padding; its default `align-items: stretch` leaves single-line
+   content flush to the top because the dialog stretches to panel
+   height while its inner text flows from the top. `center` pulls the
+   text to the middle for short messages and is a no-op for multi-line
+   messages (the panel grows to content height, leaving nothing to
+   center against). */
+.cm-vim-panel {
+  align-items: center;
+}
+
 /* ---------- Confirm dialog (custom <dialog>) ---------- */
 dialog.confirm-dialog {
   background: var(--skr-bg-panel);

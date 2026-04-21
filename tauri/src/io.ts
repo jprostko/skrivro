@@ -43,32 +43,55 @@ const confirmCancelBtn = document.getElementById('confirmCancelBtn')!;
 // ================= Current buffer state =================
 //
 // Per-buffer state lives on a single `currentBuffer: Buffer` object
-// rather than as scattered module-level `let` exports. This prepares
-// for two pending changes that were known at the time of this
-// refactor:
-//
-//   1. A `format` field to select between AsciiDoc / Markdown / Text
-//      renderers, if/when we add Markdown support.
-//   2. Multi-window support, where each window's context would own
-//      its own Buffer — no module-global rework needed when that
-//      lands, just one-buffer-per-window instead of the current
-//      one-buffer-period.
+// rather than as scattered module-level `let` exports. This keeps
+// per-buffer concerns (path, name, dirty, format) together so that
+// adding future fields, or moving ownership to a per-window context
+// if multi-window support ever lands, doesn't require rewiring
+// everywhere that reads them.
 //
 // `currentBuffer` is exported as const, which pins the reference but
 // lets callers read and mutate fields. For dirty specifically, use
 // `setDirty(d)` — it also triggers updateTitle() to keep the status
-// bar / title in sync. path and name are plain assignments.
+// bar / title in sync. path, name, and format are plain assignments;
+// by convention, format should be kept in sync with path via
+// detectFormat(path) at every site that writes path.
+
+// Markup format associated with the current buffer. Drives which
+// Renderer implementation handles render + scroll-sync and which
+// CM6 language extension is active in the editor.
+export type Format = 'asciidoc' | 'markdown' | 'text';
 
 export interface Buffer {
   path: string | null;
   name: string;
   dirty: boolean;
+  format: Format;
 }
 
 export const currentBuffer: Buffer = {
   path: null,
   name: DEFAULT_NAME,
   dirty: false,
+  format: 'asciidoc',
+};
+
+// Detect the markup format for a given path based on its file
+// extension. Case-insensitive so FOO.ADOC and foo.adoc are treated
+// the same. Paths without a recognized markup extension fall to
+// 'text'; a null path (untitled buffer) falls to 'asciidoc' — the
+// app's default format, matching DEFAULT_NAME's .adoc extension.
+//
+// Only GFM is supported under 'markdown' — other markdown flavors
+// (Pandoc, MultiMarkdown, etc.) still use .md as their conventional
+// extension and will render via the same GFM pipeline, which may
+// produce imperfect results for flavor-specific syntax. Documented
+// as a limitation rather than something we try to auto-detect.
+export const detectFormat = (path: string | null): Format => {
+  if (!path) return 'asciidoc';
+  const lower = path.toLowerCase();
+  if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'markdown';
+  if (lower.endsWith('.adoc') || lower.endsWith('.asciidoc')) return 'asciidoc';
+  return 'text';
 };
 
 // Shell CWD captured at launch time, used as a fallback for relative
@@ -219,6 +242,7 @@ export const resolveInitialDoc = () => {
       if (typeof d.content === 'string' && d.content.length > 0) {
         currentBuffer.name = d.name || DEFAULT_NAME;
         if (d.path) currentBuffer.path = d.path;
+        currentBuffer.format = detectFormat(currentBuffer.path);
         return { doc: d.content, hasDraft: true };
       }
     }
@@ -274,6 +298,7 @@ export const loadFileFromPath = async (path: string) => {
     setDoc(content);
     currentBuffer.path = path;
     currentBuffer.name = await basename(path);
+    currentBuffer.format = detectFormat(path);
     setDirty(false);
     clearDraft();
     asciidoctorRenderer.clearCache();
@@ -326,6 +351,7 @@ export const saveFileAs = async () => {
     await writeTextFile(selected, ensureTrailingNewline(getDoc()));
     currentBuffer.path = selected;
     currentBuffer.name = await basename(selected);
+    currentBuffer.format = detectFormat(selected);
     setDirty(false);
     clearDraft();
     void writeSessionState(currentBuffer.path);
@@ -347,6 +373,7 @@ export const newFile = () => {
     setDoc('');
     currentBuffer.path = null;
     currentBuffer.name = DEFAULT_NAME;
+    currentBuffer.format = detectFormat(null);
     setDirty(false);
     clearDraft();
     asciidoctorRenderer.clearCache();
@@ -474,6 +501,7 @@ Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
       await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
       currentBuffer.path = targetPath;
       currentBuffer.name = await basename(targetPath);
+      currentBuffer.format = detectFormat(targetPath);
       setDirty(false);
       clearDraft();
       void writeSessionState(currentBuffer.path);
@@ -513,6 +541,7 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
       setDoc(content);
       currentBuffer.path = sourcePath;
       currentBuffer.name = await basename(sourcePath);
+      currentBuffer.format = detectFormat(sourcePath);
       setDirty(false);
       clearDraft();
       asciidoctorRenderer.clearCache();

@@ -74,7 +74,7 @@ import {
   setDirty, scheduleAutosave, openFile, saveFile, saveFileAs, newFile,
   loadFileFromPath, confirmDiscard, askConfirm,
   writeSessionState, resolveInitialDoc,
-  setLaunchCwd, currentBuffer,
+  setLaunchCwd, currentBuffer, detectFormat,
   updateTitle,
   DEFAULT_DOC,
 } from './io.js';
@@ -337,6 +337,7 @@ if (launchInfo.initial_file) {
     initialDoc = await readTextFile(launchInfo.initial_file);
     currentBuffer.path = launchInfo.initial_file;
     currentBuffer.name = await basename(launchInfo.initial_file);
+    currentBuffer.format = detectFormat(launchInfo.initial_file);
     // Record the CLI-opened file as the current session state,
     // so a subsequent launch without CLI args (and with
     // restore-session enabled) will pick up where this session
@@ -360,6 +361,7 @@ if (launchInfo.initial_file) {
     initialDoc = await readTextFile(pendingOpen);
     currentBuffer.path = pendingOpen;
     currentBuffer.name = await basename(pendingOpen);
+    currentBuffer.format = detectFormat(pendingOpen);
     void writeSessionState(pendingOpen);
   } catch (e) {
     console.error('Failed to load file from OS open event:', pendingOpen, e);
@@ -382,6 +384,7 @@ if (launchInfo.initial_file) {
           initialDoc = await readTextFile(state.lastFilePath);
           currentBuffer.path = state.lastFilePath;
           currentBuffer.name = await basename(state.lastFilePath);
+          currentBuffer.format = detectFormat(state.lastFilePath);
         } catch (e) {
           // File was deleted, moved, or is unreadable. Fall through
           // to blank buffer rather than surfacing an error dialog.

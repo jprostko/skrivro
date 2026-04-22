@@ -337,7 +337,7 @@ export const loadFileFromPath = async (path: string) => {
     setDoc(content);
     currentBuffer.path = path;
     currentBuffer.name = await basename(path);
-    currentBuffer.format = detectFormat(path);
+    setBufferFormat(detectFormat(path));
     setDirty(false);
     clearDraft();
     clearAllRendererCaches();
@@ -390,7 +390,7 @@ export const saveFileAs = async () => {
     await writeTextFile(selected, ensureTrailingNewline(getDoc()));
     currentBuffer.path = selected;
     currentBuffer.name = await basename(selected);
-    currentBuffer.format = detectFormat(selected);
+    setBufferFormat(detectFormat(selected));
     setDirty(false);
     clearDraft();
     void writeSessionState(currentBuffer.path);
@@ -412,7 +412,7 @@ export const newFile = () => {
     setDoc('');
     currentBuffer.path = null;
     currentBuffer.name = DEFAULT_NAME;
-    currentBuffer.format = detectFormat(null);
+    setBufferFormat(detectFormat(null));
     setDirty(false);
     clearDraft();
     clearAllRendererCaches();
@@ -540,7 +540,7 @@ Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
       await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
       currentBuffer.path = targetPath;
       currentBuffer.name = await basename(targetPath);
-      currentBuffer.format = detectFormat(targetPath);
+      setBufferFormat(detectFormat(targetPath));
       setDirty(false);
       clearDraft();
       void writeSessionState(currentBuffer.path);
@@ -580,7 +580,7 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
       setDoc(content);
       currentBuffer.path = sourcePath;
       currentBuffer.name = await basename(sourcePath);
-      currentBuffer.format = detectFormat(sourcePath);
+      setBufferFormat(detectFormat(sourcePath));
       setDirty(false);
       clearDraft();
       clearAllRendererCaches();

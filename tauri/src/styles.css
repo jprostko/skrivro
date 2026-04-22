@@ -302,25 +302,118 @@ body.no-titlebar .titlebar { display: none; }
   background: var(--skr-bg);
   margin: 1em 0;
 }
+/* AsciiDoc admonitions — Asciidoctor emits them as a 2-column table
+   wrapped in <div class="admonitionblock <type>">. With
+   `icons: 'font'` set in load options (see renderer.ts), the icon
+   cell contains <i class="fa icon-<type>"> referencing Font Awesome
+   glyphs by their Asciidoctor semantic alias; without that attribute,
+   it'd contain a text label div instead.
+
+   Structural rules below match Asciidoctor's own stylesheet: bare
+   table, no background, icon cell fixed-width and centered, a 1px
+   divider between icon and content columns, content cell padded.
+   Colors stay on our --skr-* palette rather than Asciidoctor's
+   tuned-for-light hex values so dark themes resolve correctly.
+
+   No colored left-edge stripe — Asciidoctor's native output doesn't
+   have one. Type signaling is carried entirely by the icon color.
+   GFM alerts (in the .markdown-alert rules below) DO keep their
+   stripe because GitHub's rendering does; the two formats follow
+   their respective upstream conventions. */
 .preview .admonitionblock { margin: 1em 0; }
+/* Convert Asciidoctor's <table>-based admonition layout to flexbox.
+   Table-cell vertical-align/baseline behavior diverges across browsers
+   for replaced elements (esp. inline SVGs of mixed sizes), and trying
+   to center an SVG inside a td involves baseline math, line-box
+   expansion, and font-metric quirks that aren't worth the complexity.
+   Flexbox align-items: center is the most predictable vertical-
+   centering primitive in CSS — same answer everywhere, no gotchas.
+
+   `display: contents` on tbody/tr removes them from layout while
+   preserving accessibility semantics, so the table flex container's
+   direct flex items are the icon and content tds. */
 .preview .admonitionblock > table {
-  border: none;
-  border-left: 3px solid var(--skr-warning);
-  background: var(--skr-bg);
-  border-radius: 0 4px 4px 0;
+  /* Flex with `align-items: center` cross-aligns each cell's box to
+     the row midline — icon cell (2.5em) and content cell (text line)
+     end up center-to-center. Container height = max(items) = 2.5em
+     in the common case. The vertical separator is a positioned
+     pseudo-element (below) rather than a border on the content
+     cell, so its height tracks the table's full flex-container
+     height instead of just the content cell's short intrinsic
+     height. `position: relative` establishes the containing block. */
+  display: flex;
+  align-items: center;
+  position: relative;
+  border: 0;
+  background: none;
+  width: 100%;
 }
-.preview .admonitionblock > table td { border: none; padding: 0.8em 1em; }
-.preview .admonitionblock.note      > table { border-left-color: var(--skr-link); }
-.preview .admonitionblock.tip       > table { border-left-color: var(--skr-success); }
-.preview .admonitionblock.warning   > table { border-left-color: var(--skr-emphasis); }
-.preview .admonitionblock.caution   > table { border-left-color: var(--skr-warning); }
-.preview .admonitionblock.important > table { border-left-color: var(--skr-error); }
-.preview .admonitionblock td.icon {
-  color: var(--skr-text-muted);
-  font-weight: 600;
+.preview .admonitionblock > table::before {
+  /* Vertical separator between icon column and content column.
+     `left: 5em` positions it at the icon column's right edge
+     (matches td.icon's flex basis). Full table height via top/
+     bottom: 0. */
+  content: '';
+  position: absolute;
+  left: 5em;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--skr-surface);
+}
+.preview .admonitionblock > table tbody,
+.preview .admonitionblock > table tr {
+  display: contents;
+}
+.preview .admonitionblock > table td {
+  border: 0;
+  padding: 0;
+}
+.preview .admonitionblock > table td.icon {
+  /* Fixed-width icon column scaling with preview font size; ~75px
+     at default preview-font-size (close to Asciidoctor's stock 80px).
+     `flex: 0 0 5em` = no grow, no shrink, fixed 5em basis. Internal
+     flex container centers the SVG both axes. */
+  flex: 0 0 5em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.preview .admonitionblock > table td.content {
+  /* Border-left removed (separator is a pseudo on the table now).
+     `flex: 1` takes remaining space after the 5em icon column. */
+  flex: 1;
+  padding-left: 1.125em;
+  padding-right: 1.25em;
+}
+/* Kill top margin of the first child and bottom margin of the last
+   child inside the content cell. The generic `.preview p { margin:
+   0.8em 0 }` rule would otherwise add 1.6em of vertical padding to a
+   single-line block-form admonition, growing the row to ~3.25em and
+   making it visibly taller than the icon for no good reason. Reset
+   the outermost margins so the row tracks the icon's 2.5em height
+   in the common case; inner paragraphs (in multi-paragraph
+   admonitions) keep their margins for inter-paragraph spacing.
+   Selectors cover both a bare <p> and Asciidoctor's `<div
+   class="paragraph"><p>` wrapper pattern. */
+.preview .admonitionblock > table td.content > :first-child,
+.preview .admonitionblock > table td.content > :first-child > p { margin-top: 0; }
+.preview .admonitionblock > table td.content > :last-child,
+.preview .admonitionblock > table td.content > :last-child > p { margin-bottom: 0; }
+/* SVG sits as a flex item centered by the icon cell's flex container
+   (above). `display: block` strips inline baseline behavior so the
+   SVG's bounding box is what gets centered, not its baseline. */
+.preview .admonitionblock td.icon svg {
+  display: block;
   width: 2.5em;
-  vertical-align: top;
+  height: 2.5em;
+  fill: currentColor;
 }
+.preview .admonitionblock.note      > table td.icon { color: var(--skr-link); }
+.preview .admonitionblock.tip       > table td.icon { color: var(--skr-success); }
+.preview .admonitionblock.important > table td.icon { color: var(--skr-error); }
+.preview .admonitionblock.warning   > table td.icon { color: var(--skr-emphasis); }
+.preview .admonitionblock.caution   > table td.icon { color: var(--skr-warning); }
 
 /* GFM alerts — GitHub's extended blockquote syntax (> [!NOTE], etc.)
    that our markedRenderer's gfmAlert extension parses into

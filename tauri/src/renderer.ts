@@ -436,6 +436,100 @@ const buildAsciidoctorBlockMap = (
 
 const ad = Asciidoctor();
 
+// ================= Admonition icon SVGs =================
+//
+// Font Awesome 4 glyphs extracted from the webfont SVG and wrapped
+// in standalone SVG elements. Asciidoctor with `icons: 'font'` emits
+// admonition icons as <i class="fa icon-NAME"> — glyphs rendered by
+// the FontAwesome font. We replace those elements with inline SVGs
+// during render post-processing (see replaceAdmonitionIcons below).
+//
+// Why SVG instead of the native font-icon output: font glyphs are
+// positioned by baseline metrics, not by visible bounding box, so
+// the cell's flex centering doesn't visually center the icon — the
+// glyph floats toward the top of the cell because Font Awesome
+// glyphs are drawn like uppercase letters (ascender above baseline,
+// nothing below). SVGs have explicit viewBox/width/height and sit
+// at the geometric center when flex-aligned.
+//
+// Most icons use a 1792×1792 viewBox (FA4's units-per-em) with the
+// glyph naturally centered inside it. Two glyphs (warning, caution)
+// have ink that touches or extends past the standard viewBox edges
+// and use expanded 2048×2048 viewBoxes with offset origins so the
+// glyph bbox sits centered in the SVG bounding box; see the per-icon
+// comments below.
+//
+// The path transform `matrix(1 0 0 -1 X 1536)` does two jobs:
+//   1. Flips the Y axis (fonts use y-up with baseline at y=0; SVG
+//      uses y-down), with +1536 translation so the ascent top lines
+//      up with y=0 in the original 1792×1792 viewBox space.
+//   2. X-offsets narrower glyphs so they're centered horizontally —
+//      X = (1792 − horiz-adv-x) / 2 for the centered viewBox case.
+//
+// The `fill="currentColor"` attribute makes the glyph inherit color
+// from the enclosing td via CSS's per-type color rules (see
+// styles.css), matching how Octicons work for GFM alerts.
+
+type AdmonitionType = 'note' | 'tip' | 'important' | 'warning' | 'caution';
+
+const ADMONITION_ICON_SVGS: Record<AdmonitionType, string> = {
+  // info-circle (fa \f05a), horiz-adv-x 1536, offset (1792−1536)/2 = 128
+  note: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1792" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 128 1536)" d="M1024 160v160q0 14 -9 23t-23 9h-96v512q0 14 -9 23t-23 9h-320q-14 0 -23 -9t-9 -23v-160q0 -14 9 -23t23 -9h96v-320h-96q-14 0 -23 -9t-9 -23v-160q0 -14 9 -23t23 -9h448q14 0 23 9t9 23zM896 1056v160q0 14 -9 23t-23 9h-192q-14 0 -23 -9t-9 -23v-160q0 -14 9 -23t23 -9h192q14 0 23 9t9 23zM1536 640q0 -209 -103 -385.5t-279.5 -279.5t-385.5 -103t-385.5 103t-279.5 279.5t-103 385.5t103 385.5t279.5 279.5t385.5 103t385.5 -103t279.5 -279.5t103 -385.5z"/></svg>',
+  // lightbulb-o (fa \f0eb), horiz-adv-x 1024, offset (1792−1024)/2 = 384
+  tip: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1792" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 384 1536)" d="M736 960q0 -13 -9.5 -22.5t-22.5 -9.5t-22.5 9.5t-9.5 22.5q0 46 -54 71t-106 25q-13 0 -22.5 9.5t-9.5 22.5t9.5 22.5t22.5 9.5q50 0 99.5 -16t87 -54t37.5 -90zM896 960q0 72 -34.5 134t-90 101.5t-123 62t-136.5 22.5t-136.5 -22.5t-123 -62t-90 -101.5t-34.5 -134q0 -101 68 -180q10 -11 30.5 -33t30.5 -33q128 -153 141 -298h228q13 145 141 298q10 11 30.5 33t30.5 33q68 79 68 180zM1024 960q0 -155 -103 -268q-45 -49 -74.5 -87t-59.5 -95.5t-34 -107.5q47 -28 47 -82q0 -37 -25 -64q25 -27 25 -64q0 -52 -45 -81q13 -23 13 -47q0 -46 -31.5 -71t-77.5 -25q-20 -44 -60 -70t-87 -26t-87 26t-60 70q-46 0 -77.5 25t-31.5 71q0 24 13 47q-45 29 -45 81q0 37 25 64q-25 27 -25 64q0 54 47 82q-4 50 -34 107.5t-59.5 95.5t-74.5 87q-103 113 -103 268q0 99 44.5 184.5t117 142t164 89t186.5 32.5t186.5 -32.5t164 -89t117 -142t44.5 -184.5z"/></svg>',
+  // exclamation-circle (fa \f06a), horiz-adv-x 1536, offset 128
+  important: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1792" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 128 1536)" d="M768 1408q209 0 385.5 -103t279.5 -279.5t103 -385.5t-103 -385.5t-279.5 -279.5t-385.5 -103t-385.5 103t-279.5 279.5t-103 385.5t103 385.5t279.5 279.5t385.5 103zM896 161v190q0 14 -9 23.5t-22 9.5h-192q-13 0 -23 -10t-10 -23v-190q0 -13 10 -23t23 -10h192q13 0 22 9.5t9 23.5zM894 505l18 621q0 12 -10 18q-10 8 -24 8h-220q-14 0 -24 -8q-10 -6 -10 -18l17 -621q0 -10 10 -17.5t24 -7.5h185q14 0 23.5 7.5t10.5 17.5z"/></svg>',
+  // exclamation-triangle (fa \f071). Glyph bbox extends to the top of
+  // the viewBox (y=0) and slightly past both horizontal edges, so its
+  // ink visibly overflows a tight viewBox. Expanded viewBox centers
+  // the bbox (cx=896, cy=832) in a 2048×2048 frame — 128 units
+  // horizontal padding, 192 units vertical — to give consistent
+  // breathing room matching the other admonition icons.
+  warning: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-128 -192 2048 2048" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 0 1536)" d="M1024 161v190q0 14 -9.5 23.5t-22.5 9.5h-192q-13 0 -22.5 -9.5t-9.5 -23.5v-190q0 -14 9.5 -23.5t22.5 -9.5h192q13 0 22.5 9.5t9.5 23.5zM1022 535l18 459q0 12 -10 19q-13 11 -24 11h-220q-11 0 -24 -11q-10 -7 -10 -21l17 -457q0 -10 10 -16.5t24 -6.5h185q14 0 23.5 6.5t10.5 16.5zM1008 1469l768 -1408q35 -63 -2 -126q-17 -29 -46.5 -46t-63.5 -17h-1536q-34 0 -63.5 17t-46.5 46q-37 63 -2 126l768 1408q17 31 47 49t65 18t65 -18t47 -49z"/></svg>',
+  // fire (fa \f06d). Glyph bbox fills the viewBox floor-to-ceiling
+  // (y=0 to y=1792 in the 1792-tall viewBox). Expanded viewBox adds
+  // 128 units padding on all sides (bbox already horizontally
+  // centered) so ink has consistent margin inside the rendered SVG.
+  caution: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-128 -128 2048 2048" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 192 1536)" d="M1408 -160v-64q0 -13 -9.5 -22.5t-22.5 -9.5h-1344q-13 0 -22.5 9.5t-9.5 22.5v64q0 13 9.5 22.5t22.5 9.5h1344q13 0 22.5 -9.5t9.5 -22.5zM1152 896q0 -78 -24.5 -144t-64 -112.5t-87.5 -88t-96 -77.5t-87.5 -72t-64 -81.5t-24.5 -96.5q0 -96 67 -224l-4 1l1 -1q-90 41 -160 83t-138.5 100t-113.5 122.5t-72.5 150.5t-27.5 184q0 78 24.5 144t64 112.5t87.5 88t96 77.5t87.5 72t64 81.5t24.5 96.5q0 94 -66 224l3 -1l-1 1q90 -41 160 -83t138.5 -100t113.5 -122.5t72.5 -150.5t27.5 -184z"/></svg>',
+};
+
+// Replace Asciidoctor's font-icon admonition markers (<i class="fa
+// icon-NAME" title="..."></i>) with the corresponding inline SVG.
+// Called on the rendered HTML string before DOMPurify runs.
+//
+// We target only the admonition icon pattern (`icon-` class prefix).
+// Inline icon:name[] directives emit <i class="fa fa-NAME"> (note
+// the `fa-` prefix, not `icon-`) and deliberately flow through
+// unchanged — they're sized inline with surrounding text and the
+// baseline-positioning that makes admonition icons look off is
+// exactly what's wanted for a character-in-text inline icon.
+//
+// Implementation via DOMParser so we handle attribute ordering,
+// quoting, and edge cases properly rather than relying on a regex
+// over raw HTML.
+const replaceAdmonitionIcons = (rawHtml: string): string => {
+  const parser = new DOMParser();
+  const parsed = parser.parseFromString(rawHtml, 'text/html');
+  // Scope the query to icon cells under admonitionblocks, then
+  // extract the type from the `icon-<type>` class so we never
+  // accidentally rewrite something else that happens to share the
+  // <i class="fa icon-..."> shape.
+  const iconEls = parsed.querySelectorAll('.admonitionblock td.icon i.fa[class*="icon-"]');
+  for (const el of iconEls) {
+    const match = el.className.match(/\bicon-([a-z]+)\b/);
+    const type = match?.[1] as AdmonitionType | undefined;
+    if (!type || !(type in ADMONITION_ICON_SVGS)) continue;
+    // Parse the SVG as an HTML fragment so we get a proper Element
+    // we can swap in place of the <i>. Using a template element
+    // rather than another DOMParser call for a cheaper round-trip.
+    const template = parsed.createElement('template');
+    template.innerHTML = ADMONITION_ICON_SVGS[type];
+    const svg = template.content.firstElementChild;
+    if (svg) el.replaceWith(svg);
+  }
+  return parsed.body.innerHTML;
+};
+
 export const asciidoctorRenderer: Renderer = {
   async render(source: string, context: RenderContext): Promise<RenderResult> {
     let lineMap: number[] | null = null;
@@ -459,7 +553,12 @@ export const asciidoctorRenderer: Renderer = {
     } = {
       safe: userConfig.asciidocSafeMode || 'unsafe',
       sourcemap: true,
-      attributes: { showtitle: true },
+      // icons: 'font' switches admonition rendering from text labels
+      // to Font Awesome icon markup (<i class="fa icon-note"> etc.),
+      // matching Asciidoctor's standard convention. Styling for the
+      // resulting icons lives in styles.css — see the rules targeting
+      // .admonitionblock td.icon [class^="fa icon-"].
+      attributes: { showtitle: true, icons: 'font' },
     };
 
     if (context.path) {
@@ -526,7 +625,13 @@ export const asciidoctorRenderer: Renderer = {
     //
     // Users who want a stricter mode can override it via skrivro.conf.
     const doc = ad.load(source, loadOpts);
-    const html = DOMPurify.sanitize(doc.convert({ standalone: false }));
+    // Swap Asciidoctor's font-icon admonition markers for inline
+    // SVGs before sanitization — see replaceAdmonitionIcons above
+    // for why. DOMPurify keeps <svg> and <path> elements by default
+    // (verified with the Octicons used in GFM alerts), so the
+    // injected markup survives the subsequent sanitize call.
+    const rawHtml = replaceAdmonitionIcons(doc.convert({ standalone: false }));
+    const html = DOMPurify.sanitize(rawHtml);
 
     // Capture the per-render state in closures. The caller invokes
     // buildBlockMap after injecting `html` into a container; we walk

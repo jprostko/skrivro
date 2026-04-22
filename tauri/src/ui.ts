@@ -289,14 +289,92 @@ export const updateWordCount = () => {
 // Ctrl+Alt+H or the "?" button in the titlebar toggles the help
 // dialog. Escape (native <dialog> behavior), the close button,
 // and clicking the backdrop all dismiss it.
+//
+// Native <dialog>.close() restores focus to whatever was active
+// before showModal(), but WebKit's restoration isn't reliably
+// synchronous — a `:` typed immediately after close can fire its
+// keydown against <body> and then route its input event to the
+// editor's contentDOM once focus lands there, inserting the
+// character as text instead of triggering Vim's Ex prompt. Capturing
+// the pre-help focus and restoring it explicitly (synchronously)
+// sidesteps that race and preserves the user's actual context — if
+// they were on the preview pane in split mode before opening help,
+// focus goes back to body (where it was), not forced to the editor.
+//
+// Capture is split across TWO points:
+//
+//   - helpBtn mousedown: runs BEFORE the browser's native focus
+//     change moves focus to the button. Without this, clicking the
+//     `?` button captures the button itself as the "previous focus"
+//     (wrong — the actual previous focus was whatever the user was
+//     doing before they clicked).
+//   - showHelp fallback: for the keyboard path (Ctrl+Alt+H), no
+//     button mousedown fires; capture at showHelp time instead.
+//
+// preHelpFocus is cleared on hideHelp so a subsequent open via
+// keyboard doesn't inherit a stale value from a prior mouse click.
+let preHelpFocus: HTMLElement | null = null;
+helpBtn.addEventListener('mousedown', () => {
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && active !== helpBtn) {
+    preHelpFocus = active;
+  }
+});
 export const showHelp = () => {
   if (helpDlg.open) return;
+  if (preHelpFocus === null) {
+    preHelpFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+  }
   helpDlg.showModal();
   helpCloseBtn.focus();
 };
 export const hideHelp = () => {
   if (helpDlg.open) helpDlg.close();
 };
+
+// Focus restoration runs on the dialog's `close` event rather than
+// inside hideHelp, because hideHelp is only called from our own
+// click handlers (close button, backdrop click) — Escape triggers
+// the native close path, which fires the close event but doesn't
+// invoke hideHelp. Attaching here handles ALL close paths uniformly.
+helpDlg.addEventListener('close', () => {
+  const restore = preHelpFocus;
+  preHelpFocus = null;
+
+  // Preview-only mode: editor stays blurred. Native dialog close can
+  // still re-focus the editor via its own restoration logic (the
+  // pre-showModal active element, or a focusable-ancestor walk from
+  // the dialog), which would re-enable keystrokes into the hidden
+  // editor and regress the read-only preview behavior. Force-blur.
+  if (prefs.displayMode === 'preview') {
+    if (editorView) editorView.contentDOM.blur();
+    return;
+  }
+
+  // Split / editor modes: synchronous focus to the correctly-captured
+  // pre-help element. rAF is too slow — a `:` pressed before the
+  // next frame fires its keydown against <body>, bypassing Vim's
+  // keydown intercept on contentDOM, then the input event arrives at
+  // contentDOM once focus catches up and inserts the character as
+  // text. Synchronous focus before yielding guarantees the right
+  // target for the first keystroke.
+  //
+  // When restoring to the editor, use editorView.focus() rather than
+  // contentDOM.focus() directly. CM6 tracks focus state internally
+  // (the vim plugin consults it before intercepting keydowns); a
+  // bare DOM focus() leaves that internal state stale, so Vim's
+  // handler can see "not focused" and pass `:` through to default
+  // text insertion. editorView.focus() updates CM6's state coherently.
+  if (restore) {
+    if (editorView && restore === editorView.contentDOM) {
+      editorView.focus();
+    } else {
+      restore.focus();
+    }
+  }
+});
 export const toggleHelp = () => {
   if (helpDlg.open) hideHelp();
   else showHelp();
@@ -420,15 +498,31 @@ export const setDisplayMode = (mode: string) => {
   prefs.displayMode = mode;
   savePrefs();
   applyDisplayMode();
-  // Blur the editor when entering preview-only mode. WebKit doesn't
-  // reliably blur a focused contenteditable element when it becomes
-  // display:none (applied to .editor-pane by body.mode-preview), so
-  // the editor keeps capturing keystrokes even though it's invisible —
-  // the user's typing modifies the source while they appear to be
-  // interacting with the preview. Explicit blur stops input from
-  // reaching the hidden editor.
-  if (mode === 'preview' && editorView) {
+  if (!editorView) return;
+  // Focus/blur the editor explicitly on mode transition so the
+  // newly-visible surface has predictable focus state:
+  //
+  //   - 'preview': blur the editor. WebKit doesn't reliably blur a
+  //     focused contenteditable when its ancestor becomes
+  //     display:none (via body.mode-preview → .editor-pane), so
+  //     keystrokes can still reach the invisible editor and modify
+  //     the source behind the user's back.
+  //   - 'editor': focus the editor. With the preview hidden, the
+  //     editor is the only input surface — it should always be ready
+  //     to receive keystrokes, regardless of what was focused before
+  //     the mode switch (often body, after a prior preview-mode blur
+  //     or a click on preview in split mode). Without this, opening
+  //     the help dialog straight after switching to edit-only
+  //     captures `body` as pre-help focus, restoration lands on
+  //     body (no-op), and `:` silently fails.
+  //   - 'split': no explicit change. Both panes are visible; whatever
+  //     was focused pre-switch remains focused. Users who had
+  //     intentionally clicked preview to scroll/copy keep their
+  //     position.
+  if (mode === 'preview') {
     editorView.contentDOM.blur();
+  } else if (mode === 'editor') {
+    editorView.focus();
   }
 };
 
@@ -617,3 +711,58 @@ host.addEventListener('focusout', (e) => {
     refreshStatus();
   }
 });
+
+// Keep the editor focused when clicking non-content regions of the
+// editor pane — gutter (line numbers), scrollbar, pane padding, and
+// the empty space around the scroller. Without this, clicking any of
+// those moves focus to <body>; subsequent keystrokes, Vim commands,
+// and Ex commands (`:w`, `:e`, etc.) silently don't reach the editor
+// until the user clicks back into the content. The scrollbar case
+// produced an especially confusing symptom: the FIRST `:` after a
+// scrollbar click was swallowed (focus moving back to the editor
+// mid-keystroke), and only the second `:` opened the Ex prompt.
+//
+// .cm-content is CM6's contenteditable surface — the one place where
+// clicks legitimately move focus; CM6 handles cursor placement there,
+// so we skip our redirect. Input elements (CM6's search panel, the
+// vim Ex input) are also skipped so their own focus semantics work.
+//
+// requestAnimationFrame defers the focus call to AFTER the browser's
+// default focus change from the mousedown, which would otherwise
+// override an immediate .focus() and move focus to <body> anyway.
+host.addEventListener('mousedown', (e) => {
+  if (!(e.target instanceof Element)) return;
+  if (e.target.closest('.cm-content')) return;
+  if (e.target instanceof HTMLInputElement) return;
+  requestAnimationFrame(() => {
+    if (editorView) editorView.contentDOM.focus();
+  });
+});
+
+// Keep the editor focused when clicking the titlebar or status bar
+// (split and editor-only modes only — in preview-only mode the
+// editor is intentionally blurred by setDisplayMode). Both bars
+// carry `data-tauri-drag-region`, which sometimes consumes the
+// mousedown event (preserving editor focus as a side effect) and
+// sometimes lets it through (focus moves to <body>, and Ex commands
+// silently fail until the user clicks back into the editor). The
+// flakiness is a Tauri drag-region quirk; the redirect below makes
+// focus preservation deterministic regardless of how Tauri handles
+// any given click.
+//
+// Skip clicks on buttons (the help `?` button) and inputs — those
+// have their own focus semantics that shouldn't be overridden. In
+// preview mode, skip the redirect so the editor stays blurred and
+// the preview remains the read-only surface.
+const chromeFocusRedirect = (e: MouseEvent) => {
+  if (prefs.displayMode === 'preview') return;
+  if (!(e.target instanceof Element)) return;
+  if (e.target instanceof HTMLButtonElement) return;
+  if (e.target instanceof HTMLInputElement) return;
+  requestAnimationFrame(() => {
+    if (editorView) editorView.contentDOM.focus();
+  });
+};
+const titlebar = document.querySelector('.titlebar');
+if (titlebar) titlebar.addEventListener('mousedown', chromeFocusRedirect as EventListener);
+statusBar.addEventListener('mousedown', chromeFocusRedirect as EventListener);

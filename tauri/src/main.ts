@@ -69,6 +69,7 @@ import {
   type LaunchInfo, type SessionState, type SkrivroConfig,
 } from './config.js';
 import { createEditor, editorView } from './editor.js';
+import { prefs } from './prefs.js';
 import { render, scheduleRender, syncPreviewToCaret } from './preview.js';
 import {
   setDirty, scheduleAutosave, openFile, saveFile, saveFileAs, newFile,
@@ -441,4 +442,20 @@ void render();
 // the editor.ts live binding, so editorView is guaranteed non-null
 // here. strict mode's null typing doesn't track the assignment
 // across module boundaries.
-editorView!.focus();
+//
+// Focus the editor only when it's actually visible. In preview-only
+// mode the editor pane is display:none, and calling editorView.focus()
+// on a hidden contentDOM can flip CM6's internal focus-state flag to
+// `true` even though the browser leaves activeElement on <body> —
+// subsequent keystrokes then route into the hidden editor and land
+// as text in the source (preview re-renders to show them, giving
+// the impression that typing in preview mode edits the document).
+// Explicit blur keeps CM6's state coherent with the visual state.
+// setDisplayMode already handles this correctly for user-triggered
+// mode switches; this block covers the fresh-launch case where the
+// mode comes from session prefs rather than a setDisplayMode call.
+if (prefs.displayMode === 'preview') {
+  editorView!.contentDOM.blur();
+} else {
+  editorView!.focus();
+}

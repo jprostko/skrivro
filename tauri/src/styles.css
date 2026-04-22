@@ -182,6 +182,22 @@ body.no-titlebar .titlebar { display: none; }
   scrollbar-width: thin;
 }
 .preview > :first-child { margin-top: 0; }
+/* "Scroll past end" spacer — without this, the preview's scrollable
+   range stops where the rendered content ends, which means the last
+   ~viewport-worth of content can't be brought to the top of the
+   viewport via scrollIntoView (or manual scroll). syncPreviewToCaret
+   then clamps every cursor position past that threshold to the same
+   visible state and the preview appears stuck. The ::after spacer
+   adds a viewport-height-minus-a-bit of empty scrollable space at the
+   bottom of the content, so any block — including the last — can be
+   scrolled to the top of the viewport. The `4em` subtraction keeps
+   a couple of lines of trailing content visible at max scroll
+   instead of leaving the viewport entirely empty. */
+.preview::after {
+  content: '';
+  display: block;
+  height: calc(100vh - 4em);
+}
 
 /* ---------- Preview — generic HTML ---------- */
 .preview h1, .preview h2, .preview h3,

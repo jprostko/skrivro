@@ -850,25 +850,85 @@ marked.use(markedEmoji({
   renderer: (token: { emoji: string }) => token.emoji,
 }));
 
+// Marked top-level token types that render to exactly one direct
+// child of the parser's output root. This 1:1 invariant lets
+// buildBlockMap pair the precomputed line list against
+// rootElement.children by index — no DOM rewriting or data-attribute
+// injection needed.
+//
+// Excluded from this whitelist (deliberately — they break the
+// invariant in different ways):
+//   - `space`:  whitespace between blocks; produces no DOM at all.
+//   - `def`:    link reference definitions like `[ref]: url`; consumed
+//               at parse time, no DOM emitted.
+//   - `html`:   a single token can wrap multiple top-level elements
+//               (e.g. `<div>x</div>\n<p>y</p>` is one html token but
+//               two children) or zero (an html comment). Variable.
+//
+// Tokens of excluded types still advance cumulative newline count in
+// computeMarkdownLineMap so subsequent visible tokens land on the
+// right line; they just don't get a lineList entry. Cursoring inside
+// an html block or an orphaned link-ref line falls back to the
+// nearest visible-token entry below the cursor (binary-search floor
+// behavior in syncPreviewToCaret).
+//
+// New marked extensions that add their own block-level token types
+// must be added here to participate in scroll sync. Known internal
+// extension: 'gfmAlert' (see GFM alerts section above).
+const VISIBLE_MD_BLOCK_TYPES = new Set([
+  'heading', 'paragraph', 'list', 'blockquote', 'code', 'table', 'hr',
+  'gfmAlert',
+]);
+
+// Compute starting source-line numbers for marked's visible top-level
+// block tokens. Walks the token list once, accumulating newline
+// counts in each token's `raw` so the next token's starting line is
+// known. Returns one entry per visible top-level token, in order.
+const computeMarkdownLineMap = (tokens: { type: string; raw: string }[]): number[] => {
+  const lines: number[] = [];
+  let cumNewlines = 0;
+  for (const t of tokens) {
+    if (VISIBLE_MD_BLOCK_TYPES.has(t.type)) lines.push(cumNewlines + 1);
+    // String.match returns null when there are no matches; coalesce
+    // to an empty array so .length is always valid.
+    cumNewlines += (t.raw.match(/\n/g) || []).length;
+  }
+  return lines;
+};
+
 export const markedRenderer: Renderer = {
   // Not declared async because nothing in the body awaits anything;
-  // marked.parse with async: false is synchronous and DOMPurify is
-  // also synchronous. Return Promise.resolve to match the Renderer
-  // interface's Promise-returning contract.
+  // marked.lexer / marked.parser are synchronous (with async: false)
+  // and DOMPurify is also synchronous. Return Promise.resolve to
+  // match the Renderer interface's Promise-returning contract.
   render(source: string, _context: RenderContext): Promise<RenderResult> {
-    // marked.parse with async: false returns string synchronously;
-    // the overload resolution narrows the return type so no cast
-    // is needed. DOMPurify sanitization matches the AsciidoctorRenderer
-    // path — same HTML-injection protections for either format.
-    const rawHtml = marked.parse(source, MARKED_OPTIONS);
+    // Two-step: lex → annotate → parse. The split (vs marked.parse)
+    // gives access to the token list so we can compute source-line
+    // numbers per top-level block before they're erased by parsing.
+    // Output HTML is identical to what marked.parse(source) produces.
+    const tokens = marked.lexer(source, MARKED_OPTIONS);
+    const lineList = computeMarkdownLineMap(tokens);
+    const rawHtml = marked.parser(tokens, MARKED_OPTIONS);
+    // DOMPurify sanitization matches the AsciidoctorRenderer path —
+    // same HTML-injection protections for either format.
     const html = DOMPurify.sanitize(rawHtml);
 
     return Promise.resolve({
       html,
-      // Scroll-sync block map: empty for now. syncPreviewToCaret
-      // guards on blockMap.length, so an empty map silently no-ops
-      // the sync action in Markdown buffers.
-      buildBlockMap: () => [],
+      // Pair each rendered top-level child with its captured source
+      // line. Min guards against future divergence from the 1:1 token-
+      // to-element invariant — if marked starts emitting more or fewer
+      // top-level elements than non-space tokens, sync degrades
+      // silently rather than throwing.
+      buildBlockMap: (rootElement: Element): BlockMapEntry[] => {
+        const children = rootElement.children;
+        const n = Math.min(children.length, lineList.length);
+        const map: BlockMapEntry[] = [];
+        for (let i = 0; i < n; i++) {
+          map.push({ line: lineList[i]!, el: children[i]! });
+        }
+        return map;
+      },
       // No source transformation happens in Markdown rendering (unlike
       // AsciiDoc's include expansion), so editor and output line
       // coordinates coincide — identity translation is correct.

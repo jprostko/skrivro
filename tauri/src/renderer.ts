@@ -902,25 +902,37 @@ export const markedRenderer: Renderer = {
   // and DOMPurify is also synchronous. Return Promise.resolve to
   // match the Renderer interface's Promise-returning contract.
   render(source: string, _context: RenderContext): Promise<RenderResult> {
-    // Two-step: lex → annotate → parse. The split (vs marked.parse)
-    // gives access to the token list so we can compute source-line
-    // numbers per top-level block before they're erased by parsing.
-    // Output HTML is identical to what marked.parse(source) produces.
-    const tokens = marked.lexer(source, MARKED_OPTIONS);
-    const lineList = computeMarkdownLineMap(tokens);
-    const rawHtml = marked.parser(tokens, MARKED_OPTIONS);
+    // Single-pass render: marked.parse runs the full lex→parse
+    // pipeline with extensions applied (markedEmoji, gfmAlert).
+    // Extensions registered via `marked.use()` are NOT applied by the
+    // standalone marked.parser(tokens) path, so feeding tokens from
+    // marked.lexer back through marked.parser silently strips emoji
+    // shortcodes and GFM alerts — using marked.parse directly is the
+    // only way to get correct HTML.
+    const rawHtml = marked.parse(source, MARKED_OPTIONS);
     // DOMPurify sanitization matches the AsciidoctorRenderer path —
     // same HTML-injection protections for either format.
     const html = DOMPurify.sanitize(rawHtml);
 
     return Promise.resolve({
       html,
-      // Pair each rendered top-level child with its captured source
-      // line. Min guards against future divergence from the 1:1 token-
-      // to-element invariant — if marked starts emitting more or fewer
-      // top-level elements than non-space tokens, sync degrades
-      // silently rather than throwing.
+      // Scroll-sync block map is computed LAZILY — only when the
+      // caller (syncPreviewToCaret in preview.ts) actually needs it,
+      // and cached at the call site until the next render. Most users
+      // never trigger scroll sync, so deferring the lexer pass and
+      // DOM walk keeps rendering at single-pass cost. The closure
+      // captures `source` so a second lex can run on demand. Extensions
+      // don't matter for the line map (emoji is inline, doesn't affect
+      // block structure; gfmAlert is block and is accounted for in
+      // VISIBLE_MD_BLOCK_TYPES).
       buildBlockMap: (rootElement: Element): BlockMapEntry[] => {
+        const tokens = marked.lexer(source, MARKED_OPTIONS);
+        const lineList = computeMarkdownLineMap(tokens);
+        // Pair each rendered top-level child with its captured source
+        // line. Min guards against future divergence from the 1:1
+        // token-to-element invariant — if marked starts emitting more
+        // or fewer top-level elements than non-space tokens, sync
+        // degrades silently rather than throwing.
         const children = rootElement.children;
         const n = Math.min(children.length, lineList.length);
         const map: BlockMapEntry[] = [];

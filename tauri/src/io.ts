@@ -13,7 +13,7 @@ import { basename, dirname, resolve, isAbsolute } from '@tauri-apps/api/path';
 import { invoke } from '@tauri-apps/api/core';
 
 import { Vim, getCM, getDoc, setDoc, editorView, setEditorLanguage } from './editor.js';
-import { render, syncPreviewToCaret } from './preview.js';
+import { render, syncPreviewToCaret, requestPreviewScrollToTop } from './preview.js';
 import { clearAllRendererCaches } from './renderer.js';
 import { userConfig } from './config.js';
 import { tr } from './i18n.js';
@@ -348,6 +348,7 @@ export const loadFileFromPath = async (path: string) => {
     // and the no-floating-promises lint rule.
     void writeSessionState(currentBuffer.path);
     updateTitle();
+    requestPreviewScrollToTop();
     void render();
   } catch (e) {
     console.error('Failed to load file:', path, e);
@@ -418,6 +419,7 @@ export const newFile = () => {
     clearAllRendererCaches();
     void writeSessionState(null);
     updateTitle();
+    requestPreviewScrollToTop();
     void render();
     // Non-null assertion safe here — newFile is user-invoked, only
     // reachable after createEditor has run.
@@ -586,6 +588,7 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
       clearAllRendererCaches();
       void writeSessionState(currentBuffer.path);
       updateTitle();
+      requestPreviewScrollToTop();
       void render();
     } catch (e) {
       console.error(e);

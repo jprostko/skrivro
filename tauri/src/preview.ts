@@ -37,17 +37,56 @@ const escapeHtml = (s: string) =>
 let renderTimer: ReturnType<typeof setTimeout> | null = null;
 
 // ================= Scroll-sync state =================
-// Populated by each successful render via the Renderer's callbacks.
-// blockMap is consumed by syncPreviewToCaret's binary search;
-// translateEditorLine converts editor-source lines into the coordinate
-// system blockMap.line uses (identity for renderers that don't
-// transform source, include-aware for AsciiDoc).
-let blockMap: BlockMapEntry[] = [];
+// Scroll-sync state, populated lazily — the block map and
+// translateEditorLine callback are supplied by each render's Renderer
+// result but computed on demand the first time syncPreviewToCaret
+// runs after a render. Users who never trigger sync pay zero cost for
+// the map build; sync users pay the build cost once per render cycle,
+// then reuse the cached map across repeated sync triggers until the
+// next render invalidates it.
+//
+// `blockMap = null` means "not yet built" (either initial state or
+// invalidated by a recent render). `latestBuildBlockMap === null`
+// means no render has completed yet (fresh app launch, pre-first-
+// render). After any successful render, latestBuildBlockMap holds the
+// builder closure from result.buildBlockMap, ready to compute the
+// map on demand.
+let blockMap: BlockMapEntry[] | null = null;
+let latestBuildBlockMap: ((rootElement: Element) => BlockMapEntry[]) | null = null;
 let translateEditorLine: (editorLine: number) => number = (n) => n;
+
+// "Scroll preview to top on next render" flag. Browsers preserve the
+// preview's scrollTop as a literal pixel value across content
+// replacement; combined with the scroll-past-end spacer, that means
+// opening a short file after scrolling deep into a long one can land
+// the viewport in the new file's spacer region (entirely blank). File-
+// load entry points (openFile/Ctrl+O, newFile/Ctrl+N, drag-drop,
+// :e filename, initial session-restore launch) call
+// requestPreviewScrollToTop() to queue a reset; render() consumes the
+// flag right after writing the new HTML, so the reset lands on the
+// fresh content. Intentionally NOT set by edits, saves, or format
+// toggles — those keep the user's current scroll position.
+let pendingScrollToTop = false;
+export const requestPreviewScrollToTop = () => {
+  pendingScrollToTop = true;
+};
+
+// Monotonically-increasing token. Each render invocation claims a
+// token at entry; after the async render completes it checks the
+// token is still current before writing to the DOM. A newer render
+// (fired by file open, format toggle, or further edits) advances the
+// counter, making any still-in-flight older render a no-op on
+// completion. Without this, a slow renderer (asciidoctor can take
+// 50-200ms for include-heavy docs) started with stale format/source
+// can finish AFTER a fast markdown render and overwrite its output —
+// the preview ends up showing asciidoctor output for a markdown
+// buffer (or equivalent cross-contamination).
+let renderToken = 0;
 
 // ================= Render =================
 
 export const render = async () => {
+  const myToken = ++renderToken;
   try {
     const source = getDoc();
     // Format-keyed dispatch — the active renderer is chosen per-
@@ -55,6 +94,13 @@ export const render = async () => {
     // file extension (or the default-format config) and can be
     // changed at runtime via the format toggle / Ex commands.
     const result = await getRenderer(currentBuffer.format).render(source, { path: currentBuffer.path });
+
+    // Staleness check: if a newer render fired while we were awaiting
+    // (because the user opened a different file, toggled format, or
+    // rapidly edited), abort — let the newer render's output be
+    // authoritative. Otherwise this render's now-stale HTML would
+    // clobber the fresher result.
+    if (myToken !== renderToken) return;
 
     // Image path post-processing.
     //
@@ -110,17 +156,39 @@ export const render = async () => {
       out.innerHTML = result.html;
     }
 
-    blockMap = result.buildBlockMap(out);
+    // Consume the scroll-to-top request, if any. Done right after the
+    // DOM write so the reset lands on the fresh content; any carried-
+    // over scrollTop from the previous content (which can now fall
+    // into the scroll-past-end spacer on a shorter doc) is cleared.
+    if (pendingScrollToTop) {
+      out.scrollTop = 0;
+      pendingScrollToTop = false;
+    }
+
+    // Invalidate the cached map and stash the new builder for lazy
+    // evaluation on the next syncPreviewToCaret call. buildBlockMap
+    // is NOT invoked here — skipping the (potentially non-trivial)
+    // map build for every render is the point.
+    blockMap = null;
+    latestBuildBlockMap = result.buildBlockMap;
     translateEditorLine = result.translateEditorLine;
     updateWordCount();
   } catch (e) {
     console.error('render failed:', e);
+    // Same staleness check as the success path — if a newer render
+    // has started/completed, don't clobber its output with an error
+    // from an already-superseded render.
+    if (myToken !== renderToken) return;
     // Catch variable is `unknown` under strict mode. Narrow to Error
     // to pull a message, else coerce to string as a last resort.
     const msg = e instanceof Error ? e.message : String(e);
     out.innerHTML =
       `<pre class="render-error">Render error: ${escapeHtml(msg)}</pre>`;
-    blockMap = [];
+    // Error state has no renderable block map; clear both the cache
+    // and the builder so sync attempts after an error are no-ops
+    // instead of trying to build from stale (or nonexistent) state.
+    blockMap = null;
+    latestBuildBlockMap = null;
     // Intentionally not updating word count on render error — the
     // error message's word count is meaningless, so leaving the
     // previous successful value feels less jarring than showing
@@ -176,7 +244,18 @@ const flashSync = () => {
 // include line map. For renderers that don't transform source, it's
 // the identity function.
 export const syncPreviewToCaret = () => {
-  if (!blockMap.length || !editorView) return;
+  if (!editorView) return;
+  // Build the block map lazily — the FIRST sync after each render
+  // pays the lexer+walk cost, subsequent syncs reuse the cached map
+  // until the next render invalidates it. Users who never trigger
+  // sync pay nothing. `latestBuildBlockMap` is null pre-first-render
+  // and after a render error, which both correctly short-circuit to
+  // a no-op sync.
+  if (blockMap === null) {
+    if (!latestBuildBlockMap) return;
+    blockMap = latestBuildBlockMap(out);
+  }
+  if (!blockMap.length) return;
   // Flash the sync indicator after the guards pass — the guards
   // protect against no-op invocations (empty document, pre-init
   // editor) where the sync command is semantically meaningless.

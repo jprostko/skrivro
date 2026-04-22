@@ -26,7 +26,9 @@
     "@tauri-apps/plugin-shell": "^2.3.5",
     "dompurify": "^3.3.3",
     "font-awesome": "^4.7.0",
-    "marked": "^18.0.2"
+    "gemoji": "^8.1.0",
+    "marked": "^18.0.2",
+    "marked-emoji": "^2.0.3"
   },
   "lint-staged": {
     "tauri/src/**/*.ts": "eslint"

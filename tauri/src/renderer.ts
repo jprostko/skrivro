@@ -16,6 +16,8 @@ import Asciidoctor, {
 } from '@asciidoctor/core';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
+import { markedEmoji } from 'marked-emoji';
+import { nameToEmoji } from 'gemoji';
 
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { basename, dirname, resolve } from '@tauri-apps/api/path';
@@ -816,6 +818,37 @@ marked.use({
     },
   ],
 });
+
+// ================= Emoji shortcodes extension =================
+//
+// GitHub-style `:name:` shortcodes in markdown source render as the
+// corresponding unicode emoji. The shortcode list is `nameToEmoji`
+// from gemoji, a mirror of github/gemoji (the same Ruby gem
+// github.com itself uses) — about 1900 entries covering every
+// unicode-standard emoji and its GitHub-recognized aliases.
+//
+// Renderer returns the raw codepoint, so the output is a literal
+// unicode character — no <img> tags, no font dependencies, no
+// network access. The system emoji font handles glyph display
+// (Segoe UI Emoji on Windows, Apple Color Emoji on macOS, Noto
+// Color Emoji on Linux). All three are already in our --font-sans
+// fallback chain (see styles.css).
+//
+// GitHub's custom non-unicode shortcodes (:octocat:, :shipit:,
+// :trollface:) are NOT in nameToEmoji because they have no unicode
+// codepoint — they exist only as PNGs hosted on GitHub. Those names
+// pass through unchanged as literal `:octocat:` text. Supporting
+// them would require bundling images and rules out the offline
+// guarantee, so they're intentionally excluded.
+//
+// The extension is inline-level (matches inside paragraphs, not
+// just at block boundaries) and only claims input where the name
+// between colons is in the emoji list — unknown names like
+// `:notarealemoji:` fall through unchanged.
+marked.use(markedEmoji({
+  emojis: nameToEmoji,
+  renderer: (token: { emoji: string }) => token.emoji,
+}));
 
 export const markedRenderer: Renderer = {
   // Not declared async because nothing in the body awaits anything;

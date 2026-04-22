@@ -21,7 +21,7 @@ import {
   HighlightStyle, defaultHighlightStyle, StreamLanguage,
 } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
-import { markdown, markdownLanguage, markdownKeymap } from '@codemirror/lang-markdown';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { vim, Vim, getCM } from '@replit/codemirror-vim';
 
 import { prefs } from './prefs.js';
@@ -298,15 +298,18 @@ export const vimCompartment = new Compartment();
 // via setEditorLanguage — no rebuild of the full extension set.
 export const languageCompartment = new Compartment();
 
-// Pre-built markdown language extension. Combines the GFM+emoji
-// base parser from @codemirror/lang-markdown with the package's
-// markdown-specific keymap (Enter continues lists and blockquotes,
-// Backspace deletes one level of markup). Constructed once at
+// Pre-built markdown language extension wrapping the GFM-base
+// parser from @codemirror/lang-markdown. Constructed once at
 // module load rather than per-reconfigure because the extension
 // is stateless and can be reused across buffer switches.
+//
+// `addKeymap: false` suppresses the package's default keymap,
+// which binds Enter to continue list/blockquote markers on the
+// next line and Backspace to delete one markup level at a time.
+// Neither belongs in this editor: input should never be modified
+// except by what the user typed.
 const markdownLang: Extension = [
-  markdown({ base: markdownLanguage }),
-  keymap.of(markdownKeymap),
+  markdown({ base: markdownLanguage, addKeymap: false }),
 ];
 
 // Map a buffer format to the CM6 language extension that should be

@@ -420,6 +420,16 @@ export const setDisplayMode = (mode: string) => {
   prefs.displayMode = mode;
   savePrefs();
   applyDisplayMode();
+  // Blur the editor when entering preview-only mode. WebKit doesn't
+  // reliably blur a focused contenteditable element when it becomes
+  // display:none (applied to .editor-pane by body.mode-preview), so
+  // the editor keeps capturing keystrokes even though it's invisible —
+  // the user's typing modifies the source while they appear to be
+  // interacting with the preview. Explicit blur stops input from
+  // reaching the hidden editor.
+  if (mode === 'preview' && editorView) {
+    editorView.contentDOM.blur();
+  }
 };
 
 // ================= User config application =================

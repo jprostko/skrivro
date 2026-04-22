@@ -283,6 +283,36 @@ body.no-titlebar .titlebar { display: none; }
 .preview ul, .preview ol { padding-left: 1.5em; margin: 0.8em 0; }
 .preview li { margin: 0.25em 0; }
 
+/* GFM task lists. marked emits `- [ ] / - [x]` items as
+   <li><input type="checkbox" disabled> text</li> with no class
+   marker (GitHub's own renderer adds `.task-list-item`; marked does
+   not). Targeting via :has() on the <li> scopes the rule to
+   task-list items without touching normal list items.
+
+   Hide the native bullet (showing both a bullet AND a checkbox looks
+   redundant) and pull the item flush-left by the parent list's
+   padding so the checkbox sits where the bullet would have — matches
+   GitHub's rendering. The -1.5em cancels the 1.5em padding-left we
+   set on every .preview ul/ol above; nested task lists also shift
+   by their own parent's 1.5em, which keeps them at the correct
+   nested indent relative to their siblings.
+
+   accent-color sets the checked-state fill to the theme's link
+   color; most modern browsers also tint the unchecked border
+   towards that color, improving visibility against dark backgrounds
+   (the default unchecked box is near-invisible on Catppuccin Mocha).
+   vertical-align: middle keeps the checkbox centered on the text
+   x-height instead of sitting on the baseline. */
+.preview li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -1.5em;
+}
+.preview input[type="checkbox"] {
+  accent-color: var(--skr-link);
+  margin-right: 0.35em;
+  vertical-align: middle;
+}
+
 .preview table {
   border-collapse: collapse;
   margin: 1em 0;

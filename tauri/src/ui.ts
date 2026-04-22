@@ -9,7 +9,7 @@
 import { tr } from './i18n.js';
 import { prefs, savePrefs } from './prefs.js';
 import { isMac } from './i18n.js';
-import { editorView, setVimMode, getCM } from './editor.js';
+import { Vim, editorView, setVimMode, getCM } from './editor.js';
 import { currentBuffer, setBufferFormat, type Format } from './io.js';
 import { userConfig, type SkrivroConfig } from './config.js';
 
@@ -766,3 +766,46 @@ const chromeFocusRedirect = (e: MouseEvent) => {
 const titlebar = document.querySelector('.titlebar');
 if (titlebar) titlebar.addEventListener('mousedown', chromeFocusRedirect as EventListener);
 statusBar.addEventListener('mousedown', chromeFocusRedirect as EventListener);
+
+// `:` auto-capture in split mode. If the editor doesn't have focus
+// when `:` is pressed (typically because the user clicked the preview
+// pane to scroll or select), hand the key directly to Vim via the
+// plugin's handleKey entry point. Opens the Ex prompt on the FIRST
+// keystroke instead of requiring the user to click back into the
+// editor first. Focus shifts to the Ex panel's input, same as a
+// normal `:` press inside the editor would produce.
+//
+// Scope is deliberately narrow:
+//
+//   - Split mode only. Editor-only mode already focuses the editor
+//     on mode switch (so `:` naturally works there), and preview-
+//     only mode intentionally doesn't accept input — auto-capture
+//     there would either open an invisible Ex prompt in the hidden
+//     editor or force a mode switch, both worse than doing nothing.
+//   - Plain `:` — no modifiers. Ctrl/Alt/Cmd+`:` might be a shortcut
+//     in some layout; don't swallow.
+//   - Skip when contentDOM already has focus (the normal vim path
+//     handles it) and when an input/textarea has focus (the CM6
+//     search panel, the vim Ex panel itself, confirm-dialog inputs).
+//   - Skip when vim mode is disabled — `:` has no Ex meaning without
+//     vim, so swallowing it would just lose the keystroke.
+//
+// Capture phase beats CM6's keymap (same rationale as the existing
+// window shortcut listener in main.ts).
+window.addEventListener('keydown', (e) => {
+  if (e.key !== ':') return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (prefs.displayMode !== 'split') return;
+  if (!prefs.vimMode) return;
+  if (!editorView) return;
+  const active = document.activeElement;
+  if (active === editorView.contentDOM) return;
+  if (active instanceof HTMLInputElement) return;
+  if (active instanceof HTMLTextAreaElement) return;
+  const cm = getCM(editorView);
+  if (!cm) return;
+  e.preventDefault();
+  // `'user'` origin mirrors how the plugin labels user-initiated
+  // keystrokes internally (vs. replayed macros).
+  Vim.handleKey(cm, ':', 'user');
+}, { capture: true });

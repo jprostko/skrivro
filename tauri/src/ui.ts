@@ -493,6 +493,32 @@ export const applyDisplayMode = () => {
   for (const m of DISPLAY_MODES) cl.remove(`mode-${m}`);
   cl.add(`mode-${prefs.displayMode}`);
 };
+// Toggle keyboard focus between the editor pane and the preview pane.
+// Only meaningful in split mode — in editor-only and preview-only
+// modes there's only one pane and nothing to toggle, so the call is
+// a no-op. Pairs with the :focus-within outline rule in styles.css
+// that visually marks the active pane; each press moves focus AND
+// the outline to the other pane.
+//
+// "Has focus" is read via editorView.hasFocus (a live CM6 getter that
+// handles nested focusable elements inside the editor — search panel
+// input, vim Ex input, etc. — all count as "editor has focus"). If
+// the editor has focus, move to the preview element (which is
+// programmatically focusable via tabindex="-1" on the div). Otherwise
+// move to the editor; this covers both the "preview is focused" case
+// and the "neither pane is focused" case (e.g., focus is on a
+// chrome element), both of which should land the user back in the
+// editor.
+export const togglePaneFocus = () => {
+  if (prefs.displayMode !== 'split') return;
+  if (!editorView) return;
+  if (editorView.hasFocus) {
+    out.focus();
+  } else {
+    editorView.focus();
+  }
+};
+
 export const setDisplayMode = (mode: string) => {
   if (!DISPLAY_MODES.includes(mode)) return;
   prefs.displayMode = mode;

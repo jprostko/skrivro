@@ -61,7 +61,13 @@
 
   <main class="wrap">
     <div id="src-host" class="editor-pane"></div>
-    <div class="preview-pane" id="out"></div>
+    <!-- tabindex="-1" makes the preview pane programmatically focusable
+         (and click-focusable) without putting it in the Tab key order.
+         Required so that (a) the Ctrl+Alt+W pane-toggle can land focus
+         on the preview, and (b) `.preview-pane:focus-within` can fire
+         when the preview is the active pane, lighting up the active-
+         pane outline in split mode. -->
+    <div class="preview-pane" id="out" tabindex="-1"></div>
   </main>
 
   <!-- Status bar: mode pill (vim-only) + filename on the left;

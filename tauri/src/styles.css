@@ -180,6 +180,41 @@ body.no-titlebar .titlebar { display: none; }
   line-height: 1.65;
   scrollbar-color: var(--skr-surface-hover) var(--skr-bg);
   scrollbar-width: thin;
+  /* tabindex="-1" on the preview element lets it receive focus (click
+     or programmatic) for the pane-toggle and :focus-within outline
+     below. Suppress the default focus ring the browser would draw
+     around the whole pane when it's focused — we have our own
+     active-pane outline rule that provides the same signal with
+     better scope (split mode only) and theme coherence. */
+  outline: none;
+}
+.preview-pane:focus { outline: none; }
+
+/* Active-pane indicator — split mode only. Whichever pane contains
+   the focused element (the editor's .cm-content, or the preview pane
+   itself via tabindex) gets a 2px inset outline in the theme accent
+   color so it's unambiguous which pane will receive keystrokes.
+   Single-pane modes don't need this: there's only one pane, so the
+   outline would be visual noise with no information. outline-offset
+   pulls the line 2px inside the element's edge so it sits on the
+   pane's boundary rather than outside it (no layout shift either
+   way — outline doesn't participate in layout).
+
+   Why the editor side targets `.cm-editor` rather than the wrapping
+   `.editor-pane`: an outline drawn on `.editor-pane` gets occluded
+   on three sides by the CM6 editor's own background. Per the CSS
+   painting-order spec the parent's outline should paint above
+   children, but WebKit has a long-standing quirk where children
+   with their own painted background cover the parent's inset
+   outline anyway. Targeting `.cm-editor` directly puts the outline
+   on the same element CM6 uses for its default focus ring (which
+   we suppress earlier), and it paints correctly there. The preview
+   side has no covering child, so the straightforward
+   `.preview-pane:focus-within` rule works as written. */
+body.mode-split .editor-pane:focus-within .cm-editor,
+body.mode-split .preview-pane:focus-within {
+  outline: 1px solid var(--skr-accent);
+  outline-offset: -1px;
 }
 .preview-pane > :first-child { margin-top: 0; }
 /* "Scroll past end" spacer — without this, the preview's scrollable

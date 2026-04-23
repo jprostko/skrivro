@@ -88,7 +88,7 @@ import {
   applyTitlebar, applyGutter, applyStatusBar, applyDisplayMode,
   applyMacModifierLabels, applyUserConfig,
   toggleTitlebar, toggleGutter, toggleStatusBar, toggleVim, toggleHelp,
-  toggleFormat, setDisplayMode, refreshStatus,
+  toggleFormat, togglePaneFocus, setDisplayMode, refreshStatus,
 } from './ui.js';
 
 // ================= Keyboard shortcuts =================
@@ -156,6 +156,12 @@ window.addEventListener('keydown', (e) => {
     // obvious letter but Cmd+Ctrl+F on Mac is the Fullscreen menu
     // shortcut that AppKit intercepts before the webview sees it.
     e.preventDefault(); toggleFormat();
+  } else if (second && k === 'w') {
+    // Pane-focus toggle (W for Window — matches vim's window-command
+    // mnemonic without colliding with vim's own <C-w> chord, which
+    // requires no Alt). Only meaningful in split mode; togglePaneFocus
+    // no-ops in editor-only and preview-only.
+    e.preventDefault(); togglePaneFocus();
   }
   // Primary-only shortcuts. Save/Open/New use the primary modifier alone
   // because those are universal cross-platform conventions (Ctrl+S /

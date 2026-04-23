@@ -1,27 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Shared MIME info for AsciiDoc source documents.
+  Shared MIME info for AsciiDoc and Markdown source documents.
 
-  Teaches the system (via shared-mime-info / xdg-mime) that .adoc, .asciidoc,
-  and .asc files are "text/x-asciidoc" rather than the generic "text/plain".
-  Without this, xdg-mime query filetype foo.adoc returns "text/plain" on
-  systems whose shared-mime-info database doesn't yet include AsciiDoc — and
-  our .desktop file's `MimeType=text/x-asciidoc;` association silently never
-  fires because the system never identifies any file as that type.
+  Teaches the system (via shared-mime-info / xdg-mime) that .adoc/.asciidoc
+  files are "text/x-asciidoc" and .md/.markdown files are "text/markdown",
+  rather than the generic "text/plain". Without this, our .desktop file's
+  MimeType associations would silently never fire on systems whose
+  shared-mime-info database doesn't yet include either type — file managers
+  wouldn't surface "Open with Skrivro" in right-click menus.
 
   text/x-asciidoc is the de-facto MIME type for AsciiDoc source. The x-
   prefix marks it as unregistered with IANA (there's no official
   "text/asciidoc" yet — the IETF draft has been in limbo for years). Upstream
   shared-mime-info added an entry for this type in release 2.1 (2021), so
-  on recent distros this file is redundant. On older systems (or minimal
-  installs without shared-mime-info 2.1+) it's the mechanism that makes
-  "Open with Skrivro" show up in file manager right-click menus.
+  on recent distros the AsciiDoc half is redundant. On older systems (or
+  minimal installs without shared-mime-info 2.1+) it's the mechanism that
+  makes "Open with Skrivro" show up in file manager right-click menus.
 
-  The sub-class-of text/plain declaration means: AsciiDoc is a specialized
-  form of plain text. Tools that handle plain text still see .adoc files as
-  openable, but tools that specifically handle text/x-asciidoc (Skrivro)
-  get priority. Clean polymorphism — we claim the specific type without
-  blocking the generic handlers.
+  text/markdown is IANA-registered (RFC 7763, 2016) and shipped in upstream
+  shared-mime-info from release 1.6 (2015) onward. In theory most modern
+  systems already know it. In practice some distros / minimal installs
+  still report .md as text/plain, so we register it here for the same
+  reason as AsciiDoc — the .desktop association needs the type to exist
+  in the system's MIME database before file managers will use it.
+
+  The sub-class-of text/plain declaration means each format is a specialized
+  form of plain text. Tools that handle plain text still see .adoc / .md
+  files as openable, but tools that specifically handle text/x-asciidoc or
+  text/markdown (Skrivro) get priority. Clean polymorphism — we claim the
+  specific type without blocking the generic handlers.
+
+  Glob patterns deliberately match exactly the extensions Skrivro's
+  detection logic recognizes (see resolveFormatForPath in tauri/src/io.ts):
+  AsciiDoc gets .adoc and .asciidoc only; Markdown gets .md and .markdown
+  only. Other variants (.asc for AsciiDoc; .mdown / .mkd / .mkdn for
+  Markdown) are sometimes seen in the wild but not classified by Skrivro,
+  so registering them here would mismatch — file manager would suggest
+  "Open with Skrivro" for a file that Skrivro then classifies as text.
+  Keep the two sources in sync if either ever changes.
+
+  No magic block for Markdown because the obvious markers (a leading
+  `# ` for an h1, or three dashes opening a YAML frontmatter block) are
+  too weak as positive signals — both appear in plenty of plain text and
+  YAML files. Extension-based detection is the standard for Markdown and
+  what shared-mime-info upstream uses too. AsciiDoc's magic stays because
+  :author: / :doctype: are AsciiDoc-specific enough to be safe.
 
   Install instructions (user-level, for the current user):
 
@@ -35,7 +58,8 @@
     sudo update-mime-database /usr/share/mime/
 
   After either, `xdg-mime query filetype somefile.adoc` should report
-  text/x-asciidoc. Log out and back in (or restart the file manager) for
+  text/x-asciidoc, and `xdg-mime query filetype somefile.md` should report
+  text/markdown. Log out and back in (or restart the file manager) for
   the change to appear in "Open with..." menus.
 -->
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
@@ -45,11 +69,17 @@
     <sub-class-of type="text/plain"/>
     <glob pattern="*.adoc"/>
     <glob pattern="*.asciidoc"/>
-    <glob pattern="*.asc"/>
     <magic priority="50">
       <match type="string" offset="0" value="= "/>
       <match type="string" offset="0" value=":author:"/>
       <match type="string" offset="0" value=":doctype:"/>
     </magic>
+  </mime-type>
+  <mime-type type="text/markdown">
+    <comment>Markdown source document</comment>
+    <comment xml:lang="en">Markdown source document</comment>
+    <sub-class-of type="text/plain"/>
+    <glob pattern="*.md"/>
+    <glob pattern="*.markdown"/>
   </mime-type>
 </mime-info>

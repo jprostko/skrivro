@@ -533,7 +533,7 @@ export const setDisplayMode = (mode: string) => {
 // --font-sans, --edit-font-size, --preview-font-size,
 // --editor-padding-x, --editor-padding-y, --preview-padding-x,
 // --preview-padding-y, --edit-pane-width, --preview-pane-width)
-// are all consumed by the CM6 theme and the .preview / .cm-scroller
+// are all consumed by the CM6 theme and the .preview-pane / .cm-scroller
 // CSS rules, so a single assignment here propagates to every
 // rendered element that reads them. No CM6 dispatch effects, no
 // theme reconfiguration dance — this is why CSS variables are
@@ -571,7 +571,7 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
 
   // Font size overrides: direct CSS variable assignment propagates
   // automatically to the CM6 theme (fontSize: 'var(--edit-font-size)')
-  // and the .preview CSS rule (font-size: var(--preview-font-size)).
+  // and the .preview-pane CSS rule (font-size: var(--preview-font-size)).
   if (cfg.editFontSize) {
     root.style.setProperty('--edit-font-size', cfg.editFontSize);
   }
@@ -584,8 +584,8 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   // consumes --editor-padding-y on .cm-content's padding-block and
   // --editor-padding-x on .cm-line's padding-inline (see the CM6
   // theme above for why the split is load-bearing). The preview
-  // side consumes both on the .preview element directly via
-  // padding-block and padding-inline (.preview is a single <div>,
+  // side consumes both on the .preview-pane element directly via
+  // padding-block and padding-inline (.preview-pane is a single <div>,
   // no DOM split needed, but we keep the two-variable shape for
   // consistency with the editor so the user has one mental model).
   //
@@ -614,7 +614,7 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   // so that the CM6 vim command panel and search bar escape the
   // reading-column constraint and span the full window — matching
   // Vim's convention for the Ex command line. In preview-only mode
-  // the constraint is applied to `.preview` directly since there
+  // the constraint is applied to `.preview-pane` directly since there
   // are no CM6 panels in the preview side. Split mode doesn't read
   // these vars — each pane is 50% of the window via flexbox.
   //

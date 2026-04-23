@@ -43,7 +43,7 @@
   --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
 
   /* Config-file-overridable tokens — referenced by the CM6 theme in
-     tauri/src/index.html and by the .preview / .cm-scroller rules
+     tauri/src/index.html and by the .preview-pane / .cm-scroller rules
      below.
 
      Defaults are in rem for font sizes and padding so they scale
@@ -155,7 +155,7 @@ body.no-titlebar .titlebar { display: none; }
   flex: 1;
   min-height: 0;
 }
-.editor-pane, .preview {
+.editor-pane, .preview-pane {
   flex: 1;
   min-width: 0;
   height: 100%;
@@ -169,7 +169,7 @@ body.no-titlebar .titlebar { display: none; }
 .editor-pane .cm-editor { height: 100%; }
 .editor-pane .cm-editor.cm-focused { outline: none; }
 
-.preview {
+.preview-pane {
   overflow: auto;
   padding-block: var(--preview-padding-y);
   padding-inline: var(--preview-padding-x);
@@ -181,7 +181,7 @@ body.no-titlebar .titlebar { display: none; }
   scrollbar-color: var(--skr-surface-hover) var(--skr-bg);
   scrollbar-width: thin;
 }
-.preview > :first-child { margin-top: 0; }
+.preview-pane > :first-child { margin-top: 0; }
 /* "Scroll past end" spacer — without this, the preview's scrollable
    range stops where the rendered content ends, which means the last
    ~viewport-worth of content can't be brought to the top of the
@@ -193,34 +193,34 @@ body.no-titlebar .titlebar { display: none; }
    scrolled to the top of the viewport. The `4em` subtraction keeps
    a couple of lines of trailing content visible at max scroll
    instead of leaving the viewport entirely empty. */
-.preview::after {
+.preview-pane::after {
   content: '';
   display: block;
   height: calc(100vh - 4em);
 }
 
 /* ---------- Preview — generic HTML ---------- */
-.preview h1, .preview h2, .preview h3,
-.preview h4, .preview h5, .preview h6 {
+.preview-pane h1, .preview-pane h2, .preview-pane h3,
+.preview-pane h4, .preview-pane h5, .preview-pane h6 {
   color: var(--skr-accent);
   font-weight: 600;
   line-height: 1.25;
   margin-top: 1.6em;
   margin-bottom: 0.6em;
 }
-.preview h1 { font-size: 1.9rem; border-bottom: 1px solid var(--skr-surface); padding-bottom: 0.3em; }
-.preview h2 { font-size: 1.5rem; border-bottom: 1px solid var(--skr-surface); padding-bottom: 0.25em; }
-.preview h3 { font-size: 1.25rem; color: var(--skr-accent-alt); }
-.preview h4 { font-size: 1.1rem;  color: var(--skr-accent-alt); }
-.preview h5, .preview h6 { font-size: 1rem; color: var(--skr-accent-minor); }
+.preview-pane h1 { font-size: 1.9rem; border-bottom: 1px solid var(--skr-surface); padding-bottom: 0.3em; }
+.preview-pane h2 { font-size: 1.5rem; border-bottom: 1px solid var(--skr-surface); padding-bottom: 0.25em; }
+.preview-pane h3 { font-size: 1.25rem; color: var(--skr-accent-alt); }
+.preview-pane h4 { font-size: 1.1rem;  color: var(--skr-accent-alt); }
+.preview-pane h5, .preview-pane h6 { font-size: 1rem; color: var(--skr-accent-minor); }
 
-.preview p { margin: 0.8em 0; }
-.preview a { color: var(--skr-link); text-decoration: none; }
-.preview a:hover { text-decoration: underline; }
-.preview strong { color: var(--skr-text); font-weight: 700; }
-.preview em { color: var(--skr-text); }
+.preview-pane p { margin: 0.8em 0; }
+.preview-pane a { color: var(--skr-link); text-decoration: none; }
+.preview-pane a:hover { text-decoration: underline; }
+.preview-pane strong { color: var(--skr-text); font-weight: 700; }
+.preview-pane em { color: var(--skr-text); }
 
-.preview code {
+.preview-pane code {
   font-family: var(--font-mono);
   font-size: 0.85em;
   background: var(--skr-surface);
@@ -228,7 +228,7 @@ body.no-titlebar .titlebar { display: none; }
   padding: 0.1em 0.35em;
   border-radius: 4px;
 }
-.preview pre {
+.preview-pane pre {
   font-family: var(--font-mono);
   font-size: 0.85em;
   background: var(--skr-bg-inset);
@@ -240,15 +240,15 @@ body.no-titlebar .titlebar { display: none; }
   line-height: 1.5;
   margin: 1em 0;
 }
-.preview pre code {
+.preview-pane pre code {
   background: transparent;
   color: inherit;
   padding: 0;
   border-radius: 0;
 }
 
-.preview blockquote,
-.preview .quoteblock blockquote {
+.preview-pane blockquote,
+.preview-pane .quoteblock blockquote {
   margin: 1em 0;
   padding: 0.5em 1.2em;
   border-left: 3px solid var(--skr-accent-alt);
@@ -256,14 +256,14 @@ body.no-titlebar .titlebar { display: none; }
   color: var(--skr-text-muted);
   border-radius: 0 4px 4px 0;
 }
-.preview .quoteblock .attribution {
+.preview-pane .quoteblock .attribution {
   color: var(--skr-text-dim);
   font-size: 0.85em;
   text-align: right;
   margin-top: 0.5em;
 }
 
-.preview hr {
+.preview-pane hr {
   border: none;
   border-top: 1px solid var(--skr-surface);
   margin: 2em 0;
@@ -275,13 +275,13 @@ body.no-titlebar .titlebar { display: none; }
    rule any image rendered at its natural resolution (e.g. a 1920x1920
    photograph) overflows the preview pane. height: auto preserves aspect
    ratio when the intrinsic width exceeds the container. */
-.preview img {
+.preview-pane img {
   max-width: 100%;
   height: auto;
 }
 
-.preview ul, .preview ol { padding-left: 1.5em; margin: 0.8em 0; }
-.preview li { margin: 0.25em 0; }
+.preview-pane ul, .preview-pane ol { padding-left: 1.5em; margin: 0.8em 0; }
+.preview-pane li { margin: 0.25em 0; }
 
 /* GFM task lists. marked emits `- [ ] / - [x]` items as
    <li><input type="checkbox" disabled> text</li> with no class
@@ -293,7 +293,7 @@ body.no-titlebar .titlebar { display: none; }
    redundant) and pull the item flush-left by the parent list's
    padding so the checkbox sits where the bullet would have — matches
    GitHub's rendering. The -1.5em cancels the 1.5em padding-left we
-   set on every .preview ul/ol above; nested task lists also shift
+   set on every .preview-pane ul/ol above; nested task lists also shift
    by their own parent's 1.5em, which keeps them at the correct
    nested indent relative to their siblings.
 
@@ -303,45 +303,45 @@ body.no-titlebar .titlebar { display: none; }
    (the default unchecked box is near-invisible on Catppuccin Mocha).
    vertical-align: middle keeps the checkbox centered on the text
    x-height instead of sitting on the baseline. */
-.preview li:has(> input[type="checkbox"]) {
+.preview-pane li:has(> input[type="checkbox"]) {
   list-style: none;
   margin-left: -1.5em;
 }
-.preview input[type="checkbox"] {
+.preview-pane input[type="checkbox"] {
   accent-color: var(--skr-link);
   margin-right: 0.35em;
   vertical-align: middle;
 }
 
-.preview table {
+.preview-pane table {
   border-collapse: collapse;
   margin: 1em 0;
   width: 100%;
 }
-.preview th, .preview td {
+.preview-pane th, .preview-pane td {
   border: 1px solid var(--skr-surface);
   padding: 0.5em 0.8em;
   text-align: left;
 }
-.preview th {
+.preview-pane th {
   background: var(--skr-surface);
   color: var(--skr-accent);
 }
-.preview tr:nth-child(even) td { background: var(--skr-bg-stripe); }
+.preview-pane tr:nth-child(even) td { background: var(--skr-bg-stripe); }
 
 /* ---------- Preview — AsciiDoctor block classes ---------- */
-.preview .listingblock pre,
-.preview .literalblock pre {
+.preview-pane .listingblock pre,
+.preview-pane .literalblock pre {
   background: var(--skr-bg-inset);
 }
-.preview .exampleblock > .content {
+.preview-pane .exampleblock > .content {
   border-left: 3px solid var(--skr-link);
   padding: 0.5em 1em;
   background: var(--skr-bg);
   border-radius: 0 4px 4px 0;
   margin: 1em 0;
 }
-.preview .sidebarblock {
+.preview-pane .sidebarblock {
   border: 1px solid var(--skr-surface);
   border-radius: 6px;
   padding: 1em 1.2em;
@@ -366,7 +366,7 @@ body.no-titlebar .titlebar { display: none; }
    GFM alerts (in the .markdown-alert rules below) DO keep their
    stripe because GitHub's rendering does; the two formats follow
    their respective upstream conventions. */
-.preview .admonitionblock { margin: 1em 0; }
+.preview-pane .admonitionblock { margin: 1em 0; }
 /* Convert Asciidoctor's <table>-based admonition layout to flexbox.
    Table-cell vertical-align/baseline behavior diverges across browsers
    for replaced elements (esp. inline SVGs of mixed sizes), and trying
@@ -378,7 +378,7 @@ body.no-titlebar .titlebar { display: none; }
    `display: contents` on tbody/tr removes them from layout while
    preserving accessibility semantics, so the table flex container's
    direct flex items are the icon and content tds. */
-.preview .admonitionblock > table {
+.preview-pane .admonitionblock > table {
   /* Flex with `align-items: center` cross-aligns each cell's box to
      the row midline — icon cell (2.5em) and content cell (text line)
      end up center-to-center. Container height = max(items) = 2.5em
@@ -394,7 +394,7 @@ body.no-titlebar .titlebar { display: none; }
   background: none;
   width: 100%;
 }
-.preview .admonitionblock > table::before {
+.preview-pane .admonitionblock > table::before {
   /* Vertical separator between icon column and content column.
      `left: 5em` positions it at the icon column's right edge
      (matches td.icon's flex basis). Full table height via top/
@@ -407,15 +407,15 @@ body.no-titlebar .titlebar { display: none; }
   width: 1px;
   background: var(--skr-surface);
 }
-.preview .admonitionblock > table tbody,
-.preview .admonitionblock > table tr {
+.preview-pane .admonitionblock > table tbody,
+.preview-pane .admonitionblock > table tr {
   display: contents;
 }
-.preview .admonitionblock > table td {
+.preview-pane .admonitionblock > table td {
   border: 0;
   padding: 0;
 }
-.preview .admonitionblock > table td.icon {
+.preview-pane .admonitionblock > table td.icon {
   /* Fixed-width icon column scaling with preview font size; ~75px
      at default preview-font-size (close to Asciidoctor's stock 80px).
      `flex: 0 0 5em` = no grow, no shrink, fixed 5em basis. Internal
@@ -425,7 +425,7 @@ body.no-titlebar .titlebar { display: none; }
   align-items: center;
   justify-content: center;
 }
-.preview .admonitionblock > table td.content {
+.preview-pane .admonitionblock > table td.content {
   /* Border-left removed (separator is a pseudo on the table now).
      `flex: 1` takes remaining space after the 5em icon column. */
   flex: 1;
@@ -433,7 +433,7 @@ body.no-titlebar .titlebar { display: none; }
   padding-right: 1.25em;
 }
 /* Kill top margin of the first child and bottom margin of the last
-   child inside the content cell. The generic `.preview p { margin:
+   child inside the content cell. The generic `.preview-pane p { margin:
    0.8em 0 }` rule would otherwise add 1.6em of vertical padding to a
    single-line block-form admonition, growing the row to ~3.25em and
    making it visibly taller than the icon for no good reason. Reset
@@ -442,24 +442,24 @@ body.no-titlebar .titlebar { display: none; }
    admonitions) keep their margins for inter-paragraph spacing.
    Selectors cover both a bare <p> and Asciidoctor's `<div
    class="paragraph"><p>` wrapper pattern. */
-.preview .admonitionblock > table td.content > :first-child,
-.preview .admonitionblock > table td.content > :first-child > p { margin-top: 0; }
-.preview .admonitionblock > table td.content > :last-child,
-.preview .admonitionblock > table td.content > :last-child > p { margin-bottom: 0; }
+.preview-pane .admonitionblock > table td.content > :first-child,
+.preview-pane .admonitionblock > table td.content > :first-child > p { margin-top: 0; }
+.preview-pane .admonitionblock > table td.content > :last-child,
+.preview-pane .admonitionblock > table td.content > :last-child > p { margin-bottom: 0; }
 /* SVG sits as a flex item centered by the icon cell's flex container
    (above). `display: block` strips inline baseline behavior so the
    SVG's bounding box is what gets centered, not its baseline. */
-.preview .admonitionblock td.icon svg {
+.preview-pane .admonitionblock td.icon svg {
   display: block;
   width: 2.5em;
   height: 2.5em;
   fill: currentColor;
 }
-.preview .admonitionblock.note      > table td.icon { color: var(--skr-link); }
-.preview .admonitionblock.tip       > table td.icon { color: var(--skr-success); }
-.preview .admonitionblock.important > table td.icon { color: var(--skr-error); }
-.preview .admonitionblock.warning   > table td.icon { color: var(--skr-emphasis); }
-.preview .admonitionblock.caution   > table td.icon { color: var(--skr-warning); }
+.preview-pane .admonitionblock.note      > table td.icon { color: var(--skr-link); }
+.preview-pane .admonitionblock.tip       > table td.icon { color: var(--skr-success); }
+.preview-pane .admonitionblock.important > table td.icon { color: var(--skr-error); }
+.preview-pane .admonitionblock.warning   > table td.icon { color: var(--skr-emphasis); }
+.preview-pane .admonitionblock.caution   > table td.icon { color: var(--skr-warning); }
 
 /* GFM alerts — GitHub's extended blockquote syntax (> [!NOTE], etc.)
    that our markedRenderer's gfmAlert extension parses into
@@ -478,7 +478,7 @@ body.no-titlebar .titlebar { display: none; }
    because AsciiDoc conventions for important/warning/caution
    disagree with GitHub's. Cross-format divergence is intentional
    so each format renders like its source-convention upstream. */
-.preview .markdown-alert {
+.preview-pane .markdown-alert {
   margin: 1em 0;
   padding: 0.8em 1em;
   border: none;
@@ -486,7 +486,7 @@ body.no-titlebar .titlebar { display: none; }
   background: var(--skr-bg);
   border-radius: 0 4px 4px 0;
 }
-.preview .markdown-alert-title {
+.preview-pane .markdown-alert-title {
   font-weight: 600;
   margin: 0 0 0.5em 0;
   /* Flex layout so the inlined Octicon SVG sits alongside the title
@@ -510,32 +510,32 @@ body.no-titlebar .titlebar { display: none; }
    what makes the single title-color rule color the icon along with
    the title text — no per-type icon rules needed. flex-shrink: 0
    prevents the SVG from being squeezed on narrow containers. */
-.preview .markdown-alert-title .octicon {
+.preview-pane .markdown-alert-title .octicon {
   fill: currentColor;
   flex-shrink: 0;
 }
 /* Drop the default top/bottom margins on the first/last children
    so the title and trailing paragraph sit flush with the colored
    frame, matching how .admonitionblock presents its content. */
-.preview .markdown-alert > :first-child { margin-top: 0; }
-.preview .markdown-alert > :last-child  { margin-bottom: 0; }
+.preview-pane .markdown-alert > :first-child { margin-top: 0; }
+.preview-pane .markdown-alert > :last-child  { margin-bottom: 0; }
 
-.preview .markdown-alert-note      { border-left-color: var(--skr-link); }
-.preview .markdown-alert-note      > .markdown-alert-title { color: var(--skr-link); }
-.preview .markdown-alert-tip       { border-left-color: var(--skr-success); }
-.preview .markdown-alert-tip       > .markdown-alert-title { color: var(--skr-success); }
-.preview .markdown-alert-important { border-left-color: var(--skr-accent-alt); }
-.preview .markdown-alert-important > .markdown-alert-title { color: var(--skr-accent-alt); }
-.preview .markdown-alert-warning   { border-left-color: var(--skr-warning); }
-.preview .markdown-alert-warning   > .markdown-alert-title { color: var(--skr-warning); }
-.preview .markdown-alert-caution   { border-left-color: var(--skr-error); }
-.preview .markdown-alert-caution   > .markdown-alert-title { color: var(--skr-error); }
-.preview .title {
+.preview-pane .markdown-alert-note      { border-left-color: var(--skr-link); }
+.preview-pane .markdown-alert-note      > .markdown-alert-title { color: var(--skr-link); }
+.preview-pane .markdown-alert-tip       { border-left-color: var(--skr-success); }
+.preview-pane .markdown-alert-tip       > .markdown-alert-title { color: var(--skr-success); }
+.preview-pane .markdown-alert-important { border-left-color: var(--skr-accent-alt); }
+.preview-pane .markdown-alert-important > .markdown-alert-title { color: var(--skr-accent-alt); }
+.preview-pane .markdown-alert-warning   { border-left-color: var(--skr-warning); }
+.preview-pane .markdown-alert-warning   > .markdown-alert-title { color: var(--skr-warning); }
+.preview-pane .markdown-alert-caution   { border-left-color: var(--skr-error); }
+.preview-pane .markdown-alert-caution   > .markdown-alert-title { color: var(--skr-error); }
+.preview-pane .title {
   color: var(--skr-text-dim);
   font-style: italic;
   margin-bottom: 0.3em;
 }
-.preview .verseblock pre {
+.preview-pane .verseblock pre {
   font-family: inherit;
   white-space: pre-wrap;
   background: var(--skr-bg);
@@ -543,14 +543,14 @@ body.no-titlebar .titlebar { display: none; }
 }
 
 /* ---------- Preview scrollbars (webkit) ---------- */
-.preview::-webkit-scrollbar { width: 10px; height: 10px; }
-.preview::-webkit-scrollbar-track { background: var(--skr-bg); }
-.preview::-webkit-scrollbar-thumb {
+.preview-pane::-webkit-scrollbar { width: 10px; height: 10px; }
+.preview-pane::-webkit-scrollbar-track { background: var(--skr-bg); }
+.preview-pane::-webkit-scrollbar-thumb {
   background: var(--skr-surface-hover);
   border-radius: 5px;
   border: 2px solid var(--skr-bg);
 }
-.preview::-webkit-scrollbar-thumb:hover { background: var(--skr-surface-hover); }
+.preview-pane::-webkit-scrollbar-thumb:hover { background: var(--skr-surface-hover); }
 
 .render-error {
   color: var(--skr-error);
@@ -564,7 +564,7 @@ body.no-titlebar .titlebar { display: none; }
 
 /* Text-mode preview: TextRenderer emits a single <pre class="text-verbatim">
    that is the entire document body, not a listing block inside a larger
-   document. Without scoped styling it inherits .preview pre rules meant
+   document. Without scoped styling it inherits .preview-pane pre rules meant
    for code samples — a rounded card with its own background, padding,
    and left-edge accent — which look wrong when the "card" IS the whole
    pane. Override: flush everything and let the preview pane's own
@@ -574,7 +574,7 @@ body.no-titlebar .titlebar { display: none; }
    settings so both panes present the same characters at the same visual
    weight — text mode is a mirror of what you typed, not a transformed
    rendering of it. */
-.preview pre.text-verbatim {
+.preview-pane pre.text-verbatim {
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -586,7 +586,7 @@ body.no-titlebar .titlebar { display: none; }
   /* font-size + line-height explicitly track the editor's so the two
      panes present text at the same visual size and density. Selector
      uses `pre.text-verbatim` rather than `.text-verbatim` to bump
-     specificity above the generic `.preview pre` rule (0,2,1 vs 0,1,1)
+     specificity above the generic `.preview-pane pre` rule (0,2,1 vs 0,1,1)
      and guard against any surprise that might leave the 0.85em from
      that rule winning for font-size. */
   font-size: var(--edit-font-size);
@@ -596,12 +596,12 @@ body.no-titlebar .titlebar { display: none; }
 
 /* Disable programming ligatures in monospace contexts.
    JetBrains Mono, Fira Code, etc. enable them by default. */
-.cm-content, .preview code, .preview pre {
+.cm-content, .preview-pane code, .preview-pane pre {
   font-variant-ligatures: none;
 }
 
 /* ---------- Display modes: split / editor-only / preview-only ---------- */
-body.mode-editor .preview      { display: none; }
+body.mode-editor .preview-pane      { display: none; }
 body.mode-preview .editor-pane { display: none; }
 
 /* Editor-only mode:
@@ -631,8 +631,8 @@ body.mode-preview .editor-pane { display: none; }
    window via flexbox and the panel spans that 50% (correct, since
    the Ex command belongs to the editor half, not the whole window).
 
-   Preview-only mode keeps the constraint on `.preview` itself
-   because `.preview` is our own div (not a CM6 element) and has no
+   Preview-only mode keeps the constraint on `.preview-pane` itself
+   because `.preview-pane` is our own div (not a CM6 element) and has no
    sibling panels to worry about — a plain max-width on a block
    element works the way you'd expect. */
 body.mode-editor .editor-pane {
@@ -642,7 +642,7 @@ body.mode-editor .cm-scroller {
   width: min(var(--edit-pane-width), 100%);
   margin: 0 auto;
 }
-body.mode-preview .preview {
+body.mode-preview .preview-pane {
   max-width: var(--preview-pane-width);
   margin: 0 auto;
 }

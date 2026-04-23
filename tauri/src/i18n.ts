@@ -91,7 +91,9 @@ export const STRINGS_SV: Record<string, string> = {
   'Preview only': 'Endast förhandsvisning',
   'Toggle this help': 'Växla denna hjälp',
   'Toggle status bar': 'Växla statusfält',
+  'Cycle format (AsciiDoc / Markdown / Text)': 'Växla format (AsciiDoc / Markdown / Text)',
   'Sync preview to cursor': 'Synka förhandsvisning till markör',
+  'Toggle focus between editor and preview': 'Växla fokus mellan redigerare och förhandsvisning',
 
   // Help dialog — placeholder labels inside <kbd><var>...</var></kbd>
   // syntax examples (e.g. ":w <var>filename</var>"). Translated even

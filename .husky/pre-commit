@@ -1,9 +1,10 @@
 # Pre-commit hook — runs typecheck on the whole project and ESLint
 # on staged TypeScript files. Blocks the commit if either fails.
 #
-# CWD when the hook runs is the git repo root (one level above tauri/).
-# cd into tauri/ so `npm run` can find package.json / tsconfig /
-# eslint config / node_modules.
+# CWD when the hook runs is the git repo root, which is also where
+# package.json / tsconfig / eslint config / node_modules live after
+# the 2026-04-24 flatten that moved the former tauri/ subtree up
+# one level.
 #
 # typecheck runs on the whole project (tsc needs cross-file type
 # inference; there's no meaningful "lint just this file" mode for it).
@@ -14,6 +15,5 @@
 # which refuses the commit.
 set -e
 
-cd tauri
 npm run typecheck
 npx lint-staged

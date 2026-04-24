@@ -112,7 +112,7 @@
 #   Windows: %APPDATA%\com.skrivro.editor\themes\<name>.conf
 # then set `theme = <name>` here. A user-supplied file with the same
 # name as a bundled theme overrides the bundled version. See
-# catppuccin-mocha.conf in the source tree's tauri/themes/ directory
+# catppuccin-mocha.conf in the source tree's themes/ directory
 # for the full slot schema with purpose descriptions — copy it, rename,
 # and fill in your palette.
 # theme = catppuccin-mocha
@@ -249,6 +249,6 @@
 # Unknown values (e.g. `language = de`) are rejected with a debug
 # warning and fall through to auto-detect. If you want a language
 # other than English or Swedish, there's no translation for it yet —
-# the translation table lives in tauri/src/index.html's STRINGS_SV
+# the translation table lives in src/i18n.ts's STRINGS_SV
 # and is easy to extend if someone contributes a translation.
 # language = auto

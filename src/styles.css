@@ -43,7 +43,7 @@
   --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
 
   /* Config-file-overridable tokens — consumed by the CM6 theme in
-     tauri/src/editor.ts and by the pane / scroll-container rules
+     src/editor.ts and by the pane / scroll-container rules
      further down in this file.
 
      Defaults are in rem for font sizes and padding so they scale

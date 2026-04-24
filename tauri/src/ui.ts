@@ -559,7 +559,7 @@ export const setDisplayMode = (mode: string) => {
 // --font-sans, --edit-font-size, --preview-font-size,
 // --editor-padding-x, --editor-padding-y, --preview-padding-x,
 // --preview-padding-y, --edit-pane-width, --preview-pane-width)
-// are all consumed by the CM6 theme and the .preview-pane / .cm-scroller
+// are all consumed by the CM6 theme and the pane / scroll-container
 // CSS rules, so a single assignment here propagates to every
 // rendered element that reads them. No CM6 dispatch effects, no
 // theme reconfiguration dance — this is why CSS variables are
@@ -597,7 +597,7 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
 
   // Font size overrides: direct CSS variable assignment propagates
   // automatically to the CM6 theme (fontSize: 'var(--edit-font-size)')
-  // and the .preview-pane CSS rule (font-size: var(--preview-font-size)).
+  // and the .preview-scroll CSS rule (font-size: var(--preview-font-size)).
   if (cfg.editFontSize) {
     root.style.setProperty('--edit-font-size', cfg.editFontSize);
   }
@@ -606,14 +606,22 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   }
 
   // Padding overrides (editor and preview, x and y axes). Four
-  // independent variables, one per axis per pane. The editor side
-  // consumes --editor-padding-y on .cm-content's padding-block and
-  // --editor-padding-x on .cm-line's padding-inline (see the CM6
-  // theme above for why the split is load-bearing). The preview
-  // side consumes both on the .preview-pane element directly via
-  // padding-block and padding-inline (.preview-pane is a single <div>,
-  // no DOM split needed, but we keep the two-variable shape for
-  // consistency with the editor so the user has one mental model).
+  // independent variables, one per axis per pane.
+  //
+  // Editor side. --editor-padding-y is consumed by .cm-scroller's
+  // margin-block in styles.css. Margin on .cm-scroller (rather than
+  // padding on .editor-pane) keeps CM6's .cm-panels-bottom — the
+  // container for vim's Ex bar — anchored to the pane's bottom
+  // rather than floating above a padded gap. --editor-padding-x is
+  // consumed by .cm-line's padding-inline (in the CM6 theme) because
+  // per-line horizontal padding is what keeps clicks near the far-
+  // left of a line landing on the line rather than in a dead zone.
+  //
+  // Preview side. --preview-padding-y drives the top/bottom offsets
+  // of the inner .preview-scroll element (`top: var(--preview-padding-y)`
+  // and `bottom: var(--preview-padding-y)` in the CSS), so scrolled
+  // content is clipped away from the outer .preview-pane's edges.
+  // --preview-padding-x is consumed by .preview-scroll's padding-inline.
   //
   // Each variable's value is the user's raw string — one or two
   // whitespace-separated CSS length tokens. The Rust-side
@@ -641,8 +649,10 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   // reading-column constraint and span the full window — matching
   // Vim's convention for the Ex command line. In preview-only mode
   // the constraint is applied to `.preview-pane` directly since there
-  // are no CM6 panels in the preview side. Split mode doesn't read
-  // these vars — each pane is 50% of the window via flexbox.
+  // are no CM6 panels to escape — the outer pane + margin-auto gives
+  // a centered reading-column at the configured width. Split mode
+  // doesn't read these vars — each pane is 50% of the window via
+  // flexbox.
   //
   // Values are required to carry an explicit unit by the Rust-side
   // normalize_length helper (the same helper now used for font

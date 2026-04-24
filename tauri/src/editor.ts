@@ -77,20 +77,31 @@ const catppuccinTheme = EditorView.theme({
     scrollbarColor: 'var(--skr-surface-hover) var(--skr-bg)',
     scrollbarWidth: 'thin',
   },
-  // CM6 splits editor padding across two elements. .cm-content is
-  // the whole content block, so vertical padding (top above the
-  // first line, bottom below the last) belongs there. .cm-line is
-  // each individual text line, so horizontal padding belongs there
-  // — CM6 uses per-line horizontal padding so that clicking near
-  // the far left edge of a line still lands ON the line, rather
-  // than outside the click target. padding-block and padding-inline
-  // are CSS logical properties that each accept 1 or 2 values, so
-  // --editor-padding-x and --editor-padding-y can hold either
-  // "2.5rem" (uniform) or "2.5rem 3rem" (asymmetric start/end) and
-  // drop straight in.
+  // CM6 editor padding is split across two layers, both outside
+  // .cm-content:
+  //
+  // Vertical (-y) is applied as margin-block on .cm-scroller in
+  // styles.css, NOT as padding on .cm-content or .editor-pane.
+  // Margin on .cm-scroller (rather than padding on the pane) keeps
+  // CM6's .cm-panels-bottom — the container for vim's Ex command
+  // line — anchored to the pane's actual bottom instead of floating
+  // above a padded gap. The effect is still geometric clipping:
+  // .cm-scroller is inset from .cm-editor's top/bottom by margin-y,
+  // so scrolled content cannot reach the pane's edges. An overlay-
+  // bar alternative is unfixable on WebKitGTK at fractional DPI;
+  // geometric clipping renders cleanly at any DPI.
+  //
+  // Horizontal (-x) is on .cm-line (per-line, below), NOT on the pane.
+  // Per-line horizontal padding is what makes clicks near the far-left
+  // of a line still land ON the line instead of in a dead zone. If we
+  // moved -x to the pane, that click-target behavior would regress.
+  // The -x padding also doesn't contribute to any scroll-padding
+  // concern because the editor doesn't scroll horizontally.
+  //
+  // .cm-content itself intentionally has no padding — everything it
+  // used to carry is now on the surrounding layers.
   '.cm-content': {
     caretColor: 'var(--skr-cursor)',
-    paddingBlock: 'var(--editor-padding-y)',
     paddingInline: '0',
   },
   '.cm-line': {

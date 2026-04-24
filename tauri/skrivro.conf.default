@@ -69,6 +69,17 @@
 # Example (uniform horizontal):
 #   editor-padding-x = 20px          # both left and right = 20px
 #
+# Vertical padding scrollbar-length caveat: both panes clip their
+# scrollable viewport to sit inside the padding (geometric clipping
+# instead of an overlay — the overlay approach exhibits sub-pixel
+# bleed on fractional-DPI displays that cannot be fixed in CSS).
+# That means the scroll container is shorter than the pane by
+# 2 × padding-y, and the native scrollbar track shrinks accordingly.
+# At the default 2rem, this is barely noticeable. At values around
+# 6rem or more, the scrollbar track becomes visibly stubby on
+# typical-height viewports. Large values are accepted (config is
+# your reading comfort), just be aware of the shortening.
+#
 # Pane width keys apply only in single-pane modes (editor-only and
 # preview-only) and cap the reading column at that width, centering
 # it in the window. They do NOT apply in split mode — each pane

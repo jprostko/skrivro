@@ -42,9 +42,9 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
 
-  /* Config-file-overridable tokens — referenced by the CM6 theme in
-     tauri/src/index.html and by the .preview-pane / .cm-scroller rules
-     below.
+  /* Config-file-overridable tokens — consumed by the CM6 theme in
+     tauri/src/editor.ts and by the pane / scroll-container rules
+     further down in this file.
 
      Defaults are in rem for font sizes and padding so they scale
      with the user's system / browser font-size preference (respects
@@ -53,15 +53,17 @@
      natural in pixels and the historical hardcoded value was 900px.
 
      Padding is split into -x (horizontal) and -y (vertical) variables
-     for both the editor and the preview. On the editor side the split
-     is load-bearing: CM6's DOM puts horizontal padding on .cm-line
-     (per-line, for click targets at the left margin) and vertical
-     padding on .cm-content (on the whole content block). Two variables
-     map cleanly to those two elements. The preview side is a single
-     <div> — it doesn't need two variables for the DOM, but we keep
-     the same split for consistency with the editor so the user only
-     has one mental model ("-x is horizontal, -y is vertical"), not
-     one schema for the editor and another for the preview.
+     for both the editor and the preview. The -y/-x split is
+     load-bearing on both sides but for different reasons:
+       - Editor: -y lives on .cm-scroller's margin-block (which
+         insets the scrolled content inside .cm-editor without
+         displacing .cm-panels-bottom, so vim's Ex bar still anchors
+         to the pane's bottom). -x lives on .cm-line's padding-inline
+         (per-line, for click targets at the left margin).
+       - Preview: -y drives the top/bottom offsets of the inner
+         .preview-scroll absolute positioning (`top: var(--preview-
+         padding-y); bottom: var(--preview-padding-y)`) for clipping.
+         -x drives .preview-scroll's padding-inline directly.
 
      Each padding variable holds one or two values. One value applies
      uniformly to both ends of the axis (top+bottom for -y, left+right
@@ -161,6 +163,27 @@ body.no-titlebar .titlebar { display: none; }
   height: 100%;
   box-sizing: border-box;
 }
+
+/* Editor pane. Vertical "padding" for the editor is implemented as
+   margin-block on .cm-scroller (the scrollable editor surface)
+   rather than as padding on the pane. Why the indirection:
+   .cm-scroller is one of two flex children inside .cm-editor, the
+   other being .cm-panels-bottom (the container for vim's Ex command
+   line, CM6's search bar, etc.). Padding on the pane would inset
+   BOTH children, making the Ex bar appear to float above an empty
+   gap at the pane's bottom. Margin on the scroller alone keeps
+   .cm-panels-bottom anchored to .cm-editor's bottom (and therefore
+   the pane's bottom), with the scrolled content inset from that
+   anchor instead.
+
+   When a panel is active, we drop .cm-scroller's margin on the side
+   the panel is on so there's no gap between scroller content and
+   the panel. See the .editor-pane:has(.cm-panels-*) rules below.
+
+   Padding-inline stays on .cm-line (in the CM6 theme) for click-
+   target purposes: clicking near the far-left of a line should land
+   on the line, not in a dead zone, and per-line horizontal padding
+   is what makes that work. */
 .editor-pane {
   overflow: hidden;
   background: var(--skr-bg);
@@ -168,55 +191,76 @@ body.no-titlebar .titlebar { display: none; }
 }
 .editor-pane .cm-editor { height: 100%; }
 .editor-pane .cm-editor.cm-focused { outline: none; }
+.editor-pane .cm-scroller { margin-block: var(--editor-padding-y); }
+.editor-pane:has(.cm-panels-bottom) .cm-scroller { margin-bottom: 0; }
+.editor-pane:has(.cm-panels-top)    .cm-scroller { margin-top:    0; }
 
+/* Preview pane. Two-element structure: outer .preview-pane clips its
+   content (overflow:hidden), inner .preview-scroll is the actual
+   scroll container, positioned absolute inset from the outer's top
+   and bottom by the padding amount. Scrolled content in .preview-
+   scroll is clipped by the outer's overflow at .preview-scroll's
+   bounds — it cannot visually reach the pane's top or bottom edges
+   regardless of scroll position. This is geometric clipping, not an
+   overlay, so fractional-DPI sub-pixel blending doesn't produce
+   bleed artifacts the way an overlay approach does. The cost is
+   that .preview-scroll's scrollbar track is shorter than the pane
+   by 2 × padding-y — minor at the default 2rem, more noticeable at
+   large user-configured padding. Documented in skrivro.conf.default. */
 .preview-pane {
-  overflow: auto;
-  padding-block: var(--preview-padding-y);
-  padding-inline: var(--preview-padding-x);
+  overflow: hidden;
   background: var(--skr-bg-panel);
+  position: relative;
+}
+.preview-scroll {
+  position: absolute;
+  top: var(--preview-padding-y);
+  bottom: var(--preview-padding-y);
+  left: 0;
+  right: 0;
+  overflow-y: auto;
+  padding-inline: var(--preview-padding-x);
   color: var(--skr-text);
   font-family: var(--font-sans);
   font-size: var(--preview-font-size);
   line-height: 1.65;
   scrollbar-color: var(--skr-surface-hover) var(--skr-bg);
   scrollbar-width: thin;
-  /* tabindex="-1" on the preview element lets it receive focus (click
-     or programmatic) for the pane-toggle and :focus-within outline
-     below. Suppress the default focus ring the browser would draw
-     around the whole pane when it's focused — we have our own
-     active-pane outline rule that provides the same signal with
-     better scope (split mode only) and theme coherence. */
+  /* tabindex="-1" on this element lets it receive focus for the
+     Ctrl+Alt+W pane-toggle. Suppress the default browser focus ring
+     — the active-pane outline on .preview-pane provides the signal. */
   outline: none;
 }
-.preview-pane:focus { outline: none; }
+.preview-scroll:focus { outline: none; }
 
-/* Active-pane indicator — split mode only. Whichever pane contains
-   the focused element (the editor's .cm-content, or the preview pane
-   itself via tabindex) gets a 2px inset outline in the theme accent
-   color so it's unambiguous which pane will receive keystrokes.
-   Single-pane modes don't need this: there's only one pane, so the
-   outline would be visual noise with no information. outline-offset
-   pulls the line 2px inside the element's edge so it sits on the
-   pane's boundary rather than outside it (no layout shift either
-   way — outline doesn't participate in layout).
-
-   Why the editor side targets `.cm-editor` rather than the wrapping
-   `.editor-pane`: an outline drawn on `.editor-pane` gets occluded
-   on three sides by the CM6 editor's own background. Per the CSS
-   painting-order spec the parent's outline should paint above
-   children, but WebKit has a long-standing quirk where children
-   with their own painted background cover the parent's inset
-   outline anyway. Targeting `.cm-editor` directly puts the outline
-   on the same element CM6 uses for its default focus ring (which
-   we suppress earlier), and it paints correctly there. The preview
-   side has no covering child, so the straightforward
-   `.preview-pane:focus-within` rule works as written. */
+/* Active-pane indicator — split mode only. The two panes target
+   different elements because their architectures place occluding
+   children differently:
+     - Preview: .preview-scroll is absolutely positioned inset from
+       the pane's top/bottom edges (and left/right edges at 0, which
+       doesn't matter here), so all four of .preview-pane's outer
+       pixels are uncovered and an outline drawn on .preview-pane
+       with offset -1px paints on visible territory.
+     - Editor: the vertical inset lives on .cm-scroller's margin-
+       block, which is INSIDE .cm-editor. So .cm-editor still fills
+       .editor-pane's content-box edge-to-edge on top/bottom/left,
+       and its own painted background occludes an outline drawn on
+       .editor-pane (a known WebKitGTK painting-order quirk where
+       children with painted backgrounds cover the parent's inset
+       outline despite the spec saying otherwise). The one exception
+       is the right edge, where .editor-pane's border-right consumes
+       1px of the border-box that .cm-editor doesn't reach into —
+       which is why drawing on .editor-pane showed a partial outline
+       along the separator only.
+   Target .cm-editor for the editor side: it has no occluding child
+   (the outline sits on the same element CM6 uses for its own focus
+   ring, which we suppress earlier), so all four sides render. */
 body.mode-split .editor-pane:focus-within .cm-editor,
 body.mode-split .preview-pane:focus-within {
   outline: 1px solid var(--skr-accent);
   outline-offset: -1px;
 }
-.preview-pane > :first-child { margin-top: 0; }
+.preview-scroll > :first-child { margin-top: 0; }
 /* "Scroll past end" spacer — without this, the preview's scrollable
    range stops where the rendered content ends, which means the last
    ~viewport-worth of content can't be brought to the top of the
@@ -228,7 +272,7 @@ body.mode-split .preview-pane:focus-within {
    scrolled to the top of the viewport. The `4em` subtraction keeps
    a couple of lines of trailing content visible at max scroll
    instead of leaving the viewport entirely empty. */
-.preview-pane::after {
+.preview-scroll::after {
   content: '';
   display: block;
   height: calc(100vh - 4em);
@@ -578,14 +622,14 @@ body.mode-split .preview-pane:focus-within {
 }
 
 /* ---------- Preview scrollbars (webkit) ---------- */
-.preview-pane::-webkit-scrollbar { width: 10px; height: 10px; }
-.preview-pane::-webkit-scrollbar-track { background: var(--skr-bg); }
-.preview-pane::-webkit-scrollbar-thumb {
+.preview-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.preview-scroll::-webkit-scrollbar-track { background: var(--skr-bg); }
+.preview-scroll::-webkit-scrollbar-thumb {
   background: var(--skr-surface-hover);
   border-radius: 5px;
   border: 2px solid var(--skr-bg);
 }
-.preview-pane::-webkit-scrollbar-thumb:hover { background: var(--skr-surface-hover); }
+.preview-scroll::-webkit-scrollbar-thumb:hover { background: var(--skr-surface-hover); }
 
 .render-error {
   color: var(--skr-error);
@@ -675,7 +719,11 @@ body.mode-editor .editor-pane {
 }
 body.mode-editor .cm-scroller {
   width: min(var(--edit-pane-width), 100%);
-  margin: 0 auto;
+  /* margin-inline (not the `margin` shorthand) so that the
+     .editor-pane .cm-scroller { margin-block: var(--editor-padding-y) }
+     rule above isn't clobbered by `margin: 0 auto` resetting all
+     four sides. */
+  margin-inline: auto;
 }
 body.mode-preview .preview-pane {
   max-width: var(--preview-pane-width);
@@ -708,15 +756,22 @@ body.no-gutter .cm-gutters { display: none; }
   white-space: pre-wrap !important;
 }
 
-/* Vertically center the Ex panel's content. The plugin sets the panel
-   to `display: flex` with `minHeight: 1.3em` and zero vertical
-   padding; its default `align-items: stretch` leaves single-line
-   content flush to the top because the dialog stretches to panel
-   height while its inner text flows from the top. `center` pulls the
-   text to the middle for short messages and is a no-op for multi-line
-   messages (the panel grows to content height, leaving nothing to
-   center against). */
-.cm-vim-panel {
+/* Vertically center the Ex panel's content. The plugin builds the Ex
+   prompt as a tree of nested flex containers all the way down —
+   .cm-vim-panel → dialog div → makePrompt div (display: flex) →
+   prompt span (display: flex, flex: 1) → prefix + input. Each flex
+   level defaults to align-items: stretch, so the prefix span (the
+   ":" or "/") and the input stretch vertically, and the text inside
+   them floats to the top of the stretched line-box. Centering only
+   the outermost .cm-vim-panel isn't enough; we have to override
+   align-items on every flex container in the chain. Applying the
+   rule to all descendant divs and spans is broad but safe: non-flex
+   descendants silently ignore align-items, and the rule only affects
+   short single-line content (multi-line content grows the panel to
+   match, leaving nothing to center against). */
+.cm-vim-panel,
+.cm-vim-panel div,
+.cm-vim-panel span {
   align-items: center;
 }
 

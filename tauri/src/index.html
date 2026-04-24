@@ -61,13 +61,34 @@
 
   <main class="wrap">
     <div id="src-host" class="editor-pane"></div>
-    <!-- tabindex="-1" makes the preview pane programmatically focusable
-         (and click-focusable) without putting it in the Tab key order.
-         Required so that (a) the Ctrl+Alt+W pane-toggle can land focus
-         on the preview, and (b) `.preview-pane:focus-within` can fire
-         when the preview is the active pane, lighting up the active-
-         pane outline in split mode. -->
-    <div class="preview-pane" id="out" tabindex="-1"></div>
+    <!-- The preview is two elements: an outer .preview-pane that owns
+         the visible background and visually-padded frame, plus an
+         inner .preview-scroll that's the actual scroll container. The
+         outer has `overflow: hidden`; the inner is absolutely
+         positioned inset from the outer's top and bottom by the
+         configured vertical padding. This gives the "text doesn't
+         reach the pane's edges when scrolled" effect via geometric
+         clipping rather than via an overlay — overlays composited at
+         fractional DPI produce sub-pixel-bleed artifacts in WebKitGTK
+         that are unfixable in CSS, whereas `overflow: hidden`
+         clipping rounds to integer device pixels and renders cleanly
+         at any scaling factor. Cost: the scroll container's height
+         is shorter than the pane's, so its scrollbar track is shorter
+         by the amount of top + bottom padding. Minor at default 2rem,
+         noticeable at large user-configured padding — documented in
+         skrivro.conf.default.
+
+         tabindex="-1" on .preview-scroll makes it programmatically
+         focusable (click or Ctrl+Alt+W pane-toggle) without entering
+         Tab order. The id="out" stays on .preview-scroll so existing
+         JS (preview rendering via .innerHTML, scroll sync via
+         .scrollTop, word count via .textContent) continues to work
+         against the same element handle. The :focus-within selector
+         on .preview-pane still fires when its inner descendant is
+         focused, which lights up the active-pane outline. -->
+    <div class="preview-pane">
+      <div class="preview-scroll" id="out" tabindex="-1"></div>
+    </div>
   </main>
 
   <!-- Status bar: mode pill (vim-only) + filename on the left;

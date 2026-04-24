@@ -322,12 +322,12 @@ fn load_theme(name: &str, app: &tauri::AppHandle) -> Option<ThemeColors> {
     }
     // Fall back to bundled themes
     match name {
-        "dracula" => Some(parse_theme_file(include_str!("../../themes/dracula.conf.default"))),
-        "tokyo-night-moon" => Some(parse_theme_file(include_str!("../../themes/tokyo-night-moon.conf.default"))),
-        "nord" => Some(parse_theme_file(include_str!("../../themes/nord.conf.default"))),
-        "gruvbox-dark" => Some(parse_theme_file(include_str!("../../themes/gruvbox-dark.conf.default"))),
-        "catppuccin-latte" => Some(parse_theme_file(include_str!("../../themes/catppuccin-latte.conf.default"))),
-        "tokyo-night-day" => Some(parse_theme_file(include_str!("../../themes/tokyo-night-day.conf.default"))),
+        "dracula" => Some(parse_theme_file(include_str!("../../themes/dracula.theme.default"))),
+        "tokyo-night-moon" => Some(parse_theme_file(include_str!("../../themes/tokyo-night-moon.theme.default"))),
+        "nord" => Some(parse_theme_file(include_str!("../../themes/nord.theme.default"))),
+        "gruvbox-dark" => Some(parse_theme_file(include_str!("../../themes/gruvbox-dark.theme.default"))),
+        "catppuccin-latte" => Some(parse_theme_file(include_str!("../../themes/catppuccin-latte.theme.default"))),
+        "tokyo-night-day" => Some(parse_theme_file(include_str!("../../themes/tokyo-night-day.theme.default"))),
         _ => {
             #[cfg(debug_assertions)]
             eprintln!("[skrivro config] theme '{}' not found (no user file, no bundled data)", name);

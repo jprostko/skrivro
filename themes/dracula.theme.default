@@ -4,7 +4,7 @@
 # Palette reference: autoload/dracula.vim
 #
 # Each key maps to a --skr-* CSS custom property. See the Catppuccin
-# Mocha reference file (catppuccin-mocha.conf) for the full slot schema
+# Mocha reference file (catppuccin-mocha.theme.default) for the full slot schema
 # with purpose descriptions.
 
 # Backgrounds

@@ -5,7 +5,7 @@
 # Moon is the default dark variant per the repo README (style = "moon").
 #
 # Each key maps to a --skr-* CSS custom property. See the Catppuccin
-# Mocha reference file (catppuccin-mocha.conf.default) for the full
+# Mocha reference file (catppuccin-mocha.theme.default) for the full
 # slot schema with purpose descriptions.
 
 # Backgrounds

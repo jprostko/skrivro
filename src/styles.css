@@ -211,7 +211,7 @@ body.no-titlebar .titlebar { display: none; }
    bleed artifacts the way an overlay approach does. The cost is
    that .preview-scroll's scrollbar track is shorter than the pane
    by 2 × padding-y — minor at the default 2rem, more noticeable at
-   large user-configured padding. Documented in skrivro.conf.default. */
+   large user-configured padding. Documented in resources/skrivro.conf.default. */
 .preview-pane {
   overflow: hidden;
   background: var(--skr-bg-panel);

@@ -112,7 +112,7 @@
 #   Windows: %APPDATA%\com.skrivro.editor\themes\<name>.conf
 # then set `theme = <name>` here. A user-supplied file with the same
 # name as a bundled theme overrides the bundled version. See
-# catppuccin-mocha.theme.default in the source tree's themes/ directory
+# catppuccin-mocha.theme.default in the source tree's resources/themes/ directory
 # for the full slot schema with purpose descriptions — copy it, rename,
 # and fill in your palette.
 # theme = catppuccin-mocha

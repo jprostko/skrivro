@@ -816,16 +816,24 @@ host.addEventListener('mousedown', (e) => {
   });
 });
 
-// Keep the editor focused when clicking the titlebar or status bar
-// (split and editor-only modes only — in preview-only mode the
-// editor is intentionally blurred by setDisplayMode). Both bars
-// carry `data-tauri-drag-region`, which sometimes consumes the
-// mousedown event (preserving editor focus as a side effect) and
-// sometimes lets it through (focus moves to <body>, and Ex commands
-// silently fail until the user clicks back into the editor). The
-// flakiness is a Tauri drag-region quirk; the redirect below makes
-// focus preservation deterministic regardless of how Tauri handles
-// any given click.
+// Keep a pane focused when clicking the titlebar or status bar (split
+// and editor-only modes only — in preview-only mode the editor is
+// intentionally blurred by setDisplayMode). Both bars carry
+// `data-tauri-drag-region`, which sometimes consumes the mousedown
+// event (preserving pane focus as a side effect) and sometimes lets
+// it through (focus moves to <body>, and Ex commands silently fail
+// until the user clicks back into a pane). The flakiness is a Tauri
+// drag-region quirk; the redirect below makes focus preservation
+// deterministic regardless of how Tauri handles any given click.
+//
+// In split mode, the redirect preserves whichever pane was focused
+// before the click — clicking chrome should be a no-op for focus
+// state, not a pane switch from preview to editor. In editor-only
+// mode there's only one pane anyway, so this collapses to the old
+// "always editor" behavior. The wasPreviewFocused capture is
+// synchronous (mousedown fires before the browser's default focus
+// change), so it reflects the pre-click state even though the
+// .focus() call is deferred to the next frame via rAF.
 //
 // Skip clicks on buttons (the help `?` button) and inputs — those
 // have their own focus semantics that shouldn't be overridden. In
@@ -836,8 +844,14 @@ const chromeFocusRedirect = (e: MouseEvent) => {
   if (!(e.target instanceof Element)) return;
   if (e.target instanceof HTMLButtonElement) return;
   if (e.target instanceof HTMLInputElement) return;
+  const wasPreviewFocused =
+    prefs.displayMode === 'split' && document.activeElement === out;
   requestAnimationFrame(() => {
-    if (editorView) editorView.contentDOM.focus();
+    if (wasPreviewFocused) {
+      out.focus();
+    } else if (editorView) {
+      editorView.contentDOM.focus();
+    }
   });
 };
 const titlebar = document.querySelector('.titlebar');

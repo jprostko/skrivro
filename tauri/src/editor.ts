@@ -336,6 +336,20 @@ const languageFor = (format: Format): Extension => {
   }
 };
 
+// Resolves the language compartment's contents given both the current
+// buffer format AND the syntaxHighlighting pref. When the pref is off
+// we hand back an empty extension list regardless of format, which
+// strips tokenization and therefore all per-token coloring; the
+// syntaxHighlighting(defaultHighlightStyle) / syntaxHighlighting(
+// catppuccinHighlight) extensions elsewhere in the extension list stay
+// wired up but have nothing to color. Other CM6 affordances
+// (highlightActiveLine, search matches, gutter numbers, the focus
+// outline, the vim cursor shape) all live in unrelated extensions and
+// are unaffected — "syntax off" is truly "plain editor with every
+// other affordance intact," not "bare textarea."
+const resolveLanguageExtension = (format: Format): Extension =>
+  prefs.syntaxHighlighting ? languageFor(format) : [];
+
 // Reconfigure the language compartment for a given format. Called
 // by io.ts's setBufferFormat whenever the buffer's format changes.
 // Safe to call before createEditor has run — the early return skips
@@ -344,7 +358,24 @@ const languageFor = (format: Format): Extension => {
 export const setEditorLanguage = (format: Format) => {
   if (!editorView) return;
   editorView.dispatch({
-    effects: languageCompartment.reconfigure(languageFor(format)),
+    effects: languageCompartment.reconfigure(resolveLanguageExtension(format)),
+  });
+};
+
+// Runtime syntax-highlighting toggle — reconfigure the language
+// compartment to either hold the format's normal language extension
+// or an empty list. Symmetric with setVimMode: pure-effect, no pref
+// mutation (the caller in ui.ts flips the pref and calls through
+// here, same pattern as toggleVim/setVimMode). Reads currentBuffer
+// .format at dispatch time because the compartment needs to be
+// repopulated with the CURRENT format's language when turning
+// highlighting back on — we can't cache the format from elsewhere.
+export const setSyntaxHighlighting = (enabled: boolean) => {
+  if (!editorView) return;
+  editorView.dispatch({
+    effects: languageCompartment.reconfigure(
+      enabled ? languageFor(currentBuffer.format) : []
+    ),
   });
 };
 
@@ -403,7 +434,7 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   // right language extension at the first paint, without a
   // momentary AsciiDoc-highlighting flash before setEditorLanguage
   // could re-dispatch.
-  languageCompartment.of(languageFor(currentBuffer.format)),
+  languageCompartment.of(resolveLanguageExtension(currentBuffer.format)),
 
   // highlighting
   syntaxHighlighting(defaultHighlightStyle, { fallback: true }),

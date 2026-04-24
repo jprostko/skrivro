@@ -88,7 +88,7 @@ import {
   applyTitlebar, applyGutter, applyStatusBar, applyDisplayMode,
   applyMacModifierLabels, applyUserConfig,
   toggleTitlebar, toggleGutter, toggleStatusBar, toggleVim, toggleHelp,
-  toggleFormat, togglePaneFocus, setDisplayMode, refreshStatus,
+  toggleFormat, togglePaneFocus, toggleSyntaxHighlighting, setDisplayMode, refreshStatus,
 } from './ui.js';
 
 // ================= Keyboard shortcuts =================
@@ -162,6 +162,14 @@ window.addEventListener('keydown', (e) => {
     // requires no Alt). Only meaningful in split mode; togglePaneFocus
     // no-ops in editor-only and preview-only.
     e.preventDefault(); togglePaneFocus();
+  } else if (second && k === 'y') {
+    // Syntax highlighting toggle. Y is a weak mnemonic (S would be
+    // better but Ctrl+S / Ctrl+Shift+S are already in the save family
+    // and adding Ctrl+Alt+S would overload the letter), but the
+    // secondary-modifier namespace is crowded enough that "works and
+    // doesn't conflict" wins over "readable mnemonic." See item #25
+    // in project_pending_features.md for the design discussion.
+    e.preventDefault(); toggleSyntaxHighlighting();
   }
   // Primary-only shortcuts. Save/Open/New use the primary modifier alone
   // because those are universal cross-platform conventions (Ctrl+S /

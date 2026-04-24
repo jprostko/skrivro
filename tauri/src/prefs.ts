@@ -15,6 +15,7 @@ const defaultPrefs = {
   displayMode: 'split',
   gutterHidden: true,
   statusBarHidden: false,
+  syntaxHighlighting: true,
 };
 
 const loadPrefs = () => {

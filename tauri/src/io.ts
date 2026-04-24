@@ -16,8 +16,9 @@ import { Vim, getCM, getDoc, setDoc, editorView, setEditorLanguage } from './edi
 import { render, syncPreviewToCaret, requestPreviewScrollToTop } from './preview.js';
 import { clearAllRendererCaches } from './renderer.js';
 import { userConfig } from './config.js';
+import { prefs } from './prefs.js';
 import { tr } from './i18n.js';
-import { refreshStatus } from './ui.js';
+import { refreshStatus, applySyntaxHighlighting } from './ui.js';
 
 // ================= Constants =================
 
@@ -673,6 +674,27 @@ Vim.defineEx('format', 'format', (_cm: any, params: VimExParams) => {
 Vim.defineEx('asciidoc', 'asciidoc', () => { setBufferFormat('asciidoc'); });
 Vim.defineEx('markdown', 'markdown', () => { setBufferFormat('markdown'); });
 Vim.defineEx('text', 'text', () => { setBufferFormat('text'); });
+
+// `:syntax on` / `:syntax off` — matches real Vim's command of the
+// same name (Vim also accepts `enable`/`disable`, but on/off are the
+// canonical forms most users type and the only two we need). Bare
+// `:syntax` reports current state. Invalid argument emits an E474
+// error, same shape as `:format`.
+Vim.defineEx('syntax', 'syn', (_cm: any, params: VimExParams) => {
+  const { arg } = parseExArgs(params);
+  if (!arg) {
+    vimMessage(`Syntax highlighting: ${prefs.syntaxHighlighting ? 'on' : 'off'}`);
+    return;
+  }
+  const a = arg.toLowerCase();
+  if (a === 'on') {
+    applySyntaxHighlighting(true);
+  } else if (a === 'off') {
+    applySyntaxHighlighting(false);
+  } else {
+    vimMessage(`E474: Invalid argument "${arg}" (expected on or off)`);
+  }
+});
 
 // ================= Quit commands (Tauri only) =================
 //

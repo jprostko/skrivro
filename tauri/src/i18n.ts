@@ -92,8 +92,13 @@ export const STRINGS_SV: Record<string, string> = {
   'Toggle this help': 'Växla denna hjälp',
   'Toggle status bar': 'Växla statusfält',
   'Cycle format (AsciiDoc / Markdown / Text)': 'Växla format (AsciiDoc / Markdown / Text)',
+  'Toggle syntax highlighting': 'Växla syntaxmarkering',
   'Sync preview to cursor': 'Synka förhandsvisning till markör',
   'Toggle focus between editor and preview': 'Växla fokus mellan redigerare och förhandsvisning',
+  // Ex command description for :syntax. Best-effort first pass; the
+  // surrounding <kbd>Ctrl+Alt+Y</kbd> is literal and untranslated.
+  'Show whether editor syntax highlighting is on or off': 'Visa om syntaxmarkering i redigeraren är på eller av',
+  'Turn editor syntax highlighting on or off (mirrors Ctrl+Alt+Y)': 'Slå på eller av syntaxmarkering i redigeraren (motsvarar <kbd>Ctrl+Alt+Y</kbd>)',
 
   // Help dialog — placeholder labels inside <kbd><var>...</var></kbd>
   // syntax examples (e.g. ":w <var>filename</var>"). Translated even

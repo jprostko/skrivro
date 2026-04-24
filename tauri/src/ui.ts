@@ -9,7 +9,7 @@
 import { tr } from './i18n.js';
 import { prefs, savePrefs } from './prefs.js';
 import { isMac } from './i18n.js';
-import { Vim, editorView, setVimMode, getCM } from './editor.js';
+import { Vim, editorView, setVimMode, setSyntaxHighlighting, getCM } from './editor.js';
 import { currentBuffer, setBufferFormat, type Format } from './io.js';
 import { userConfig, type SkrivroConfig } from './config.js';
 
@@ -412,6 +412,24 @@ export const toggleStatusBar = () => {
   prefs.statusBarHidden = !prefs.statusBarHidden;
   savePrefs();
   applyStatusBar();
+};
+// Flip editor syntax highlighting on/off and persist. Same shape as
+// toggleVim + setVimMode: ui.ts owns the pref flip and persistence,
+// editor.ts owns the CM6 dispatch. Called by the Ctrl+Alt+Y / ⌃⌘Y
+// keybinding and by the :syntax Ex command.
+export const toggleSyntaxHighlighting = () => {
+  prefs.syntaxHighlighting = !prefs.syntaxHighlighting;
+  savePrefs();
+  setSyntaxHighlighting(prefs.syntaxHighlighting);
+};
+// Explicit setter for `:syntax on` / `:syntax off` (as opposed to the
+// keybinding, which is a toggle). No-op if the pref is already in the
+// requested state — avoids the needless dispatch.
+export const applySyntaxHighlighting = (enabled: boolean) => {
+  if (prefs.syntaxHighlighting === enabled) return;
+  prefs.syntaxHighlighting = enabled;
+  savePrefs();
+  setSyntaxHighlighting(enabled);
 };
 
 // Rewrite the help dialog's modifier keys on Mac. Apple convention

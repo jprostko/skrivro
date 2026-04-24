@@ -519,8 +519,41 @@ export const togglePaneFocus = () => {
   }
 };
 
+// Remembers which pane was focused in split mode the last time we left
+// split for a single-pane mode. Read by setDisplayMode when returning
+// to split so a round-trip through editor-only or preview-only lands
+// back on the pane the user had before the trip.
+//
+// Mental model: entering editor-only or preview-only is an attention
+// shift comparable to switching to a different app. Returning to split
+// should resume the prior state, not reset to a default — same reason
+// a browser's tab focus doesn't reset when you alt-tab away and back.
+//
+// Seeded to 'editor' because that's the pane the app starts focused
+// on at cold launch. If the very first mode transition is preview-only
+// → split (rare: requires saved displayMode = preview-only and no
+// prior in-session split activity), we land on editor, which is still
+// a reasonable default.
+let lastSplitFocus: 'editor' | 'preview' = 'editor';
+
 export const setDisplayMode = (mode: string) => {
   if (!DISPLAY_MODES.includes(mode)) return;
+  const prevMode = prefs.displayMode;
+  // Capture the in-split focus before leaving split, so we can restore
+  // it on the return trip. Only fires on split → single-pane transitions:
+  // split → split is a no-op (shouldn't happen since applyDisplayMode
+  // would already have the right class), and single → single has no
+  // split state worth recording. If focus is on neither pane (e.g., on
+  // the help button, status bar, or body), keep the previous
+  // lastSplitFocus unchanged — overwriting with "nothing" would lose
+  // the last real value and we'd fall back to the default on return.
+  if (prevMode === 'split' && mode !== 'split' && editorView) {
+    if (editorView.hasFocus) {
+      lastSplitFocus = 'editor';
+    } else if (document.activeElement === out) {
+      lastSplitFocus = 'preview';
+    }
+  }
   prefs.displayMode = mode;
   savePrefs();
   applyDisplayMode();
@@ -541,14 +574,22 @@ export const setDisplayMode = (mode: string) => {
   //     the help dialog straight after switching to edit-only
   //     captures `body` as pre-help focus, restoration lands on
   //     body (no-op), and `:` silently fails.
-  //   - 'split': no explicit change. Both panes are visible; whatever
-  //     was focused pre-switch remains focused. Users who had
-  //     intentionally clicked preview to scroll/copy keep their
-  //     position.
+  //   - 'split' from a single-pane mode: restore focus to whichever
+  //     pane was last focused in split before the round-trip, tracked
+  //     in lastSplitFocus. See the comment above that variable for
+  //     the "attention shift" rationale.
+  //   - 'split' from 'split': no-op. Same-mode calls (shouldn't occur
+  //     in practice) don't clobber the user's current in-split focus.
   if (mode === 'preview') {
     editorView.contentDOM.blur();
   } else if (mode === 'editor') {
     editorView.focus();
+  } else if (mode === 'split' && prevMode !== 'split') {
+    if (lastSplitFocus === 'preview') {
+      out.focus();
+    } else {
+      editorView.focus();
+    }
   }
 };
 

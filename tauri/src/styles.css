@@ -188,6 +188,11 @@ body.no-titlebar .titlebar { display: none; }
   overflow: hidden;
   background: var(--skr-bg);
   border-right: 1px solid var(--skr-surface);
+  /* Positioning context for the :focus-within::after pseudo-element
+     that draws the active-pane outline (see the rule further down).
+     `relative` alone doesn't affect layout — it just establishes the
+     containing block for the pseudo's inset:0 positioning. */
+  position: relative;
 }
 .editor-pane .cm-editor { height: 100%; }
 .editor-pane .cm-editor.cm-focused { outline: none; }
@@ -233,32 +238,48 @@ body.no-titlebar .titlebar { display: none; }
 }
 .preview-scroll:focus { outline: none; }
 
-/* Active-pane indicator — split mode only. The two panes target
-   different elements because their architectures place occluding
-   children differently:
-     - Preview: .preview-scroll is absolutely positioned inset from
-       the pane's top/bottom edges (and left/right edges at 0, which
-       doesn't matter here), so all four of .preview-pane's outer
-       pixels are uncovered and an outline drawn on .preview-pane
-       with offset -1px paints on visible territory.
-     - Editor: the vertical inset lives on .cm-scroller's margin-
-       block, which is INSIDE .cm-editor. So .cm-editor still fills
-       .editor-pane's content-box edge-to-edge on top/bottom/left,
-       and its own painted background occludes an outline drawn on
-       .editor-pane (a known WebKitGTK painting-order quirk where
-       children with painted backgrounds cover the parent's inset
-       outline despite the spec saying otherwise). The one exception
-       is the right edge, where .editor-pane's border-right consumes
-       1px of the border-box that .cm-editor doesn't reach into —
-       which is why drawing on .editor-pane showed a partial outline
-       along the separator only.
-   Target .cm-editor for the editor side: it has no occluding child
-   (the outline sits on the same element CM6 uses for its own focus
-   ring, which we suppress earlier), so all four sides render. */
-body.mode-split .editor-pane:focus-within .cm-editor,
+/* Active-pane indicator — split mode only. The two panes use
+   different mechanisms because of the same WebKitGTK painting-order
+   quirk we've been dodging elsewhere: descendants with painted
+   backgrounds occlude ancestors' inset outlines, contra spec.
+
+     - Preview: outline drawn directly on .preview-pane at offset -1.
+       Safe because .preview-scroll is absolutely positioned inset
+       from the pane's top/bottom edges (and its padding-inline keeps
+       scrolled content away from the left/right edges), so no child
+       background reaches .preview-pane's outer 1px band.
+
+     - Editor: an outline at .editor-pane's or .cm-editor's inner
+       edge gets occluded by .cm-activeLine's background on the left
+       and right. .cm-activeLine is inside .cm-content, whose left/
+       right edges align with .cm-editor's edges, so wherever the
+       cursor's line passes, the active-line background paints over
+       the outline's leftmost and rightmost columns. Visual symptom:
+       colored band appears only where the cursor isn't — "the
+       focus indicator and the current line seem to mix."
+
+       Workaround: absolutely-positioned ::after pseudo-element on
+       .editor-pane, 1px border with inset:0 and box-sizing:
+       border-box so the border paints at the same pixel columns
+       where the old .cm-editor outline painted. As a positioned
+       descendant of .editor-pane, the pseudo paints AFTER .cm-editor
+       and its active-line subtree in the stacking order — its border
+       sits on top of the active-line background instead of beneath
+       it. pointer-events:none so the pseudo doesn't intercept clicks
+       meant for the editor. The .editor-pane { position: relative }
+       declaration up in the .editor-pane block is what makes
+       inset:0 resolve against .editor-pane. */
 body.mode-split .preview-pane:focus-within {
   outline: 1px solid var(--skr-accent);
   outline-offset: -1px;
+}
+body.mode-split .editor-pane:focus-within::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid var(--skr-accent);
+  box-sizing: border-box;
 }
 .preview-scroll > :first-child { margin-top: 0; }
 /* "Scroll past end" spacer — without this, the preview's scrollable

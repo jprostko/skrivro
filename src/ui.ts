@@ -918,3 +918,97 @@ window.addEventListener('keydown', (e) => {
   // keystrokes internally (vs. replayed macros).
   Vim.handleKey(cm, ':', 'user');
 }, { capture: true });
+
+// Suppress the native context menu in the preview pane unless the
+// user has selected text inside the preview itself. The webview's
+// default menu in the preview is just browser-navigation junk
+// (Back / Forward / Stop / Reload) which doesn't belong in a desktop
+// app — Reload specifically reloads the entire frontend and wipes
+// in-memory editor state down to the autosave's 500ms-window
+// granularity. With a selection, however, the native menu adds a
+// useful Copy item, so we let it through in that case.
+//
+// Scope: listener on `.preview-pane` (the outer wrapper, not
+// `.preview-scroll`) so right-clicks on the padding region between
+// `.preview-scroll` and the visible pane edges are also caught. The
+// editor pane is left alone — CM6's default context menu provides
+// useful items (Copy, Paste, Select All, Undo, Redo) there.
+//
+// Selection check confines the "let menu through" path to selections
+// anchored within the preview pane itself. A selection still active
+// in the editor (where the user copied something earlier) doesn't
+// count — it'd surface a Copy item that copies from the editor when
+// the user is right-clicking in the preview, which is confusing.
+const previewPaneEl = document.querySelector('.preview-pane');
+if (previewPaneEl) {
+  previewPaneEl.addEventListener('contextmenu', (e) => {
+    const selection = window.getSelection();
+    const hasPreviewSelection =
+      selection !== null &&
+      !selection.isCollapsed &&
+      selection.anchorNode !== null &&
+      previewPaneEl.contains(selection.anchorNode);
+    if (!hasPreviewSelection) {
+      e.preventDefault();
+    }
+  });
+}
+
+// Scope Ctrl+A (Cmd+A on Mac) to the preview's content when the
+// preview pane is the focused element. WebKit's default behavior on
+// Ctrl+A applied to a focused non-editable div with `tabindex="-1"`
+// is "select everything in the document" — which in split mode means
+// selecting both panes plus chrome text simultaneously. That sprawl
+// is what makes Ctrl+A appear broken in split-preview mode (the
+// selection IS happening, just unscoped). Confirmed via DevTools:
+// `document.activeElement` is correctly `.preview-scroll`, but the
+// resulting `window.getSelection()` returns the editor's source
+// content alongside the preview's rendered text.
+//
+// We replace that webview default with a deterministic Range that
+// scopes to `out` (the `.preview-scroll` element). Same behavior
+// users already get reliably in preview-only mode (where the editor
+// pane is `display: none` and therefore excluded from the webview's
+// implicit document-wide select-all anyway).
+//
+// Editor focus path is left untouched. When `.cm-content` has focus,
+// CM6's default keymap handles Mod-a → selectAll (non-vim), and the
+// vim plugin handles Ctrl+A → increment-number (vim mode). Both
+// behaviors are preserved by the early return below.
+window.addEventListener('keydown', (e) => {
+  const mod = isMac ? e.metaKey : e.ctrlKey;
+  if (!mod) return;
+  if ((e.key || '').toLowerCase() !== 'a') return;
+  // Reject if the secondary modifier or Shift is also held — this
+  // handler is for plain Ctrl+A / Cmd+A only, not Ctrl+Alt+A or
+  // Cmd+Ctrl+A or Ctrl+Shift+A. Secondary modifier is Alt on
+  // Linux/Windows, Ctrl on Mac (since primary is Cmd there); same
+  // mapping main.ts uses for app shortcuts.
+  const second = isMac ? e.ctrlKey : e.altKey;
+  if (e.shiftKey || second) return;
+  // Scope to the preview when:
+  //   (a) preview element is the currently-focused element (split or
+  //       preview-only after explicit focus via Ctrl+Alt+W or click), OR
+  //   (b) we're in preview-only mode regardless of where focus
+  //       actually lives. After setDisplayMode('preview') blurs the
+  //       editor, focus typically lands on <body>; Ctrl+A on body
+  //       falls through to the webview's default "select entire
+  //       visible document," which sweeps in the status bar text
+  //       (filename, format, word count) alongside the rendered
+  //       preview content. In preview-only there's no other pane the
+  //       user could possibly mean — preview is the sole visible
+  //       surface — so we scope unambiguously.
+  // Split mode with focus on body is intentionally NOT covered here:
+  // the user could mean either pane and we'd be guessing.
+  const previewFocused = document.activeElement === out;
+  const previewOnlyMode = prefs.displayMode === 'preview';
+  if (!previewFocused && !previewOnlyMode) return;
+  e.preventDefault();
+  const range = document.createRange();
+  range.selectNodeContents(out);
+  const selection = window.getSelection();
+  if (selection) {
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+}, { capture: true });

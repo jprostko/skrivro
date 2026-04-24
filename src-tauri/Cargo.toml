@@ -3,6 +3,12 @@ name = "skrivro"
 version = "0.1.0"
 edition = "2021"
 license = "0BSD"
+# publish = false signals to both cargo and license-aggregation tools
+# (cargo-about with `[private] ignore = true`) that this is an app,
+# not a library, and shouldn't appear in generated NOTICES files
+# alongside third-party crates. Our LICENSE at repo root is the
+# canonical source-license statement.
+publish = false
 
 [lib]
 name = "skrivro_lib"

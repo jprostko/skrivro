@@ -1,0 +1,41 @@
+{{!-- Skrivro NOTICES — plain-text handlebars template for cargo-about.
+    Invoked by scripts/gen-notices.sh. Output is appended to the
+    repo-root NOTICES file after the npm-side license dump.
+
+    Structure: per-license section, with the full text of the license
+    followed by the list of crates that use it. Grouping by license
+    (not per-crate) avoids repeating MIT / Apache-2.0 text for every
+    single dep (hundreds of MITs in our tree); a redistributor only
+    needs to preserve each distinct license text once.
+
+    Triple-brace is used instead of double-brace everywhere to suppress
+    handlebars' default HTML escaping. We emit plain text, not HTML, so
+    the escape entities would just be noise in the output.
+
+    This is a long-form handlebars comment ({{!-- ... --}}) rather than
+    the short form ({{! ... }}) because the short form's parser chokes
+    on triple-brace sequences inside the comment body.
+--}}================================================================
+=== Rust crate licenses ===
+================================================================
+
+Overview (crate count per license):
+{{#each overview}}
+  - {{{name}}}: {{{count}}} crate(s)
+{{/each}}
+
+{{#each licenses}}
+----------------------------------------------------------------
+License: {{{name}}} ({{{id}}})
+----------------------------------------------------------------
+
+Used by:
+{{#each used_by}}
+  - {{{crate.name}}} {{{crate.version}}}{{#if crate.repository}} — {{{crate.repository}}}{{/if}}
+{{/each}}
+
+License text:
+
+{{{text}}}
+
+{{/each}}

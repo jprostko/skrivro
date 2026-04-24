@@ -1,0 +1,55 @@
+# cargo-about configuration for Skrivro's NOTICES generation.
+#
+# See https://embarkstudios.github.io/cargo-about/cli/generate/config.html
+# for the schema and semantics.
+#
+# Invoked by scripts/gen-notices.sh (from repo root) as:
+#   cd src-tauri && cargo about generate about.hbs
+
+# Permissive licenses we accept from the Rust dependency tree. A crate
+# licensed under anything outside this list fails generation; the fix
+# is either adding the license here (if it's still permissive enough
+# for our 0BSD source to sit alongside), adding a clarification block
+# for the specific crate, or dropping / replacing the offending dep.
+#
+# Copyleft licenses (GPL family) are deliberately excluded — those would
+# force Skrivro's source to go viral. MPL-2.0 is included because it's
+# file-level copyleft only, which is compatible with our 0BSD source
+# alongside MPL-2.0 files.
+accepted = [
+    "0BSD",
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MPL-2.0",
+    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "Zlib",
+]
+
+# Target triples to consider. Without this, cargo-about only sees deps
+# that the host platform would pull in, so Mac-only crates (objc2,
+# objc2-app-kit, objc2-foundation), Linux-only crates (webkit2gtk, glib),
+# and Windows-only crates are invisible when running from Linux. Listing
+# all the target triples we build for ensures NOTICES covers every
+# platform.
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+
+# Skip our own crate. Pairs with `publish = false` in src-tauri/Cargo.toml
+# to tell cargo-about "this is the root app, not a dep; don't include it
+# alongside third-party crates in the generated NOTICES." Our source
+# license is declared in repo-root LICENSE, not via a synthesized entry
+# in NOTICES.
+[private]
+ignore = true

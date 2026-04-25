@@ -238,49 +238,52 @@ body.no-titlebar .titlebar { display: none; }
 }
 .preview-scroll:focus { outline: none; }
 
-/* Active-pane indicator — split mode only. The two panes use
-   different mechanisms because of the WebKitGTK painting-order
-   quirk we've been dodging elsewhere: descendants with painted
-   backgrounds occlude ancestors' inset outlines, contra spec.
+/* Active-pane indicator — split mode only. The 1px column at the
+   boundary between the panes (which is .editor-pane's `border-right`,
+   declared further up) acts as a pivot: surface when neither pane is
+   focused, accent when either pane is focused. Achieved without any
+   cross-pane CSS selector (no :has(), no JS-managed class) by having
+   each pane provide accent at the boundary column on its own focus:
 
-     - Preview: outline drawn directly on .preview-pane at offset -1.
-       Safe because .preview-scroll is absolutely positioned inset
-       from the pane's top/bottom edges (and its padding-inline keeps
-       scrolled content away from the left/right edges), so no child
-       background reaches .preview-pane's outer 1px band.
+     - Editor focus: .editor-pane's static border-right recolors from
+       surface to accent. Border lives at the boundary column; the
+       recolor places accent there directly.
 
-     - Editor: an outline at .editor-pane's or .cm-editor's inner
-       edge gets occluded by .cm-activeLine's background on the left
-       and right. .cm-activeLine is inside .cm-content, whose left/
-       right edges align with .cm-editor's edges, so wherever the
-       cursor's line passes, the active-line background paints over
-       the outline's leftmost and rightmost columns. Visual symptom:
-       colored band appears only where the cursor isn't — "the
-       focus indicator and the current line seem to mix."
+     - Preview focus: a box-shadow on .preview-pane with x-offset -1px
+       (no inset, no spread, no blur) paints a 1px accent shadow
+       OUTSIDE preview's left edge. Since editor is the immediately
+       preceding sibling with no gap between, that 1px shadow lands
+       precisely on .editor-pane's border-right column, painting
+       accent OVER the static surface border (preview paints after
+       editor in document order, so preview's shadow wins).
 
-       Workaround: absolutely-positioned ::after pseudo-element on
-       .editor-pane painting accent on top, left, and bottom only.
-       As a positioned descendant of .editor-pane, the pseudo paints
-       AFTER .cm-editor and its active-line subtree in the stacking
-       order — its border sits on top of the active-line background
-       instead of beneath it. pointer-events:none so the pseudo
-       doesn't intercept clicks meant for the editor. The
-       .editor-pane { position: relative } declaration up in the
-       .editor-pane block is what makes inset:0 resolve against
-       .editor-pane.
+   Each pane's other three sides come from a mechanism specific to
+   the pane's contents:
 
-       Editor's RIGHT side is provided separately by recoloring
-       .editor-pane's static border-right (the always-visible
-       separator between the panes) to accent on focus, rather
-       than from the pseudo. The pseudo's inset:0 with
-       box-sizing:border-box paints inside the padding box, which
-       is 1px narrower than the border box on the right because the
-       static border-right consumes that column. A pseudo-painted
-       right border would therefore land 1px INSIDE the visible
-       right edge, asymmetric to the other three sides which sit at
-       the visible edges. Recoloring the static border places accent
-       at exactly the visible right edge, matching the other three
-       sides. */
+     - Editor (top/left/bottom): absolutely-positioned ::after pseudo
+       with `border-width: 1px 0 1px 1px`. The pseudo handles the
+       WebKitGTK painting-order quirk where .cm-activeLine's
+       background occludes ancestors' inset outlines — as a
+       positioned descendant, the pseudo paints AFTER .cm-activeLine
+       in stacking order, so its border sits on top of the active-
+       line background. The pseudo omits the right side because the
+       recolored border-right already provides it (and a pseudo right
+       border at inset:0 would land 1px INSIDE the visible right edge
+       due to box-sizing+border-right asymmetry, breaking alignment
+       with the other three sides). pointer-events:none so the pseudo
+       doesn't intercept clicks meant for the editor.
+
+     - Preview (top/right/bottom): inset box-shadows on the same
+       focus rule as the outside-left shadow. Inset shadows paint
+       inside the padding box (preview has no border or padding, so
+       at the visible edges). Box-shadow chosen over outline because
+       outline + cross-pane recolor via :has() empirically caused
+       sub-pixel rendering artifacts on preview's right side at
+       fractional DPI — a documented WebKit-family workaround for
+       outline rendering issues is to use inset box-shadow instead.
+       Going box-shadow on all four sides also lets the LEFT side
+       point OUTSIDE the box (the pivot mechanism above), which
+       outline can't do per-side. */
 body.mode-split .editor-pane:focus-within {
   border-right-color: var(--skr-accent);
 }
@@ -295,8 +298,11 @@ body.mode-split .editor-pane:focus-within::after {
   box-sizing: border-box;
 }
 body.mode-split .preview-pane:focus-within {
-  outline: 1px solid var(--skr-accent);
-  outline-offset: -1px;
+  box-shadow:
+    inset 0 1px 0 0 var(--skr-accent),
+    inset -1px 0 0 0 var(--skr-accent),
+    inset 0 -1px 0 0 var(--skr-accent),
+    -1px 0 0 0 var(--skr-accent);
 }
 .preview-scroll > :first-child { margin-top: 0; }
 /* "Scroll past end" spacer — without this, the preview's scrollable

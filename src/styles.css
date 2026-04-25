@@ -239,7 +239,7 @@ body.no-titlebar .titlebar { display: none; }
 .preview-scroll:focus { outline: none; }
 
 /* Active-pane indicator — split mode only. The two panes use
-   different mechanisms because of the same WebKitGTK painting-order
+   different mechanisms because of the WebKitGTK painting-order
    quirk we've been dodging elsewhere: descendants with painted
    backgrounds occlude ancestors' inset outlines, contra spec.
 
@@ -259,27 +259,44 @@ body.no-titlebar .titlebar { display: none; }
        focus indicator and the current line seem to mix."
 
        Workaround: absolutely-positioned ::after pseudo-element on
-       .editor-pane, 1px border with inset:0 and box-sizing:
-       border-box so the border paints at the same pixel columns
-       where the old .cm-editor outline painted. As a positioned
-       descendant of .editor-pane, the pseudo paints AFTER .cm-editor
-       and its active-line subtree in the stacking order — its border
-       sits on top of the active-line background instead of beneath
-       it. pointer-events:none so the pseudo doesn't intercept clicks
-       meant for the editor. The .editor-pane { position: relative }
-       declaration up in the .editor-pane block is what makes
-       inset:0 resolve against .editor-pane. */
-body.mode-split .preview-pane:focus-within {
-  outline: 1px solid var(--skr-accent);
-  outline-offset: -1px;
+       .editor-pane painting accent on top, left, and bottom only.
+       As a positioned descendant of .editor-pane, the pseudo paints
+       AFTER .cm-editor and its active-line subtree in the stacking
+       order — its border sits on top of the active-line background
+       instead of beneath it. pointer-events:none so the pseudo
+       doesn't intercept clicks meant for the editor. The
+       .editor-pane { position: relative } declaration up in the
+       .editor-pane block is what makes inset:0 resolve against
+       .editor-pane.
+
+       Editor's RIGHT side is provided separately by recoloring
+       .editor-pane's static border-right (the always-visible
+       separator between the panes) to accent on focus, rather
+       than from the pseudo. The pseudo's inset:0 with
+       box-sizing:border-box paints inside the padding box, which
+       is 1px narrower than the border box on the right because the
+       static border-right consumes that column. A pseudo-painted
+       right border would therefore land 1px INSIDE the visible
+       right edge, asymmetric to the other three sides which sit at
+       the visible edges. Recoloring the static border places accent
+       at exactly the visible right edge, matching the other three
+       sides. */
+body.mode-split .editor-pane:focus-within {
+  border-right-color: var(--skr-accent);
 }
 body.mode-split .editor-pane:focus-within::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  border: 1px solid var(--skr-accent);
+  border-style: solid;
+  border-width: 1px 0 1px 1px;
+  border-color: var(--skr-accent);
   box-sizing: border-box;
+}
+body.mode-split .preview-pane:focus-within {
+  outline: 1px solid var(--skr-accent);
+  outline-offset: -1px;
 }
 .preview-scroll > :first-child { margin-top: 0; }
 /* "Scroll past end" spacer — without this, the preview's scrollable

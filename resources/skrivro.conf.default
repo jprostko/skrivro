@@ -224,6 +224,43 @@
 # Accepted forms: true/false, yes/no, on/off, 1/0 (case-insensitive).
 # restore-session = false
 
+# ================= Security =================
+
+# Allow external HTTPS image loading in the preview pane — true /
+# false (default false). Off by default, intentionally.
+#
+# When false (the default), every `<img>` whose src is an external
+# URL (anything other than `data:` or Tauri's `asset:` protocol) is
+# replaced at render time with a small inline placeholder showing
+# the alt text and the original URL on hover. No HTTP request is
+# ever sent — the gate runs in the frontend BEFORE the rendered
+# HTML enters the live DOM, so the webview never sees an external
+# image src to fetch.
+#
+# When true, the gate permits HTTPS image src values through; the
+# webview loads them normally via Tauri's CSP-allowed https: source.
+# Useful for previewing GitHub-hosted READMEs and similar documents
+# where images live on external CDNs.
+#
+# HTTPS-only policy: even when this flag is true, plain `http:`
+# image sources are still placeholdered. There's no opt-in for HTTP.
+#
+# Privacy implication: enabling this lets every preview render of a
+# document with external images send your IP and User-Agent to
+# whatever servers are hosting those images (a tracking vector for
+# documents from untrusted sources). Only enable if you trust the
+# documents you're rendering.
+#
+# CSP and restart: enabling this flag does not require Tauri's CSP
+# to be modified — the CSP already allows `https:` for img-src; the
+# gate is what was blocking. So toggling this and restarting Skrivro
+# is sufficient. (No Skrivro setting can override Tauri's CSP at
+# runtime; if you ever need to lock down the CSP further, that's a
+# tauri.conf.json edit + rebuild.)
+#
+# Accepted forms: true/false, yes/no, on/off, 1/0 (case-insensitive).
+# allow-external-images = false
+
 # ================= Language =================
 
 # UI language for the status bar labels, help dialog, and confirm

@@ -114,6 +114,11 @@ export interface SkrivroConfig {
 
   // Boolean: Option<bool> serializes to `null | boolean`.
   restoreSession?: boolean | null;
+  // Whether the preview pane is allowed to load external HTTPS
+  // images. Default false (Rust None → frontend treats undefined/null
+  // as false). Read by preview.ts's render() to gate which <img>
+  // elements get replaced with inline placeholders.
+  allowExternalImages?: boolean | null;
 
   // UI language override. Frontend validates and falls through to
   // auto-detect if the value isn't 'en' or 'sv'.

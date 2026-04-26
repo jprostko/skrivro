@@ -10,7 +10,9 @@ import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { dirname, resolve } from '@tauri-apps/api/path';
 
+import { userConfig } from './config.js';
 import { getDoc, editorView } from './editor.js';
+import { tr } from './i18n.js';
 import { currentBuffer } from './io.js';
 import { getRenderer, type BlockMapEntry } from './renderer.js';
 import { updateWordCount } from './ui.js';
@@ -31,6 +33,40 @@ const statusSyncIndicator = document.getElementById('statusSyncIndicator')!;
 const ESCAPE_MAP: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
 const escapeHtml = (s: string) =>
   s.replace(/[&<>]/g, (c: string) => ESCAPE_MAP[c] ?? c);
+
+// Replace a blocked-by-the-image-gate <img> with an inline <span>
+// placeholder. The visible text shows the alt text (or the URL when
+// no alt was supplied) plus the literal config-key name so users
+// who land on this with no prior knowledge have a search term that
+// will hit the docs / config file / FAQ. The title attribute (browser
+// tooltip on hover) gives the full URL and the explicit instruction
+// for how to enable, since hover discoverability is bad enough that
+// the visible text needs to stand on its own.
+//
+// Localization: the surrounding chrome ("image blocked", "see",
+// "External image blocked", and the full instruction sentence) is
+// translated via tr(); the literal `allow-external-images` config-
+// key name stays English, matching item #13's policy that input
+// syntax doesn't translate (the user types this string into their
+// config file regardless of their UI language).
+//
+// textContent / setAttribute (not innerHTML) so the content can't
+// smuggle markup back in. The .image-placeholder class is a hook for
+// theme-side styling — currently unstyled, the user sees the
+// bracketed text rendered as plain inline content. The `\n` in the
+// title text is honored as a line break by WebKit-family browsers'
+// native tooltips.
+const replaceImgWithPlaceholder = (img: Element, src: string): void => {
+  const span = document.createElement('span');
+  span.className = 'image-placeholder';
+  const label = img.getAttribute('alt') || src;
+  span.textContent =
+    `[${tr('image blocked')}: ${label} (${tr('see')} allow-external-images)]`;
+  span.title =
+    `${tr('External image blocked')}: ${src}\n` +
+    tr('To render, set allow-external-images = true in skrivro.conf and restart.');
+  img.replaceWith(span);
+};
 
 // ================= Render timer =================
 
@@ -102,59 +138,76 @@ export const render = async () => {
     // clobber the fresher result.
     if (myToken !== renderToken) return;
 
-    // Image path post-processing.
+    // Image post-processing — two passes in one walk:
     //
-    // Renderers emit <img src="..."> with paths that are either
-    // relative to the document's base directory or absolute filesystem
-    // paths. Either way, the browser resolves them against the current
-    // page URL (tauri://localhost/) and hits Tauri's SPA-fallback
-    // handler, which returns our own index.html for any unresolved
-    // path and the image silently fails to load. To actually reach
-    // files on disk we have to rewrite the src attributes to use
-    // Tauri's asset protocol via convertFileSrc().
+    //   1. Rewrite scheme-less paths (relative or absolute filesystem)
+    //      to Tauri asset:// URLs via convertFileSrc(). Renderers emit
+    //      <img src="..."> with paths that the browser would otherwise
+    //      resolve against tauri://localhost/ and hit Tauri's SPA-
+    //      fallback handler (returning index.html as the "image"); the
+    //      asset-protocol rewrite is what makes local images actually
+    //      load. Requires tauri.conf.json to have
+    //      `app.security.assetProtocol` enabled (it is).
     //
-    // Pattern: parse the rendered HTML into a detached wrapper
-    // element, walk its <img> elements, rewrite any relative or
-    // absolute-filesystem src to a Tauri asset URL, then move the
-    // children to `out`. Doing this in a detached element avoids
-    // a flash of broken images — browsers don't start loading image
-    // src values until the node is attached to a displayed document.
+    //   2. Gate scheme-having URLs based on which scheme they use:
+    //        - data:, asset: — always allow (inline data URIs and
+    //          Tauri's own asset protocol are both safe and intended)
+    //        - https: — allow only if userConfig.allowExternalImages
+    //          is true; otherwise replace with an inline placeholder
+    //        - http: — always replace with an inline placeholder
+    //          (HTTPS-only policy: no opt-in for HTTP, even if
+    //          allowExternalImages is true)
+    //        - anything else (file:, ftp:, etc.) — placeholder
     //
-    // URLs with an explicit scheme (http://, https://, data:, etc.)
-    // are left alone — those are genuine external URLs that should
-    // either be loaded via CSP-allowed origins or blocked by CSP if
-    // they're not. Our asset-protocol rewrite is only for paths that
-    // look like local files (no scheme).
+    //      Replacing in the detached wrapper element BEFORE attaching
+    //      to the live DOM is what makes the gate effective: browsers
+    //      don't start loading image src values until the node is
+    //      attached to a displayed document, so an external URL that
+    //      gets replaced never triggers a network request. The CSP in
+    //      tauri.conf.json permits `https:` for img-src, so without
+    //      this gate, external HTTPS images would freely load — the
+    //      gate, not the CSP, is the actual security boundary.
     //
-    // Requires tauri.conf.json to have `app.security.assetProtocol`
-    // enabled with an appropriate scope — without that, the Tauri
-    // backend won't serve files at the rewritten URLs.
-    //
-    // This DOM post-processing is format-agnostic — applies equally to
-    // whatever HTML the active renderer produced — so it lives in
-    // preview.ts rather than in a specific renderer implementation.
-    if (currentBuffer.path) {
-      const baseDir = await dirname(currentBuffer.path);
-      const wrapper = document.createElement('div');
-      wrapper.innerHTML = result.html;
-      for (const img of wrapper.querySelectorAll('img')) {
-        const src = img.getAttribute('src');
-        if (!src) continue;
-        // Skip URLs with any scheme (http, https, data, asset, etc.).
-        // The RFC 3986 scheme regex: starts with a letter, followed
-        // by letters/digits/+/-/., then a colon.
-        if (/^[a-z][a-z0-9+.-]*:/i.test(src)) continue;
-        try {
-          const absPath = await resolve(baseDir, src);
-          img.setAttribute('src', convertFileSrc(absPath));
-        } catch (e) {
-          console.warn('Failed to resolve image path:', src, e);
-        }
+    // Format-agnostic — applies to whatever HTML the active renderer
+    // produced — so it lives here in preview.ts rather than in a
+    // specific renderer implementation.
+    const allowExternalImages = userConfig.allowExternalImages === true;
+    const baseDir = currentBuffer.path ? await dirname(currentBuffer.path) : null;
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = result.html;
+    for (const img of wrapper.querySelectorAll('img')) {
+      const src = img.getAttribute('src');
+      if (!src) continue;
+      // RFC 3986 scheme: starts with a letter, followed by letters /
+      // digits / + / - / ., then a colon. Capture group lets us
+      // dispatch on which scheme it is.
+      const schemeMatch = /^([a-z][a-z0-9+.-]*):/i.exec(src);
+      const scheme = schemeMatch?.[1]?.toLowerCase();
+      if (scheme) {
+        if (scheme === 'data' || scheme === 'asset') continue;
+        if (scheme === 'https' && allowExternalImages) continue;
+        // Block: HTTP (always), HTTPS when not allowed, and any
+        // other scheme. Replace with a placeholder span showing the
+        // alt text (or the URL if no alt was supplied) and put the
+        // original URL in the title attribute for hover discovery.
+        replaceImgWithPlaceholder(img, src);
+        continue;
       }
-      out.replaceChildren(...wrapper.childNodes);
-    } else {
-      out.innerHTML = result.html;
+      // No scheme — relative or absolute filesystem path. Resolve
+      // against the document's directory if we have one. Untitled
+      // buffers have no baseDir; leave such srcs alone (they'll
+      // render as broken in the preview, which mirrors how a
+      // standalone editor would behave for a relative path with no
+      // anchor document).
+      if (!baseDir) continue;
+      try {
+        const absPath = await resolve(baseDir, src);
+        img.setAttribute('src', convertFileSrc(absPath));
+      } catch (e) {
+        console.warn('Failed to resolve image path:', src, e);
+      }
     }
+    out.replaceChildren(...wrapper.childNodes);
 
     // Consume the scroll-to-top request, if any. Done right after the
     // DOM write so the reset lands on the fresh content; any carried-

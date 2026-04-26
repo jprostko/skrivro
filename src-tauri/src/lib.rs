@@ -174,6 +174,22 @@ struct SkrivroConfig {
     // See the Session state section below for the state file format
     // and the get_session_state / set_session_state commands.
     restore_session: Option<bool>,
+    // When true, the preview pane is permitted to load images from
+    // external HTTPS URLs (e.g., GitHub-hosted README images).
+    // Default false — external image src attributes are rewritten
+    // to inline placeholders by the frontend's render-time post-
+    // processing before any fetch can happen. The CSP relaxation
+    // in tauri.conf.json (img-src includes `https:`) is what makes
+    // external loading possible WHEN the gate allows; the gate is
+    // the actual security boundary, not the CSP.
+    //
+    // HTTPS-only by deliberate policy — even when this flag is
+    // true, `http:` image sources are placeholdered. Setting this
+    // requires app restart to take effect (CSP is applied at
+    // webview creation time; flipping at runtime would create an
+    // inconsistency between what the webview permits and what the
+    // gate filters).
+    allow_external_images: Option<bool>,
     // UI language — "auto" (default if unset; detect from browser
     // locale), "en" (force English), or "sv" (force Swedish). When
     // the config specifies "en" or "sv" explicitly, that overrides
@@ -574,6 +590,25 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
                         #[cfg(debug_assertions)]
                         eprintln!(
                             "[skrivro config] line {}: restore-session value '{}' must be true or false, skipping",
+                            idx + 1,
+                            val
+                        );
+                    }
+                }
+            }
+            "allow-external-images" => {
+                // Boolean-valued. Same accepted spellings as restore-session.
+                // Default off (None → false). When on, the preview gate
+                // permits HTTPS image src attributes to load via the CSP-
+                // allowed `https:` source. `http:` is always blocked by the
+                // gate regardless of this flag (HTTPS-only policy).
+                match val.to_lowercase().as_str() {
+                    "true" | "yes" | "on" | "1" => cfg.allow_external_images = Some(true),
+                    "false" | "no" | "off" | "0" => cfg.allow_external_images = Some(false),
+                    _ => {
+                        #[cfg(debug_assertions)]
+                        eprintln!(
+                            "[skrivro config] line {}: allow-external-images value '{}' must be true or false, skipping",
                             idx + 1,
                             val
                         );

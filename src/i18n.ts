@@ -145,6 +145,16 @@ export const STRINGS_SV: Record<string, string> = {
   'Snap preview to cursor (same as :syncpreview)': 'Snäpp förhandsvisning till markör (samma som :syncpreview)',
   'Save if dirty, quit (same as :x)': 'Spara om osparad, avsluta (samma som :x)',
   'Force quit, discard changes (same as :q!)': 'Tvinga avsluta, kasta ändringar (samma som :q!)',
+
+  // Preview pane — external-image gate placeholder. The literal
+  // `allow-external-images` config-key name stays English in both
+  // languages (input syntax). Best-effort first pass; the
+  // instruction sentence in particular wants native-speaker review.
+  'image blocked': 'bild blockerad',
+  'see': 'se',
+  'External image blocked': 'Extern bild blockerad',
+  'To render, set allow-external-images = true in skrivro.conf and restart.':
+    'För att visa, ställ in allow-external-images = true i skrivro.conf och starta om.',
 };
 
 // Translation helper. Returns the Swedish string if current language

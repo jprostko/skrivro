@@ -13,7 +13,7 @@
 # it is a no-op.
 #
 # User-supplied themes live alongside this file in a themes/ subdir,
-# e.g., Linux: ~/.config/com.skrivro.editor/themes/<name>.conf
+# e.g., Linux: ~/.config/com.skrivro.editor/themes/<name>.theme
 # A user-supplied theme with the same name as a bundled theme overrides
 # the bundled version.
 #
@@ -105,16 +105,19 @@
 # Set `theme = dracula` (or any other name) to switch. Omit the key
 # (or set it to catppuccin-mocha) for the default.
 #
-# User-supplied themes: place a .conf file in the themes/ subdir
+# User-supplied themes: place a .theme file in the themes/ subdir
 # alongside this config file:
-#   Linux:   ~/.config/com.skrivro.editor/themes/<name>.conf
-#   macOS:   ~/Library/Application Support/com.skrivro.editor/themes/<name>.conf
-#   Windows: %APPDATA%\com.skrivro.editor\themes\<name>.conf
+#   Linux:   ~/.config/com.skrivro.editor/themes/<name>.theme
+#   macOS:   ~/Library/Application Support/com.skrivro.editor/themes/<name>.theme
+#   Windows: %APPDATA%\com.skrivro.editor\themes\<name>.theme
 # then set `theme = <name>` here. A user-supplied file with the same
-# name as a bundled theme overrides the bundled version. See
-# catppuccin-mocha.theme.default in the source tree's resources/themes/ directory
-# for the full slot schema with purpose descriptions — copy it, rename,
-# and fill in your palette.
+# name as a bundled theme overrides the bundled version. The bundled
+# templates in the source tree end in `.theme.default` to signal
+# "reference template, not a live config"; the user file is the same
+# format with the `.default` suffix dropped. Copy
+# resources/themes/catppuccin-mocha.theme.default to
+# <app_config_dir>/themes/<name>.theme and fill in your palette —
+# all 24 slots are documented inline in the template.
 # theme = catppuccin-mocha
 
 # ================= Format =================

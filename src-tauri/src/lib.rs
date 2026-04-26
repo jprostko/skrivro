@@ -324,14 +324,20 @@ fn skrivro_themes_dir(app: &tauri::AppHandle) -> Option<PathBuf> {
 }
 
 /// Load a theme by name. Resolution order:
-/// 1. User-supplied file at <app_config_dir>/themes/<name>.conf
+/// 1. User-supplied file at <app_config_dir>/themes/<name>.theme
 /// 2. Bundled theme data embedded at compile time via include_str!()
 /// 3. None — caller falls through to CSS defaults (catppuccin-mocha)
+///
+/// User theme files use the `.theme` extension (matching the bundled
+/// templates' `.theme.default` minus the .default suffix that signals
+/// "reference template"). The relationship between the two is meant
+/// to be visually obvious: copy `<name>.theme.default` from the
+/// source tree to `<app_config_dir>/themes/<name>.theme` and edit.
 #[cfg_attr(not(debug_assertions), allow(unused_variables))]
 fn load_theme(name: &str, app: &tauri::AppHandle) -> Option<ThemeColors> {
     // Check for user-supplied theme file first
     if let Some(dir) = skrivro_themes_dir(app) {
-        let path = dir.join(format!("{}.conf", name));
+        let path = dir.join(format!("{}.theme", name));
         if let Ok(text) = std::fs::read_to_string(&path) {
             return Some(parse_theme_file(&text));
         }

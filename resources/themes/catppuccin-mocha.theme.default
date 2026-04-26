@@ -3,12 +3,14 @@
 # This file is NOT loaded at runtime — Catppuccin Mocha is the CSS
 # default, so its values are compiled into styles.css as the :root
 # fallback. This file exists purely as a reference for theme authors:
-# copy it, rename to your-theme.conf, replace each value with your
+# copy it, rename to your-theme.theme, replace each value with your
 # palette's best match for the PURPOSE described in the comment.
 #
 # Place your theme at:
-#   $XDG_CONFIG_HOME/skrivro/themes/your-theme.conf
-#   (or ~/.config/skrivro/themes/your-theme.conf)
+#   Linux:   ~/.config/com.skrivro.editor/themes/your-theme.theme
+#            (or $XDG_CONFIG_HOME/com.skrivro.editor/themes/your-theme.theme)
+#   macOS:   ~/Library/Application Support/com.skrivro.editor/themes/your-theme.theme
+#   Windows: %APPDATA%\com.skrivro.editor\themes\your-theme.theme
 #
 # Then set `theme = your-theme` in skrivro.conf.
 #

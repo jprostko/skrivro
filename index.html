@@ -679,6 +679,22 @@
   .statusbar .status-position {
     white-space: nowrap;
   }
+
+  /* Sync indicator: a small arrow that flashes from its dim resting
+     color to the teal feedback accent when scroll-sync fires (via
+     Ctrl+Alt+L, :syncpreview, or gz). The flash provides feedback
+     even when the preview doesn't visibly move — e.g., if the caret
+     line was already at the top of the visible block, scrollIntoView
+     is a no-op but the user still gets confirmation their keystroke
+     registered. */
+  .statusbar .status-sync-indicator {
+    color: var(--skr-text-faint);
+    transition: color 500ms ease-out;
+  }
+  .statusbar .status-sync-indicator.flashing {
+    color: var(--skr-feedback);
+    transition: color 0ms;
+  }
 </style>
 </head>
 <body>
@@ -721,6 +737,7 @@
       <span class="status-filename" id="statusFilename">untitled.adoc</span>
     </div>
     <div class="status-right">
+      <span class="status-sync-indicator" id="statusSyncIndicator" aria-hidden="true">→</span>
       <span class="status-filetype" id="statusFiletype">AsciiDoc</span>
       <span class="status-position" id="statusPosition">Ln 1, Col 1</span>
     </div>
@@ -885,11 +902,12 @@
   const helpBtn          = document.getElementById('helpBtn');
   const helpCloseBtn     = document.getElementById('helpCloseBtn');
 
-  const statusBar        = document.getElementById('statusbar');
-  const statusMode       = document.getElementById('statusMode');
-  const statusFilename   = document.getElementById('statusFilename');
-  const statusFiletype   = document.getElementById('statusFiletype');
-  const statusPosition   = document.getElementById('statusPosition');
+  const statusBar           = document.getElementById('statusbar');
+  const statusMode          = document.getElementById('statusMode');
+  const statusFilename      = document.getElementById('statusFilename');
+  const statusFiletype      = document.getElementById('statusFiletype');
+  const statusPosition      = document.getElementById('statusPosition');
+  const statusSyncIndicator = document.getElementById('statusSyncIndicator');
 
   // ================= Prefs =================
 
@@ -1208,8 +1226,27 @@
 
   // Binary search for the greatest block with line <= caretLine, then
   // scroll its DOM element to the top of the preview viewport.
+  // Flash the sync indicator. Removing and re-adding the class in
+  // the same tick doesn't restart the transition because the browser
+  // batches the class changes; forcing a synchronous reflow via
+  // `void offsetWidth` between the two flushes the pending style
+  // changes so the subsequent add is recognized as a state
+  // transition. Canonical "restart a CSS animation/transition from
+  // JS" pattern — ugly but stable across browsers.
+  const flashSync = () => {
+    if (!statusSyncIndicator) return;
+    statusSyncIndicator.classList.remove('flashing');
+    void statusSyncIndicator.offsetWidth;
+    statusSyncIndicator.classList.add('flashing');
+  };
+
   const syncPreviewToCaret = () => {
     if (!blockMap.length || !editorView) return;
+    // Flash the indicator after the guard — the guard protects against
+    // no-op calls where there's nothing to sync to. Any call past it
+    // is a "real" sync attempt that deserves feedback regardless of
+    // whether the preview actually scrolls.
+    flashSync();
     const pos = editorView.state.selection.main.head;
     const caretLine = editorView.state.doc.lineAt(pos).number;
     let lo = 0, hi = blockMap.length - 1, found = 0;

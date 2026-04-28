@@ -1,0 +1,45 @@
+= Skrivro (standalone)
+
+This branch hosts the standalone single-file build of Skrivro: a self-contained `index.html` that runs entirely in a web browser.
+No installation, no native binary, no build step — open the file in a browser and it works.
+
+The full Skrivro experience — config files, themes loaded from disk, AsciiDoc `include::` support, OS integration — lives on the `master` branch as a Tauri desktop application.
+This branch exists for cases where installing the desktop application isn't an option.
+
+== Differences from the desktop version
+
+[cols="1,3", options="header"]
+|===
+| Area | Difference
+
+| Config file
+| No `skrivro.conf`. Settings (fonts, padding, theme, status bar style, cursor position format, soft column limit, default format) are compiled-in defaults. Where a runtime toggle is exposed, its state persists via `localStorage` instead of a config file.
+
+| Themes
+| Catppuccin Mocha only. The desktop version bundles seven themes and reads custom themes from a `themes/` directory; standalone has neither mechanism.
+
+| AsciiDoc `include::`
+| Doesn't pre-expand. Browser security prevents reading sibling files. Asciidoctor's "Unresolved directive" placeholder appears in the preview wherever an `include::` would have rendered.
+
+| File open / save
+| Uses the browser's File System Access API. Modern Chromium-based browsers (Chrome, Edge, Brave) support direct file editing; Firefox and Safari fall back to download-based saves.
+
+| Keyboard shortcuts for open / new
+| `Ctrl+Alt+O` and `Ctrl+Alt+N`, not `Ctrl+O` and `Ctrl+N`. Browsers reserve plain `Ctrl+O` for the browser's own file dialog and `Ctrl+N` for new windows; web pages can't reliably override them.
+
+| External images in preview
+| Governed by browser CSP, not a Skrivro setting. There is no `allow-external-images` config key.
+
+| OS integration
+| No file associations, no drag-and-drop from the OS file manager (drag-and-drop within the browser window does work, where supported), no single-instance routing, no system tray, no native menu bar.
+|===
+
+== Running
+
+Open `index.html` in a Chromium-based browser (Chrome, Edge, Brave, etc.) for the full feature set.
+Other browsers work with reduced functionality (file save typically falls back to a download).
+
+== Documentation
+
+Day-to-day usage, keyboard shortcuts, vim mode, and configuration documentation live with the desktop version on the `master` branch.
+The shortcut reference and vim Ex commands are also visible inside the app via the `?` button or `Ctrl+Alt+H`.

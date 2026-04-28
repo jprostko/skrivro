@@ -1,8 +1,2 @@
-# Claude Code
+# Claude Code local settings
 .claude/*.local.json
-
-# Tauri / Node
-tauri/node_modules/
-tauri/dist/
-tauri/src-tauri/target/
-tauri/src-tauri/gen/

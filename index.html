@@ -785,6 +785,8 @@
     <div class="help-grid">
       <div class="help-key"><kbd>Ctrl+Alt+L</kbd></div>
       <div class="help-desc">Sync preview to cursor</div>
+      <div class="help-key"><kbd>Ctrl+Alt+W</kbd></div>
+      <div class="help-desc">Toggle focus between editor and preview (split mode only)</div>
     </div>
 
     <h2>Vim Ex commands <span class="help-note">(vim mode only)</span></h2>
@@ -1774,6 +1776,44 @@
     applyDisplayMode();
   };
 
+  // ================= Pane focus =================
+  // Split-mode-only: toggle keyboard focus between the editor and
+  // the preview. Keystrokes route to whichever pane has focus, and
+  // the active-pane outline (CSS) shows which one. No-op outside
+  // split mode (single-pane modes have nowhere to toggle to).
+  //
+  // The preview's tabindex="-1" makes it programmatically focusable
+  // (declared in the markup); without that attribute, out.focus()
+  // would silently no-op. lastSplitFocus is updated so future
+  // display-mode work can restore the previously-focused pane on a
+  // round-trip (split → editor-only → split).
+  const togglePaneFocus = () => {
+    if (prefs.displayMode !== 'split') return;
+    const a = document.activeElement;
+    const editorHasFocus =
+      editorView && (editorView.contentDOM === a || editorView.contentDOM.contains(a));
+    if (editorHasFocus) {
+      out.focus();
+      lastSplitFocus = 'preview';
+    } else {
+      editorView && editorView.focus();
+      lastSplitFocus = 'editor';
+    }
+  };
+
+  // Click anywhere in the preview pane focuses it (standard "click
+  // to focus" behavior; without this, only the keyboard toggle could
+  // move focus to preview). Mousedown rather than click so the focus
+  // change happens before any text-selection drag inside the pane.
+  out.addEventListener('mousedown', () => {
+    if (prefs.displayMode === 'split') {
+      // Defer the focus call so the click's default behavior (text
+      // selection, link follow, etc.) isn't disturbed by an immediate
+      // focus shift in the same event-loop tick.
+      queueMicrotask(() => out.focus());
+    }
+  });
+
   // ================= Keyboard shortcuts =================
   // Capture phase so we beat CM6's internal keymap + vim bindings.
   window.addEventListener('keydown', (e) => {
@@ -1802,6 +1842,8 @@
       e.preventDefault(); openFile();
     } else if (e.altKey && k === 'l') {
       e.preventDefault(); syncPreviewToCaret();
+    } else if (e.altKey && k === 'w') {
+      e.preventDefault(); togglePaneFocus();
     } else if (e.altKey && k === 'h') {
       e.preventDefault(); toggleHelp();
     }

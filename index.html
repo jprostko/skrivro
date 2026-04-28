@@ -680,20 +680,31 @@
     white-space: nowrap;
   }
 
-  /* Sync indicator: a small arrow that flashes from its dim resting
-     color to the teal feedback accent when scroll-sync fires (via
-     Ctrl+Alt+L, :syncpreview, or gz). The flash provides feedback
-     even when the preview doesn't visibly move — e.g., if the caret
-     line was already at the top of the visible block, scrollIntoView
-     is a no-op but the user still gets confirmation their keystroke
-     registered. */
+  /* Sync indicator: a small arrow that flashes from the teal
+     feedback accent back down to its dim resting color when
+     scroll-sync fires (via Ctrl+Alt+L, :syncpreview, or gz). The
+     flash provides feedback even when the preview doesn't visibly
+     move — e.g., if the caret line was already at the top of the
+     visible block, scrollIntoView is a no-op but the user still
+     gets confirmation their keystroke registered.
+
+     Implemented as a CSS animation rather than a transition + class
+     toggle: the animation plays once when .flashing is added and
+     returns the element to its base color at the end. The class
+     stays on the element after the animation completes (animation-
+     fill-mode default is `none`, so the element reverts to its
+     underlying .status-sync-indicator color). flashSync() restarts
+     the animation by removing and re-adding the class with a forced
+     reflow between to flush the pending style changes. */
   .statusbar .status-sync-indicator {
     color: var(--skr-text-faint);
-    transition: color 500ms ease-out;
   }
   .statusbar .status-sync-indicator.flashing {
-    color: var(--skr-feedback);
-    transition: color 0ms;
+    animation: sync-flash 500ms ease-out;
+  }
+  @keyframes sync-flash {
+    from { color: var(--skr-feedback); }
+    to   { color: var(--skr-text-faint); }
   }
 </style>
 </head>
@@ -1227,12 +1238,12 @@
   // Binary search for the greatest block with line <= caretLine, then
   // scroll its DOM element to the top of the preview viewport.
   // Flash the sync indicator. Removing and re-adding the class in
-  // the same tick doesn't restart the transition because the browser
+  // the same tick doesn't restart the animation because the browser
   // batches the class changes; forcing a synchronous reflow via
   // `void offsetWidth` between the two flushes the pending style
-  // changes so the subsequent add is recognized as a state
-  // transition. Canonical "restart a CSS animation/transition from
-  // JS" pattern — ugly but stable across browsers.
+  // changes so the subsequent add is recognized as a fresh state
+  // change. Canonical "restart a CSS animation from JS" pattern —
+  // ugly but stable across browsers.
   const flashSync = () => {
     if (!statusSyncIndicator) return;
     statusSyncIndicator.classList.remove('flashing');

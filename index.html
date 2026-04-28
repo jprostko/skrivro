@@ -1769,11 +1769,43 @@
     for (const m of DISPLAY_MODES) cl.remove(`mode-${m}`);
     cl.add(`mode-${prefs.displayMode}`);
   };
+  // Move keyboard focus to whichever pane is visible after a display
+  // mode change. Without this, focus can end up stranded on a hidden
+  // pane (e.g. switching from split-with-preview-focused to editor-
+  // only leaves focus on a preview that's now display:none, so
+  // keystrokes go nowhere visible). For preview-only, we explicitly
+  // blur the editor's contentDOM so CodeMirror's internal focus
+  // state matches the visual state — without that, CM6 still thinks
+  // it's focused even though the pane is hidden.
+  const applyFocusForMode = () => {
+    if (!editorView) return;
+    switch (prefs.displayMode) {
+      case 'editor':
+        editorView.focus();
+        break;
+      case 'preview':
+        editorView.contentDOM.blur();
+        break;
+      case 'split':
+        if (lastSplitFocus === 'preview') out.focus();
+        else editorView.focus();
+        break;
+    }
+  };
   const setDisplayMode = (mode) => {
     if (!DISPLAY_MODES.includes(mode)) return;
+    // Snapshot the currently-focused pane before leaving split mode
+    // so a later return to split can restore focus to the same pane.
+    if (prefs.displayMode === 'split' && mode !== 'split') {
+      const a = document.activeElement;
+      const editorHasFocus =
+        editorView && (editorView.contentDOM === a || editorView.contentDOM.contains(a));
+      lastSplitFocus = editorHasFocus ? 'editor' : 'preview';
+    }
     prefs.displayMode = mode;
     savePrefs();
     applyDisplayMode();
+    applyFocusForMode();
   };
 
   // ================= Pane focus =================
@@ -2017,7 +2049,10 @@
   if (hasDraft) setDirty(true);
   updateTitle();
   render();
-  editorView.focus();
+  // Initial focus respects the saved display mode — the unconditional
+  // editorView.focus() that used to live here would stick focus on the
+  // hidden editor when launching in preview-only mode.
+  applyFocusForMode();
 </script>
 </body>
 </html>

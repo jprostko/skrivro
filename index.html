@@ -168,6 +168,11 @@
     overflow: hidden;
     background: var(--skr-bg);
     border-right: 1px solid var(--skr-surface);
+    /* position: relative establishes the containing block for the
+       absolutely-positioned ::after pseudo used by the active-pane
+       outline (see body.mode-split .editor-pane:focus-within::after
+       further down). No layout effect on its own. */
+    position: relative;
   }
   .editor-pane .cm-editor { height: 100%; }
   .editor-pane .cm-editor.cm-focused { outline: none; }
@@ -401,11 +406,40 @@
   /* ---------- Active-pane outline (split mode only) ---------- */
   /* Visual indicator showing which pane has keyboard focus. Only
      meaningful in split mode; in single-pane modes there's nothing
-     to disambiguate between. The .preview:focus rule below
+     to disambiguate.
+
+     The editor side splits the indicator across two mechanisms
+     because .cm-editor fills .editor-pane and its background paints
+     over any outline drawn at outline-offset:-1, leaving the outline
+     visible only on the right edge (where the static border-right
+     sits in the border zone, outside .cm-editor's reach). The fix:
+     (1) recolor the static border-right to accent on focus — that's
+     the right side of the rectangle; (2) a positioned ::after pseudo
+     paints top/left/bottom borders. As a positioned descendant, the
+     pseudo paints AFTER .cm-editor's subtree in stacking order, so
+     its borders sit on top of the content backgrounds rather than
+     behind them. inset:0 + box-sizing:border-box places the borders
+     at the same pixel columns an outline at offset -1 would have
+     occupied. pointer-events:none so it doesn't intercept clicks.
+
+     Preview side uses a plain outline because .preview has padding
+     and its rendered HTML doesn't reach the pane edges, so no child
+     background covers the outline area. The .preview:focus rule
      suppresses the default browser focus ring on the focusable
-     element itself — the outline-on-focus-within rule above
-     provides the visible signal. */
-  body.mode-split .editor-pane:focus-within,
+     element itself — the :focus-within rule above does the work. */
+  body.mode-split .editor-pane:focus-within {
+    border-right-color: var(--skr-accent);
+  }
+  body.mode-split .editor-pane:focus-within::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-style: solid;
+    border-width: 1px 0 1px 1px;
+    border-color: var(--skr-accent);
+    box-sizing: border-box;
+  }
   body.mode-split .preview:focus-within {
     outline: 1px solid var(--skr-accent);
     outline-offset: -1px;

@@ -184,6 +184,21 @@
     scrollbar-width: thin;
   }
   .preview > :first-child { margin-top: 0; }
+  /* Scroll-past-end spacer: without this, the preview's scrollable
+     range stops where the rendered content ends, which means
+     scrollIntoView (used by sync-preview) on the document's last
+     ~viewport-worth of content can't bring those blocks to the top
+     of the viewport — they're clamped to whatever scroll position
+     keeps the document end visible at the bottom. The spacer adds
+     a viewport-height-minus-a-bit of empty scrollable space so any
+     block, including the last, can be scrolled to the top. The 4em
+     subtraction keeps a couple of trailing lines visible at max
+     scroll instead of leaving the viewport entirely empty. */
+  .preview::after {
+    content: '';
+    display: block;
+    height: calc(100vh - 4em);
+  }
 
   /* ---------- Preview — generic HTML ---------- */
   .preview h1, .preview h2, .preview h3,
@@ -365,15 +380,37 @@
   body.mode-editor .preview      { display: none; }
   body.mode-preview .editor-pane { display: none; }
 
-  body.mode-editor .editor-pane {
-    max-width: 900px;
-    margin: 0 auto;
-    border-right: none;
+  body.mode-editor .editor-pane { border-right: none; }
+  /* Apply the editor-only-mode width cap on .cm-scroller (the
+     scrollable text area inside .cm-editor) rather than on
+     .editor-pane. .cm-panels (the vim Ex command bar / search bar)
+     is a sibling of .cm-scroller inside .cm-editor, so a cap on
+     .editor-pane constrains the Ex bar too — leaving it stranded in
+     the centered 900px column instead of spanning the full window
+     like Vim's convention expects. Capping at .cm-scroller leaves
+     the Ex bar full-window-width while the text area still centers. */
+  body.mode-editor .cm-scroller {
+    width: min(900px, 100%);
+    margin-inline: auto;
   }
   body.mode-preview .preview {
     max-width: 900px;
     margin: 0 auto;
   }
+
+  /* ---------- Active-pane outline (split mode only) ---------- */
+  /* Visual indicator showing which pane has keyboard focus. Only
+     meaningful in split mode; in single-pane modes there's nothing
+     to disambiguate between. The .preview:focus rule below
+     suppresses the default browser focus ring on the focusable
+     element itself — the outline-on-focus-within rule above
+     provides the visible signal. */
+  body.mode-split .editor-pane:focus-within,
+  body.mode-split .preview:focus-within {
+    outline: 1px solid var(--skr-accent);
+    outline-offset: -1px;
+  }
+  .preview:focus { outline: none; }
 
   /* ---------- Gutter (line numbers) toggle ---------- */
   body.no-gutter .cm-gutters { display: none; }

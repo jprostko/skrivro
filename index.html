@@ -638,7 +638,7 @@
 
   <main class="wrap">
     <div id="src-host" class="editor-pane"></div>
-    <div class="preview" id="out"></div>
+    <div class="preview" id="out" tabindex="-1"></div>
   </main>
 
   <!-- Status bar: mode pill (vim-only) + filename on the left;
@@ -794,6 +794,7 @@
   const DEFAULT_DOC  = '';
 
   const hasFSA = 'showOpenFilePicker' in window && 'showSaveFilePicker' in window;
+  const isMac  = /Mac/i.test(navigator.userAgent);
 
   // ================= DOM refs =================
 
@@ -843,6 +844,8 @@
   let editorView         = null;
   let suppressDocEvents  = false; // true during programmatic setDoc calls
   let inCommandMode      = false; // true while vim's : command panel is focused — flips the mode pill to COMMAND
+  let currentFormat      = 'asciidoc'; // active document format: 'asciidoc' | 'markdown' | 'text'. Hardcoded today; the format toggle and Markdown renderer that consume this land in later phases.
+  let lastSplitFocus     = 'editor';   // remembered focus when last in split mode: 'editor' | 'preview'. Read by the pane-focus toggle and display-mode switch (later phases) to restore the prior pane on round-trips.
 
   // ================= Status bar =================
   //

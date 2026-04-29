@@ -49,8 +49,9 @@
      Defaults are in rem for font sizes and padding so they scale
      with the user's system / browser font-size preference (respects
      "Large Text" and browser zoom in a way absolute units like pt
-     and px do not). Widths are in px because layout measurements are
-     natural in pixels and the historical hardcoded value was 900px.
+     and px do not). Pane-width defaults are a viewport-responsive
+     formula — see the --edit-pane-width / --preview-pane-width
+     comment below for the rationale and the formula's anchors.
 
      Padding is split into -x (horizontal) and -y (vertical) variables
      for both the editor and the preview. The -y/-x split is
@@ -91,8 +92,28 @@
   --editor-padding-y: 2rem;
   --preview-padding-x: 2.5rem;
   --preview-padding-y: 2rem;
-  --edit-pane-width: 900px;
-  --preview-pane-width: 900px;
+  /* Single-pane width caps. Default formula:
+     min(max(70vw, 960px), 1280px, 100%) when used in the
+     .cm-scroller / .preview-pane rules — see the 100%-safety-net
+     note in the rules below.
+     - 1280px ceiling = half of a 2560px QHD 16:9 monitor. Past
+       this the column gets too wide for comfortable reading.
+     - 960px floor = half of a 1920px FHD monitor. Tiles at
+       half-FHD (a common tiling configuration) render at full
+       960 instead of being shrunken to 70% of tile.
+     - 70vw between the floor and ceiling gives breathing-room
+       margins on laptop full-window viewports.
+     - 100% safety net (in the rules, not the var) handles tiles
+       smaller than 960 — they fall through to full tile width.
+     User overrides via skrivro.conf go through normalize_length,
+     which only accepts a single length token (e.g. `1100px`,
+     `80ch`). Setting an override replaces the variable wholesale,
+     so an override is always a flat cap and doesn't preserve the
+     viewport scaling. That's the right semantics: an explicit
+     override means "this is my chosen width", not "scale my
+     chosen width with viewport". */
+  --edit-pane-width: min(max(70vw, 960px), 1280px);
+  --preview-pane-width: min(max(70vw, 960px), 1280px);
 }
 
 html, body {
@@ -757,7 +778,16 @@ body.mode-preview .editor-pane { display: none; }
    Preview-only mode keeps the constraint on `.preview-pane` itself
    because `.preview-pane` is our own div (not a CM6 element) and has no
    sibling panels to worry about — a plain max-width on a block
-   element works the way you'd expect. */
+   element works the way you'd expect.
+
+   Both rules wrap the pane-width var in `min(..., 100%)`. For the
+   editor's `width:` rule the 100% term is required as a safety net
+   (see the explanation above — width sets an explicit dimension
+   and would overflow narrower parents otherwise). For the
+   preview's `max-width:` rule the 100% is structurally redundant
+   (max-width on a block element fits the parent natively), but
+   kept for symmetry: identical wrapping across the two rules
+   reads cleaner than two-that-look-similar-but-differ-in-a-term. */
 body.mode-editor .editor-pane {
   border-right: none;
 }
@@ -770,7 +800,7 @@ body.mode-editor .cm-scroller {
   margin-inline: auto;
 }
 body.mode-preview .preview-pane {
-  max-width: var(--preview-pane-width);
+  max-width: min(var(--preview-pane-width), 100%);
   margin: 0 auto;
 }
 

@@ -95,8 +95,10 @@ fn take_pending_opens(state: tauri::State<PendingOpens>) -> Vec<String> {
 //   preview-padding-x = 2.5rem
 //   preview-padding-y = 2rem
 //
-//   # Pane widths (single-pane modes). Common choices: px, %, vw, ch.
-//   edit-pane-width = 900px
+//   # Pane widths (single-pane modes). Default is a viewport-responsive
+//   # formula; setting an override here replaces it with a flat cap.
+//   # Common choices: px, %, vw, ch.
+//   edit-pane-width = 1100px
 //   preview-pane-width = 80ch
 //
 //   # Asciidoctor safe mode (set-and-forget; not exposed in UI)

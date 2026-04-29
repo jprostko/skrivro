@@ -407,18 +407,19 @@
        (a common tiling configuration) render at the full 960
        instead of being shrunken to 70% of tile (672px).
      - 100% safety net: small tiles below the floor (e.g. a 705px
-       laptop half-tile) fall through to full tile width — for
-       max-width: this term is structurally redundant (max-width
-       on a block element already fits the parent natively), but
-       for width: on .cm-scroller it's required, since width sets
-       an explicit dimension that would otherwise overflow narrow
-       parents. */
+       laptop half-tile) fall through to full tile width.
+       Required on the editor's `width:` rule (without it, an
+       explicit width could overflow narrower parents). Kept on
+       the preview's `max-width:` rule too — although max-width on
+       a block element already fits the parent natively, identical
+       formulas across the two rules read cleaner than two that
+       look similar but differ in a fourth term. */
   body.mode-editor .cm-scroller {
     width: min(max(70vw, 960px), 1280px, 100%);
     margin-inline: auto;
   }
   body.mode-preview .preview {
-    max-width: min(max(70vw, 960px), 1280px);
+    max-width: min(max(70vw, 960px), 1280px, 100%);
     margin: 0 auto;
   }
 

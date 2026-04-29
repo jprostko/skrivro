@@ -680,6 +680,17 @@
     white-space: nowrap;
   }
 
+  /* Status bar slots whose visibility depends on display mode:
+     - The cursor position (Ln/Col) is the editor caret, so it's
+       meaningless in preview-only mode where the editor is hidden.
+     - The word count is the inverse: shown only in preview-only,
+       where the cursor position would have been. Computed from the
+       rendered preview's textContent so it reflects the final
+       reading word count. */
+  body.mode-preview .statusbar .status-position { display: none; }
+  .statusbar .status-word-count { display: none; }
+  body.mode-preview .statusbar .status-word-count { display: inline; }
+
   /* Sync indicator: a small arrow that flashes from the teal
      feedback accent back down to its dim resting color when
      scroll-sync fires (via Ctrl+Alt+L, :syncpreview, or gz). The
@@ -687,6 +698,12 @@
      move — e.g., if the caret line was already at the top of the
      visible block, scrollIntoView is a no-op but the user still
      gets confirmation their keystroke registered.
+
+     Only visible in split mode. In editor-only and preview-only
+     modes one of the two panes is hidden, so syncing the editor
+     caret to a preview block (or vice versa) doesn't represent
+     anything the user can see — showing the indicator there would
+     just be visual noise.
 
      Implemented as a CSS animation rather than a transition + class
      toggle: the animation plays once when .flashing is added and
@@ -698,7 +715,9 @@
      reflow between to flush the pending style changes. */
   .statusbar .status-sync-indicator {
     color: var(--skr-text-faint);
+    display: none;
   }
+  body.mode-split .statusbar .status-sync-indicator { display: inline; }
   .statusbar .status-sync-indicator.flashing {
     animation: sync-flash 500ms ease-out;
   }
@@ -751,6 +770,7 @@
       <span class="status-sync-indicator" id="statusSyncIndicator" aria-hidden="true">→</span>
       <span class="status-filetype" id="statusFiletype">AsciiDoc</span>
       <span class="status-position" id="statusPosition">Ln 1, Col 1</span>
+      <span class="status-word-count" id="statusWordCount">0 words</span>
     </div>
   </footer>
 
@@ -919,6 +939,7 @@
   const statusFiletype      = document.getElementById('statusFiletype');
   const statusPosition      = document.getElementById('statusPosition');
   const statusSyncIndicator = document.getElementById('statusSyncIndicator');
+  const statusWordCount     = document.getElementById('statusWordCount');
 
   // ================= Prefs =================
 
@@ -1121,6 +1142,19 @@
 
   // ================= Rendering =================
 
+  // Recompute the word count from the rendered preview's
+  // textContent. Called from inside render() after the preview's
+  // innerHTML is set. The split on /\s+/ then filter for non-empty
+  // counts whitespace-separated tokens, which matches what most
+  // word-count tools (Word, Pages, Google Docs) do for prose.
+  // toLocaleString gives the locale-appropriate thousand separator.
+  const updateWordCount = () => {
+    if (!statusWordCount) return;
+    const text  = (out.textContent || '').trim();
+    const count = text === '' ? 0 : text.split(/\s+/).filter(w => w.length > 0).length;
+    statusWordCount.textContent = `${count.toLocaleString()} words`;
+  };
+
   const render = () => {
     try {
       // Load first (so we get the AST for the scroll-sync block map),
@@ -1155,11 +1189,15 @@
       const doc = ad.load(getDoc(), { safe: 'unsafe', sourcemap: true, attributes: { showtitle: true } });
       out.innerHTML = DOMPurify.sanitize(doc.convert({ standalone: false }));
       buildBlockMap(doc);
+      updateWordCount();
     } catch (e) {
       console.error('render failed:', e);
       out.innerHTML =
         `<pre class="render-error">Render error: ${escapeHtml(e.message || String(e))}</pre>`;
       blockMap = [];
+      // Skip updateWordCount on render error — the error message's
+      // word count is meaningless, leaving the previous successful
+      // value visible reads less jarringly.
     }
   };
   const scheduleRender = () => {
@@ -1237,6 +1275,7 @@
 
   // Binary search for the greatest block with line <= caretLine, then
   // scroll its DOM element to the top of the preview viewport.
+
   // Flash the sync indicator. Removing and re-adding the class in
   // the same tick doesn't restart the animation because the browser
   // batches the class changes; forcing a synchronous reflow via

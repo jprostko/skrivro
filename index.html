@@ -390,16 +390,35 @@
      scrollable text area inside .cm-editor) rather than on
      .editor-pane. .cm-panels (the vim Ex command bar / search bar)
      is a sibling of .cm-scroller inside .cm-editor, so a cap on
-     .editor-pane constrains the Ex bar too — leaving it stranded in
-     the centered 900px column instead of spanning the full window
-     like Vim's convention expects. Capping at .cm-scroller leaves
-     the Ex bar full-window-width while the text area still centers. */
+     .editor-pane constrains the Ex bar too — leaving it stranded
+     in the centered editor column instead of spanning the full
+     window like Vim's convention expects. Capping at .cm-scroller
+     leaves the Ex bar full-window-width while the text area still
+     centers.
+
+     Width-cap formula (shared by the preview-pane rule below):
+       min(max(70vw, 960px), 1280px, 100%)
+     - 1280px ceiling = half of a QHD 16:9 monitor (2560px).
+       Past this the column is too wide for comfortable reading
+       or editing.
+     - 70vw scales with viewport so the laptop full-window case
+       gets breathing-room margins rather than filling end-to-end.
+     - 960px floor = half of a 1920 FHD monitor. Tiles at half-FHD
+       (a common tiling configuration) render at the full 960
+       instead of being shrunken to 70% of tile (672px).
+     - 100% safety net: small tiles below the floor (e.g. a 705px
+       laptop half-tile) fall through to full tile width — for
+       max-width: this term is structurally redundant (max-width
+       on a block element already fits the parent natively), but
+       for width: on .cm-scroller it's required, since width sets
+       an explicit dimension that would otherwise overflow narrow
+       parents. */
   body.mode-editor .cm-scroller {
-    width: min(900px, 100%);
+    width: min(max(70vw, 960px), 1280px, 100%);
     margin-inline: auto;
   }
   body.mode-preview .preview {
-    max-width: 900px;
+    max-width: min(max(70vw, 960px), 1280px);
     margin: 0 auto;
   }
 

@@ -725,6 +725,45 @@
     from { color: var(--skr-feedback); }
     to   { color: var(--skr-text-faint); }
   }
+
+  /* @replit/codemirror-vim hardcodes `color: red` inline on its own
+     notification divs (see plugin's showConfirm / openNotification
+     code path). Override to the theme's --skr-error slot so plugin
+     errors ("Not an editor command :foo", "Invalid regex", etc.)
+     and our own Ex error messages (see vimMessage in the script
+     section) render in theme-appropriate color. `!important` is
+     required to beat the inline style the plugin sets.
+
+     white-space: pre-wrap overrides the plugin's inline `white-
+     space: pre`. In split-pane mode the Ex panel is constrained to
+     the editor pane's width, so long single-line messages get
+     clipped at the centerline between editor and preview. pre-wrap
+     lets them wrap at spaces instead of clipping, and still
+     preserves any explicit \n breaks the plugin or we emit. */
+  .cm-vim-message {
+    color: var(--skr-error) !important;
+    white-space: pre-wrap !important;
+  }
+
+  /* Vertically center the Ex panel's content. The plugin builds
+     the Ex prompt as a tree of nested flex containers all the way
+     down — .cm-vim-panel → dialog div → makePrompt div (display:
+     flex) → prompt span (display: flex, flex: 1) → prefix + input.
+     Each flex level defaults to align-items: stretch, so the
+     prefix span (the ":" or "/") and the input stretch vertically
+     and the text inside them floats to the top of the stretched
+     line-box. Centering only the outermost .cm-vim-panel isn't
+     enough; we have to override align-items on every flex
+     container in the chain. Applying the rule to all descendant
+     divs and spans is broad but safe: non-flex descendants
+     silently ignore align-items, and the rule only affects short
+     single-line content (multi-line content grows the panel to
+     match, leaving nothing to center against). */
+  .cm-vim-panel,
+  .cm-vim-panel div,
+  .cm-vim-panel span {
+    align-items: center;
+  }
 </style>
 </head>
 <body>
@@ -1417,6 +1456,43 @@
     askConfirm('You have unsaved changes. Discard them?', onOk);
   };
 
+  // ================= Ex command panel messages =================
+  //
+  // Surfaces error/info messages to the user via the CM6 vim panel —
+  // the same bottom bar where the plugin itself shows errors like
+  // "Not an editor command :foo" and "Invalid regex". Use this
+  // anywhere we would otherwise console.error() silently and leave
+  // the user wondering why a command did nothing.
+  //
+  // Mechanism: cm.openNotification is the plugin's documented hook.
+  // Class `cm-vim-message` matches the plugin's own convention so
+  // our messages and the plugin's built-in errors share styling;
+  // inline white-space:pre preserves any formatting in the message
+  // text. The plugin inlines color:red on its own notifications,
+  // which the CSS above retheme's to --skr-error.
+  //
+  // Duration 5000ms auto-dismiss. Shorter than the plugin's own
+  // 15000ms default for errors because 15s is a long time to stare
+  // at a short message like "E37: No write since last change".
+  // Still enough time to read a verbose E212 with a long path. Safe
+  // to call from any code path; if the editor isn't ready yet we
+  // no-op silently rather than throw.
+  const vimMessage = (text) => {
+    if (!editorView) return;
+    const cm = getCM(editorView);
+    if (!cm || typeof cm.openNotification !== 'function') return;
+    const div = document.createElement('div');
+    div.className = 'cm-vim-message';
+    div.style.whiteSpace = 'pre';
+    div.textContent = text;
+    cm.openNotification(div, { bottom: true, duration: 5000 });
+  };
+
+  // Extract a human-readable message from an unknown thrown value
+  // for inclusion in a vimMessage() error string. Keeps the catch
+  // sites below from rendering "[object Object]" to the user.
+  const errMsg = (e) => (e instanceof Error ? e.message : String(e));
+
   const openFile = () => {
     confirmDiscard(() => {
       if (hasFSA) {
@@ -1437,7 +1513,9 @@
             updateTitle();
             render();
           } catch (e) {
-            if (e.name !== 'AbortError') console.error(e);
+            if (e.name === 'AbortError') return; // user cancelled the picker
+            console.error(e);
+            vimMessage(`E484: Can't open file (${errMsg(e)})`);
           }
         })();
       } else {
@@ -1468,7 +1546,10 @@
         await w.close();
         setDirty(false);
         clearDraft();
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error(e);
+        vimMessage(`E212: Can't open file for writing: ${currentName} (${errMsg(e)})`);
+      }
     } else {
       downloadFile(currentName);
       setDirty(false);
@@ -1491,7 +1572,9 @@
         clearDraft();
         updateTitle();
       } catch (e) {
-        if (e.name !== 'AbortError') console.error(e);
+        if (e.name === 'AbortError') return; // user cancelled the picker
+        console.error(e);
+        vimMessage(`E212: Can't open file for writing: ${currentName} (${errMsg(e)})`);
       }
     } else {
       const name = prompt('Save as:', currentName) || currentName;
@@ -1542,6 +1625,7 @@
       render();
     } catch (e) {
       console.error(e);
+      vimMessage(`E484: Can't open file ${currentName} (${errMsg(e)})`);
     }
   };
 
@@ -2018,7 +2102,10 @@
     // :e! — force reload, discarding any unsaved changes.
     const { bang, arg } = parseExArgs(params);
     if (arg) return; // filename argument ignored per the :w note above
-    if (dirty && !bang) return;
+    if (dirty && !bang) {
+      vimMessage('E37: No write since last change (add ! to override)');
+      return;
+    }
     reloadFile();
   });
 

@@ -2169,6 +2169,95 @@
     console.error('Vim.map gz failed:', e);
   }
 
+  // ================= Quit-family Ex commands =================
+  //
+  // Implemented as graceful no-ops that emit a vim message
+  // explaining why the window doesn't actually close. Per the
+  // HTML spec (and uniformly enforced by every modern browser),
+  // window.close() succeeds only on a window that was opened by
+  // a script (window.open) — the standalone "user opened
+  // index.html themselves" case is always blocked. Rather than
+  // have :q produce "Not an editor command :q" and confuse vim
+  // users, we acknowledge the commands so they exist in vim's
+  // command vocabulary and tell the user what to do.
+  //
+  // E37 still fires on dirty :q / :qa / :qall (without bang) for
+  // semantic parity with vim — even though we can't actually
+  // close, the dirty warning is useful info before the user
+  // manually closes the tab. Real vim's `:q` on dirty errors out
+  // with E37; `:q!` skips the check. Preserving that distinction
+  // is more useful than collapsing every variant to a single
+  // "quit blocked" message.
+  //
+  // saveFile() is async and not awaited in the :wq / :x families.
+  // If the save errors (E212), its vimMessage will land in the
+  // same panel and overwrite closeBlocked()'s message — save
+  // errors outrank the informational close-blocked notice.
+  const closeBlocked = () => {
+    vimMessage('Quit blocked by the browser. Please close the tab/window manually.');
+  };
+
+  // :q / :q! — refuse if dirty without bang; otherwise close-blocked.
+  Vim.defineEx('quit', 'q', (cm, params) => {
+    const { bang } = parseExArgs(params);
+    if (dirty && !bang) {
+      vimMessage('E37: No write since last change (add ! to override)');
+      return;
+    }
+    closeBlocked();
+  });
+
+  // :qa / :qall / :qa! / :qall! — single-buffer collapse to :q.
+  Vim.defineEx('qall', 'qa', (cm, params) => {
+    const { bang } = parseExArgs(params);
+    if (dirty && !bang) {
+      vimMessage('E37: No write since last change (add ! to override)');
+      return;
+    }
+    closeBlocked();
+  });
+
+  // :wq / :wq! — save then close-blocked.
+  Vim.defineEx('wq', 'wq', () => {
+    saveFile();
+    closeBlocked();
+  });
+
+  // :wqa / :wqall — single-buffer collapse to :wq.
+  Vim.defineEx('wqall', 'wqa', () => {
+    saveFile();
+    closeBlocked();
+  });
+
+  // :x / :x! / :xit — save if dirty, then close-blocked.
+  Vim.defineEx('xit', 'x', () => {
+    if (dirty) saveFile();
+    closeBlocked();
+  });
+
+  // :xa / :xall — single-buffer collapse to :x.
+  Vim.defineEx('xall', 'xa', () => {
+    if (dirty) saveFile();
+    closeBlocked();
+  });
+
+  // :exit — vim's own command name (alias for :x); separate
+  // registration even though the body is identical.
+  Vim.defineEx('exit', 'exi', () => {
+    if (dirty) saveFile();
+    closeBlocked();
+  });
+
+  // Normal-mode mappings: ZZ → :x<CR> (write if dirty, quit),
+  // ZQ → :q!<CR> (discard, quit). Same try/catch pattern as the
+  // gz mapping above.
+  try {
+    Vim.map('ZZ', ':x<CR>',  'normal');
+    Vim.map('ZQ', ':q!<CR>', 'normal');
+  } catch (e) {
+    console.error('Vim.map ZZ/ZQ failed:', e);
+  }
+
   // Note on visual block mode: Ctrl+V is intercepted by the browser's
   // paste handler before it reaches CM6's key handler, so Ctrl+V is
   // unreachable as a vim binding here. The plugin already ships Ctrl+Q

@@ -1459,8 +1459,33 @@
   // Ctrl+Alt+H or the "?" button in the titlebar toggles the help
   // dialog. Escape (native <dialog> behavior), the close button,
   // and clicking the backdrop all dismiss it.
+  //
+  // Focus restoration: track the active element BEFORE the dialog
+  // opens so we can restore on close. Two capture paths:
+  //   - mousedown on helpBtn: clicking the button itself moves
+  //     focus to the button by default, so a showHelp-time read of
+  //     activeElement would see the button (wrong — we want what
+  //     the user was doing before they clicked). Capturing on
+  //     mousedown grabs the pre-click activeElement.
+  //   - showHelp fallback: for the keyboard path (Ctrl+Alt+H), no
+  //     button mousedown fires; capture at showHelp time instead.
+  //
+  // preHelpFocus is cleared on close so a subsequent open via
+  // keyboard doesn't inherit a stale value from a prior mouse click.
+  let preHelpFocus = null;
+  helpBtn.addEventListener('mousedown', () => {
+    const a = document.activeElement;
+    if (a instanceof HTMLElement && a !== helpBtn) {
+      preHelpFocus = a;
+    }
+  });
   const showHelp = () => {
     if (helpDlg.open) return;
+    if (preHelpFocus === null) {
+      preHelpFocus = document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    }
     helpDlg.showModal();
     helpCloseBtn.focus();
   };
@@ -1471,6 +1496,46 @@
     if (helpDlg.open) hideHelp();
     else showHelp();
   };
+
+  // Focus restoration runs on the dialog's `close` event rather
+  // than inside hideHelp, because hideHelp is only called from our
+  // own click handlers (close button, backdrop click) — Escape
+  // triggers the native close path, which fires the close event
+  // but doesn't invoke hideHelp. Attaching here handles ALL close
+  // paths uniformly.
+  //
+  // Preview-only mode: editor stays blurred. The native dialog
+  // close can still re-focus the editor via its own restoration
+  // logic (the pre-showModal active element, or a focusable-
+  // ancestor walk from the dialog), which would re-enable
+  // keystrokes into the hidden editor and regress the read-only
+  // preview behavior. Force-blur and let the preview-only mousedown
+  // handler / mode-entry focus call put focus back on out.
+  //
+  // When restoring to the editor, use editorView.focus() rather
+  // than contentDOM.focus() directly. CM6 tracks focus state
+  // internally (the vim plugin consults it before intercepting
+  // keydowns); a bare DOM focus() leaves that internal state stale,
+  // so Vim's handler can see "not focused" and pass `:` through to
+  // default text insertion. editorView.focus() updates CM6's state
+  // coherently.
+  helpDlg.addEventListener('close', () => {
+    const restore = preHelpFocus;
+    preHelpFocus = null;
+    if (prefs.displayMode === 'preview') {
+      if (editorView) editorView.contentDOM.blur();
+      out.focus();
+      return;
+    }
+    if (restore) {
+      if (editorView && restore === editorView.contentDOM) {
+        editorView.focus();
+      } else {
+        restore.focus();
+      }
+    }
+  });
+
   helpBtn.addEventListener('click', showHelp);
   helpCloseBtn.addEventListener('click', hideHelp);
   // When the click target IS the dialog element itself (as opposed to
@@ -1983,7 +2048,15 @@
         editorView.focus();
         break;
       case 'preview':
+        // Blur the editor (so its keymap doesn't intercept keystrokes
+        // for the now-hidden pane) and focus the preview, so keyboard
+        // navigation (arrow keys, Page Up/Down, Home/End) actually
+        // scrolls the visible content. Without the focus, the active
+        // element falls back to <body>, which doesn't react to those
+        // keys at all in this layout. The preview's tabindex="-1" in
+        // the markup makes the .focus() call land.
         editorView.contentDOM.blur();
+        out.focus();
         break;
       case 'split':
         if (lastSplitFocus === 'preview') out.focus();
@@ -2044,6 +2117,101 @@
       queueMicrotask(() => out.focus());
     }
   });
+
+  // Preview-only mode: clicks on the margin areas (outside the
+  // capped-width preview content but still inside .wrap) take focus
+  // off the preview and put it on <body>, which breaks keyboard
+  // navigation. Mirrors the wheel-forwarder logic above — margin
+  // mousedowns delegate to the inner element. Inside-content clicks
+  // are skipped because the preview's own tabindex-driven native
+  // focus already handles them.
+  //
+  // preventDefault + synchronous focus, NOT queueMicrotask: the
+  // browser's default mousedown handling moves focus to <body> when
+  // the target isn't focusable. A microtask-deferred out.focus()
+  // would land AFTER that default shift, so focus ricochets — out
+  // is briefly focused, then immediately blurred. preventDefault
+  // suppresses the default shift entirely; out.focus() then runs
+  // synchronously and sticks.
+  document.querySelector('.wrap').addEventListener('mousedown', (e) => {
+    if (prefs.displayMode !== 'preview') return;
+    if (out.contains(e.target)) return;
+    e.preventDefault();
+    out.focus();
+  });
+
+  // Editor-only mode: clicks on the margin areas around .cm-scroller
+  // can blur the editor's contentDOM. CM6 has its own mousedown
+  // handler that catches margin clicks and places the cursor on the
+  // nearest line (the line at the click Y) — for different-Y clicks
+  // this works fine and keeps focus, but for same-Y clicks CM6 sees
+  // "no cursor movement needed" and apparently doesn't re-focus
+  // contentDOM, so the editor ends up blurred.
+  //
+  // preventDefault + synchronous focus, same pattern as the
+  // preview margin handler above. preventDefault stops two default
+  // behaviors that would otherwise fire:
+  //
+  //   1. The browser's focus shift to <body> for clicks on a non-
+  //      focusable target, which would override our focus call.
+  //   2. CM6's margin-click handling that places the cursor on
+  //      the line at the click Y. That cursor jump is gone here —
+  //      a deliberate trade-off. CM6's same behavior with no
+  //      cursor-position change (when the click Y matches the
+  //      cursor's current line) silently blurred the editor; the
+  //      simplest fix that keeps focus reliable is to preventDefault
+  //      uniformly. Margin clicks as a way to navigate to a line
+  //      are unusual — most users click the text directly or use
+  //      keyboard navigation — so losing that path is preferable
+  //      to randomly losing focus on accidental margin clicks.
+  //
+  // The .cm-panels skip is so clicks on the vim Ex command bar (or
+  // CM6's search panel) don't get their focus stolen by the editor:
+  // those panels have their own input that needs to keep focus
+  // after a click.
+  document.querySelector('.wrap').addEventListener('mousedown', (e) => {
+    if (prefs.displayMode !== 'editor') return;
+    if (!editorView) return;
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    if (editorView.scrollDOM.contains(target)) return;
+    if (target.closest('.cm-panels')) return;
+    e.preventDefault();
+    editorView.focus();
+  });
+
+  // ================= Wheel-event forwarding =================
+  // In single-pane modes, the active pane's scrollable element
+  // (.cm-scroller for editor, .preview itself for preview) is
+  // centered with margin-auto and capped to less than the pane
+  // width. Wheel events over the empty margin areas around the
+  // content have no scrollable ancestor — the pane wrappers and
+  // .wrap are flex containers without overflow, so the events
+  // fire into the void and the user sees nothing scroll.
+  //
+  // Forward those margin-area wheel events to the inner scroller
+  // so the pane scrolls regardless of where in the pane the cursor
+  // is hovering. Skipped in split mode because each pane fills its
+  // half of .wrap with no margin gap to worry about.
+  //
+  // passive: false is required because we call preventDefault to
+  // suppress whatever default behavior would have happened on the
+  // wrapper (typically nothing, but we want to be deterministic).
+  const wrap = document.querySelector('.wrap');
+  wrap.addEventListener('wheel', (e) => {
+    let scroller = null;
+    if (prefs.displayMode === 'editor') {
+      scroller = editorView && editorView.scrollDOM;
+    } else if (prefs.displayMode === 'preview') {
+      scroller = out;
+    } else {
+      return; // split — each pane handles its own wheel
+    }
+    if (!scroller) return;
+    if (scroller.contains(e.target)) return; // landed on inner scroller
+    e.preventDefault();
+    scroller.scrollBy({ top: e.deltaY, left: e.deltaX });
+  }, { passive: false });
 
   // ================= Keyboard shortcuts =================
   // Capture phase so we beat CM6's internal keymap + vim bindings.

@@ -894,6 +894,8 @@
       <div class="help-desc">Toggle this help</div>
       <div class="help-key"><kbd>Ctrl+Alt+B</kbd></div>
       <div class="help-desc">Toggle status bar</div>
+      <div class="help-key"><kbd>Ctrl+Alt+Y</kbd></div>
+      <div class="help-desc">Toggle syntax highlighting</div>
     </div>
 
     <h3>Navigation</h3>
@@ -926,6 +928,14 @@
     <div class="help-grid">
       <div class="help-key"><kbd>:syncpreview</kbd> <kbd>:syncp</kbd></div>
       <div class="help-desc">Snap preview to the block containing the caret line</div>
+    </div>
+
+    <h3>Syntax</h3>
+    <div class="help-grid">
+      <div class="help-key"><kbd>:syntax</kbd> <kbd>:syn</kbd></div>
+      <div class="help-desc">Show whether editor syntax highlighting is on or off</div>
+      <div class="help-key"><kbd>:syntax on</kbd> <kbd>:syntax off</kbd></div>
+      <div class="help-desc">Turn editor syntax highlighting on or off (mirrors <kbd>Ctrl+Alt+Y</kbd>)</div>
     </div>
 
     <h2>Vim normal mode <span class="help-note">(vim mode only)</span></h2>
@@ -1010,7 +1020,7 @@
 
   // ================= Prefs =================
 
-  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split', gutterHidden: true, statusBarHidden: false };
+  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split', gutterHidden: true, statusBarHidden: false, syntaxHighlighting: true };
 
   const loadPrefs = () => {
     try {
@@ -1927,6 +1937,21 @@
   // Reconfigured at runtime when the user toggles vim mode.
   const vimCompartment = new Compartment();
 
+  // ================= Language compartment =================
+  // Wraps the language extension so toggleSyntaxHighlighting can
+  // reconfigure between asciidocLang and [] at runtime. When the
+  // contents are [], CM6's tokenization stops producing tokens for
+  // the syntaxHighlighting() consumers below, so all per-token
+  // coloring disappears — but the rest of CM6's affordances
+  // (active-line highlight, search matches, gutter line numbers,
+  // active-pane outline, vim cursor shape) stay working.
+  //
+  // Currently AsciiDoc-only: this compartment always reconfigures
+  // between asciidocLang and []. When Phase G adds Markdown, the
+  // reconfigure target needs to dispatch on currentFormat the way
+  // master's resolveLanguageExtension(format) helper does.
+  const langCompartment = new Compartment();
+
   // ================= Editor extensions =================
 
   const makeExtensions = () => [
@@ -1965,8 +1990,10 @@
     bracketMatching(),
     EditorView.lineWrapping,
 
-    // language — minimal adoc stream highlighter
-    asciidocLang,
+    // language — minimal adoc stream highlighter, wrapped in a
+    // compartment so the syntax-highlighting toggle can swap it
+    // out for an empty extension at runtime.
+    langCompartment.of(prefs.syntaxHighlighting ? asciidocLang : []),
 
     // highlighting
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
@@ -2025,6 +2052,31 @@
     });
     // Show / hide the mode pill immediately on vim toggle.
     refreshStatus();
+  };
+
+  // Toggle editor syntax highlighting on/off and persist. Same
+  // shape as toggleVim — pref flip, persist, dispatch a compartment
+  // reconfigure. Called by Ctrl+Alt+Y and (via applySyntaxHighlighting)
+  // by the :syntax Ex command.
+  const toggleSyntaxHighlighting = () => {
+    prefs.syntaxHighlighting = !prefs.syntaxHighlighting;
+    savePrefs();
+    editorView.dispatch({
+      effects: langCompartment.reconfigure(prefs.syntaxHighlighting ? asciidocLang : []),
+    });
+  };
+
+  // Explicit setter for `:syntax on` / `:syntax off` — distinct from
+  // the keybinding which is a pure toggle. No-op when the pref is
+  // already in the requested state, which avoids the needless
+  // dispatch and any visible flicker.
+  const applySyntaxHighlighting = (enabled) => {
+    if (prefs.syntaxHighlighting === enabled) return;
+    prefs.syntaxHighlighting = enabled;
+    savePrefs();
+    editorView.dispatch({
+      effects: langCompartment.reconfigure(enabled ? asciidocLang : []),
+    });
   };
 
   const DISPLAY_MODES = ['split', 'editor', 'preview'];
@@ -2243,6 +2295,12 @@
       e.preventDefault(); syncPreviewToCaret();
     } else if (e.altKey && k === 'w') {
       e.preventDefault(); togglePaneFocus();
+    } else if (e.altKey && k === 'y') {
+      // Y is a weak mnemonic (S would be better but Ctrl+S is in
+      // the save family). The secondary-modifier namespace is
+      // crowded enough that "works and doesn't conflict" wins
+      // over "readable mnemonic." Same letter as master uses.
+      e.preventDefault(); toggleSyntaxHighlighting();
     } else if (e.altKey && k === 'h') {
       e.preventDefault(); toggleHelp();
     }
@@ -2425,6 +2483,27 @@
   } catch (e) {
     console.error('Vim.map ZZ/ZQ failed:', e);
   }
+
+  // :syntax / :syn — matches real Vim's command of the same name
+  // (Vim also accepts `enable`/`disable`, but `on`/`off` are the
+  // canonical forms most users type and the only two we need).
+  // Bare `:syntax` reports current state. Invalid argument emits
+  // an E474 error matching the existing format Ex command's shape.
+  Vim.defineEx('syntax', 'syn', (cm, params) => {
+    const { arg } = parseExArgs(params);
+    if (!arg) {
+      vimMessage(`Syntax highlighting: ${prefs.syntaxHighlighting ? 'on' : 'off'}`);
+      return;
+    }
+    const a = arg.toLowerCase();
+    if (a === 'on') {
+      applySyntaxHighlighting(true);
+    } else if (a === 'off') {
+      applySyntaxHighlighting(false);
+    } else {
+      vimMessage(`E474: Invalid argument "${arg}" (expected on or off)`);
+    }
+  });
 
   // Note on visual block mode: Ctrl+V is intercepted by the browser's
   // paste handler before it reaches CM6's key handler, so Ctrl+V is

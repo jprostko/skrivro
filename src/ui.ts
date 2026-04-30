@@ -579,11 +579,16 @@ export const setDisplayMode = (mode: string) => {
   // Focus/blur the editor explicitly on mode transition so the
   // newly-visible surface has predictable focus state:
   //
-  //   - 'preview': blur the editor. WebKit doesn't reliably blur a
-  //     focused contenteditable when its ancestor becomes
-  //     display:none (via body.mode-preview → .editor-pane), so
-  //     keystrokes can still reach the invisible editor and modify
-  //     the source behind the user's back.
+  //   - 'preview': blur the editor and focus the preview. The blur
+  //     is needed because WebKit doesn't reliably blur a focused
+  //     contenteditable when its ancestor becomes display:none (via
+  //     body.mode-preview → .editor-pane), so keystrokes could
+  //     still reach the invisible editor and modify the source
+  //     behind the user's back. The out.focus() puts keyboard focus
+  //     on the visible preview surface so arrow keys / Page Up /
+  //     Page Down actually scroll the preview — without it, focus
+  //     falls to <body>, which doesn't react to those keys at all
+  //     in this layout.
   //   - 'editor': focus the editor. With the preview hidden, the
   //     editor is the only input surface — it should always be ready
   //     to receive keystrokes, regardless of what was focused before
@@ -600,6 +605,7 @@ export const setDisplayMode = (mode: string) => {
   //     in practice) don't clobber the user's current in-split focus.
   if (mode === 'preview') {
     editorView.contentDOM.blur();
+    out.focus();
   } else if (mode === 'editor') {
     editorView.focus();
   } else if (mode === 'split' && prevMode !== 'split') {
@@ -833,6 +839,96 @@ host.addEventListener('mousedown', (e) => {
     if (editorView) editorView.contentDOM.focus();
   });
 });
+
+// ================= Single-pane scroll + focus routing =================
+//
+// In editor-only and preview-only modes, the inner scrollable
+// element (.cm-scroller for editor, .preview-scroll for preview) is
+// centered with margin-auto inside its pane and capped to a width
+// less than the pane. The empty margin space around the scroller
+// lives in flex containers without overflow, so user input over
+// that space — wheel events, mousedowns — has no scrollable / focus
+// target ancestor by default. The handlers below forward those
+// events to the inner element so single-pane modes behave
+// consistently no matter where in the pane the cursor is.
+//
+// Skipped in split mode because the cap rules (`body.mode-editor` /
+// `body.mode-preview` scoping) don't apply there — each pane fills
+// its half of .wrap with no margin gap to worry about.
+
+const wrapEl = document.querySelector('.wrap');
+if (wrapEl) {
+  // Wheel forwarder: scroll the inner scroller via scrollBy when the
+  // wheel event lands outside it. passive: false because we
+  // preventDefault.
+  wrapEl.addEventListener('wheel', (e: Event) => {
+    const we = e as WheelEvent;
+    let scroller: Element | null = null;
+    if (prefs.displayMode === 'editor') {
+      scroller = editorView ? editorView.scrollDOM : null;
+    } else if (prefs.displayMode === 'preview') {
+      scroller = out;
+    } else {
+      return; // split — each pane handles its own wheel
+    }
+    if (!scroller) return;
+    if (!(we.target instanceof Node)) return;
+    if (scroller.contains(we.target)) return; // landed on inner scroller
+    we.preventDefault();
+    scroller.scrollBy({ top: we.deltaY, left: we.deltaX });
+  }, { passive: false });
+
+  // Preview-only margin click: clicks on the margin areas (outside
+  // the capped-width preview content but still inside .wrap) take
+  // focus off the preview and put it on <body>, which breaks
+  // keyboard navigation. preventDefault + synchronous focus is the
+  // working pattern (queueMicrotask deferred runs AFTER the default
+  // focus shift, so focus ricochets — see standalone commit 79d3092
+  // for the iteration trail).
+  wrapEl.addEventListener('mousedown', (e: Event) => {
+    if (prefs.displayMode !== 'preview') return;
+    const me = e as MouseEvent;
+    if (!(me.target instanceof Node)) return;
+    if (out.contains(me.target)) return;
+    me.preventDefault();
+    out.focus();
+  });
+
+  // Editor-only margin click: clicks on the margin areas around
+  // .cm-scroller can blur the editor's contentDOM. CM6 has its own
+  // mousedown handler that catches margin clicks and places the
+  // cursor on the nearest line — for different-Y clicks this works
+  // and keeps focus, but for same-Y clicks CM6 sees "no cursor
+  // movement needed" and silently doesn't refocus contentDOM, so
+  // the editor blurs.
+  //
+  // preventDefault + synchronous focus stops two default behaviors:
+  //   1. The browser's focus shift to <body> for clicks on a non-
+  //      focusable target (which would override our focus call).
+  //   2. CM6's margin-click cursor placement at different Y. That
+  //      jump is gone here — a deliberate trade-off. Margin clicks
+  //      as a way to navigate to a specific line are unusual; most
+  //      users click the text directly or use keyboard navigation.
+  //      Losing that path is preferable to losing focus on accidental
+  //      margin clicks.
+  //
+  // The .cm-panels skip is so clicks on the vim Ex command bar (or
+  // CM6's search panel) don't get their focus stolen by the editor.
+  // The existing host mousedown listener above also fires (it's on
+  // .editor-pane which is inside .wrap), but the rAF refocus there
+  // is a harmless no-op when we've already synchronously focused
+  // the editor here.
+  wrapEl.addEventListener('mousedown', (e: Event) => {
+    if (prefs.displayMode !== 'editor') return;
+    if (!editorView) return;
+    const me = e as MouseEvent;
+    if (!(me.target instanceof Element)) return;
+    if (editorView.scrollDOM.contains(me.target)) return;
+    if (me.target.closest('.cm-panels')) return;
+    me.preventDefault();
+    editorView.focus();
+  });
+}
 
 // Keep a pane focused when clicking the titlebar or status bar (split
 // and editor-only modes only — in preview-only mode the editor is

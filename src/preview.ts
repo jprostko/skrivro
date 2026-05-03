@@ -15,7 +15,7 @@ import { getDoc, editorView } from './editor.js';
 import { tr } from './i18n.js';
 import { currentBuffer } from './io.js';
 import { getRenderer, type BlockMapEntry } from './renderer.js';
-import { updateWordCount } from './ui.js';
+import { updateWordCount, setLastTocPosition } from './ui.js';
 
 // DOM refs owned by preview.ts. Non-null assertions (`!`) because
 // both IDs are in our HTML and the module runs after body parse.
@@ -226,6 +226,12 @@ export const render = async () => {
     latestBuildBlockMap = result.buildBlockMap;
     translateEditorLine = result.translateEditorLine;
     updateWordCount();
+    // Surface the doc's `:toc:` position to the sidebar-TOC
+    // layout machinery in ui.ts. setLastTocPosition caches the
+    // value AND re-evaluates the layout immediately, so subsequent
+    // display-mode / width-mode changes can re-evaluate without
+    // re-rendering.
+    setLastTocPosition(result.tocPosition);
   } catch (e) {
     console.error('render failed:', e);
     // Same staleness check as the success path — if a newer render
@@ -242,6 +248,10 @@ export const render = async () => {
     // instead of trying to build from stale (or nonexistent) state.
     blockMap = null;
     latestBuildBlockMap = null;
+    // Render error means no doc to read tocPosition from; reset
+    // the cached value so the sidebar layout strips its classes
+    // (the error <pre> has no #toc element to lay out).
+    setLastTocPosition(null);
     // Intentionally not updating word count on render error — the
     // error message's word count is meaningless, so leaving the
     // previous successful value feels less jarring than showing

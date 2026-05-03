@@ -98,6 +98,18 @@
      pref. The mode → ch value mapping lives in WIDTH_CAPS in
      ui.ts. */
   --width-cap: 90ch;
+
+  /* Sidebar TOC width when the doc requests `:toc: left` or
+     `:toc: right` and conditions for sidebar layout are met
+     (preview-only mode + width mode != narrow). Echoes
+     Asciidoctor's spec values (15em / 20em from their default
+     stylesheet) but mapped onto our width modes instead of
+     viewport breakpoints: medium and wide both get 15em (the
+     spec's smaller value), full gets 20em (the spec's larger
+     value). applyWidthMode in src/ui.ts overrides this on launch
+     and on width-mode changes. The :root default here matches
+     medium (the default width mode). */
+  --toc-sidebar-width: 15em;
 }
 
 html, body {
@@ -793,6 +805,128 @@ body.mode-editor .cm-scroller {
 body.mode-preview .preview-pane {
   max-width: min(var(--width-cap), 100%);
   margin: 0 auto;
+}
+
+/* ---------- Sidebar TOC layout ---------- */
+/* Applied when:
+   - Document has `:toc: left` or `:toc: right` (read from
+     Asciidoctor's `toc-position` attribute via the renderer's
+     RenderResult; see evaluateTocLayout in src/ui.ts).
+   - Display mode is preview-only (split is too narrow per
+     pane; editor-only the preview is hidden).
+   - Width mode is not narrow (narrow's text budget can't
+     accommodate a sidebar without compromising prose comfort).
+   evaluateTocLayout adds .has-sidebar-toc + .toc-left/.toc-right
+   to .preview-pane when all three hold; removes them otherwise.
+
+   Two-element preview structure on master means the layout
+   class goes on .preview-pane (where max-width lives) but the
+   grid display goes on .preview-scroll (where #toc is a direct
+   child). Descendant selectors handle the split.
+
+   The body.mode-preview prefix bumps specificity to (0,3,1),
+   beating the body.mode-preview .preview-pane rule above
+   (0,2,1). Without the prefix, both tied at element-selector
+   tiebreak favored the non-sidebar rule, leaving max-width at
+   the bare --width-cap and collapsing the content column.
+
+   Sidebar layout EXPANDS .preview-pane's max-width to
+   content-cap + sidebar-width + gap, replacing the normal
+   content-cap-only constraint. Content column inside still
+   ends up at the bare --width-cap. The 100% safety net still
+   applies — narrow viewports clamp to fit. */
+body.mode-preview .preview-pane.has-sidebar-toc {
+  max-width: min(calc(var(--width-cap) + var(--toc-sidebar-width) + 2em), 100%);
+}
+
+/* minmax(0, 1fr) instead of bare 1fr — grid's `1fr` cell defaults
+   to a min-width of min-content (the widest unbreakable unit
+   inside it, e.g. a long code line or URL). With prose plus code
+   blocks, that min-content can exceed the calc()-derived
+   content-column width, forcing the grid container to grow past
+   its max-width and producing horizontal scrollbars. minmax(0,
+   1fr) lets the cell shrink below min-content; long lines inside
+   code blocks then overflow within the code block's own
+   overflow-x rather than the whole preview's scroll. */
+.preview-pane.has-sidebar-toc.toc-left .preview-scroll {
+  display: grid;
+  column-gap: 2em;
+  grid-template-columns: var(--toc-sidebar-width) minmax(0, 1fr);
+}
+.preview-pane.has-sidebar-toc.toc-right .preview-scroll {
+  display: grid;
+  column-gap: 2em;
+  grid-template-columns: minmax(0, 1fr) var(--toc-sidebar-width);
+}
+
+/* Default: every child goes in the content column. The TOC
+   selector below overrides this for #toc itself. */
+.preview-pane.has-sidebar-toc.toc-left .preview-scroll > * {
+  grid-column: 2;
+}
+.preview-pane.has-sidebar-toc.toc-right .preview-scroll > * {
+  grid-column: 1;
+}
+
+/* TOC: occupies the sidebar column, spans all rows so it fills
+   the layout's full vertical extent. position: sticky pins it
+   to the top of the visible area as content scrolls within
+   .preview-scroll's overflow context. align-self: start prevents
+   the grid from stretching it to row height; max-height +
+   overflow-y handle the case where the TOC itself is taller
+   than the viewport. */
+.preview-pane.has-sidebar-toc.toc-left .preview-scroll > #toc {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  align-self: start;
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 4em);
+  overflow-y: auto;
+}
+.preview-pane.has-sidebar-toc.toc-right .preview-scroll > #toc {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  align-self: start;
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 4em);
+  overflow-y: auto;
+}
+
+/* TOC theming using --skr-* vars. Subtle border on the inner
+   side (between TOC and content) plus muted padding. Title is
+   slightly heavier; nested lists indent with no bullets. */
+.preview-pane.has-sidebar-toc .preview-scroll > #toc {
+  padding: 1em 1.5em;
+  background: var(--skr-bg-panel);
+  font-size: 0.9rem;
+}
+.preview-pane.has-sidebar-toc.toc-left .preview-scroll > #toc {
+  border-right: 1px solid var(--skr-surface);
+}
+.preview-pane.has-sidebar-toc.toc-right .preview-scroll > #toc {
+  border-left: 1px solid var(--skr-surface);
+}
+.preview-pane.has-sidebar-toc .preview-scroll > #toc #toctitle {
+  font-weight: 600;
+  margin: 0 0 0.5em 0;
+  color: var(--skr-text);
+}
+.preview-pane.has-sidebar-toc .preview-scroll > #toc ul {
+  padding-left: 1em;
+  list-style: none;
+  margin: 0.25em 0;
+}
+.preview-pane.has-sidebar-toc .preview-scroll > #toc > ul {
+  padding-left: 0;
+}
+.preview-pane.has-sidebar-toc .preview-scroll > #toc a {
+  color: var(--skr-link);
+  text-decoration: none;
+}
+.preview-pane.has-sidebar-toc .preview-scroll > #toc a:hover {
+  text-decoration: underline;
 }
 
 /* ---------- Gutter (line numbers) toggle ---------- */

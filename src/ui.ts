@@ -31,6 +31,7 @@ const statusWordCount     = document.getElementById('statusWordCount')!;
 const helpDlg             = document.getElementById('helpDialog') as HTMLDialogElement;
 const helpBtn             = document.getElementById('helpBtn')!;
 const helpCloseBtn        = document.getElementById('helpCloseBtn')!;
+const previewPaneEl       = document.querySelector('.preview-pane') as HTMLElement | null;
 
 // ================= Status bar =================
 //
@@ -456,12 +457,28 @@ const WIDTH_CAPS: Record<string, string> = {
   narrow: '65ch', medium: '90ch', wide: '125ch', full: '100vw',
 };
 
+// Sidebar TOC width per width mode, mapping Asciidoctor's spec
+// values (15em / 20em from their default stylesheet) onto our
+// modes. Narrow mode never activates sidebar layout (see
+// evaluateTocLayout below) so its value is unreachable in practice;
+// included for completeness and to keep the lookup total.
+const TOC_SIDEBAR_WIDTHS: Record<string, string> = {
+  narrow: '15em', medium: '15em', wide: '15em', full: '20em',
+};
+
 // Push the active mode's cap into the --width-cap CSS variable
-// that the .cm-scroller and .preview-pane rules consume. Defensive
+// that the .cm-scroller and .preview-pane rules consume, and the
+// matching sidebar width into --toc-sidebar-width. Defensive
 // fallback to medium if the persisted pref is somehow invalid.
+// Re-evaluates the sidebar TOC layout — narrow disables sidebar
+// layout, so transitioning in/out of narrow needs to recompute
+// the layout class set.
 export const applyWidthMode = () => {
   const cap = WIDTH_CAPS[prefs.widthMode] || WIDTH_CAPS.medium;
+  const tocSidebar = TOC_SIDEBAR_WIDTHS[prefs.widthMode] || TOC_SIDEBAR_WIDTHS.medium;
   document.documentElement.style.setProperty('--width-cap', cap);
+  document.documentElement.style.setProperty('--toc-sidebar-width', tocSidebar);
+  evaluateTocLayout();
 };
 
 // Explicit setter for `:width <mode>`. No-op when the pref is
@@ -479,6 +496,46 @@ export const cycleWidthMode = () => {
   const i = WIDTH_MODES.indexOf(prefs.widthMode);
   const next = WIDTH_MODES[(i + 1) % WIDTH_MODES.length];
   setWidthMode(next === undefined ? 'medium' : next);
+};
+
+// ================= Sidebar TOC layout =================
+// When the active document has `:toc: left` or `:toc: right`,
+// honor it as a sidebar layout — but only when the surrounding
+// conditions can support it. Otherwise, fall back to the default
+// top-of-content TOC placement that Asciidoctor's embedded
+// output produces.
+//
+// Conditions for sidebar layout (all must hold):
+//   1. Document has toc-position 'left' or 'right' (read from
+//      the Asciidoctor doc object after load — embedded HTML
+//      doesn't carry classes that distinguish the variants;
+//      RenderResult.tocPosition surfaces it).
+//   2. Display mode is preview-only. Split mode's preview pane
+//      shares the window 50/50 with the editor — too narrow per
+//      pane for a meaningful sidebar plus content. Editor-only
+//      mode hides the preview entirely so the layout is moot.
+//   3. Width mode is not narrow. Narrow's text budget can't
+//      accommodate a sidebar without compromising prose comfort.
+
+// Cached toc-position from the most recent successful render.
+// Lets display-mode and width-mode changes re-evaluate the
+// layout without re-rendering. Set via setLastTocPosition,
+// called from preview.ts after each render.
+let lastTocPosition: string | null = null;
+
+export const setLastTocPosition = (pos: string | null) => {
+  lastTocPosition = pos;
+  evaluateTocLayout();
+};
+
+export const evaluateTocLayout = () => {
+  if (!previewPaneEl) return;
+  previewPaneEl.classList.remove('has-sidebar-toc', 'toc-left', 'toc-right');
+  if (lastTocPosition !== 'left' && lastTocPosition !== 'right') return;
+  if (prefs.displayMode !== 'preview') return;
+  if (prefs.widthMode === 'narrow') return;
+  previewPaneEl.classList.add('has-sidebar-toc');
+  previewPaneEl.classList.add(lastTocPosition === 'left' ? 'toc-left' : 'toc-right');
 };
 
 // Rewrite the help dialog's modifier keys on Mac. Apple convention
@@ -664,6 +721,10 @@ export const setDisplayMode = (mode: string) => {
       editorView.focus();
     }
   }
+  // Sidebar TOC layout is preview-only; re-evaluate so leaving
+  // preview mode strips the sidebar classes (and entering it
+  // applies them if conditions hold).
+  evaluateTocLayout();
 };
 
 // ================= User config application =================
@@ -1060,7 +1121,6 @@ window.addEventListener('keydown', (e) => {
 // in the editor (where the user copied something earlier) doesn't
 // count — it'd surface a Copy item that copies from the editor when
 // the user is right-clicking in the preview, which is confusing.
-const previewPaneEl = document.querySelector('.preview-pane');
 if (previewPaneEl) {
   previewPaneEl.addEventListener('contextmenu', (e) => {
     const selection = window.getSelection();

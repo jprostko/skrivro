@@ -57,6 +57,15 @@ export interface RenderResult {
   html: string;
   buildBlockMap: (rootElement: Element) => BlockMapEntry[];
   translateEditorLine: (editorLine: number) => number;
+  // Asciidoctor's `:toc:` source attribute, surfaced so the
+  // sidebar-TOC layout in ui.ts can decide whether to activate the
+  // grid layout for the current doc. Values: 'left', 'right',
+  // 'auto', 'macro', 'preamble', 'content', or null (no `:toc:`
+  // set). Embedded-mode HTML doesn't carry classes that
+  // distinguish the sidebar variants, so the position has to come
+  // from the doc attribute. null for renderers that don't have an
+  // analog (markdown, text).
+  tocPosition: string | null;
 }
 
 // The abstraction preview.ts consumes. Every concrete markup format
@@ -647,6 +656,7 @@ export const asciidoctorRenderer: Renderer = {
       buildBlockMap: (rootElement: Element) => buildAsciidoctorBlockMap(doc, rootElement),
       translateEditorLine: (editorLine: number) =>
         capturedLineMap ? (capturedLineMap[editorLine - 1] ?? editorLine) : editorLine,
+      tocPosition: doc.getAttribute('toc-position') || null,
     };
   },
 
@@ -945,6 +955,9 @@ export const markedRenderer: Renderer = {
       // AsciiDoc's include expansion), so editor and output line
       // coordinates coincide — identity translation is correct.
       translateEditorLine: (editorLine: number) => editorLine,
+      // Markdown has no `:toc:` analog, so sidebar-TOC layout never
+      // activates for markdown documents.
+      tocPosition: null,
     });
   },
 
@@ -987,6 +1000,9 @@ export const textRenderer: Renderer = {
       html,
       buildBlockMap: () => [],
       translateEditorLine: (editorLine: number) => editorLine,
+      // Plain text has no TOC concept; sidebar-TOC layout never
+      // activates for text documents.
+      tocPosition: null,
     });
   },
 

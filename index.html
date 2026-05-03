@@ -94,6 +94,13 @@
 
     --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
+
+    /* Single-pane width cap (consumed by .cm-scroller in editor-only
+       and .preview in preview-only). Default value is the medium
+       mode; applyWidthMode in the script section overrides this on
+       launch based on the user's persisted widthMode pref. See the
+       formula comment block further down for details. */
+    --width-cap: 90ch;
   }
 
   html, body {
@@ -404,30 +411,33 @@
      leaves the Ex bar full-window-width while the text area still
      centers.
 
-     Width-cap formula (shared by the preview-pane rule below):
-       min(max(70vw, 960px), 1280px, 100%)
-     - 1280px ceiling = half of a QHD 16:9 monitor (2560px).
-       Past this the column is too wide for comfortable reading
-       or editing.
-     - 70vw scales with viewport so the laptop full-window case
-       gets breathing-room margins rather than filling end-to-end.
-     - 960px floor = half of a 1920 FHD monitor. Tiles at half-FHD
-       (a common tiling configuration) render at the full 960
-       instead of being shrunken to 70% of tile (672px).
-     - 100% safety net: small tiles below the floor (e.g. a 705px
-       laptop half-tile) fall through to full tile width.
-       Required on the editor's `width:` rule (without it, an
-       explicit width could overflow narrower parents). Kept on
-       the preview's `max-width:` rule too — although max-width on
-       a block element already fits the parent natively, identical
-       formulas across the two rules read cleaner than two that
-       look similar but differ in a fourth term. */
+     Width-cap formula (shared by the preview rule below):
+       min(var(--width-cap), 100%)
+
+     --width-cap holds a `ch`-based cap (set by applyWidthMode in
+     the script section): 65ch for narrow, 90ch for medium, 130ch
+     for wide. The ch unit is "width of '0' in the current font",
+     so the same ch value renders differently in editor (monospace)
+     vs preview (proportional) — naturally giving the editor a
+     wider visual cap than the preview at the same mode. That
+     mismatch is desirable: editing tends to want wider lines
+     (especially for code), reading tends to want narrower (prose
+     readability). One mode pref, two visually-appropriate pane
+     widths.
+
+     The 100% safety net handles narrow viewports / tiles where
+     the cap would exceed the available width. Required on the
+     editor's `width:` rule (without it, an explicit width could
+     overflow narrower parents). Kept on the preview's `max-width:`
+     too — structurally redundant for max-width but identical
+     wrapping across both rules reads cleaner than two that look
+     similar but differ in a fourth term. */
   body.mode-editor .cm-scroller {
-    width: min(max(70vw, 960px), 1280px, 100%);
+    width: min(var(--width-cap), 100%);
     margin-inline: auto;
   }
   body.mode-preview .preview {
-    max-width: min(max(70vw, 960px), 1280px, 100%);
+    max-width: min(var(--width-cap), 100%);
     margin: 0 auto;
   }
 
@@ -911,6 +921,8 @@
       <div class="help-desc">Toggle status bar</div>
       <div class="help-key"><kbd>Ctrl+Alt+Y</kbd></div>
       <div class="help-desc">Toggle syntax highlighting</div>
+      <div class="help-key"><kbd>Ctrl+Alt+C</kbd></div>
+      <div class="help-desc">Cycle single-pane width (narrow / medium / wide / full)</div>
     </div>
 
     <h3>Navigation</h3>
@@ -951,6 +963,14 @@
       <div class="help-desc">Show whether editor syntax highlighting is on or off</div>
       <div class="help-key"><kbd>:syntax on</kbd> <kbd>:syntax off</kbd></div>
       <div class="help-desc">Turn editor syntax highlighting on or off (mirrors <kbd>Ctrl+Alt+Y</kbd>)</div>
+    </div>
+
+    <h3>Width</h3>
+    <div class="help-grid">
+      <div class="help-key"><kbd>:width</kbd></div>
+      <div class="help-desc">Show the current single-pane width mode</div>
+      <div class="help-key"><kbd>:width narrow</kbd> <kbd>:width medium</kbd> <kbd>:width wide</kbd> <kbd>:width full</kbd></div>
+      <div class="help-desc">Set the width mode explicitly (mirrors <kbd>Ctrl+Alt+C</kbd>'s cycle)</div>
     </div>
 
     <h2>Vim normal mode <span class="help-note">(vim mode only)</span></h2>
@@ -1035,7 +1055,7 @@
 
   // ================= Prefs =================
 
-  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split', gutterHidden: true, statusBarHidden: false, syntaxHighlighting: true };
+  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split', gutterHidden: true, statusBarHidden: false, syntaxHighlighting: true, widthMode: 'medium' };
 
   const loadPrefs = () => {
     try {
@@ -2060,6 +2080,54 @@
     applyStatusBar();
   };
 
+  // ================= Width mode =================
+  // Four named width caps for the single-pane scrollers (editor-
+  // only and preview-only modes). Same ch value applied to both
+  // panes; the natural mono-vs-proportional width difference gives
+  // the editor a wider visual cap than the preview at the same
+  // mode setting. See the --width-cap comment block in the CSS for
+  // the typography rationale.
+  //
+  // 65ch (narrow): prose-optimal line length, ~50-65 characters
+  //   per line in proportional preview; comfortable for novels,
+  //   essays, anything pure-prose.
+  // 90ch (medium): ~Asciidoctor-default (62.5em ≈ 90ch); good
+  //   for manuals, owner docs, mixed prose-and-figure content.
+  //   Also the geometric midpoint between narrow and wide.
+  // 125ch (wide): for technical references, API docs, anything
+  //   code- or table-heavy where wider columns help.
+  // 100vw (full): no cap. Pane fills the available width — for
+  //   ultrawide monitors, single-tile-half-screen tiling, or
+  //   users who just prefer maximum screen utilization. The
+  //   100% safety net in the rules still applies but is moot
+  //   since 100vw ≥ 100% of the parent in single-pane modes.
+  const WIDTH_MODES = ['narrow', 'medium', 'wide', 'full'];
+  const WIDTH_CAPS  = { narrow: '65ch', medium: '90ch', wide: '125ch', full: '100vw' };
+
+  // Push the active mode's cap into the --width-cap CSS variable
+  // that the .cm-scroller and .preview rules consume. Defensive
+  // fallback to medium if the persisted pref is somehow invalid.
+  const applyWidthMode = () => {
+    const cap = WIDTH_CAPS[prefs.widthMode] || WIDTH_CAPS.medium;
+    document.documentElement.style.setProperty('--width-cap', cap);
+  };
+
+  // Explicit setter for `:width <mode>`. No-op when the pref is
+  // already in the requested state.
+  const setWidthMode = (mode) => {
+    if (!WIDTH_CAPS[mode] || prefs.widthMode === mode) return;
+    prefs.widthMode = mode;
+    savePrefs();
+    applyWidthMode();
+  };
+
+  // Cycle narrow → medium → wide → narrow. Bound to Ctrl+Alt+C.
+  const cycleWidthMode = () => {
+    const i = WIDTH_MODES.indexOf(prefs.widthMode);
+    const next = WIDTH_MODES[(i + 1) % WIDTH_MODES.length];
+    setWidthMode(next === undefined ? 'medium' : next);
+  };
+
   // Rewrite the help dialog's modifier-key labels on Mac. Apple
   // convention is symbols with no separator — ⌘S, ⌘⇧N, ⌘⌃E —
   // matching what users see in macOS menus and the system keyboard
@@ -2387,6 +2455,12 @@
       // crowded enough that "works and doesn't conflict" wins
       // over "readable mnemonic." Same letter as master uses.
       e.preventDefault(); toggleSyntaxHighlighting();
+    } else if (second && k === 'c') {
+      // C for Column / Cap. Cycles the width mode (narrow →
+      // medium → wide → narrow). The secondary modifier (Alt
+      // on Linux/Windows, Ctrl on Mac) keeps the chord distinct
+      // from plain Ctrl+C / ⌘C copy.
+      e.preventDefault(); cycleWidthMode();
     } else if (second && k === 'h') {
       e.preventDefault(); toggleHelp();
     }
@@ -2592,6 +2666,23 @@
     }
   });
 
+  // :width — sets or reports the single-pane width mode. Bare
+  // `:width` reports current; `:width narrow|medium|wide|full` sets.
+  // Same E474 error shape as :syntax for invalid arguments.
+  Vim.defineEx('width', 'width', (cm, params) => {
+    const { arg } = parseExArgs(params);
+    if (!arg) {
+      vimMessage(`Width mode: ${prefs.widthMode}`);
+      return;
+    }
+    const a = arg.toLowerCase();
+    if (WIDTH_MODES.includes(a)) {
+      setWidthMode(a);
+    } else {
+      vimMessage(`E474: Invalid argument "${arg}" (expected narrow, medium, wide, or full)`);
+    }
+  });
+
   // Note on visual block mode: on Linux/Windows, Ctrl+V is
   // intercepted by the browser's paste handler before it reaches
   // CM6's key handler, so Ctrl+V is unreachable as a vim binding
@@ -2635,6 +2726,7 @@
   applyStatusBar();
   applyDisplayMode();
   applyMacModifierLabels();
+  applyWidthMode();
 
   const { doc: initialDoc, hasDraft } = resolveInitialDoc();
 

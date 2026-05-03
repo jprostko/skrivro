@@ -623,12 +623,12 @@ export const setDisplayMode = (mode: string) => {
 // properties and body classes. The CSS variables (--font-mono,
 // --font-sans, --edit-font-size, --preview-font-size,
 // --editor-padding-x, --editor-padding-y, --preview-padding-x,
-// --preview-padding-y, --edit-pane-width, --preview-pane-width)
-// are all consumed by the CM6 theme and the pane / scroll-container
-// CSS rules, so a single assignment here propagates to every
-// rendered element that reads them. No CM6 dispatch effects, no
-// theme reconfiguration dance — this is why CSS variables are
-// strictly simpler than CM6 Compartments for this use case.
+// --preview-padding-y) are all consumed by the CM6 theme and the
+// pane / scroll-container CSS rules, so a single assignment here
+// propagates to every rendered element that reads them. No CM6
+// dispatch effects, no theme reconfiguration dance — this is why
+// CSS variables are strictly simpler than CM6 Compartments for
+// this use case.
 //
 // Runtime-read keys (asciidocSafeMode, cursorPositionFormat) are NOT
 // handled here — render() and formatCursorPosition() read them
@@ -705,30 +705,6 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   }
   if (cfg.previewPaddingY) {
     root.style.setProperty('--preview-padding-y', cfg.previewPaddingY);
-  }
-
-  // Pane width overrides: affect only the single-pane display modes.
-  // In editor-only mode the constraint is applied to `.cm-scroller`
-  // (see the long comment in styles.css) rather than `.editor-pane`
-  // so that the CM6 vim command panel and search bar escape the
-  // reading-column constraint and span the full window — matching
-  // Vim's convention for the Ex command line. In preview-only mode
-  // the constraint is applied to `.preview-pane` directly since there
-  // are no CM6 panels to escape — the outer pane + margin-auto gives
-  // a centered reading-column at the configured width. Split mode
-  // doesn't read these vars — each pane is 50% of the window via
-  // flexbox.
-  //
-  // Values are required to carry an explicit unit by the Rust-side
-  // normalize_length helper (the same helper now used for font
-  // sizes and padding), so whatever arrives here is already known
-  // to be a valid CSS length string (or at least has a unit suffix
-  // we trust CSS to validate).
-  if (cfg.editPaneWidth) {
-    root.style.setProperty('--edit-pane-width', cfg.editPaneWidth);
-  }
-  if (cfg.previewPaneWidth) {
-    root.style.setProperty('--preview-pane-width', cfg.previewPaneWidth);
   }
 
   // Status bar mode pill style: canonical (default, bright Catppuccin

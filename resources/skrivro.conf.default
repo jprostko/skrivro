@@ -79,29 +79,11 @@
 # 6rem or more, the scrollbar track becomes visibly stubby on
 # typical-height viewports. Large values are accepted (config is
 # your reading comfort), just be aware of the shortening.
-#
-# Pane width keys apply only in single-pane modes (editor-only and
-# preview-only) and cap the reading column at that width, centering
-# it in the window. They do NOT apply in split mode — each pane
-# already shares the window 50/50 via flexbox. Common unit choices:
-# px, %, vw, rem, em, and ch. The `ch` unit is useful for prose:
-# `edit-pane-width = 80ch` gives roughly 80 characters wide — exact
-# in the monospace editor, approximate in the proportional preview.
-#
-# Default (when no override is set): the column scales with the
-# viewport between a 960px floor (half of 1920px FHD) and a 1280px
-# ceiling (half of 2560px QHD), falling through to full window
-# width on narrower windows. Setting an override replaces this
-# with a flat cap at the value you specify — overrides do not
-# scale with viewport.
 
 # editor-padding-x = 2.5rem
 # editor-padding-y = 2rem
 # preview-padding-x = 2.5rem
 # preview-padding-y = 2rem
-
-# edit-pane-width = 1100px
-# preview-pane-width = 80ch
 
 # ================= Theme =================
 # Bundled themes:

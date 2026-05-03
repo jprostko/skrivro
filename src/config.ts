@@ -93,8 +93,6 @@ export interface SkrivroConfig {
   editorPaddingY?: string;
   previewPaddingX?: string;
   previewPaddingY?: string;
-  editPaneWidth?: string;
-  previewPaneWidth?: string;
 
   // Theme name (informational — the actual colors are pre-resolved by
   // Rust and arrive as themeColors below).

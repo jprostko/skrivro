@@ -95,12 +95,6 @@ fn take_pending_opens(state: tauri::State<PendingOpens>) -> Vec<String> {
 //   preview-padding-x = 2.5rem
 //   preview-padding-y = 2rem
 //
-//   # Pane widths (single-pane modes). Default is a viewport-responsive
-//   # formula; setting an override here replaces it with a flat cap.
-//   # Common choices: px, %, vw, ch.
-//   edit-pane-width = 1100px
-//   preview-pane-width = 80ch
-//
 //   # Asciidoctor safe mode (set-and-forget; not exposed in UI)
 //   asciidoc-safe-mode = unsafe
 //
@@ -143,8 +137,6 @@ struct SkrivroConfig {
     editor_padding_y: Option<String>,
     preview_padding_x: Option<String>,
     preview_padding_y: Option<String>,
-    edit_pane_width: Option<String>,
-    preview_pane_width: Option<String>,
     theme: Option<String>,
     asciidoc_safe_mode: Option<String>,
     cursor_position_format: Option<String>,
@@ -418,7 +410,6 @@ fn skrivro_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
 /// Called from `parse_skrivro_config` for:
 /// - Font-size keys (`edit-font-size`, `preview-font-size`, max_tokens=1)
 /// - Padding keys (`edit/preview-padding-x/y`, max_tokens=2)
-/// - Pane-width keys (`edit/preview-pane-width`, max_tokens=1)
 ///
 /// Historical note: previously split into two functions (normalize_length
 /// for font sizes + padding with `bare = pt` convention, and
@@ -542,8 +533,6 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
             "editor-padding-y" => cfg.editor_padding_y = normalize_length(key, val, idx + 1, 2),
             "preview-padding-x" => cfg.preview_padding_x = normalize_length(key, val, idx + 1, 2),
             "preview-padding-y" => cfg.preview_padding_y = normalize_length(key, val, idx + 1, 2),
-            "edit-pane-width" => cfg.edit_pane_width = normalize_length(key, val, idx + 1, 1),
-            "preview-pane-width" => cfg.preview_pane_width = normalize_length(key, val, idx + 1, 1),
             "theme" => cfg.theme = Some(val.to_string()),
             "asciidoc-safe-mode" => cfg.asciidoc_safe_mode = Some(val.to_string()),
             "cursor-position-format" => cfg.cursor_position_format = Some(val.to_string()),

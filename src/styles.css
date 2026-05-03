@@ -49,9 +49,7 @@
      Defaults are in rem for font sizes and padding so they scale
      with the user's system / browser font-size preference (respects
      "Large Text" and browser zoom in a way absolute units like pt
-     and px do not). Pane-width defaults are a viewport-responsive
-     formula — see the --edit-pane-width / --preview-pane-width
-     comment below for the rationale and the formula's anchors.
+     and px do not).
 
      Padding is split into -x (horizontal) and -y (vertical) variables
      for both the editor and the preview. The -y/-x split is
@@ -92,28 +90,6 @@
   --editor-padding-y: 2rem;
   --preview-padding-x: 2.5rem;
   --preview-padding-y: 2rem;
-  /* Single-pane width caps. Default formula:
-     min(max(70vw, 960px), 1280px, 100%) when used in the
-     .cm-scroller / .preview-pane rules — see the 100%-safety-net
-     note in the rules below.
-     - 1280px ceiling = half of a 2560px QHD 16:9 monitor. Past
-       this the column gets too wide for comfortable reading.
-     - 960px floor = half of a 1920px FHD monitor. Tiles at
-       half-FHD (a common tiling configuration) render at full
-       960 instead of being shrunken to 70% of tile.
-     - 70vw between the floor and ceiling gives breathing-room
-       margins on laptop full-window viewports.
-     - 100% safety net (in the rules, not the var) handles tiles
-       smaller than 960 — they fall through to full tile width.
-     User overrides via skrivro.conf go through normalize_length,
-     which only accepts a single length token (e.g. `1100px`,
-     `80ch`). Setting an override replaces the variable wholesale,
-     so an override is always a flat cap and doesn't preserve the
-     viewport scaling. That's the right semantics: an explicit
-     override means "this is my chosen width", not "scale my
-     chosen width with viewport". */
-  --edit-pane-width: min(max(70vw, 960px), 1280px);
-  --preview-pane-width: min(max(70vw, 960px), 1280px);
 }
 
 html, body {
@@ -758,10 +734,10 @@ body.mode-preview .editor-pane { display: none; }
 /* Editor-only mode:
    Apply the width constraint at .cm-scroller rather than at
    .editor-pane, so that .cm-panels (which is a sibling of .cm-scroller
-   inside .cm-editor) is NOT constrained by --edit-pane-width. The
-   vim Ex command panel and search bar should span the full window
-   in editor-only mode, matching Vim's convention and the status
-   bar's width.
+   inside .cm-editor) is NOT constrained by the cap. The vim Ex
+   command panel and search bar should span the full window in
+   editor-only mode, matching Vim's convention and the status bar's
+   width.
 
    Why `width: min(..., 100%)` and not `max-width`:
    .cm-editor is `display: flex !important; flex-direction: column`
@@ -773,9 +749,9 @@ body.mode-preview .editor-pane { display: none; }
    experimentally via getBoundingClientRect on the running app.
 
    Explicit width with min() works correctly: the item's cross-axis
-   preferred size is set to min(edit-pane-width, 100%), so it fills
-   the smaller of the two. `margin: 0 auto` on the remaining free
-   space then centers it horizontally within .cm-editor.
+   preferred size is set to min(cap, 100%), so it fills the smaller
+   of the two. `margin: 0 auto` on the remaining free space then
+   centers it horizontally within .cm-editor.
 
    Split mode is unaffected because the rules are scoped to
    `body.mode-editor` — in split mode, `.editor-pane` is 50% of the
@@ -799,7 +775,7 @@ body.mode-editor .editor-pane {
   border-right: none;
 }
 body.mode-editor .cm-scroller {
-  width: min(var(--edit-pane-width), 100%);
+  width: min(90ch, 100%);
   /* margin-inline (not the `margin` shorthand) so that the
      .editor-pane .cm-scroller { margin-block: var(--editor-padding-y) }
      rule above isn't clobbered by `margin: 0 auto` resetting all
@@ -807,7 +783,7 @@ body.mode-editor .cm-scroller {
   margin-inline: auto;
 }
 body.mode-preview .preview-pane {
-  max-width: min(var(--preview-pane-width), 100%);
+  max-width: min(90ch, 100%);
   margin: 0 auto;
 }
 

@@ -523,6 +523,17 @@ export const cycleWidthMode = () => {
 // called from preview.ts after each render.
 let lastTocPosition: string | null = null;
 
+// User-controlled override for TOC visibility. Toggled via
+// Ctrl+Alt+I or the `:toc on|off` Ex command. Session-scoped
+// (not persisted to localStorage) — defaults to false on every
+// launch so a fresh document load always shows whatever the
+// source requested. Reasoning: tocHidden is a per-view override
+// ("I don't want this doc's TOC right now"), not a permanent
+// UI preference. Persisting it would surprise the user on the
+// next launch ("where's my TOC?") with no preview-scroll
+// restoration to compensate.
+let tocHidden = false;
+
 export const setLastTocPosition = (pos: string | null) => {
   lastTocPosition = pos;
   evaluateTocLayout();
@@ -530,13 +541,35 @@ export const setLastTocPosition = (pos: string | null) => {
 
 export const evaluateTocLayout = () => {
   if (!previewPaneEl) return;
-  previewPaneEl.classList.remove('has-sidebar-toc', 'toc-left', 'toc-right');
+  previewPaneEl.classList.remove('has-sidebar-toc', 'toc-left', 'toc-right', 'toc-hidden');
+  if (tocHidden) {
+    previewPaneEl.classList.add('toc-hidden');
+    return;
+  }
   if (lastTocPosition !== 'left' && lastTocPosition !== 'right') return;
   if (prefs.displayMode !== 'preview') return;
   if (prefs.widthMode === 'narrow') return;
   previewPaneEl.classList.add('has-sidebar-toc');
   previewPaneEl.classList.add(lastTocPosition === 'left' ? 'toc-left' : 'toc-right');
 };
+
+// Flip the TOC visibility override and re-evaluate the layout.
+// Bound to Ctrl+Alt+I.
+export const toggleTocVisibility = () => {
+  tocHidden = !tocHidden;
+  evaluateTocLayout();
+};
+
+// Explicit setter for `:toc on` / `:toc off`. No-op when already
+// in the requested state.
+export const applyTocVisibility = (visible: boolean) => {
+  const targetHidden = !visible;
+  if (tocHidden === targetHidden) return;
+  tocHidden = targetHidden;
+  evaluateTocLayout();
+};
+
+export const isTocHidden = () => tocHidden;
 
 // Rewrite the help dialog's modifier keys on Mac. Apple convention
 // is symbols with no separator — ⌘S, ⌘⇧N, ⌘⌃T — matching what users

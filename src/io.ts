@@ -18,7 +18,7 @@ import { clearAllRendererCaches } from './renderer.js';
 import { userConfig } from './config.js';
 import { prefs } from './prefs.js';
 import { tr } from './i18n.js';
-import { refreshStatus, applySyntaxHighlighting, setWidthMode, WIDTH_MODES } from './ui.js';
+import { refreshStatus, applySyntaxHighlighting, setWidthMode, WIDTH_MODES, applyTocVisibility, isTocHidden } from './ui.js';
 
 // ================= Constants =================
 
@@ -710,6 +710,25 @@ Vim.defineEx('width', 'width', (_cm: any, params: VimExParams) => {
     setWidthMode(a);
   } else {
     vimMessage(`E474: Invalid argument "${arg}" (expected narrow, medium, wide, or full)`);
+  }
+});
+
+// `:toc` — sets or reports the TOC visibility override. Bare
+// `:toc` reports current; `:toc on|off` sets. Mirrors :syntax's
+// shape. Visibility is session-scoped (resets on launch).
+Vim.defineEx('toc', 'toc', (_cm: any, params: VimExParams) => {
+  const { arg } = parseExArgs(params);
+  if (!arg) {
+    vimMessage(`TOC: ${isTocHidden() ? 'off' : 'on'}`);
+    return;
+  }
+  const a = arg.toLowerCase();
+  if (a === 'on') {
+    applyTocVisibility(true);
+  } else if (a === 'off') {
+    applyTocVisibility(false);
+  } else {
+    vimMessage(`E474: Invalid argument "${arg}" (expected on or off)`);
   }
 });
 

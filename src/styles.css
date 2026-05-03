@@ -929,6 +929,16 @@ body.mode-preview .preview-pane.has-sidebar-toc {
   text-decoration: underline;
 }
 
+/* TOC visibility toggle — when the user has hidden the TOC via
+   Ctrl+Alt+I or `:toc off`, evaluateTocLayout adds .toc-hidden
+   to .preview-pane AND skips adding the sidebar layout classes.
+   So this single rule covers both layouts: the inline TOC at
+   the top of content (Asciidoctor's default placement) and the
+   sidebar TOC inside the grid. */
+.preview-pane.toc-hidden #toc {
+  display: none;
+}
+
 /* ---------- Gutter (line numbers) toggle ---------- */
 body.no-gutter .cm-gutters { display: none; }
 

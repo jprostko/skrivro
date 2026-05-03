@@ -89,7 +89,7 @@ import {
   applyMacModifierLabels, applyUserConfig, applyWidthMode,
   toggleTitlebar, toggleGutter, toggleStatusBar, toggleVim, toggleHelp,
   toggleFormat, togglePaneFocus, toggleSyntaxHighlighting,
-  cycleWidthMode, setDisplayMode, refreshStatus,
+  cycleWidthMode, toggleTocVisibility, setDisplayMode, refreshStatus,
 } from './ui.js';
 
 // ================= Keyboard shortcuts =================
@@ -177,6 +177,11 @@ window.addEventListener('keydown', (e) => {
     // Windows, Ctrl on Mac) keeps the chord distinct from plain
     // Ctrl+C / ⌘C copy.
     e.preventDefault(); cycleWidthMode();
+  } else if (second && k === 'i') {
+    // I for Index — alternate term for table of contents.
+    // Toggles TOC visibility (shown ↔ hidden). Session-scoped
+    // override; resets to "shown" on every launch.
+    e.preventDefault(); toggleTocVisibility();
   }
   // Primary-only shortcuts. Save/Open/New use the primary modifier alone
   // because those are universal cross-platform conventions (Ctrl+S /

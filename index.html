@@ -720,12 +720,16 @@
   }
 
   /* Status bar slots whose visibility depends on display mode:
+     - The vim mode pill describes editor state — irrelevant when
+       the editor is hidden in preview-only mode.
      - The cursor position (Ln/Col) is the editor caret, so it's
-       meaningless in preview-only mode where the editor is hidden.
+       also meaningless in preview-only mode where the editor is
+       hidden.
      - The word count is the inverse: shown only in preview-only,
        where the cursor position would have been. Computed from the
        rendered preview's textContent so it reflects the final
        reading word count. */
+  body.mode-preview .statusbar .status-mode-pill,
   body.mode-preview .statusbar .status-position { display: none; }
   .statusbar .status-word-count { display: none; }
   body.mode-preview .statusbar .status-word-count { display: inline; }

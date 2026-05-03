@@ -77,6 +77,8 @@ export const STRINGS_SV: Record<string, string> = {
   'Preview': 'Förhandsvisning',
   'Modes': 'Lägen',
   'Commands': 'Kommandon',
+  'Width': 'Bredd',
+  'Table of contents': 'Innehållsförteckning',
 
   // Help dialog — keyboard shortcut descriptions
   'Save': 'Spara',
@@ -93,12 +95,22 @@ export const STRINGS_SV: Record<string, string> = {
   'Toggle status bar': 'Växla statusfält',
   'Cycle format (AsciiDoc / Markdown / Text)': 'Växla format (AsciiDoc / Markdown / Text)',
   'Toggle syntax highlighting': 'Växla syntaxmarkering',
+  'Cycle single-pane width (narrow / medium / wide / full)': 'Växla bredd för enskild panel (smal / medium / bred / full)',
+  'Toggle table of contents visibility (resets on launch)': 'Växla synlighet för innehållsförteckning (återställs vid start)',
   'Sync preview to cursor': 'Synka förhandsvisning till markör',
   'Toggle focus between editor and preview': 'Växla fokus mellan redigerare och förhandsvisning',
   // Ex command description for :syntax. Best-effort first pass; the
   // surrounding <kbd>Ctrl+Alt+Y</kbd> is literal and untranslated.
   'Show whether editor syntax highlighting is on or off': 'Visa om syntaxmarkering i redigeraren är på eller av',
   'Turn editor syntax highlighting on or off (mirrors Ctrl+Alt+Y)': 'Slå på eller av syntaxmarkering i redigeraren (motsvarar <kbd>Ctrl+Alt+Y</kbd>)',
+
+  // Ex command descriptions for :width. Best-effort first pass.
+  'Show the current single-pane width mode': 'Visa aktuellt breddläge för enskild panel',
+  "Set the width mode explicitly (mirrors Ctrl+Alt+C's cycle)": "Ställ in breddläget uttryckligen (motsvarar <kbd>Ctrl+Alt+C</kbd>:s växling)",
+
+  // Ex command descriptions for :toc. Best-effort first pass.
+  'Show whether the TOC visibility override is on or off': 'Visa om åsidosättning av innehållsförteckningens synlighet är på eller av',
+  'Show or hide the TOC (mirrors Ctrl+Alt+I; resets on launch)': 'Visa eller dölj innehållsförteckningen (motsvarar <kbd>Ctrl+Alt+I</kbd>; återställs vid start)',
 
   // Help dialog — placeholder labels inside <kbd><var>...</var></kbd>
   // syntax examples (e.g. ":w <var>filename</var>"). Translated even

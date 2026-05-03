@@ -101,6 +101,18 @@
        launch based on the user's persisted widthMode pref. See the
        formula comment block further down for details. */
     --width-cap: 90ch;
+
+    /* Sidebar TOC width when the doc requests `:toc: left` or
+       `:toc: right` and conditions for sidebar layout are met
+       (preview-only mode + width mode != narrow). Echoes
+       Asciidoctor's spec values (15em / 20em from their default
+       stylesheet) but mapped onto our width modes instead of
+       viewport breakpoints: medium and wide both get 15em (the
+       spec's smaller value), full gets 20em (the spec's larger
+       value). applyWidthMode in the script section overrides this
+       on launch and on width-mode changes. The :root default here
+       matches medium (the default width mode). */
+    --toc-sidebar-width: 15em;
   }
 
   html, body {
@@ -439,6 +451,122 @@
   body.mode-preview .preview {
     max-width: min(var(--width-cap), 100%);
     margin: 0 auto;
+  }
+
+  /* Sidebar TOC layout — applied when:
+     - Document has `:toc: left` or `:toc: right` (read from
+       Asciidoctor's `toc-position` attribute; see render() and
+       evaluateTocLayout() in the script section).
+     - Display mode is preview-only (split is too narrow per
+       pane; editor-only the preview is hidden).
+     - Width mode is not narrow (narrow's text budget can't
+       accommodate a sidebar without compromising prose comfort).
+     evaluateTocLayout() adds .has-sidebar-toc + .toc-left/.toc-right
+     when all three hold; removes them otherwise. The CSS below
+     applies based on classes alone — body.mode-* gating is
+     unnecessary because the classes only get added in the right
+     mode.
+
+     The sidebar layout EXPANDS the preview's max-width to
+     content-cap + sidebar-width + gap, replacing the normal
+     content-cap-only constraint. Content stays at the comfortable
+     reading width; sidebar overhead adds on top. The 100% safety
+     net still applies — on viewports too narrow to fit sidebar +
+     content, the layout shrinks to fit the viewport. */
+  /* body.mode-preview prefix bumps specificity from (0,2,0) to
+     (0,2,1) — same as the body.mode-preview .preview rule above
+     that sets the non-sidebar max-width. Without the prefix,
+     specificity tied at (0,2,0) and the body.mode-preview rule
+     won by element-selector tie-breaking, leaving max-width at
+     90ch instead of the expanded calc — which collapsed the
+     content column to .preview-width minus sidebar instead of
+     preserving it. */
+  body.mode-preview .preview.has-sidebar-toc {
+    display: grid;
+    column-gap: 2em;
+    max-width: min(calc(var(--width-cap) + var(--toc-sidebar-width) + 2em), 100%);
+  }
+  /* minmax(0, 1fr) instead of bare 1fr — grid's `1fr` cell defaults
+     to a min-width of min-content (the widest unbreakable unit
+     inside it, e.g. a long code line or URL). With prose plus code
+     blocks, that min-content can exceed the calc()-derived
+     content-column width, forcing the grid container to grow past
+     its max-width and producing horizontal scrollbars on .preview.
+     minmax(0, 1fr) lets the cell shrink below min-content; long
+     lines inside code blocks then overflow within the code block's
+     own overflow-x rather than the whole preview's scroll. */
+  .preview.has-sidebar-toc.toc-left {
+    grid-template-columns: var(--toc-sidebar-width) minmax(0, 1fr);
+  }
+  .preview.has-sidebar-toc.toc-right {
+    grid-template-columns: minmax(0, 1fr) var(--toc-sidebar-width);
+  }
+  /* Default: every child goes in the content column. The TOC
+     selector below overrides this for #toc itself. */
+  .preview.has-sidebar-toc.toc-left > * {
+    grid-column: 2;
+  }
+  .preview.has-sidebar-toc.toc-right > * {
+    grid-column: 1;
+  }
+  /* TOC: occupies the sidebar column, spans all rows so it fills
+     the layout's full vertical extent. position: sticky pins it
+     to the top of the visible area as content scrolls. align-self:
+     start prevents the grid from stretching it to row height; its
+     natural height + max-height (with overflow-y) handle the case
+     where the TOC itself is taller than the viewport. */
+  .preview.has-sidebar-toc.toc-left > #toc {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    align-self: start;
+    position: sticky;
+    top: 0;
+    max-height: calc(100vh - 4em);
+    overflow-y: auto;
+  }
+  .preview.has-sidebar-toc.toc-right > #toc {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    align-self: start;
+    position: sticky;
+    top: 0;
+    max-height: calc(100vh - 4em);
+    overflow-y: auto;
+  }
+  /* TOC theming using --skr-* vars. Subtle border on the inner
+     side (between TOC and content) plus muted padding. Title is
+     slightly heavier; nested lists indent with no bullets to
+     match Asciidoctor's default visual but using our palette. */
+  .preview.has-sidebar-toc > #toc {
+    padding: 1em 1.5em;
+    background: var(--skr-bg-panel);
+    font-size: 0.9rem;
+  }
+  .preview.has-sidebar-toc.toc-left > #toc {
+    border-right: 1px solid var(--skr-surface);
+  }
+  .preview.has-sidebar-toc.toc-right > #toc {
+    border-left: 1px solid var(--skr-surface);
+  }
+  .preview.has-sidebar-toc > #toc #toctitle {
+    font-weight: 600;
+    margin: 0 0 0.5em 0;
+    color: var(--skr-text);
+  }
+  .preview.has-sidebar-toc > #toc ul {
+    padding-left: 1em;
+    list-style: none;
+    margin: 0.25em 0;
+  }
+  .preview.has-sidebar-toc > #toc > ul {
+    padding-left: 0;
+  }
+  .preview.has-sidebar-toc > #toc a {
+    color: var(--skr-link);
+    text-decoration: none;
+  }
+  .preview.has-sidebar-toc > #toc a:hover {
+    text-decoration: underline;
   }
 
   /* ---------- Active-pane outline (split mode only) ---------- */
@@ -1302,11 +1430,20 @@
       out.innerHTML = DOMPurify.sanitize(doc.convert({ standalone: false }));
       buildBlockMap(doc);
       updateWordCount();
+      // Cache the doc's toc-position attribute (set by `:toc: left`
+      // / `:toc: right` in source) so display/width-mode changes can
+      // re-evaluate the sidebar layout without re-rendering. Falsy
+      // values (undefined, '', 'auto', 'content', etc.) all resolve
+      // to "no sidebar" inside evaluateTocLayout.
+      lastTocPosition = doc.getAttribute('toc-position') || null;
+      evaluateTocLayout();
     } catch (e) {
       console.error('render failed:', e);
       out.innerHTML =
         `<pre class="render-error">Render error: ${escapeHtml(e.message || String(e))}</pre>`;
       blockMap = [];
+      lastTocPosition = null;
+      evaluateTocLayout();
       // Skip updateWordCount on render error — the error message's
       // word count is meaningless, leaving the previous successful
       // value visible reads less jarringly.
@@ -2104,12 +2241,26 @@
   const WIDTH_MODES = ['narrow', 'medium', 'wide', 'full'];
   const WIDTH_CAPS  = { narrow: '65ch', medium: '90ch', wide: '125ch', full: '100vw' };
 
+  // Sidebar TOC width per width mode, mapping Asciidoctor's spec
+  // values (15em / 20em from their default stylesheet) onto our
+  // modes. Narrow mode never activates sidebar layout (see
+  // evaluateTocLayout) so its value is unreachable in practice;
+  // included for completeness and to keep the lookup total.
+  const TOC_SIDEBAR_WIDTHS = { narrow: '15em', medium: '15em', wide: '15em', full: '20em' };
+
   // Push the active mode's cap into the --width-cap CSS variable
-  // that the .cm-scroller and .preview rules consume. Defensive
+  // that the .cm-scroller and .preview rules consume, and the
+  // matching sidebar width into --toc-sidebar-width. Defensive
   // fallback to medium if the persisted pref is somehow invalid.
+  // Also re-evaluates the sidebar TOC layout — the narrow mode is
+  // the one mode that disables sidebar layout, so transitioning
+  // in/out of narrow needs to recompute the layout class set.
   const applyWidthMode = () => {
     const cap = WIDTH_CAPS[prefs.widthMode] || WIDTH_CAPS.medium;
+    const tocSidebar = TOC_SIDEBAR_WIDTHS[prefs.widthMode] || TOC_SIDEBAR_WIDTHS.medium;
     document.documentElement.style.setProperty('--width-cap', cap);
+    document.documentElement.style.setProperty('--toc-sidebar-width', tocSidebar);
+    evaluateTocLayout();
   };
 
   // Explicit setter for `:width <mode>`. No-op when the pref is
@@ -2121,11 +2272,52 @@
     applyWidthMode();
   };
 
-  // Cycle narrow → medium → wide → narrow. Bound to Ctrl+Alt+C.
+  // Cycle narrow → medium → wide → full → narrow. Bound to Ctrl+Alt+C.
   const cycleWidthMode = () => {
     const i = WIDTH_MODES.indexOf(prefs.widthMode);
     const next = WIDTH_MODES[(i + 1) % WIDTH_MODES.length];
     setWidthMode(next === undefined ? 'medium' : next);
+  };
+
+  // ================= Sidebar TOC layout =================
+  // When the active document has `:toc: left` or `:toc: right`,
+  // honor it as a sidebar layout — but only when the surrounding
+  // conditions can support it. Otherwise, fall back to the default
+  // top-of-content TOC placement that Asciidoctor's embedded
+  // output produces.
+  //
+  // Conditions for sidebar layout (all must hold):
+  //   1. Document has toc-position 'left' or 'right' (read from
+  //      the Asciidoctor doc object after load — this is how the
+  //      `:toc: <pos>` source attribute surfaces in the embedded-
+  //      mode HTML, since the HTML itself doesn't carry a class
+  //      to distinguish the variants).
+  //   2. Display mode is preview-only. Split mode's preview pane
+  //      shares the window 50/50 with the editor — too narrow to
+  //      give a meaningful sidebar plus content. Editor-only mode
+  //      hides the preview entirely so the layout is moot.
+  //   3. Width mode is not 'narrow'. Narrow's whole point is a
+  //      prose-comfortable text column; pulling a sidebar out of
+  //      that budget would crush the column past readability.
+  //      Medium/wide/full have enough budget.
+  //
+  // When any condition fails, the .has-sidebar-toc class is
+  // removed and the TOC renders as a regular block at the top of
+  // content (Asciidoctor's default embedded output).
+  //
+  // Cached toc-position from the most recent successful render.
+  // Used by evaluateTocLayout when display/width mode changes
+  // without a re-render — we still know whether the active doc
+  // requested sidebar TOC.
+  let lastTocPosition = null;
+
+  const evaluateTocLayout = () => {
+    out.classList.remove('has-sidebar-toc', 'toc-left', 'toc-right');
+    if (lastTocPosition !== 'left' && lastTocPosition !== 'right') return;
+    if (prefs.displayMode !== 'preview') return;
+    if (prefs.widthMode === 'narrow') return;
+    out.classList.add('has-sidebar-toc');
+    out.classList.add(lastTocPosition === 'left' ? 'toc-left' : 'toc-right');
   };
 
   // Rewrite the help dialog's modifier-key labels on Mac. Apple
@@ -2252,6 +2444,10 @@
     savePrefs();
     applyDisplayMode();
     applyFocusForMode();
+    // Sidebar TOC layout is preview-only; re-evaluate so leaving
+    // preview mode strips the sidebar classes (and entering it
+    // applies them if conditions hold).
+    evaluateTocLayout();
   };
 
   // ================= Pane focus =================

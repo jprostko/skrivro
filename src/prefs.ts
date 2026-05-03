@@ -16,6 +16,7 @@ const defaultPrefs = {
   gutterHidden: true,
   statusBarHidden: false,
   syntaxHighlighting: true,
+  widthMode: 'medium',
 };
 
 const loadPrefs = () => {

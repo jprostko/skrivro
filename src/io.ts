@@ -18,7 +18,7 @@ import { clearAllRendererCaches } from './renderer.js';
 import { userConfig } from './config.js';
 import { prefs } from './prefs.js';
 import { tr } from './i18n.js';
-import { refreshStatus, applySyntaxHighlighting } from './ui.js';
+import { refreshStatus, applySyntaxHighlighting, setWidthMode, WIDTH_MODES } from './ui.js';
 
 // ================= Constants =================
 
@@ -693,6 +693,23 @@ Vim.defineEx('syntax', 'syn', (_cm: any, params: VimExParams) => {
     applySyntaxHighlighting(false);
   } else {
     vimMessage(`E474: Invalid argument "${arg}" (expected on or off)`);
+  }
+});
+
+// `:width` — sets or reports the single-pane width mode. Bare
+// `:width` reports current; `:width narrow|medium|wide|full` sets.
+// Same E474 error shape as `:syntax` for invalid arguments.
+Vim.defineEx('width', 'width', (_cm: any, params: VimExParams) => {
+  const { arg } = parseExArgs(params);
+  if (!arg) {
+    vimMessage(`Width mode: ${prefs.widthMode}`);
+    return;
+  }
+  const a = arg.toLowerCase();
+  if (WIDTH_MODES.includes(a)) {
+    setWidthMode(a);
+  } else {
+    vimMessage(`E474: Invalid argument "${arg}" (expected narrow, medium, wide, or full)`);
   }
 });
 

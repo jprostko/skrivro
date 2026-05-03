@@ -432,6 +432,55 @@ export const applySyntaxHighlighting = (enabled: boolean) => {
   setSyntaxHighlighting(enabled);
 };
 
+// ================= Width mode =================
+// Four named width caps for the single-pane scrollers (editor-only
+// and preview-only display modes). Same ch value applied to both
+// panes; the natural mono-vs-proportional width difference gives
+// the editor a wider visual cap than the preview at the same mode
+// setting.
+//
+// 65ch (narrow):  prose-optimal line length, comfortable for
+//   novels, essays, anything pure-prose.
+// 90ch (medium):  approximately Asciidoctor's default 62.5em;
+//   good for manuals, owner docs, mixed content. Geometric
+//   midpoint between narrow and wide.
+// 125ch (wide):   wider columns for technical references, API
+//   docs, anything code- or table-heavy.
+// 100vw (full):   no cap. Pane fills available width — for
+//   ultrawide monitors, single-tile-half-screen tiling, or users
+//   who prefer maximum screen utilization. The 100% safety net
+//   in the rules still applies but is moot since 100vw ≥ 100%
+//   of the parent in single-pane modes.
+export const WIDTH_MODES = ['narrow', 'medium', 'wide', 'full'];
+const WIDTH_CAPS: Record<string, string> = {
+  narrow: '65ch', medium: '90ch', wide: '125ch', full: '100vw',
+};
+
+// Push the active mode's cap into the --width-cap CSS variable
+// that the .cm-scroller and .preview-pane rules consume. Defensive
+// fallback to medium if the persisted pref is somehow invalid.
+export const applyWidthMode = () => {
+  const cap = WIDTH_CAPS[prefs.widthMode] || WIDTH_CAPS.medium;
+  document.documentElement.style.setProperty('--width-cap', cap);
+};
+
+// Explicit setter for `:width <mode>`. No-op when the pref is
+// already in the requested state.
+export const setWidthMode = (mode: string) => {
+  if (!WIDTH_CAPS[mode] || prefs.widthMode === mode) return;
+  prefs.widthMode = mode;
+  savePrefs();
+  applyWidthMode();
+};
+
+// Cycle narrow → medium → wide → full → narrow. Bound to
+// Ctrl+Alt+C / ⌘⌃C.
+export const cycleWidthMode = () => {
+  const i = WIDTH_MODES.indexOf(prefs.widthMode);
+  const next = WIDTH_MODES[(i + 1) % WIDTH_MODES.length];
+  setWidthMode(next === undefined ? 'medium' : next);
+};
+
 // Rewrite the help dialog's modifier keys on Mac. Apple convention
 // is symbols with no separator — ⌘S, ⌘⇧N, ⌘⌃T — matching what users
 // see in the macOS menu bar, System Settings, and Apple's own

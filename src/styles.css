@@ -90,6 +90,14 @@
   --editor-padding-y: 2rem;
   --preview-padding-x: 2.5rem;
   --preview-padding-y: 2rem;
+
+  /* Single-pane width cap (consumed by .cm-scroller in editor-only
+     and .preview-pane in preview-only). Default value is the medium
+     mode; applyWidthMode in src/ui.ts overrides this on launch and
+     on width-mode changes based on the user's persisted widthMode
+     pref. The mode → ch value mapping lives in WIDTH_CAPS in
+     ui.ts. */
+  --width-cap: 90ch;
 }
 
 html, body {
@@ -775,7 +783,7 @@ body.mode-editor .editor-pane {
   border-right: none;
 }
 body.mode-editor .cm-scroller {
-  width: min(90ch, 100%);
+  width: min(var(--width-cap), 100%);
   /* margin-inline (not the `margin` shorthand) so that the
      .editor-pane .cm-scroller { margin-block: var(--editor-padding-y) }
      rule above isn't clobbered by `margin: 0 auto` resetting all
@@ -783,7 +791,7 @@ body.mode-editor .cm-scroller {
   margin-inline: auto;
 }
 body.mode-preview .preview-pane {
-  max-width: min(90ch, 100%);
+  max-width: min(var(--width-cap), 100%);
   margin: 0 auto;
 }
 

@@ -86,9 +86,10 @@ import {
 import { installMenu } from './menu.js';
 import {
   applyTitlebar, applyGutter, applyStatusBar, applyDisplayMode,
-  applyMacModifierLabels, applyUserConfig,
+  applyMacModifierLabels, applyUserConfig, applyWidthMode,
   toggleTitlebar, toggleGutter, toggleStatusBar, toggleVim, toggleHelp,
-  toggleFormat, togglePaneFocus, toggleSyntaxHighlighting, setDisplayMode, refreshStatus,
+  toggleFormat, togglePaneFocus, toggleSyntaxHighlighting,
+  cycleWidthMode, setDisplayMode, refreshStatus,
 } from './ui.js';
 
 // ================= Keyboard shortcuts =================
@@ -170,6 +171,12 @@ window.addEventListener('keydown', (e) => {
     // doesn't conflict" wins over "readable mnemonic." See item #25
     // in project_pending_features.md for the design discussion.
     e.preventDefault(); toggleSyntaxHighlighting();
+  } else if (second && k === 'c') {
+    // Width-mode cycle (narrow → medium → wide → full → narrow).
+    // C for Column / Cap. The secondary modifier (Alt on Linux/
+    // Windows, Ctrl on Mac) keeps the chord distinct from plain
+    // Ctrl+C / ⌘C copy.
+    e.preventDefault(); cycleWidthMode();
   }
   // Primary-only shortcuts. Save/Open/New use the primary modifier alone
   // because those are universal cross-platform conventions (Ctrl+S /
@@ -289,6 +296,7 @@ applyGutter();
 applyStatusBar();
 applyDisplayMode();
 applyMacModifierLabels();
+applyWidthMode();
 translateStaticText();
 
 // Query Rust for launch-time info (CLI argument, shell CWD). If a file

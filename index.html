@@ -2023,6 +2023,83 @@
     fileInput.value = ''; // allow re-picking the same file
   });
 
+  // Drag-and-drop: user drops one or more files onto the Skrivro
+  // window from a file manager → open the first one in the editor,
+  // same flow as Ctrl+Alt+O would use. Ignores subsequent files
+  // (Skrivro is single-document). The dirty-buffer check goes
+  // through confirmDiscard just like openFile, so an accidental
+  // drop during unsaved work produces the same Discard/Cancel
+  // dialog the user is already used to.
+  //
+  // Two load paths mirror openFile's FSA / fallback split:
+  //   - FSA-aware browsers (Chromium): items[0].getAsFileSystemHandle()
+  //     returns a FileSystemFileHandle when the dropped item is a
+  //     file. Used the same way as showOpenFilePicker's result so
+  //     subsequent saves round-trip to the dropped file.
+  //   - Fallback browsers (Firefox/Safari): dataTransfer.files[0]
+  //     gives a File without a handle; subsequent saves go through
+  //     the save-as / download path.
+  //
+  // dragover's preventDefault is required for the drop event to
+  // fire at all; without it the browser opens the dragged file in
+  // place of the page. Non-file drops (text, URLs) and unreadable
+  // files fail the same way openFile's catch path does — vimMessage
+  // with E484.
+  document.addEventListener('dragover', (e) => {
+    e.preventDefault();
+  });
+  document.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (!e.dataTransfer) return;
+
+    // FSA path: get a handle from the dropped item, use it the same
+    // way openFile uses showOpenFilePicker's result.
+    if (hasFSA && e.dataTransfer.items && e.dataTransfer.items[0] &&
+        typeof e.dataTransfer.items[0].getAsFileSystemHandle === 'function') {
+      const item = e.dataTransfer.items[0];
+      confirmDiscard(() => {
+        (async () => {
+          try {
+            const handle = await item.getAsFileSystemHandle();
+            if (!handle || handle.kind !== 'file') return;
+            const file = await handle.getFile();
+            setDoc(await file.text());
+            currentHandle = handle;
+            currentName   = handle.name || file.name || DEFAULT_NAME;
+            setDirty(false);
+            clearDraft();
+            updateTitle();
+            render();
+          } catch (err) {
+            console.error(err);
+            vimMessage(`E484: Can't open file (${errMsg(err)})`);
+          }
+        })();
+      });
+      return;
+    }
+
+    // Fallback: File object, no handle.
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    confirmDiscard(() => {
+      (async () => {
+        try {
+          setDoc(await file.text());
+          currentHandle = null;
+          currentName   = file.name || DEFAULT_NAME;
+          setDirty(false);
+          clearDraft();
+          updateTitle();
+          render();
+        } catch (err) {
+          console.error(err);
+          vimMessage(`E484: Can't open file (${errMsg(err)})`);
+        }
+      })();
+    });
+  });
+
   const saveFile = async () => {
     if (hasFSA) {
       if (!currentHandle) return saveFileAs();

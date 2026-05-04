@@ -351,25 +351,115 @@
     background: var(--skr-bg);
     margin: 1em 0;
   }
+  /* AsciiDoc admonitions — Asciidoctor emits them as a 2-column table
+     wrapped in <div class="admonitionblock <type>">. With
+     `icons: 'font'` set in load options (see render() below), the icon
+     cell contains <i class="fa icon-<type>"> referencing Font Awesome
+     glyphs by their Asciidoctor semantic alias; without that attribute,
+     it'd contain a text label div instead.
+
+     Structural rules below match Asciidoctor's own stylesheet: bare
+     table, no background, icon cell fixed-width and centered, a 1px
+     divider between icon and content columns, content cell padded.
+     Colors stay on our --skr-* palette rather than Asciidoctor's
+     tuned-for-light hex values so dark themes resolve correctly.
+
+     No colored left-edge stripe — Asciidoctor's native output doesn't
+     have one. Type signaling is carried entirely by the icon color. */
   .preview .admonitionblock { margin: 1em 0; }
+  /* Convert Asciidoctor's <table>-based admonition layout to flexbox.
+     Table-cell vertical-align/baseline behavior diverges across browsers
+     for replaced elements (esp. inline SVGs of mixed sizes), and trying
+     to center an SVG inside a td involves baseline math, line-box
+     expansion, and font-metric quirks that aren't worth the complexity.
+     Flexbox align-items: center is the most predictable vertical-
+     centering primitive in CSS — same answer everywhere, no gotchas.
+
+     `display: contents` on tbody/tr removes them from layout while
+     preserving accessibility semantics, so the table flex container's
+     direct flex items are the icon and content tds. */
   .preview .admonitionblock > table {
-    border: none;
-    border-left: 3px solid var(--skr-warning);
-    background: var(--skr-bg);
-    border-radius: 0 4px 4px 0;
+    /* Flex with `align-items: center` cross-aligns each cell's box to
+       the row midline — icon cell (2.5em) and content cell (text line)
+       end up center-to-center. Container height = max(items) = 2.5em
+       in the common case. The vertical separator is a positioned
+       pseudo-element (below) rather than a border on the content
+       cell, so its height tracks the table's full flex-container
+       height instead of just the content cell's short intrinsic
+       height. `position: relative` establishes the containing block. */
+    display: flex;
+    align-items: center;
+    position: relative;
+    border: 0;
+    background: none;
+    width: 100%;
   }
-  .preview .admonitionblock > table td { border: none; padding: 0.8em 1em; }
-  .preview .admonitionblock.note      > table { border-left-color: var(--skr-link); }
-  .preview .admonitionblock.tip       > table { border-left-color: var(--skr-success); }
-  .preview .admonitionblock.warning   > table { border-left-color: var(--skr-emphasis); }
-  .preview .admonitionblock.caution   > table { border-left-color: var(--skr-warning); }
-  .preview .admonitionblock.important > table { border-left-color: var(--skr-error); }
-  .preview .admonitionblock td.icon {
-    color: var(--skr-text-muted);
-    font-weight: 600;
+  .preview .admonitionblock > table::before {
+    /* Vertical separator between icon column and content column.
+       `left: 5em` positions it at the icon column's right edge
+       (matches td.icon's flex basis). Full table height via top/
+       bottom: 0. */
+    content: '';
+    position: absolute;
+    left: 5em;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--skr-surface);
+  }
+  .preview .admonitionblock > table tbody,
+  .preview .admonitionblock > table tr {
+    display: contents;
+  }
+  .preview .admonitionblock > table td {
+    border: 0;
+    padding: 0;
+  }
+  .preview .admonitionblock > table td.icon {
+    /* Fixed-width icon column scaling with preview font size; ~75px
+       at default preview-font-size (close to Asciidoctor's stock 80px).
+       `flex: 0 0 5em` = no grow, no shrink, fixed 5em basis. Internal
+       flex container centers the SVG both axes. */
+    flex: 0 0 5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .preview .admonitionblock > table td.content {
+    /* Border-left removed (separator is a pseudo on the table now).
+       `flex: 1` takes remaining space after the 5em icon column. */
+    flex: 1;
+    padding-left: 1.125em;
+    padding-right: 1.25em;
+  }
+  /* Kill top margin of the first child and bottom margin of the last
+     child inside the content cell. The generic `.preview p { margin:
+     0.8em 0 }` rule would otherwise add 1.6em of vertical padding to a
+     single-line block-form admonition, growing the row to ~3.25em and
+     making it visibly taller than the icon for no good reason. Reset
+     the outermost margins so the row tracks the icon's 2.5em height
+     in the common case; inner paragraphs (in multi-paragraph
+     admonitions) keep their margins for inter-paragraph spacing.
+     Selectors cover both a bare <p> and Asciidoctor's `<div
+     class="paragraph"><p>` wrapper pattern. */
+  .preview .admonitionblock > table td.content > :first-child,
+  .preview .admonitionblock > table td.content > :first-child > p { margin-top: 0; }
+  .preview .admonitionblock > table td.content > :last-child,
+  .preview .admonitionblock > table td.content > :last-child > p { margin-bottom: 0; }
+  /* SVG sits as a flex item centered by the icon cell's flex container
+     (above). `display: block` strips inline baseline behavior so the
+     SVG's bounding box is what gets centered, not its baseline. */
+  .preview .admonitionblock td.icon svg {
+    display: block;
     width: 2.5em;
-    vertical-align: top;
+    height: 2.5em;
+    fill: currentColor;
   }
+  .preview .admonitionblock.note      > table td.icon { color: var(--skr-link); }
+  .preview .admonitionblock.tip       > table td.icon { color: var(--skr-success); }
+  .preview .admonitionblock.important > table td.icon { color: var(--skr-error); }
+  .preview .admonitionblock.warning   > table td.icon { color: var(--skr-emphasis); }
+  .preview .admonitionblock.caution   > table td.icon { color: var(--skr-warning); }
   .preview .title {
     color: var(--skr-text-dim);
     font-style: italic;
@@ -1415,6 +1505,97 @@
     statusWordCount.textContent = `${count.toLocaleString()} words`;
   };
 
+  // ================= Admonition icon SVGs =================
+  //
+  // Font Awesome 4 glyphs extracted from the webfont SVG and wrapped
+  // in standalone SVG elements. Asciidoctor with `icons: 'font'` emits
+  // admonition icons as <i class="fa icon-NAME"> — glyphs rendered by
+  // the FontAwesome font. We replace those elements with inline SVGs
+  // during render post-processing (see replaceAdmonitionIcons below).
+  //
+  // Why SVG instead of the native font-icon output: font glyphs are
+  // positioned by baseline metrics, not by visible bounding box, so
+  // the cell's flex centering doesn't visually center the icon — the
+  // glyph floats toward the top of the cell because Font Awesome
+  // glyphs are drawn like uppercase letters (ascender above baseline,
+  // nothing below). SVGs have explicit viewBox/width/height and sit
+  // at the geometric center when flex-aligned.
+  //
+  // Most icons use a 1792×1792 viewBox (FA4's units-per-em) with the
+  // glyph naturally centered inside it. Two glyphs (warning, caution)
+  // have ink that touches or extends past the standard viewBox edges
+  // and use expanded 2048×2048 viewBoxes with offset origins so the
+  // glyph bbox sits centered in the SVG bounding box; see the per-icon
+  // comments below.
+  //
+  // The path transform `matrix(1 0 0 -1 X 1536)` does two jobs:
+  //   1. Flips the Y axis (fonts use y-up with baseline at y=0; SVG
+  //      uses y-down), with +1536 translation so the ascent top lines
+  //      up with y=0 in the original 1792×1792 viewBox space.
+  //   2. X-offsets narrower glyphs so they're centered horizontally —
+  //      X = (1792 − horiz-adv-x) / 2 for the centered viewBox case.
+  //
+  // The `fill="currentColor"` attribute makes the glyph inherit color
+  // from the enclosing td via CSS's per-type color rules below,
+  // matching how Octicons work elsewhere.
+  const ADMONITION_ICON_SVGS = {
+    // info-circle (fa \f05a), horiz-adv-x 1536, offset (1792−1536)/2 = 128
+    note: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1792" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 128 1536)" d="M1024 160v160q0 14 -9 23t-23 9h-96v512q0 14 -9 23t-23 9h-320q-14 0 -23 -9t-9 -23v-160q0 -14 9 -23t23 -9h96v-320h-96q-14 0 -23 -9t-9 -23v-160q0 -14 9 -23t23 -9h448q14 0 23 9t9 23zM896 1056v160q0 14 -9 23t-23 9h-192q-14 0 -23 -9t-9 -23v-160q0 -14 9 -23t23 -9h192q14 0 23 9t9 23zM1536 640q0 -209 -103 -385.5t-279.5 -279.5t-385.5 -103t-385.5 103t-279.5 279.5t-103 385.5t103 385.5t279.5 279.5t385.5 103t385.5 -103t279.5 -279.5t103 -385.5z"/></svg>',
+    // lightbulb-o (fa \f0eb), horiz-adv-x 1024, offset (1792−1024)/2 = 384
+    tip: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1792" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 384 1536)" d="M736 960q0 -13 -9.5 -22.5t-22.5 -9.5t-22.5 9.5t-9.5 22.5q0 46 -54 71t-106 25q-13 0 -22.5 9.5t-9.5 22.5t9.5 22.5t22.5 9.5q50 0 99.5 -16t87 -54t37.5 -90zM896 960q0 72 -34.5 134t-90 101.5t-123 62t-136.5 22.5t-136.5 -22.5t-123 -62t-90 -101.5t-34.5 -134q0 -101 68 -180q10 -11 30.5 -33t30.5 -33q128 -153 141 -298h228q13 145 141 298q10 11 30.5 33t30.5 33q68 79 68 180zM1024 960q0 -155 -103 -268q-45 -49 -74.5 -87t-59.5 -95.5t-34 -107.5q47 -28 47 -82q0 -37 -25 -64q25 -27 25 -64q0 -52 -45 -81q13 -23 13 -47q0 -46 -31.5 -71t-77.5 -25q-20 -44 -60 -70t-87 -26t-87 26t-60 70q-46 0 -77.5 25t-31.5 71q0 24 13 47q-45 29 -45 81q0 37 25 64q-25 27 -25 64q0 54 47 82q-4 50 -34 107.5t-59.5 95.5t-74.5 87q-103 113 -103 268q0 99 44.5 184.5t117 142t164 89t186.5 32.5t186.5 -32.5t164 -89t117 -142t44.5 -184.5z"/></svg>',
+    // exclamation-circle (fa \f06a), horiz-adv-x 1536, offset 128
+    important: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1792" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 128 1536)" d="M768 1408q209 0 385.5 -103t279.5 -279.5t103 -385.5t-103 -385.5t-279.5 -279.5t-385.5 -103t-385.5 103t-279.5 279.5t-103 385.5t103 385.5t279.5 279.5t385.5 103zM896 161v190q0 14 -9 23.5t-22 9.5h-192q-13 0 -23 -10t-10 -23v-190q0 -13 10 -23t23 -10h192q13 0 22 9.5t9 23.5zM894 505l18 621q0 12 -10 18q-10 8 -24 8h-220q-14 0 -24 -8q-10 -6 -10 -18l17 -621q0 -10 10 -17.5t24 -7.5h185q14 0 23.5 7.5t10.5 17.5z"/></svg>',
+    // exclamation-triangle (fa \f071). Glyph bbox extends to the top of
+    // the viewBox (y=0) and slightly past both horizontal edges, so its
+    // ink visibly overflows a tight viewBox. Expanded viewBox centers
+    // the bbox (cx=896, cy=832) in a 2048×2048 frame — 128 units
+    // horizontal padding, 192 units vertical — to give consistent
+    // breathing room matching the other admonition icons.
+    warning: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-128 -192 2048 2048" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 0 1536)" d="M1024 161v190q0 14 -9.5 23.5t-22.5 9.5h-192q-13 0 -22.5 -9.5t-9.5 -23.5v-190q0 -14 9.5 -23.5t22.5 -9.5h192q13 0 22.5 9.5t9.5 23.5zM1022 535l18 459q0 12 -10 19q-13 11 -24 11h-220q-11 0 -24 -11q-10 -7 -10 -21l17 -457q0 -10 10 -16.5t24 -6.5h185q14 0 23.5 6.5t10.5 16.5zM1008 1469l768 -1408q35 -63 -2 -126q-17 -29 -46.5 -46t-63.5 -17h-1536q-34 0 -63.5 17t-46.5 46q-37 63 -2 126l768 1408q17 31 47 49t65 18t65 -18t47 -49z"/></svg>',
+    // fire (fa \f06d). Glyph bbox fills the viewBox floor-to-ceiling
+    // (y=0 to y=1792 in the 1792-tall viewBox). Expanded viewBox adds
+    // 128 units padding on all sides (bbox already horizontally
+    // centered) so ink has consistent margin inside the rendered SVG.
+    caution: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-128 -128 2048 2048" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 192 1536)" d="M1408 -160v-64q0 -13 -9.5 -22.5t-22.5 -9.5h-1344q-13 0 -22.5 9.5t-9.5 22.5v64q0 13 9.5 22.5t22.5 9.5h1344q13 0 22.5 -9.5t9.5 -22.5zM1152 896q0 -78 -24.5 -144t-64 -112.5t-87.5 -88t-96 -77.5t-87.5 -72t-64 -81.5t-24.5 -96.5q0 -96 67 -224l-4 1l1 -1q-90 41 -160 83t-138.5 100t-113.5 122.5t-72.5 150.5t-27.5 184q0 78 24.5 144t64 112.5t87.5 88t96 77.5t87.5 72t64 81.5t24.5 96.5q0 94 -66 224l3 -1l-1 1q90 -41 160 -83t138.5 -100t113.5 -122.5t72.5 -150.5t27.5 -184z"/></svg>',
+  };
+
+  // Replace Asciidoctor's font-icon admonition markers (<i class="fa
+  // icon-NAME" title="..."></i>) with the corresponding inline SVG.
+  // Called on the rendered HTML string before DOMPurify runs.
+  //
+  // We target only the admonition icon pattern (`icon-` class prefix).
+  // Inline icon:name[] directives emit <i class="fa fa-NAME"> (note
+  // the `fa-` prefix, not `icon-`) and deliberately flow through
+  // unchanged — they're sized inline with surrounding text and the
+  // baseline-positioning that makes admonition icons look off is
+  // exactly what's wanted for a character-in-text inline icon.
+  //
+  // Implementation via DOMParser so we handle attribute ordering,
+  // quoting, and edge cases properly rather than relying on a regex
+  // over raw HTML.
+  const replaceAdmonitionIcons = (rawHtml) => {
+    const parser = new DOMParser();
+    const parsed = parser.parseFromString(rawHtml, 'text/html');
+    // Scope the query to icon cells under admonitionblocks, then
+    // extract the type from the `icon-<type>` class so we never
+    // accidentally rewrite something else that happens to share the
+    // <i class="fa icon-..."> shape.
+    const iconEls = parsed.querySelectorAll('.admonitionblock td.icon i.fa[class*="icon-"]');
+    for (const el of iconEls) {
+      const match = el.className.match(/\bicon-([a-z]+)\b/);
+      const type = match && match[1];
+      if (!type || !(type in ADMONITION_ICON_SVGS)) continue;
+      // Parse the SVG as an HTML fragment so we get a proper Element
+      // we can swap in place of the <i>. Using a template element
+      // rather than another DOMParser call for a cheaper round-trip.
+      const template = parsed.createElement('template');
+      template.innerHTML = ADMONITION_ICON_SVGS[type];
+      const svg = template.content.firstElementChild;
+      if (svg) el.replaceWith(svg);
+    }
+    return parsed.body.innerHTML;
+  };
+
   const render = () => {
     try {
       // Load first (so we get the AST for the scroll-sync block map),
@@ -1446,8 +1627,18 @@
       // This is also a planned config-file knob — users who prefer a
       // stricter mode can override it via skrivro.conf (see the config
       // spec in memory).
-      const doc = ad.load(getDoc(), { safe: 'unsafe', sourcemap: true, attributes: { showtitle: true } });
-      out.innerHTML = DOMPurify.sanitize(doc.convert({ standalone: false }));
+      // icons: 'font' switches admonition rendering from text labels
+      // to Font Awesome icon markup (<i class="fa icon-note"> etc.).
+      // The replaceAdmonitionIcons call below swaps those <i> elements
+      // for inline SVGs before sanitization — see ADMONITION_ICON_SVGS
+      // and the function definition further down for why.
+      const doc = ad.load(getDoc(), { safe: 'unsafe', sourcemap: true, attributes: { showtitle: true, icons: 'font' } });
+      // Swap Asciidoctor's font-icon admonition markers for inline
+      // SVGs before sanitization — see replaceAdmonitionIcons. DOMPurify
+      // keeps <svg> and <path> elements by default (verified with the
+      // Octicons used elsewhere), so the injected markup survives the
+      // subsequent sanitize call.
+      out.innerHTML = DOMPurify.sanitize(replaceAdmonitionIcons(doc.convert({ standalone: false })));
       buildBlockMap(doc);
       updateWordCount();
       // Cache the doc's toc-position attribute (set by `:toc: left`

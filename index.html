@@ -1394,6 +1394,7 @@
     indentOnInput, bracketMatching, syntaxHighlighting,
     HighlightStyle, defaultHighlightStyle, StreamLanguage,
   } from '@codemirror/language';
+  import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
   import { tags as t } from '@lezer/highlight';
   import { vim, Vim, getCM } from '@replit/codemirror-vim';
 
@@ -2729,19 +2730,52 @@
   // Reconfigured at runtime when the user toggles vim mode.
   const vimCompartment = new Compartment();
 
-  // ================= Language compartment =================
-  // Wraps the language extension so toggleSyntaxHighlighting can
-  // reconfigure between asciidocLang and [] at runtime. When the
-  // contents are [], CM6's tokenization stops producing tokens for
-  // the syntaxHighlighting() consumers below, so all per-token
-  // coloring disappears — but the rest of CM6's affordances
-  // (active-line highlight, search matches, gutter line numbers,
-  // active-pane outline, vim cursor shape) stay working.
+  // Pre-built markdown language extension wrapping the GFM-base
+  // parser from @codemirror/lang-markdown. Constructed once at
+  // module load rather than per-reconfigure because the extension
+  // is stateless and can be reused across buffer switches.
   //
-  // Currently AsciiDoc-only: this compartment always reconfigures
-  // between asciidocLang and []. When Phase G adds Markdown, the
-  // reconfigure target needs to dispatch on currentFormat the way
-  // master's resolveLanguageExtension(format) helper does.
+  // `addKeymap: false` suppresses the package's default keymap,
+  // which binds Enter to continue list/blockquote markers on the
+  // next line and Backspace to delete one markup level at a time.
+  // Neither belongs in this editor: input should never be modified
+  // except by what the user typed.
+  const markdownLang = [
+    markdown({ base: markdownLanguage, addKeymap: false }),
+  ];
+
+  // Map a buffer format to the CM6 language extension that should be
+  // active in its compartment slot. Text mode uses an empty array —
+  // no syntax highlighting, no language-specific keymap, just plain
+  // text editing.
+  const languageFor = (format) => {
+    switch (format) {
+      case 'asciidoc': return asciidocLang;
+      case 'markdown': return markdownLang;
+      case 'text':     return [];
+    }
+  };
+
+  // Resolves the language compartment's contents given both the current
+  // buffer format AND the syntaxHighlighting pref. When the pref is off
+  // we hand back an empty extension list regardless of format, which
+  // strips tokenization and therefore all per-token coloring; the
+  // syntaxHighlighting(defaultHighlightStyle) / syntaxHighlighting(
+  // catppuccinHighlight) extensions elsewhere in the extension list stay
+  // wired up but have nothing to color. Other CM6 affordances
+  // (highlightActiveLine, search matches, gutter numbers, the focus
+  // outline, the vim cursor shape) all live in unrelated extensions and
+  // are unaffected — "syntax off" is truly "plain editor with every
+  // other affordance intact," not "bare textarea."
+  const resolveLanguageExtension = (format) =>
+    prefs.syntaxHighlighting ? languageFor(format) : [];
+
+  // ================= Language compartment =================
+  // Wraps the language extension so toggleSyntaxHighlighting and
+  // setBufferFormat can reconfigure it at runtime. The reconfigure
+  // target is computed by resolveLanguageExtension(currentFormat),
+  // which combines the buffer's format with the syntaxHighlighting
+  // pref.
   const langCompartment = new Compartment();
 
   // ================= Editor extensions =================
@@ -2782,10 +2816,10 @@
     bracketMatching(),
     EditorView.lineWrapping,
 
-    // language — minimal adoc stream highlighter, wrapped in a
-    // compartment so the syntax-highlighting toggle can swap it
-    // out for an empty extension at runtime.
-    langCompartment.of(prefs.syntaxHighlighting ? asciidocLang : []),
+    // language — wrapped in a compartment so the syntax-highlighting
+    // toggle and setBufferFormat can reconfigure its contents at
+    // runtime via resolveLanguageExtension(currentFormat).
+    langCompartment.of(resolveLanguageExtension(currentFormat)),
 
     // highlighting
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
@@ -3028,7 +3062,7 @@
     prefs.syntaxHighlighting = !prefs.syntaxHighlighting;
     savePrefs();
     editorView.dispatch({
-      effects: langCompartment.reconfigure(prefs.syntaxHighlighting ? asciidocLang : []),
+      effects: langCompartment.reconfigure(resolveLanguageExtension(currentFormat)),
     });
   };
 
@@ -3041,7 +3075,7 @@
     prefs.syntaxHighlighting = enabled;
     savePrefs();
     editorView.dispatch({
-      effects: langCompartment.reconfigure(enabled ? asciidocLang : []),
+      effects: langCompartment.reconfigure(resolveLanguageExtension(currentFormat)),
     });
   };
 

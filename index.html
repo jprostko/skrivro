@@ -21,7 +21,13 @@
 <!-- Restrictive Content Security Policy. Blocks all external origins
      except esm.sh (which is required because the standalone version loads
      its JavaScript modules from esm.sh's CDN at runtime — we have no build
-     step to bundle them locally). 'unsafe-inline' is used on script-src
+     step to bundle them locally) and https image sources (so external
+     image references in user documents — image::https://...[] in AsciiDoc,
+     ![](https://...) in Markdown — actually load instead of silently
+     failing). The Tauri version has a JavaScript-layer gate on top of the
+     same img-src policy (allow-external-images config key, default off);
+     standalone has no such gate, so https images flow through whenever
+     a document references them. 'unsafe-inline' is used on script-src
      because without a build step there's no way to compute hashes for our
      inline scripts; DOMPurify handles the equivalent protection at the
      output level by stripping script tags from rendered AsciiDoc before
@@ -32,7 +38,7 @@
   default-src 'self' https://esm.sh;
   script-src 'self' 'unsafe-inline' https://esm.sh;
   style-src 'self' 'unsafe-inline';
-  img-src 'self' data:;
+  img-src 'self' https: data:;
   font-src 'self';
   connect-src 'self' https://esm.sh;
   object-src 'none';

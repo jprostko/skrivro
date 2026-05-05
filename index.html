@@ -54,9 +54,13 @@
     "@codemirror/view":          "https://esm.sh/@codemirror/view@6",
     "@codemirror/commands":      "https://esm.sh/@codemirror/commands@6",
     "@codemirror/language":      "https://esm.sh/@codemirror/language@6",
+    "@codemirror/lang-markdown": "https://esm.sh/@codemirror/lang-markdown@6",
     "@lezer/highlight":          "https://esm.sh/@lezer/highlight@1",
     "@replit/codemirror-vim":    "https://esm.sh/@replit/codemirror-vim@6",
     "@asciidoctor/core":         "https://esm.sh/@asciidoctor/core@3",
+    "marked":                    "https://esm.sh/marked@18",
+    "marked-emoji":              "https://esm.sh/marked-emoji@2",
+    "gemoji":                    "https://esm.sh/gemoji@8",
     "dompurify":                 "https://esm.sh/dompurify@3"
   }
 }
@@ -322,6 +326,36 @@
   .preview ul, .preview ol { padding-left: 1.5em; margin: 0.8em 0; }
   .preview li { margin: 0.25em 0; }
 
+  /* GFM task lists. marked emits `- [ ] / - [x]` items as
+     <li><input type="checkbox" disabled> text</li> with no class
+     marker (GitHub's own renderer adds `.task-list-item`; marked does
+     not). Targeting via :has() on the <li> scopes the rule to
+     task-list items without touching normal list items.
+
+     Hide the native bullet (showing both a bullet AND a checkbox looks
+     redundant) and pull the item flush-left by the parent list's
+     padding so the checkbox sits where the bullet would have — matches
+     GitHub's rendering. The -1.5em cancels the 1.5em padding-left we
+     set on every .preview ul/ol above; nested task lists also shift
+     by their own parent's 1.5em, which keeps them at the correct
+     nested indent relative to their siblings.
+
+     accent-color sets the checked-state fill to the theme's link
+     color; most modern browsers also tint the unchecked border
+     towards that color, improving visibility against dark backgrounds
+     (the default unchecked box is near-invisible on Catppuccin Mocha).
+     vertical-align: middle keeps the checkbox centered on the text
+     x-height instead of sitting on the baseline. */
+  .preview li:has(> input[type="checkbox"]) {
+    list-style: none;
+    margin-left: -1.5em;
+  }
+  .preview input[type="checkbox"] {
+    accent-color: var(--skr-link);
+    margin-right: 0.35em;
+    vertical-align: middle;
+  }
+
   .preview table {
     border-collapse: collapse;
     margin: 1em 0;
@@ -466,6 +500,76 @@
   .preview .admonitionblock.important > table td.icon { color: var(--skr-error); }
   .preview .admonitionblock.warning   > table td.icon { color: var(--skr-emphasis); }
   .preview .admonitionblock.caution   > table td.icon { color: var(--skr-warning); }
+
+  /* GFM alerts — GitHub's extended blockquote syntax (> [!NOTE], etc.)
+     that our markedRenderer's gfmAlert extension parses into
+     <div class="markdown-alert markdown-alert-note"> (and variants).
+     Class names, HTML structure, and per-type colors mirror GitHub's
+     actual rendered output so a user familiar with GitHub's README
+     rendering sees the same shape and color semantics here.
+     Color semantics per GitHub's Primer tokens:
+       note      → accent    (blue)
+       tip       → success   (green)
+       important → done      (purple/mauve)
+       warning   → attention (yellow)
+       caution   → danger    (red)
+     These match the Primer semantics 1-to-1 using our --skr-* palette
+     slots; our AsciiDoc admonition mapping uses a different palette
+     because AsciiDoc conventions for important/warning/caution
+     disagree with GitHub's. Cross-format divergence is intentional
+     so each format renders like its source-convention upstream. */
+  .preview .markdown-alert {
+    margin: 1em 0;
+    padding: 0.8em 1em;
+    border: none;
+    border-left: 3px solid var(--skr-warning);
+    background: var(--skr-bg);
+    border-radius: 0 4px 4px 0;
+  }
+  .preview .markdown-alert-title {
+    font-weight: 600;
+    margin: 0 0 0.5em 0;
+    /* Flex layout so the inlined Octicon SVG sits alongside the title
+       text with consistent spacing and vertical centering, matching
+       GitHub's rendered output (which also uses display: flex on this
+       element). */
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    /* Capitalize defensively — the token handler already emits
+       Title-cased "Note" / "Tip" / etc., but a future change might
+       not, and this keeps the header visually correct either way. */
+    text-transform: capitalize;
+    /* Color comes from the per-type rules below — each alert variant
+       colors both the left stripe AND the title text with the same
+       semantic slot. The inlined Octicon SVG inherits via
+       `fill: currentColor` (rule below), so the icon color tracks
+       the title color automatically. */
+  }
+  /* Octicon SVGs inlined inside the title. `fill: currentColor` is
+     what makes the single title-color rule color the icon along with
+     the title text — no per-type icon rules needed. flex-shrink: 0
+     prevents the SVG from being squeezed on narrow containers. */
+  .preview .markdown-alert-title .octicon {
+    fill: currentColor;
+    flex-shrink: 0;
+  }
+  /* Drop the default top/bottom margins on the first/last children
+     so the title and trailing paragraph sit flush with the colored
+     frame, matching how .admonitionblock presents its content. */
+  .preview .markdown-alert > :first-child { margin-top: 0; }
+  .preview .markdown-alert > :last-child  { margin-bottom: 0; }
+
+  .preview .markdown-alert-note      { border-left-color: var(--skr-link); }
+  .preview .markdown-alert-note      > .markdown-alert-title { color: var(--skr-link); }
+  .preview .markdown-alert-tip       { border-left-color: var(--skr-success); }
+  .preview .markdown-alert-tip       > .markdown-alert-title { color: var(--skr-success); }
+  .preview .markdown-alert-important { border-left-color: var(--skr-accent-alt); }
+  .preview .markdown-alert-important > .markdown-alert-title { color: var(--skr-accent-alt); }
+  .preview .markdown-alert-warning   { border-left-color: var(--skr-warning); }
+  .preview .markdown-alert-warning   > .markdown-alert-title { color: var(--skr-warning); }
+  .preview .markdown-alert-caution   { border-left-color: var(--skr-error); }
+  .preview .markdown-alert-caution   > .markdown-alert-title { color: var(--skr-error); }
   .preview .title {
     color: var(--skr-text-dim);
     font-style: italic;
@@ -496,6 +600,38 @@
     padding: 1em;
     border-left: 3px solid var(--skr-error);
     border-radius: 4px;
+  }
+
+  /* Text-mode preview: TextRenderer emits a single <pre class="text-verbatim">
+     that is the entire document body, not a listing block inside a larger
+     document. Without scoped styling it inherits .preview pre rules meant
+     for code samples — a rounded card with its own background, padding,
+     and left-edge accent — which look wrong when the "card" IS the whole
+     pane. Override: flush everything and let the preview pane's own
+     padding be the only layer of inset. pre-wrap wraps long lines at
+     whitespace while preserving explicit newlines, matching the editor
+     pane's word-wrap behavior. Font family and size track the editor
+     settings so both panes present the same characters at the same visual
+     weight — text mode is a mirror of what you typed, not a transformed
+     rendering of it. */
+  .preview pre.text-verbatim {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+    white-space: pre-wrap;
+    font-family: var(--font-mono);
+    /* font-size + line-height explicitly track the editor's so the two
+       panes present text at the same visual size and density. Selector
+       uses `pre.text-verbatim` rather than `.text-verbatim` to bump
+       specificity above the generic `.preview pre` rule (0,2,1 vs 0,1,1)
+       and guard against any surprise that might leave the 0.85em from
+       that rule winning for font-size. */
+    font-size: var(--edit-font-size);
+    line-height: 1.6;
+    color: var(--skr-text);
   }
 
   /* Disable programming ligatures in monospace contexts.
@@ -1469,6 +1605,16 @@
       statusPosition.textContent = formatCursorPosition();
     }
     statusFilename.textContent = currentName;
+    statusFiletype.textContent = FORMAT_LABELS[currentFormat];
+  };
+
+  // Human-readable display name for the filetype slot in the status bar.
+  // Paralleled by FORMAT_DISPLAY_NAME (used by the :format readback);
+  // kept in sync by convention since the set is three entries.
+  const FORMAT_LABELS = {
+    asciidoc: 'AsciiDoc',
+    markdown: 'Markdown',
+    text: 'Text',
   };
 
   // ================= Helpers =================
@@ -1744,6 +1890,40 @@
     },
   };
 
+  // ================= TextRenderer =================
+  //
+  // Pass-through renderer for buffers the user has marked as plain
+  // text. The preview mirrors the source verbatim in a monospace
+  // block — no parsing, no transformation. AsciiDoc or Markdown
+  // syntax typed in a text-mode buffer stays literal in the preview.
+  const textRenderer = {
+    // Not declared async for the same reason as markedRenderer — no
+    // awaits inside, Promise.resolve matches the interface contract.
+    render(source, _context) {
+      // Wrap the escaped source in <pre class="text-verbatim">. The
+      // class is a hook for future styling — CSS can target it to
+      // adjust font or spacing specifically in text mode without
+      // touching the generic <pre> used by AsciiDoc listing blocks.
+      // DOMPurify pass is redundant here (our escape produces only
+      // entity references, no injection vectors) but cheap and keeps
+      // the output path uniform with the other renderers.
+      const html = DOMPurify.sanitize(`<pre class="text-verbatim">${escapeHtml(source)}</pre>`);
+
+      return Promise.resolve({
+        html,
+        buildBlockMap: () => [],
+        translateEditorLine: (editorLine) => editorLine,
+        // Plain text has no TOC concept; sidebar-TOC layout never
+        // activates for text documents.
+        tocPosition: null,
+      });
+    },
+
+    clearCache() {
+      // No state.
+    },
+  };
+
   // ================= Dispatch =================
   //
   // Format → Renderer mapping. The single call site in render() reads
@@ -1752,6 +1932,7 @@
   // implementation above and a case here; render() doesn't change.
   const getRenderer = (format) => {
     switch (format) {
+      case 'text':     return textRenderer;
       case 'asciidoc': return asciidoctorRenderer;
     }
   };
@@ -1759,10 +1940,10 @@
   // Invalidate every renderer's per-path cache. Called from buffer-
   // identity-changing operations (open, new, etc.) so stale cached
   // state doesn't bleed across buffers. Currently a no-op set since
-  // standalone's only renderer (asciidoctorRenderer) has no cache,
+  // neither renderer (asciidoctorRenderer, textRenderer) has a cache,
   // but the function exists for parity with master and so call sites
   // can stay agnostic about which renderer holds cacheable state.
-  const ALL_RENDERERS = [asciidoctorRenderer];
+  const ALL_RENDERERS = [asciidoctorRenderer, textRenderer];
   const clearAllRendererCaches = () => {
     for (const r of ALL_RENDERERS) r.clearCache();
   };

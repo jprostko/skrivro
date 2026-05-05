@@ -203,6 +203,33 @@ export const render = async () => {
       try {
         const absPath = await resolve(baseDir, src);
         img.setAttribute('src', convertFileSrc(absPath));
+        // Leading-slash paths in markdown source are ambiguous: they
+        // can be real filesystem-absolute paths (e.g.,
+        // /usr/share/icons/foo.png, which Tauri's asset protocol can
+        // serve when scope allows) OR GitHub-convention "repo-rooted"
+        // paths (e.g., /Assets/foo.png in a README that GitHub
+        // rewrites to its repo root at render time). The resolve()
+        // call above handles the filesystem-absolute case correctly;
+        // for the repo-rooted case the literal path doesn't exist and
+        // the asset-protocol load fails. Wire a one-shot error
+        // handler that retries with the leading slash stripped, so
+        // /Assets/foo.png re-resolves under the document's directory
+        // (matching what GitHub would have done at render time).
+        // Real-fs paths load on the first attempt and never trigger
+        // the retry. The `{ once: true }` option ensures the
+        // fallback fires at most once per image — if the second
+        // attempt also fails the browser shows its native broken-
+        // image icon, no infinite retry loop.
+        if (src.startsWith('/')) {
+          img.addEventListener('error', async () => {
+            try {
+              const altPath = await resolve(baseDir, src.slice(1));
+              img.setAttribute('src', convertFileSrc(altPath));
+            } catch (e) {
+              console.warn('Image fallback resolve failed:', src, e);
+            }
+          }, { once: true });
+        }
       } catch (e) {
         console.warn('Failed to resolve image path:', src, e);
       }

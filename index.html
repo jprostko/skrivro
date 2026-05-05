@@ -3869,6 +3869,43 @@
     console.error('Vim.map ZZ/ZQ failed:', e);
   }
 
+  // :format (no arg) shows the current format.
+  // :format <name> sets the format — asciidoc / markdown / text.
+  // Unknown values surface an E-style error in the vim panel.
+  //
+  // :asciidoc / :markdown / :text are direct one-shot aliases so the
+  // user doesn't have to remember the `:format <name>` form. Each
+  // sets the buffer's format to the command name.
+
+  // Narrow an arbitrary string to the Format union, or null if it
+  // isn't one of the three accepted values. Used by :format's
+  // validation path.
+  const parseFormat = (s) => {
+    const lower = s.toLowerCase();
+    if (lower === 'asciidoc' || lower === 'markdown' || lower === 'text') {
+      return lower;
+    }
+    return null;
+  };
+
+  Vim.defineEx('format', 'format', (cm, params) => {
+    const { arg } = parseExArgs(params);
+    if (!arg) {
+      vimMessage(`Format: ${FORMAT_LABELS[currentFormat]}`);
+      return;
+    }
+    const fmt = parseFormat(arg);
+    if (!fmt) {
+      vimMessage(`E474: Invalid format "${arg}" (expected asciidoc, markdown, or text)`);
+      return;
+    }
+    setBufferFormat(fmt);
+  });
+
+  Vim.defineEx('asciidoc', 'asciidoc', () => { setBufferFormat('asciidoc'); });
+  Vim.defineEx('markdown', 'markdown', () => { setBufferFormat('markdown'); });
+  Vim.defineEx('text', 'text', () => { setBufferFormat('text'); });
+
   // :syntax / :syn — matches real Vim's command of the same name
   // (Vim also accepts `enable`/`disable`, but `on`/`off` are the
   // canonical forms most users type and the only two we need).

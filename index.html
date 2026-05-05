@@ -1613,8 +1613,6 @@
   };
 
   // Human-readable display name for the filetype slot in the status bar.
-  // Paralleled by FORMAT_DISPLAY_NAME (used by the :format readback);
-  // kept in sync by convention since the set is three entries.
   const FORMAT_LABELS = {
     asciidoc: 'AsciiDoc',
     markdown: 'Markdown',
@@ -2422,10 +2420,6 @@
         const d = JSON.parse(raw);
         if (typeof d.content === 'string' && d.content.length > 0) {
           currentName = d.name || DEFAULT_NAME;
-          // Direct assignment, not setBufferFormat — this runs before
-          // the editor is constructed, so makeExtensions reads the
-          // correct currentFormat off the bat without an extra
-          // dispatch round-trip.
           currentFormat = detectFormat(currentName);
           return { doc: d.content, hasDraft: true };
         }
@@ -2436,11 +2430,28 @@
 
   // ================= Buffer format =================
 
-  // File-extension → format mapping. The Tauri version has an
-  // additional fallback for the no-path case that reads from
-  // userConfig.defaultFormat (a key in skrivro.conf); standalone has
-  // no config file, so the no-path case returns the compiled-in
-  // default 'asciidoc' directly.
+  // Detect the AsciiDoc/Markdown/text format from a path's extension,
+  // or fall back to the compiled-in default when there's no path.
+  // Centralized here so every site that opens or creates a buffer
+  // routes through the same extension table — guaranteeing that a
+  // `.md` file always gets markdown rendering and a `.adoc` file
+  // always gets asciidoc rendering, regardless of the buffer's
+  // previous format.
+  //
+  // Three formats supported: asciidoc / markdown / text. Anything
+  // else (`.txt`, `.log`, no extension at all) gets text. We don't
+  // try to sniff content; format-by-extension is a hard rule the user
+  // can rely on. If you open `mydoc.adoc` and want markdown rendering,
+  // you rename it. If a file has no extension, that's a signal the
+  // user picked some format-agnostic interaction (config, log,
+  // readme-without-extension) and treating it as plain text mirrors
+  // what most editors do — and dodges the false-precision of guessing.
+  //
+  // We deliberately don't auto-detect format from CONTENT (e.g.,
+  // "this looks like AsciiDoc because it starts with `:doctype:`").
+  // Editors that try this often misclassify, and the user can always
+  // override via :format. Treat the rule "extension determines format"
+  // as a limitation rather than something we try to auto-detect.
   const detectFormat = (path) => {
     if (!path) return 'asciidoc';
     const lower = path.toLowerCase();
@@ -2449,16 +2460,20 @@
     return 'text';
   };
 
-  // Centralized format-change orchestrator. Called from buffer-
-  // identity-changing operations (open, drag-drop, save-as, new) and
-  // from the format toggle / Ex commands. The idempotency guard at
-  // the top makes rapid repeated calls (e.g., Ex command + keyboard
-  // both hitting the same format) cheap. Safe to call before the
-  // editor is constructed — the editorView guard skips the dispatch;
-  // the initial compartment value (set in makeExtensions) already
-  // reflects currentFormat at construction time, so an early call
-  // that mutates currentFormat alone is enough to seed correct
-  // editor state.
+  // Canonical mutation helper for currentFormat. Call this rather
+  // than assigning the field directly so the three side effects that
+  // should always follow a format change stay in one place:
+  //
+  //   1. CM6 language compartment reconfigure — swaps the active
+  //      syntax highlighter (asciidocLang / markdownLang / [] for text).
+  //   2. Status bar refresh — the filetype slot shows the new format's
+  //      display name.
+  //   3. Preview re-render — since the renderer dispatches on format,
+  //      the preview should reflect the new choice.
+  //
+  // No-op when the requested format equals the current one, so
+  // rapid repeated calls (e.g., Ex command + keyboard both hitting
+  // the same format) don't thrash.
   const setBufferFormat = (format) => {
     if (currentFormat === format) return;
     currentFormat = format;
@@ -3094,11 +3109,10 @@
     prefs.syntaxHighlighting ? languageFor(format) : [];
 
   // ================= Language compartment =================
-  // Wraps the language extension so toggleSyntaxHighlighting and
-  // setBufferFormat can reconfigure it at runtime. The reconfigure
-  // target is computed by resolveLanguageExtension(currentFormat),
-  // which combines the buffer's format with the syntaxHighlighting
-  // pref.
+  // Reconfigured when the current buffer's format changes. Holds the
+  // language extension (syntax highlighter / tokenizer + any language-
+  // specific keymap). Switching format dispatches a reconfigure effect
+  // from setBufferFormat — no rebuild of the full extension set.
   const langCompartment = new Compartment();
 
   // ================= Editor extensions =================

@@ -3416,6 +3416,21 @@
     });
   };
 
+  // Cycle through formats in a fixed order: asciidoc → markdown → text
+  // → asciidoc. Bound to Ctrl+Alt+R / Cmd+Ctrl+R. The mutation work
+  // (compartment reconfigure, status refresh, re-render) is centralized
+  // in setBufferFormat — this just picks the next value and delegates.
+  const FORMAT_CYCLE = ['asciidoc', 'markdown', 'text'];
+  const toggleFormat = () => {
+    const idx = FORMAT_CYCLE.indexOf(currentFormat);
+    // indexOf returns -1 for unknown values. Treat that as "snap back
+    // to asciidoc" rather than propagating the -1 into the next
+    // lookup, which would pick index 0 anyway but via a bug-adjacent
+    // path. Explicit fallback documents the intent.
+    const nextIdx = idx === -1 ? 0 : (idx + 1) % FORMAT_CYCLE.length;
+    setBufferFormat(FORMAT_CYCLE[nextIdx]);
+  };
+
   const DISPLAY_MODES = ['split', 'editor', 'preview'];
   const applyDisplayMode = () => {
     const cl = document.body.classList;
@@ -3687,6 +3702,12 @@
       e.preventDefault(); toggleTocVisibility();
     } else if (second && k === 'h') {
       e.preventDefault(); toggleHelp();
+    } else if (second && k === 'r') {
+      // Format toggle (R for Representation — cycles the active buffer
+      // format: AsciiDoc → Markdown → Text → AsciiDoc). F would be the
+      // obvious letter but Cmd+Ctrl+F on Mac is the Fullscreen menu
+      // shortcut that AppKit intercepts before the webview sees it.
+      e.preventDefault(); toggleFormat();
     }
     // Primary-only shortcuts. Save uses primary alone because that's
     // a universal convention (Ctrl+S / Cmd+S).

@@ -1257,8 +1257,6 @@
 
   // ================= Constants =================
 
-  const ad = Asciidoctor();
-
   const LS_KEY       = 'adoc-editor-draft-v1';
   const PREFS_KEY    = 'adoc-editor-prefs-v1';
   const DEFAULT_NAME = 'untitled.adoc';
@@ -1505,6 +1503,77 @@
     statusWordCount.textContent = `${count.toLocaleString()} words`;
   };
 
+  // ================= AsciiDoc block-map walk =================
+
+  // Asciidoctor block contexts that map to a scrollable preview element.
+  // Excludes purely structural contexts (document, preamble) and inline-
+  // level blocks that don't get their own preview container.
+  const MAPPABLE_CONTEXTS = new Set([
+    'paragraph', 'listing', 'literal', 'example', 'sidebar',
+    'admonition', 'quote', 'verse', 'image', 'ulist', 'olist', 'dlist',
+    'section', 'open', 'table',
+  ]);
+
+  // CSS selector matching the DOM elements Asciidoctor emits for those
+  // block contexts. Order in the selector doesn't matter — querySelectorAll
+  // returns matches in document order regardless.
+  const DOM_BLOCK_SELECTOR = [
+    '.paragraph', '.listingblock', '.literalblock', '.exampleblock',
+    '.sidebarblock', '.admonitionblock', '.quoteblock', '.verseblock',
+    '.imageblock', '.ulist', '.olist', '.dlist',
+    '.sect1', '.sect2', '.sect3', '.sect4', '.sect5',
+    '.openblock', 'table.tableblock',
+  ].join(', ');
+
+  // Walk the parsed AST and the rendered DOM in parallel, building a
+  // map from source line to preview block element. Walks the tree
+  // manually via getBlocks() rather than findBy() for robustness
+  // against API surprises. Relies on Asciidoctor emitting blocks in
+  // document order in both the AST walk and the rendered HTML (via
+  // querySelectorAll). The i-th matching AST block aligns with the
+  // i-th matching DOM element.
+  const buildAsciidoctorBlockMap = (doc, rootElement) => {
+    try {
+      const ast = [];
+      const walk = (block) => {
+        if (!block || typeof block.getBlocks !== 'function') return;
+        for (const child of block.getBlocks()) {
+          let ctx = null;
+          try { ctx = child.getContext(); } catch {}
+          if (ctx && MAPPABLE_CONTEXTS.has(ctx)) {
+            let loc = null;
+            try { loc = child.getSourceLocation(); } catch {}
+            if (loc) ast.push(child);
+          }
+          walk(child);
+        }
+      };
+      walk(doc);
+
+      const dom = Array.from(rootElement.querySelectorAll(DOM_BLOCK_SELECTOR));
+      const map = [];
+      const n = Math.min(ast.length, dom.length);
+      for (let i = 0; i < n; i++) {
+        try {
+          const line = ast[i].getSourceLocation().getLineNumber();
+          if (typeof line === 'number') {
+            map.push({ line, el: dom[i] });
+          }
+        } catch {}
+      }
+      map.sort((a, b) => a.line - b.line);
+      console.log(`[skrivro] buildBlockMap: ast=${ast.length} dom=${dom.length} map=${map.length}`);
+      return map;
+    } catch (e) {
+      console.error('buildBlockMap failed:', e);
+      return [];
+    }
+  };
+
+  // ================= AsciidoctorRenderer =================
+
+  const ad = Asciidoctor();
+
   // ================= Admonition icon SVGs =================
   //
   // Font Awesome 4 glyphs extracted from the webfont SVG and wrapped
@@ -1596,63 +1665,181 @@
     return parsed.body.innerHTML;
   };
 
-  const render = () => {
-    try {
+  const asciidoctorRenderer = {
+    async render(source, _context) {
+      // Standalone has no include preprocessing — the browser can't
+      // read sibling files via Tauri's filesystem plugin, so any
+      // include:: directives in source flow into Asciidoctor's own
+      // browser include reader and surface as "Unresolved directive"
+      // placeholders in the rendered output. _context is accepted for
+      // interface parity with master's RenderContext but unused here.
+
       // Load first (so we get the AST for the scroll-sync block map),
       // then convert. sourcemap=true is a TOP-LEVEL option to load(),
       // NOT nested under attributes — this is what makes Asciidoctor
       // annotate blocks with their source line numbers. Getting this
       // wrong silently produces blocks with null source locations.
-      // safe: 'unsafe' allows all Asciidoctor features: include:: directives
-      // across the filesystem, docinfo injection, custom :doctype: (e.g.
-      // book), :source-highlighter:, image:: with absolute paths, and so on.
       //
-      // Asciidoctor's safe modes (unsafe/safe/server/secure) gate parser-
-      // level features and were designed for a server-rendering threat
-      // model where an untrusted user submits a document that a trusted
-      // server processes on its own filesystem and serves to other users.
-      // That model does not apply to Skrivro — this is a single-user
-      // local editor where users edit their own files. Restricting safe
-      // mode here would cripple legitimate features (docinfo, book-mode
-      // doctype, includes across directories) without providing real
-      // security gain, because the user can already read any file the OS
-      // permits them to read via File → Open.
+      // Asciidoctor's safe modes (unsafe/safe/server/secure) gate
+      // parser-level features and were designed for a server-rendering
+      // threat model where an untrusted user submits a document that a
+      // trusted server processes on its own filesystem and serves to
+      // other users. That model does not apply to Skrivro — this is a
+      // single-user local editor where users edit their own files.
+      // Restricting safe mode here would cripple legitimate features
+      // (docinfo, book-mode doctype, etc.) without providing real
+      // security gain, because the user can already read any file the
+      // OS permits them to read via File → Open.
       //
-      // The real security layers are Content-Security-Policy (blocks all
-      // network egress so nothing can phone home) and DOMPurify on the
-      // render output (strips scripts and event handlers from passthrough-
-      // injected HTML before it reaches the DOM). Those are what protect
-      // against actual attacks. The safe mode here is intentionally open.
+      // The real security layers are Content-Security-Policy (blocks
+      // all network egress so nothing can phone home) and DOMPurify on
+      // the render output (strips scripts and event handlers from
+      // passthrough-injected HTML before it reaches the DOM). Those
+      // are what protect against actual attacks. The safe mode here
+      // is intentionally open.
       //
-      // This is also a planned config-file knob — users who prefer a
-      // stricter mode can override it via skrivro.conf (see the config
-      // spec in memory).
       // icons: 'font' switches admonition rendering from text labels
-      // to Font Awesome icon markup (<i class="fa icon-note"> etc.).
-      // The replaceAdmonitionIcons call below swaps those <i> elements
-      // for inline SVGs before sanitization — see ADMONITION_ICON_SVGS
-      // and the function definition further down for why.
-      const doc = ad.load(getDoc(), { safe: 'unsafe', sourcemap: true, attributes: { showtitle: true, icons: 'font' } });
+      // to Font Awesome icon markup (<i class="fa icon-note"> etc.),
+      // matching Asciidoctor's standard convention. Styling for the
+      // resulting icons lives in the stylesheet above — see the rules
+      // targeting .admonitionblock td.icon [class^="fa icon-"].
+      const doc = ad.load(source, {
+        safe: 'unsafe',
+        sourcemap: true,
+        attributes: { showtitle: true, icons: 'font' },
+      });
       // Swap Asciidoctor's font-icon admonition markers for inline
-      // SVGs before sanitization — see replaceAdmonitionIcons. DOMPurify
-      // keeps <svg> and <path> elements by default (verified with the
-      // Octicons used elsewhere), so the injected markup survives the
-      // subsequent sanitize call.
-      out.innerHTML = DOMPurify.sanitize(replaceAdmonitionIcons(doc.convert({ standalone: false })));
-      buildBlockMap(doc);
+      // SVGs before sanitization — see replaceAdmonitionIcons above
+      // for why. DOMPurify keeps <svg> and <path> elements by default
+      // (verified with the Octicons used elsewhere), so the injected
+      // markup survives the subsequent sanitize call.
+      const rawHtml = replaceAdmonitionIcons(doc.convert({ standalone: false }));
+      const html = DOMPurify.sanitize(rawHtml);
+
+      // Capture the per-render state in closures. The caller invokes
+      // buildBlockMap after injecting `html` into a container; we walk
+      // the parsed `doc` AST against that container. translateEditorLine
+      // is the identity function for standalone — there's no include
+      // preprocessing, so editor line numbers and Asciidoctor source-
+      // map line numbers are the same coordinate system.
+      return {
+        html,
+        buildBlockMap: (rootElement) => buildAsciidoctorBlockMap(doc, rootElement),
+        translateEditorLine: (editorLine) => editorLine,
+        tocPosition: doc.getAttribute('toc-position') || null,
+      };
+    },
+
+    clearCache() {
+      // No-op: standalone has no per-path cache (no include
+      // preprocessing). Method exists for parity with master's
+      // Renderer interface, where asciidoctorRenderer.clearCache()
+      // invalidates the include-file cache.
+    },
+  };
+
+  // ================= Dispatch =================
+  //
+  // Format → Renderer mapping. The single call site in render() reads
+  // currentFormat, calls getRenderer, and invokes render on whatever
+  // comes back. Adding a new format means adding a Renderer
+  // implementation above and a case here; render() doesn't change.
+  const getRenderer = (format) => {
+    switch (format) {
+      case 'asciidoc': return asciidoctorRenderer;
+    }
+  };
+
+  // Invalidate every renderer's per-path cache. Called from buffer-
+  // identity-changing operations (open, new, etc.) so stale cached
+  // state doesn't bleed across buffers. Currently a no-op set since
+  // standalone's only renderer (asciidoctorRenderer) has no cache,
+  // but the function exists for parity with master and so call sites
+  // can stay agnostic about which renderer holds cacheable state.
+  const ALL_RENDERERS = [asciidoctorRenderer];
+  const clearAllRendererCaches = () => {
+    for (const r of ALL_RENDERERS) r.clearCache();
+  };
+
+  // ================= Render =================
+
+  // Scroll-sync state, populated lazily — the block map and
+  // translateEditorLine callback are supplied by each render's
+  // Renderer result but computed on demand the first time
+  // syncPreviewToCaret runs after a render. Users who never trigger
+  // sync pay zero cost for the map build; sync users pay the build
+  // cost once per render cycle, then reuse the cached map across
+  // repeated sync triggers until the next render invalidates it.
+  //
+  // `blockMap = null` means "not yet built" (either initial state or
+  // invalidated by a recent render). `latestBuildBlockMap === null`
+  // means no render has completed yet (fresh app launch, pre-first-
+  // render). After any successful render, latestBuildBlockMap holds
+  // the builder closure from result.buildBlockMap, ready to compute
+  // the map on demand.
+  let blockMap = null;
+  let latestBuildBlockMap = null;
+  let translateEditorLine = (n) => n;
+
+  // Monotonically-increasing token. Each render invocation claims a
+  // token at entry; after the async render completes it checks the
+  // token is still current before writing to the DOM. A newer render
+  // (fired by file open, format toggle, or further edits) advances
+  // the counter, making any still-in-flight older render a no-op on
+  // completion. Without this, a slow renderer started with stale
+  // format/source can finish AFTER a fast render and overwrite its
+  // output — the preview ends up showing one format's output for a
+  // different format's buffer (or equivalent cross-contamination).
+  let renderToken = 0;
+
+  const render = async () => {
+    const myToken = ++renderToken;
+    try {
+      const source = getDoc();
+      // Format-keyed dispatch — the active renderer is chosen per-
+      // render based on currentFormat, which is populated from file
+      // extension and can be changed at runtime via the format
+      // toggle / Ex commands.
+      const result = await getRenderer(currentFormat).render(source, { path: null });
+
+      // Staleness check: if a newer render fired while we were
+      // awaiting (because the user opened a different file, toggled
+      // format, or rapidly edited), abort — let the newer render's
+      // output be authoritative. Otherwise this render's now-stale
+      // HTML would clobber the fresher result.
+      if (myToken !== renderToken) return;
+
+      out.innerHTML = result.html;
+
+      // Invalidate the cached map and stash the new builder for lazy
+      // evaluation on the next syncPreviewToCaret call. buildBlockMap
+      // is NOT invoked here — skipping the (potentially non-trivial)
+      // map build for every render is the point.
+      blockMap = null;
+      latestBuildBlockMap = result.buildBlockMap;
+      translateEditorLine = result.translateEditorLine;
       updateWordCount();
       // Cache the doc's toc-position attribute (set by `:toc: left`
       // / `:toc: right` in source) so display/width-mode changes can
       // re-evaluate the sidebar layout without re-rendering. Falsy
       // values (undefined, '', 'auto', 'content', etc.) all resolve
       // to "no sidebar" inside evaluateTocLayout.
-      lastTocPosition = doc.getAttribute('toc-position') || null;
+      lastTocPosition = result.tocPosition;
       evaluateTocLayout();
     } catch (e) {
       console.error('render failed:', e);
+      // Same staleness check as the success path — if a newer render
+      // has started/completed, don't clobber its output with an error
+      // from an already-superseded render.
+      if (myToken !== renderToken) return;
+      const msg = e instanceof Error ? e.message : String(e);
       out.innerHTML =
-        `<pre class="render-error">Render error: ${escapeHtml(e.message || String(e))}</pre>`;
-      blockMap = [];
+        `<pre class="render-error">Render error: ${escapeHtml(msg)}</pre>`;
+      // Error state has no renderable block map; clear both the cache
+      // and the builder so sync attempts after an error are no-ops
+      // instead of trying to build from stale (or nonexistent) state.
+      blockMap = null;
+      latestBuildBlockMap = null;
       lastTocPosition = null;
       evaluateTocLayout();
       // Skip updateWordCount on render error — the error message's
@@ -1672,70 +1859,6 @@
   // continuous sync — both panes stay independently scrollable and we
   // don't touch them unless the user asks.
 
-  const MAPPABLE_CONTEXTS = new Set([
-    'paragraph', 'listing', 'literal', 'example', 'sidebar',
-    'admonition', 'quote', 'verse', 'image', 'ulist', 'olist', 'dlist',
-    'section', 'open', 'table',
-  ]);
-
-  const DOM_BLOCK_SELECTOR = [
-    '.paragraph', '.listingblock', '.literalblock', '.exampleblock',
-    '.sidebarblock', '.admonitionblock', '.quoteblock', '.verseblock',
-    '.imageblock', '.ulist', '.olist', '.dlist',
-    '.sect1', '.sect2', '.sect3', '.sect4', '.sect5',
-    '.openblock', 'table.tableblock',
-  ].join(', ');
-
-  let blockMap = []; // Array<{ line: number, el: Element }>, sorted by line
-
-  // Walk the parsed AST and the rendered DOM in parallel, building a
-  // map from source line to preview block element. Walks the tree
-  // manually via getBlocks() rather than findBy() for robustness
-  // against API surprises. Relies on Asciidoctor emitting blocks in
-  // document order in both the AST walk and the rendered HTML (via
-  // querySelectorAll). The i-th matching AST block aligns with the
-  // i-th matching DOM element.
-  const buildBlockMap = (doc) => {
-    try {
-      const ast = [];
-      const walk = (block) => {
-        if (!block || typeof block.getBlocks !== 'function') return;
-        for (const child of block.getBlocks()) {
-          let ctx = null;
-          try { ctx = child.getContext(); } catch {}
-          if (ctx && MAPPABLE_CONTEXTS.has(ctx)) {
-            let loc = null;
-            try { loc = child.getSourceLocation(); } catch {}
-            if (loc) ast.push(child);
-          }
-          walk(child);
-        }
-      };
-      walk(doc);
-
-      const dom = Array.from(out.querySelectorAll(DOM_BLOCK_SELECTOR));
-      const map = [];
-      const n = Math.min(ast.length, dom.length);
-      for (let i = 0; i < n; i++) {
-        try {
-          const line = ast[i].getSourceLocation().getLineNumber();
-          if (typeof line === 'number') {
-            map.push({ line, el: dom[i] });
-          }
-        } catch {}
-      }
-      map.sort((a, b) => a.line - b.line);
-      blockMap = map;
-      console.log(`[skrivro] buildBlockMap: ast=${ast.length} dom=${dom.length} map=${map.length}`);
-    } catch (e) {
-      console.error('buildBlockMap failed:', e);
-      blockMap = [];
-    }
-  };
-
-  // Binary search for the greatest block with line <= caretLine, then
-  // scroll its DOM element to the top of the preview viewport.
-
   // Flash the sync indicator. Removing and re-adding the class in
   // the same tick doesn't restart the animation because the browser
   // batches the class changes; forcing a synchronous reflow via
@@ -1750,15 +1873,37 @@
     statusSyncIndicator.classList.add('flashing');
   };
 
+  // Binary search for the greatest block with line <= caretLine, then
+  // scroll its DOM element to the top of the preview viewport.
+  //
+  // The Renderer supplies translateEditorLine (captured at render
+  // time) to handle coordinate-system differences. For renderers that
+  // don't transform source (standalone's asciidoctorRenderer, and
+  // any future renderers without preprocessing), it's the identity
+  // function.
   const syncPreviewToCaret = () => {
-    if (!blockMap.length || !editorView) return;
-    // Flash the indicator after the guard — the guard protects against
-    // no-op calls where there's nothing to sync to. Any call past it
-    // is a "real" sync attempt that deserves feedback regardless of
-    // whether the preview actually scrolls.
+    if (!editorView) return;
+    // Build the block map lazily — the FIRST sync after each render
+    // pays the lexer+walk cost, subsequent syncs reuse the cached
+    // map until the next render invalidates it. Users who never
+    // trigger sync pay nothing. `latestBuildBlockMap` is null pre-
+    // first-render and after a render error, which both correctly
+    // short-circuit to a no-op sync.
+    if (blockMap === null) {
+      if (!latestBuildBlockMap) return;
+      blockMap = latestBuildBlockMap(out);
+    }
+    if (!blockMap.length) return;
+    // Flash the sync indicator after the guards pass — the guards
+    // protect against no-op invocations (empty document, pre-init
+    // editor) where the sync command is semantically meaningless.
+    // Any invocation that gets past them is a "real" sync attempt
+    // that deserves feedback, regardless of whether the preview
+    // actually ends up scrolling to a new position.
     flashSync();
     const pos = editorView.state.selection.main.head;
-    const caretLine = editorView.state.doc.lineAt(pos).number;
+    const editorCaretLine = editorView.state.doc.lineAt(pos).number;
+    const caretLine = translateEditorLine(editorCaretLine);
     let lo = 0, hi = blockMap.length - 1, found = 0;
     while (lo <= hi) {
       const mid = (lo + hi) >> 1;

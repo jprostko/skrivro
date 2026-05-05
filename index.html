@@ -1885,13 +1885,6 @@
         tocPosition: doc.getAttribute('toc-position') || null,
       };
     },
-
-    clearCache() {
-      // No-op: standalone has no per-path cache (no include
-      // preprocessing). Method exists for parity with master's
-      // Renderer interface, where asciidoctorRenderer.clearCache()
-      // invalidates the include-file cache.
-    },
   };
 
   // ================= MarkedRenderer =================
@@ -2178,10 +2171,6 @@
         tocPosition: null,
       });
     },
-
-    clearCache() {
-      // No per-path state to invalidate.
-    },
   };
 
   // ================= TextRenderer =================
@@ -2212,10 +2201,6 @@
         tocPosition: null,
       });
     },
-
-    clearCache() {
-      // No state.
-    },
   };
 
   // ================= Dispatch =================
@@ -2224,24 +2209,18 @@
   // currentFormat, calls getRenderer, and invokes render on whatever
   // comes back. Adding a new format means adding a Renderer
   // implementation above and a case here; render() doesn't change.
+  //
+  // No clearAllRendererCaches helper exists in standalone — the Tauri
+  // version has one to invalidate asciidoctorRenderer's include-file
+  // cache on buffer-identity-changing operations, but standalone has
+  // no include preprocessing (browser can't read sibling files), so
+  // there's nothing to invalidate.
   const getRenderer = (format) => {
     switch (format) {
       case 'markdown': return markedRenderer;
       case 'text':     return textRenderer;
       case 'asciidoc': return asciidoctorRenderer;
     }
-  };
-
-  // Invalidate every renderer's per-path cache. Called from buffer-
-  // identity-changing operations (open, new, etc.) so stale cached
-  // state doesn't bleed across buffers. Currently a no-op set since
-  // none of the renderers (asciidoctorRenderer, markedRenderer,
-  // textRenderer) has a cache, but the function exists for parity
-  // with master and so call sites can stay agnostic about which
-  // renderer holds cacheable state.
-  const ALL_RENDERERS = [asciidoctorRenderer, markedRenderer, textRenderer];
-  const clearAllRendererCaches = () => {
-    for (const r of ALL_RENDERERS) r.clearCache();
   };
 
   // ================= Render =================

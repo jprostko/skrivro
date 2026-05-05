@@ -2422,11 +2422,53 @@
         const d = JSON.parse(raw);
         if (typeof d.content === 'string' && d.content.length > 0) {
           currentName = d.name || DEFAULT_NAME;
+          // Direct assignment, not setBufferFormat — this runs before
+          // the editor is constructed, so makeExtensions reads the
+          // correct currentFormat off the bat without an extra
+          // dispatch round-trip.
+          currentFormat = detectFormat(currentName);
           return { doc: d.content, hasDraft: true };
         }
       }
     } catch {}
     return { doc: DEFAULT_DOC, hasDraft: false };
+  };
+
+  // ================= Buffer format =================
+
+  // File-extension → format mapping. The Tauri version has an
+  // additional fallback for the no-path case that reads from
+  // userConfig.defaultFormat (a key in skrivro.conf); standalone has
+  // no config file, so the no-path case returns the compiled-in
+  // default 'asciidoc' directly.
+  const detectFormat = (path) => {
+    if (!path) return 'asciidoc';
+    const lower = path.toLowerCase();
+    if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'markdown';
+    if (lower.endsWith('.adoc') || lower.endsWith('.asciidoc')) return 'asciidoc';
+    return 'text';
+  };
+
+  // Centralized format-change orchestrator. Called from buffer-
+  // identity-changing operations (open, drag-drop, save-as, new) and
+  // from the format toggle / Ex commands. The idempotency guard at
+  // the top makes rapid repeated calls (e.g., Ex command + keyboard
+  // both hitting the same format) cheap. Safe to call before the
+  // editor is constructed — the editorView guard skips the dispatch;
+  // the initial compartment value (set in makeExtensions) already
+  // reflects currentFormat at construction time, so an early call
+  // that mutates currentFormat alone is enough to seed correct
+  // editor state.
+  const setBufferFormat = (format) => {
+    if (currentFormat === format) return;
+    currentFormat = format;
+    if (editorView) {
+      editorView.dispatch({
+        effects: langCompartment.reconfigure(resolveLanguageExtension(format)),
+      });
+    }
+    refreshStatus();
+    void render();
   };
 
   // ================= File ops =================
@@ -2601,6 +2643,7 @@
             setDoc(await file.text());
             currentHandle = handle;
             currentName   = handle.name || file.name || DEFAULT_NAME;
+            setBufferFormat(detectFormat(currentName));
             setDirty(false);
             clearDraft();
             updateTitle();
@@ -2623,6 +2666,7 @@
     setDoc(await file.text());
     currentHandle = null;
     currentName   = file.name || DEFAULT_NAME;
+    setBufferFormat(detectFormat(currentName));
     setDirty(false);
     clearDraft();
     updateTitle();
@@ -2673,6 +2717,7 @@
             setDoc(await file.text());
             currentHandle = handle;
             currentName   = handle.name || file.name || DEFAULT_NAME;
+            setBufferFormat(detectFormat(currentName));
             setDirty(false);
             clearDraft();
             updateTitle();
@@ -2695,6 +2740,7 @@
           setDoc(await file.text());
           currentHandle = null;
           currentName   = file.name || DEFAULT_NAME;
+          setBufferFormat(detectFormat(currentName));
           setDirty(false);
           clearDraft();
           updateTitle();
@@ -2738,6 +2784,7 @@
         await w.close();
         currentHandle = handle;
         currentName   = handle.name || currentName;
+        setBufferFormat(detectFormat(currentName));
         setDirty(false);
         clearDraft();
         updateTitle();
@@ -2749,6 +2796,7 @@
     } else {
       const name = prompt('Save as:', currentName) || currentName;
       currentName = name;
+      setBufferFormat(detectFormat(currentName));
       updateTitle();
       downloadFile(name);
       setDirty(false);
@@ -2773,6 +2821,7 @@
       setDoc('');
       currentHandle = null;
       currentName   = DEFAULT_NAME;
+      setBufferFormat(detectFormat(null));
       setDirty(false);
       clearDraft();
       updateTitle();

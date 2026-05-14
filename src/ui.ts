@@ -382,10 +382,43 @@ export const toggleHelp = () => {
 };
 helpBtn.addEventListener('click', showHelp);
 helpCloseBtn.addEventListener('click', hideHelp);
-// When the click target IS the dialog element itself (as opposed to
-// a child), it means the click landed on the backdrop area.
+// Dismiss the help dialog when the user clicks on its backdrop —
+// the ::backdrop pseudo-element rendered outside the dialog's box.
+//
+// Two pitfalls to avoid:
+//
+//   1. Click-and-drag for text selection inside the content
+//      (mousedown on a child element, mouseup elsewhere) fires a
+//      click event whose target is the dialog itself (the deepest
+//      common ancestor of the two phases) — checking `e.target ===
+//      helpDlg` alone would dismiss on every drag-release.
+//
+//   2. The dialog has no inner wrapper, so h2/h3/div.help-grid are
+//      direct children of helpDlg and the whitespace gaps BETWEEN
+//      sections are part of the dialog element itself. A click in
+//      one of those gaps fires with `e.target === helpDlg` even
+//      though it's geometrically inside the dialog's box, not on
+//      the backdrop.
+//
+// Solution: distinguish "click on dialog padding/whitespace" from
+// "click on actual backdrop" by checking the event coordinates
+// against the dialog's bounding rect. Padding/whitespace clicks
+// land INSIDE the rect; ::backdrop clicks land OUTSIDE it. Then
+// require BOTH the mousedown and the resulting click to have hit
+// the backdrop — drag-releases that happen to end on the backdrop
+// (or start on the backdrop and end inside) don't qualify.
+const isHelpBackdropAt = (e: MouseEvent): boolean => {
+  if (e.target !== helpDlg) return false;
+  const r = helpDlg.getBoundingClientRect();
+  return e.clientX < r.left || e.clientX >= r.right
+      || e.clientY < r.top  || e.clientY >= r.bottom;
+};
+let helpMouseDownOnBackdrop = false;
+helpDlg.addEventListener('mousedown', (e) => {
+  helpMouseDownOnBackdrop = isHelpBackdropAt(e);
+});
 helpDlg.addEventListener('click', (e) => {
-  if (e.target === helpDlg) hideHelp();
+  if (helpMouseDownOnBackdrop && isHelpBackdropAt(e)) hideHelp();
 });
 
 // ================= Toggles =================

@@ -3,7 +3,7 @@
 # bundled third-party dependencies (npm runtime deps + Rust crates).
 #
 # Run from repo root. Requires:
-#   - license-checker (project devDep — npm install handles it)
+#   - license-checker (fetched on demand via npx — kept out of the dependency tree on purpose)
 #   - cargo-about with cli feature globally installed:
 #     cargo install --locked --features=cli cargo-about
 #   - python3 (used for formatting license-checker's JSON into plain text)
@@ -57,7 +57,7 @@ echo "" >> "$OUTPUT"
 # ourselves in the Python step — license-checker's --customFormat with
 # licenseText has inconsistent behavior across versions, so delegating
 # the file read is more robust.
-npx --no-install license-checker \
+npx --yes license-checker \
     --production \
     --json > "$TMPDIR/npm.json"
 

@@ -31,7 +31,7 @@ const statusWordCount     = document.getElementById('statusWordCount')!;
 const helpDlg             = document.getElementById('helpDialog') as HTMLDialogElement;
 const helpBtn             = document.getElementById('helpBtn')!;
 const helpCloseBtn        = document.getElementById('helpCloseBtn')!;
-const previewPaneEl       = document.querySelector('.preview-pane') as HTMLElement | null;
+const previewPaneEl       = document.querySelector('.preview-pane');
 
 // ================= Status bar =================
 //
@@ -486,7 +486,11 @@ export const applySyntaxHighlighting = (enabled: boolean) => {
 //   in the rules still applies but is moot since 100vw ≥ 100%
 //   of the parent in single-pane modes.
 export const WIDTH_MODES = ['narrow', 'medium', 'wide', 'full'];
-const WIDTH_CAPS: Record<string, string> = {
+// The `& { medium: string }` types the medium entry as a known
+// property so applyWidthMode's `|| WIDTH_CAPS.medium` fallback
+// resolves to string, not string | undefined (a bare Record index
+// is optional under noUncheckedIndexedAccess).
+const WIDTH_CAPS: Record<string, string> & { medium: string } = {
   narrow: '65ch', medium: '90ch', wide: '125ch', full: '100vw',
 };
 
@@ -495,7 +499,8 @@ const WIDTH_CAPS: Record<string, string> = {
 // modes. Narrow mode never activates sidebar layout (see
 // evaluateTocLayout below) so its value is unreachable in practice;
 // included for completeness and to keep the lookup total.
-const TOC_SIDEBAR_WIDTHS: Record<string, string> = {
+// (`& { medium: string }` — same reason as WIDTH_CAPS above.)
+const TOC_SIDEBAR_WIDTHS: Record<string, string> & { medium: string } = {
   narrow: '15em', medium: '15em', wide: '15em', full: '20em',
 };
 
@@ -1015,7 +1020,7 @@ if (wrapEl) {
   // preventDefault.
   wrapEl.addEventListener('wheel', (e: Event) => {
     const we = e as WheelEvent;
-    let scroller: Element | null = null;
+    let scroller: Element | null;
     if (prefs.displayMode === 'editor') {
       scroller = editorView ? editorView.scrollDOM : null;
     } else if (prefs.displayMode === 'preview') {

@@ -1,3 +1,5 @@
 # Supply-chain hardening.
 minimumReleaseAge: 4320   # hold new releases 3 days (value is in minutes)
 blockExoticSubdeps: true  # transitive deps must resolve from the registry
+strictDepBuilds: true     # fail install on unreviewed dependency build scripts
+trustPolicy: no-downgrade # reject a version with weaker trust evidence than an earlier release

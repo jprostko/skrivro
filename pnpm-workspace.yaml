@@ -1,0 +1,3 @@
+# Supply-chain hardening.
+minimumReleaseAge: 4320   # hold new releases 3 days (value is in minutes)
+blockExoticSubdeps: true  # transitive deps must resolve from the registry

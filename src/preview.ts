@@ -107,36 +107,57 @@ export const requestPreviewScrollToTop = () => {
   pendingScrollToTop = true;
 };
 
-// Monotonically-increasing token. Each render invocation claims a
-// token at entry; after the async render completes it checks the
-// token is still current before writing to the DOM. A newer render
-// (fired by file open, format toggle, or further edits) advances the
-// counter, making any still-in-flight older render a no-op on
-// completion. Without this, a slow renderer (asciidoctor can take
-// 50-200ms for include-heavy docs) started with stale format/source
-// can finish AFTER a fast markdown render and overwrite its output —
-// the preview ends up showing asciidoctor output for a markdown
-// buffer (or equivalent cross-contamination).
-let renderToken = 0;
+// ================= Render coalescing =================
+//
+// render() is async and one pass can be slow — a large document's
+// parse runs from hundreds of milliseconds to several seconds. The
+// debounce below merges a burst of edits within its window into a
+// single render, but it does not stop a render from starting while a
+// previous one is still in flight: each fired timer calls render()
+// unconditionally. A slow render plus continued editing therefore
+// piles up overlapping invocations, each paying a full parse whose
+// result is then discarded.
+//
+// These two flags collapse the pile-up. While a pass runs,
+// renderInFlight is set and any further trigger only raises
+// renderPending rather than starting a second pass. When the pass
+// finishes, a raised renderPending is re-submitted through the
+// debounce — see render() below for why the debounce rather than an
+// immediate re-run. At most one pass runs at a time, and a burst of
+// edits collapses to a single trailing pass.
+//
+// The old render-staleness token that lived here did two jobs: stop a
+// stale render from clobbering a newer one, and stop a superseded
+// render from writing its result at all. Coalescing covers the first
+// — strictly sequential passes cannot overlap, so a clobber is
+// structurally impossible. The buffer-staleness check inside
+// renderOnce covers the second.
+let renderInFlight = false;
+let renderPending = false;
+
+// Wall-clock duration of the most recent render pass, recorded by
+// renderOnce. scheduleRender sizes its debounce window to this so the
+// window scales with how expensive the document is to render.
+let lastRenderMs = 0;
 
 // ================= Render =================
 
-export const render = async () => {
-  const myToken = ++renderToken;
+// A single render pass: source -> HTML -> preview DOM. Reached only
+// through render() below, which serializes calls — nothing else
+// should invoke it directly.
+const renderOnce = async () => {
+  const started = performance.now();
   try {
     const source = getDoc();
     // Format-keyed dispatch — the active renderer is chosen per-
     // render based on currentBuffer.format, which is populated from
     // file extension (or the default-format config) and can be
     // changed at runtime via the format toggle / Ex commands.
-    const result = await getRenderer(currentBuffer.format).render(source, { path: currentBuffer.path });
-
-    // Staleness check: if a newer render fired while we were awaiting
-    // (because the user opened a different file, toggled format, or
-    // rapidly edited), abort — let the newer render's output be
-    // authoritative. Otherwise this render's now-stale HTML would
-    // clobber the fresher result.
-    if (myToken !== renderToken) return;
+    // Capture the buffer identity this pass renders against; the
+    // staleness check before the DOM write compares against it.
+    const renderedPath = currentBuffer.path;
+    const renderedFormat = currentBuffer.format;
+    const result = await getRenderer(renderedFormat).render(source, { path: renderedPath });
 
     // Image post-processing — two passes in one walk:
     //
@@ -234,6 +255,12 @@ export const render = async () => {
         console.warn('Failed to resolve image path:', src, e);
       }
     }
+    // Buffer-staleness check. If a different file was opened or the
+    // format toggled while this pass rendered, its result is for a
+    // buffer that is no longer current — discard it rather than write
+    // stale content. render()'s renderPending path has already queued
+    // a trailing pass for the new buffer.
+    if (currentBuffer.path !== renderedPath || currentBuffer.format !== renderedFormat) return;
     out.replaceChildren(...wrapper.childNodes);
 
     // Consume the scroll-to-top request, if any. Done right after the
@@ -261,10 +288,6 @@ export const render = async () => {
     setLastTocPosition(result.tocPosition);
   } catch (e) {
     console.error('render failed:', e);
-    // Same staleness check as the success path — if a newer render
-    // has started/completed, don't clobber its output with an error
-    // from an already-superseded render.
-    if (myToken !== renderToken) return;
     // Catch variable is `unknown` under strict mode. Narrow to Error
     // to pull a message, else coerce to string as a last resort.
     const msg = e instanceof Error ? e.message : String(e);
@@ -283,12 +306,67 @@ export const render = async () => {
     // error message's word count is meaningless, so leaving the
     // previous successful value feels less jarring than showing
     // "3 words" for whatever text is in the <pre class="render-error">.
+  } finally {
+    // Record this pass's wall-clock cost so scheduleRender can size
+    // the next debounce window to it.
+    lastRenderMs = performance.now() - started;
   }
 };
 
+// Coalescing entry point for a render. While a pass is already in
+// flight, a call here only raises renderPending and returns. Once the
+// pass finishes, a raised renderPending is re-submitted through
+// scheduleRender — the debounce — NOT re-run immediately.
+//
+// Why the debounce and not an immediate re-run: a render blocks the
+// main thread for its full duration, so keystrokes typed during one
+// queue up unprocessed. An immediate re-run starts the next pass
+// before the event loop can drain that queue, so the queued
+// keystrokes trickle out a few per pass and each batch triggers yet
+// another pass — N keystrokes degrade into N passes. Re-submitting
+// through the debounce leaves the thread idle long enough for the
+// whole queue to drain at once; the debounce then collapses that
+// burst into a single trailing pass.
+//
+// Callers invoke this fire-and-forget (`void render()`, or the
+// debounced setTimeout in scheduleRender), so returning early without
+// awaiting a pass breaks no caller's expectations.
+export const render = async () => {
+  if (renderInFlight) {
+    renderPending = true;
+    return;
+  }
+  renderInFlight = true;
+  renderPending = false;
+  try {
+    await renderOnce();
+  } finally {
+    renderInFlight = false;
+  }
+  // A request that arrived mid-pass: re-submit through the debounce
+  // so a burst of edits settles before the trailing pass runs.
+  if (renderPending) scheduleRender();
+};
+
+// Schedule a render on a debounce whose window is adaptive — it scales
+// with the cost of the most recent pass (lastRenderMs), clamped to the
+// range [100ms, 1000ms].
+//
+// A fixed window only coalesces a typing burst when it outlasts the
+// gap between keystrokes. At 100ms it does not — real typing leaves
+// 150ms+ between keystrokes — so a fixed 100ms window fires a render
+// per keystroke. That is invisible when a render costs ~30ms and
+// ruinous when it costs seconds (one multi-second pass per keystroke).
+// Scaling the window to render cost fixes both ends: a cheap document
+// keeps the 100ms floor and stays effectively live; an expensive one
+// gets a window wide enough — up to the 1000ms cap — to swallow a
+// whole typing burst into a single trailing pass. The floor preserves
+// the current feel for normal documents; the cap bounds how far the
+// preview can lag behind a stopped cursor.
 export const scheduleRender = () => {
   if (renderTimer !== null) clearTimeout(renderTimer);
-  renderTimer = setTimeout(render, 100);
+  const delay = Math.min(Math.max(lastRenderMs, 100), 1000);
+  renderTimer = setTimeout(render, delay);
 };
 
 // ================= Scroll sync =================

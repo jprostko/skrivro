@@ -23,6 +23,7 @@ import { readTextFile } from '@tauri-apps/plugin-fs';
 import { basename, dirname, resolve } from '@tauri-apps/api/path';
 
 import { userConfig } from './config.js';
+import { perfLog } from './perf.js';
 import type { Format } from './io.js';
 
 // ================= Public interface =================
@@ -544,6 +545,7 @@ const replaceAdmonitionIcons = (rawHtml: string): string => {
 export const asciidoctorRenderer: Renderer = {
   async render(source: string, context: RenderContext): Promise<RenderResult> {
     let lineMap: number[] | null = null;
+    const t0 = performance.now(); // [perf]
 
     // Asciidoctor safe mode: config-file override via
     // userConfig.asciidocSafeMode (set-and-forget knob, no UI), falling
@@ -608,6 +610,7 @@ export const asciidoctorRenderer: Renderer = {
         docdir: baseDir,
       };
     }
+    const t1 = performance.now(); // [perf]
 
     // Load first (so we get the AST for the scroll-sync block map),
     // then convert. sourcemap=true is a TOP-LEVEL option to load(),
@@ -636,13 +639,17 @@ export const asciidoctorRenderer: Renderer = {
     //
     // Users who want a stricter mode can override it via skrivro.conf.
     const doc = ad.load(source, loadOpts);
+    const t2 = performance.now(); // [perf]
     // Swap Asciidoctor's font-icon admonition markers for inline
     // SVGs before sanitization — see replaceAdmonitionIcons above
     // for why. DOMPurify keeps <svg> and <path> elements by default
     // (verified with the Octicons used in GFM alerts), so the
     // injected markup survives the subsequent sanitize call.
     const rawHtml = replaceAdmonitionIcons(doc.convert({ standalone: false }));
+    const t3 = performance.now(); // [perf]
     const html = DOMPurify.sanitize(rawHtml);
+    const t4 = performance.now(); // [perf]
+    perfLog(`adoc render: total ${(t4 - t0).toFixed(0)}ms (preprocess ${(t1 - t0).toFixed(0)}, parse ${(t2 - t1).toFixed(0)}, convert ${(t3 - t2).toFixed(0)}, sanitize ${(t4 - t3).toFixed(0)})`);
 
     // Capture the per-render state in closures. The caller invokes
     // buildBlockMap after injecting `html` into a container; we walk
@@ -919,10 +926,14 @@ export const markedRenderer: Renderer = {
     // marked.lexer back through marked.parser silently strips emoji
     // shortcodes and GFM alerts — using marked.parse directly is the
     // only way to get correct HTML.
+    const m0 = performance.now(); // [perf]
     const rawHtml = marked.parse(source, MARKED_OPTIONS);
+    const m1 = performance.now(); // [perf]
     // DOMPurify sanitization matches the AsciidoctorRenderer path —
     // same HTML-injection protections for either format.
     const html = DOMPurify.sanitize(rawHtml);
+    const m2 = performance.now(); // [perf]
+    perfLog(`md render: total ${(m2 - m0).toFixed(0)}ms (parse ${(m1 - m0).toFixed(0)}, sanitize ${(m2 - m1).toFixed(0)})`);
 
     return Promise.resolve({
       html,

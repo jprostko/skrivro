@@ -7,7 +7,7 @@
 // direct property assignment for path / name.
 
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
+import { readTextFile, writeTextFile, stat } from '@tauri-apps/plugin-fs';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { basename, dirname, resolve, isAbsolute } from '@tauri-apps/api/path';
 import { invoke } from '@tauri-apps/api/core';
@@ -25,6 +25,21 @@ import { refreshStatus, applySyntaxHighlighting, setWidthMode, WIDTH_MODES, appl
 const LS_KEY       = 'adoc-editor-draft-v1';
 export const DEFAULT_NAME = 'untitled.adoc';
 export const DEFAULT_DOC  = '';
+
+// Hard upper bound on the size of a file Skrivro will open, in bytes
+// (3 MiB). A file above this is refused before any read — see
+// readDocumentText / FileTooLargeError below.
+//
+// The limit tracks usability, not just crash-avoidance. AsciiDoc
+// render cost is roughly linear in source size, so the limit is also
+// the slowest open Skrivro allows: a file at 3 MiB takes on the
+// order of ten seconds — large and slow, but it completes — whereas
+// a much higher ceiling would admit files that take minutes, which
+// is functionally a hang. 3 MiB still clears any realistic single
+// document: a ~400,000-word novel (a very long one) is roughly
+// 2.5 MB as AsciiDoc, comfortably under. Compile-time constant by
+// design — no config override; raise it by recompiling.
+const MAX_FILE_BYTES = 3 * 1024 * 1024;
 
 // ================= DOM refs =================
 
@@ -140,7 +155,7 @@ export const setLaunchCwd = (cwd: string) => { launchCwd = cwd; };
 // to read a verbose E212 with a long path. Safe to call from any code
 // path; if the editor isn't ready yet we no-op silently rather than
 // throw.
-const vimMessage = (text: string) => {
+export const vimMessage = (text: string) => {
   if (!editorView) return;
   const cm = getCM(editorView);
   if (!cm) return;
@@ -327,6 +342,64 @@ export const confirmDiscard = (onOk: ConfirmCallback) => {
 // write-to-disk site (not to autosave draft or render input).
 const ensureTrailingNewline = (text: string) => text.endsWith('\n') ? text : text + '\n';
 
+// ================= File-size guard =================
+//
+// Runs before any file is read into the buffer: a too-large file
+// never reaches readTextFile, so it cannot hang the webview. See
+// MAX_FILE_BYTES above for the threshold rationale.
+
+// Human-readable byte count for the too-large message. 1024-based
+// (MiB / GiB), matching how file managers and `ls -lh` report sizes
+// and how MAX_FILE_BYTES itself is expressed. One decimal, with a
+// trailing ".0" trimmed so a round value reads "3 MiB" rather than
+// "3.0 MiB". Inputs are always at or above the limit, so MiB is the
+// smallest unit it needs to handle.
+const formatBytes = (bytes: number): string => {
+  const MIB = 1024 * 1024;
+  const GIB = MIB * 1024;
+  const [value, unit] = bytes >= GIB ? [bytes / GIB, 'GiB'] : [bytes / MIB, 'MiB'];
+  return `${value.toFixed(1).replace(/\.0$/, '')} ${unit}`;
+};
+
+// Thrown by readDocumentText when a file exceeds MAX_FILE_BYTES. The
+// Error message is the ready-to-display, user-facing string — call
+// sites catch this type, show e.message via vimMessage, and skip the
+// load. A distinct class (rather than a flag on a plain Error) is
+// what lets each catch tell "too large" apart from an ordinary open
+// failure (missing file, permission denied) and message it correctly.
+export class FileTooLargeError extends Error {
+  constructor(name: string, size: number) {
+    super(`${name} is ${formatBytes(size)} — too large to open (limit ${formatBytes(MAX_FILE_BYTES)})`);
+    this.name = 'FileTooLargeError';
+  }
+}
+
+// Size-guarded stand-in for a bare readTextFile when loading a
+// document into the buffer. Every buffer-open path routes through
+// this: the file picker, drag-drop, the OS open event, :e filename,
+// reload, and the launch-time paths in main.ts.
+//
+// stat() follows symlinks, and that is load-bearing — a symlink's
+// own size is just the few bytes of the stored path, so measuring it
+// (which lstat would do) would wave through a symlink pointing at a
+// multi-gigabyte file. Never swap stat() for lstat() here. A stat()
+// that fails for any other reason (broken symlink, permission, a
+// race against deletion) is NOT fatal: fall through to readTextFile
+// and let its own rejection surface the real error, rather than
+// block a legitimate open on a flaky metadata call.
+export const readDocumentText = async (path: string): Promise<string> => {
+  let size: number | null = null;
+  try {
+    size = (await stat(path)).size;
+  } catch {
+    // stat failed — see above; fall through to the read.
+  }
+  if (size !== null && size > MAX_FILE_BYTES) {
+    throw new FileTooLargeError(await basename(path), size);
+  }
+  return readTextFile(path);
+};
+
 // Internal: load a file from a given absolute path into the editor.
 // Does NOT guard against a dirty buffer — callers are responsible for
 // running this inside a confirmDiscard wrapper if appropriate.
@@ -334,7 +407,7 @@ const ensureTrailingNewline = (text: string) => text.endsWith('\n') ? text : tex
 // could be reused by future entry points like recent-files menus.
 export const loadFileFromPath = async (path: string) => {
   try {
-    const content = await readTextFile(path);
+    const content = await readDocumentText(path);
     setDoc(content);
     currentBuffer.path = path;
     currentBuffer.name = await basename(path);
@@ -352,7 +425,15 @@ export const loadFileFromPath = async (path: string) => {
     requestPreviewScrollToTop();
     void render();
   } catch (e) {
-    console.error('Failed to load file:', path, e);
+    // Oversize file: surface the (already user-facing) message.
+    // Other failures keep the existing console-only behavior — the
+    // silent-on-invalid handling for drag-drop and the picker is
+    // deliberate (see the onDragDropEvent comment in main.ts).
+    if (e instanceof FileTooLargeError) {
+      vimMessage(e.message);
+    } else {
+      console.error('Failed to load file:', path, e);
+    }
   }
 };
 
@@ -435,14 +516,19 @@ export const newFile = () => {
 export const reloadFile = async () => {
   if (!currentBuffer.path) return;
   try {
-    setDoc(await readTextFile(currentBuffer.path));
+    setDoc(await readDocumentText(currentBuffer.path));
     setDirty(false);
     clearDraft();
     clearAllRendererCaches();
     void render();
   } catch (e) {
     console.error(e);
-    vimMessage(`E484: Can't open file ${currentBuffer.path} (${errMsg(e)})`);
+    // A file can grow past the limit between open and reload — :e is
+    // exactly the "the file on disk changed" operation — so the
+    // oversize case is live here, not only at first open.
+    vimMessage(e instanceof FileTooLargeError
+      ? e.message
+      : `E484: Can't open file ${currentBuffer.path} (${errMsg(e)})`);
   }
 };
 
@@ -579,7 +665,7 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
     let sourcePath: string | null = null;
     try {
       sourcePath = await resolveArgPath(arg);
-      const content = await readTextFile(sourcePath);
+      const content = await readDocumentText(sourcePath);
       setDoc(content);
       currentBuffer.path = sourcePath;
       currentBuffer.name = await basename(sourcePath);
@@ -593,9 +679,11 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
       void render();
     } catch (e) {
       console.error(e);
-      vimMessage(sourcePath
-        ? `E484: Can't open file ${sourcePath} (${errMsg(e)})`
-        : `E484: Can't open file (${errMsg(e)})`);
+      vimMessage(e instanceof FileTooLargeError
+        ? e.message
+        : (sourcePath
+            ? `E484: Can't open file ${sourcePath} (${errMsg(e)})`
+            : `E484: Can't open file (${errMsg(e)})`));
     }
   } else {
     // :e or :e! — reload current file from disk. Error reporting

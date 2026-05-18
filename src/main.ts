@@ -60,7 +60,6 @@ import 'font-awesome/css/font-awesome.min.css';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { readTextFile } from '@tauri-apps/plugin-fs';
 import { basename } from '@tauri-apps/api/path';
 
 import { isMac, tr, translateStaticText } from './i18n.js';
@@ -76,7 +75,7 @@ import {
   loadFileFromPath, confirmDiscard, askConfirm,
   writeSessionState, resolveInitialDoc,
   setLaunchCwd, currentBuffer, detectFormat,
-  updateTitle,
+  updateTitle, vimMessage, readDocumentText, FileTooLargeError,
   DEFAULT_DOC,
 } from './io.js';
 // ui.js has top-level side effects (help dialog listeners, host-level
@@ -365,10 +364,15 @@ try {
 
 let initialDoc = DEFAULT_DOC;
 let hasDraft = false;
+// A startup-time message — e.g. a launch file rejected by the
+// file-size guard — to surface once the editor exists. vimMessage
+// no-ops before the editor is created, so it is stashed here and
+// flushed after createEditor below.
+let startupMessage: string | null = null;
 if (launchInfo.initial_file) {
   // CLI argument wins — skip draft and session-restore entirely.
   try {
-    initialDoc = await readTextFile(launchInfo.initial_file);
+    initialDoc = await readDocumentText(launchInfo.initial_file);
     currentBuffer.path = launchInfo.initial_file;
     currentBuffer.name = await basename(launchInfo.initial_file);
     currentBuffer.format = detectFormat(launchInfo.initial_file);
@@ -379,6 +383,7 @@ if (launchInfo.initial_file) {
     void writeSessionState(launchInfo.initial_file);
   } catch (e) {
     console.error('Failed to load file from CLI argument:', e);
+    if (e instanceof FileTooLargeError) startupMessage = e.message;
     // Fall back to draft / default (skip session restore — a CLI arg
     // that failed to load is a different failure mode than a normal
     // launch, and we don't want to silently substitute a different
@@ -392,13 +397,14 @@ if (launchInfo.initial_file) {
   // double-click with Skrivro as handler). Same user intent as a CLI
   // arg; same behavior — take precedence over draft / session restore.
   try {
-    initialDoc = await readTextFile(pendingOpen);
+    initialDoc = await readDocumentText(pendingOpen);
     currentBuffer.path = pendingOpen;
     currentBuffer.name = await basename(pendingOpen);
     currentBuffer.format = detectFormat(pendingOpen);
     void writeSessionState(pendingOpen);
   } catch (e) {
     console.error('Failed to load file from OS open event:', pendingOpen, e);
+    if (e instanceof FileTooLargeError) startupMessage = e.message;
     const r = resolveInitialDoc();
     initialDoc = r.doc;
     hasDraft = r.hasDraft;
@@ -415,7 +421,7 @@ if (launchInfo.initial_file) {
       const state = await invoke<SessionState>('get_session_state');
       if (state && state.lastFilePath) {
         try {
-          initialDoc = await readTextFile(state.lastFilePath);
+          initialDoc = await readDocumentText(state.lastFilePath);
           currentBuffer.path = state.lastFilePath;
           currentBuffer.name = await basename(state.lastFilePath);
           currentBuffer.format = detectFormat(state.lastFilePath);
@@ -426,11 +432,15 @@ if (launchInfo.initial_file) {
           // comes back (network mount, temporary permission issue)
           // the next launch will pick it up. Next file operation
           // will overwrite state with the new current file anyway.
+          //
+          // An oversize file is the exception — that is explainable
+          // (unlike a vanished file), so it does get a message.
           console.error(
             'Session restore: failed to read',
             state.lastFilePath,
             e
           );
+          if (e instanceof FileTooLargeError) startupMessage = e.message;
           initialDoc = DEFAULT_DOC;
         }
       }
@@ -465,6 +475,9 @@ createEditor(host, initialDoc, {
 if (hasDraft) setDirty(true);
 updateTitle();
 void render();
+// Flush any deferred startup message (a launch file the size guard
+// rejected). The editor exists now, so vimMessage will display it.
+if (startupMessage) vimMessage(startupMessage);
 // Non-null assertion: createEditor has just run above and assigned
 // the editor.ts live binding, so editorView is guaranteed non-null
 // here. strict mode's null typing doesn't track the assignment

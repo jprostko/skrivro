@@ -198,7 +198,11 @@ const renderOnce = async () => {
     const allowExternalImages = userConfig.allowExternalImages === true;
     const baseDir = currentBuffer.path ? await dirname(currentBuffer.path) : null;
     const wrapper = document.createElement('div');
-    wrapper.innerHTML = result.html;
+    // append() moves the fragment's already-parsed, already-sanitized
+    // nodes into the wrapper — no HTML string re-parse. The renderer
+    // handed back a DocumentFragment, not a string; appending it
+    // empties the fragment and leaves the nodes as wrapper's children.
+    wrapper.append(result.fragment);
     const r2 = performance.now(); // [perf]
     for (const img of wrapper.querySelectorAll('img')) {
       const src = img.getAttribute('src');
@@ -291,7 +295,7 @@ const renderOnce = async () => {
     // re-rendering.
     setLastTocPosition(result.tocPosition);
     const r3 = performance.now(); // [perf]
-    perfLog(`preview render: total ${(r3 - r0).toFixed(0)}ms (renderer ${(r1 - r0).toFixed(0)}, innerHTML ${(r2 - r1).toFixed(0)}, attach+rest ${(r3 - r2).toFixed(0)})`);
+    perfLog(`preview render: total ${(r3 - r0).toFixed(0)}ms (renderer ${(r1 - r0).toFixed(0)}, append ${(r2 - r1).toFixed(0)}, attach+rest ${(r3 - r2).toFixed(0)})`);
   } catch (e) {
     console.error('render failed:', e);
     // Catch variable is `unknown` under strict mode. Narrow to Error

@@ -10,14 +10,7 @@
 // the dispatch — "given this buffer, which Renderer do I use?" —
 // gets added at the point where the buffer's format field is read.
 
-import Asciidoctor, {
-  type Document as AsciidoctorDocument,
-  type AbstractBlock,
-} from '@asciidoctor/core';
 import DOMPurify from 'dompurify';
-import { marked } from 'marked';
-import { markedEmoji } from 'marked-emoji';
-import { nameToEmoji } from 'gemoji';
 
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { basename, dirname, resolve } from '@tauri-apps/api/path';
@@ -25,6 +18,10 @@ import { basename, dirname, resolve } from '@tauri-apps/api/path';
 import { userConfig } from './config.js';
 import { perfLog } from './perf.js';
 import type { Format } from './io.js';
+import type {
+  WorkerRenderRequest,
+  WorkerRenderResponse,
+} from './render-worker.js';
 
 // ================= Public interface =================
 
@@ -46,16 +43,17 @@ export interface RenderContext {
   path: string | null;
 }
 
-// Result of a single render. `html` is ready for DOM injection
-// (already sanitized by the renderer). The two callbacks close over
-// per-render state: `buildBlockMap` walks the rendered output of
-// `html` in the caller's container to produce the scroll-sync map;
-// `translateEditorLine` converts an editor-source line number into
-// whatever coordinate system the returned BlockMapEntry.line values
-// use (identity for renderers that don't transform source; include-
-// line-map-aware for AsciiDoc).
+// Result of a single render. `fragment` is a DocumentFragment of the
+// already-sanitized rendered nodes — ready to move straight into the
+// preview container, with no HTML re-parse on the caller's side. The
+// two callbacks close over per-render state: `buildBlockMap` walks
+// the rendered output in the caller's container to produce the
+// scroll-sync map; `translateEditorLine` converts an editor-source
+// line number into whatever coordinate system the returned
+// BlockMapEntry.line values use (identity for renderers that don't
+// transform source; include-line-map-aware for AsciiDoc).
 export interface RenderResult {
-  html: string;
+  fragment: DocumentFragment;
   buildBlockMap: (rootElement: Element) => BlockMapEntry[];
   translateEditorLine: (editorLine: number) => number;
   // Asciidoctor's `:toc:` source attribute, surfaced so the
@@ -364,16 +362,12 @@ const preprocessSource = async (
   return { source: flat, lineMap };
 };
 
-// ================= AsciiDoc block-map walk =================
-
-// Asciidoctor block contexts that map to a scrollable preview element.
-// Excludes purely structural contexts (document, preamble) and inline-
-// level blocks that don't get their own preview container.
-const MAPPABLE_CONTEXTS = new Set([
-  'paragraph', 'listing', 'literal', 'example', 'sidebar',
-  'admonition', 'quote', 'verse', 'image', 'ulist', 'olist', 'dlist',
-  'section', 'open', 'table',
-]);
+// ================= Block-map pairing =================
+//
+// The render worker walks the parsed AST / token tree and returns a
+// per-block source-line list (one entry per mappable block, in
+// document order). These helpers pair that list against the rendered
+// DOM on the main thread to produce the scroll-sync BlockMapEntry[].
 
 // CSS selector matching the DOM elements Asciidoctor emits for those
 // block contexts. Order in the selector doesn't matter — querySelectorAll
@@ -386,67 +380,49 @@ const DOM_BLOCK_SELECTOR = [
   '.openblock', 'table.tableblock',
 ].join(', ');
 
-// Walk the parsed AST and the rendered DOM in parallel, building a
-// map from source line to preview block element. Walks the tree
-// manually via getBlocks() rather than findBy() for robustness
-// against API surprises. Relies on Asciidoctor emitting blocks in
-// document order in both the AST walk and the rendered HTML (via
-// querySelectorAll). The i-th matching AST block aligns with the
-// i-th matching DOM element.
-//
-// Types sourced from @asciidoctor/core's bundled type declarations.
-// Document extends AbstractBlock, so `doc: AsciidoctorDocument` and
-// `block: AbstractBlock` line up naturally. One caveat: the bundled
-// definition for AbstractBlock.getBlocks() returns `any[]` (not a
-// typed AbstractBlock[] union), so the children yielded by walk()
-// inside this function stay effectively untyped.
-const buildAsciidoctorBlockMap = (
-  doc: AsciidoctorDocument,
+// Pair the worker's AsciiDoc block-line list against the rendered
+// DOM. blockLines[i] is the source line of the i-th mappable block in
+// document order; querySelectorAll returns the matching elements in
+// the same order, so domEls[i] is that block's element. A blockLines
+// entry of 0 marks a block with no usable source location — the index
+// still advances so the alignment holds, the entry is just skipped.
+const pairAsciidoctorBlockMap = (
+  blockLines: number[],
   rootElement: Element,
 ): BlockMapEntry[] => {
   try {
-    const ast: AbstractBlock[] = [];
-    const walk = (block: AbstractBlock) => {
-      if (!block || typeof block.getBlocks !== 'function') return;
-      for (const child of block.getBlocks()) {
-        let ctx = null;
-        try { ctx = child.getContext(); } catch {}
-        if (ctx && MAPPABLE_CONTEXTS.has(ctx)) {
-          let loc = null;
-          try { loc = child.getSourceLocation(); } catch {}
-          if (loc) ast.push(child);
-        }
-        walk(child);
-      }
-    };
-    walk(doc);
-
-    const dom = Array.from(rootElement.querySelectorAll(DOM_BLOCK_SELECTOR));
+    const domEls = Array.from(rootElement.querySelectorAll(DOM_BLOCK_SELECTOR));
     const map: BlockMapEntry[] = [];
-    const n = Math.min(ast.length, dom.length);
+    const n = Math.min(blockLines.length, domEls.length);
     for (let i = 0; i < n; i++) {
-      try {
-        // Both ast[i] and dom[i] are safe here because the loop
-        // runs only to i < n = min(ast.length, dom.length). The `!`
-        // assertions document that invariant for the type system.
-        const line = ast[i]!.getSourceLocation().getLineNumber();
-        if (typeof line === 'number') {
-          map.push({ line, el: dom[i]! });
-        }
-      } catch {}
+      const line = blockLines[i]!;
+      if (line > 0) map.push({ line, el: domEls[i]! });
     }
     map.sort((a, b) => a.line - b.line);
-    console.log(`[skrivro] buildBlockMap: ast=${ast.length} dom=${dom.length} map=${map.length}`);
     return map;
   } catch (e) {
-    console.error('buildBlockMap failed:', e);
+    console.error('pairAsciidoctorBlockMap failed:', e);
     return [];
   }
 };
 
-// ================= AsciidoctorRenderer =================
-
-const ad = Asciidoctor();
+// Pair the worker's Markdown block-line list against the rendered
+// DOM. The worker emits one entry per visible top-level token, in
+// order; rootElement.children are the rendered top-level elements.
+// Min guards a future divergence from the 1:1 token-to-element
+// invariant — sync degrades silently rather than throwing.
+const pairMarkdownBlockMap = (
+  blockLines: number[],
+  rootElement: Element,
+): BlockMapEntry[] => {
+  const children = rootElement.children;
+  const n = Math.min(children.length, blockLines.length);
+  const map: BlockMapEntry[] = [];
+  for (let i = 0; i < n; i++) {
+    map.push({ line: blockLines[i]!, el: children[i]! });
+  }
+  return map;
+};
 
 // ================= Admonition icon SVGs =================
 //
@@ -507,7 +483,9 @@ const ADMONITION_ICON_SVGS: Record<AdmonitionType, string> = {
 
 // Replace Asciidoctor's font-icon admonition markers (<i class="fa
 // icon-NAME" title="..."></i>) with the corresponding inline SVG.
-// Called on the rendered HTML string before DOMPurify runs.
+// Mutates `parsed` in place — the caller parses the worker's HTML
+// once and passes the resulting Document through here and then to
+// DOMPurify, so the markup is never re-serialized to a string.
 //
 // We target only the admonition icon pattern (`icon-` class prefix).
 // Inline icon:name[] directives emit <i class="fa fa-NAME"> (note
@@ -515,13 +493,7 @@ const ADMONITION_ICON_SVGS: Record<AdmonitionType, string> = {
 // unchanged — they're sized inline with surrounding text and the
 // baseline-positioning that makes admonition icons look off is
 // exactly what's wanted for a character-in-text inline icon.
-//
-// Implementation via DOMParser so we handle attribute ordering,
-// quoting, and edge cases properly rather than relying on a regex
-// over raw HTML.
-const replaceAdmonitionIcons = (rawHtml: string): string => {
-  const parser = new DOMParser();
-  const parsed = parser.parseFromString(rawHtml, 'text/html');
+const replaceAdmonitionIcons = (parsed: Document): void => {
   // Scope the query to icon cells under admonitionblocks, then
   // extract the type from the `icon-<type>` class so we never
   // accidentally rewrite something else that happens to share the
@@ -539,7 +511,88 @@ const replaceAdmonitionIcons = (rawHtml: string): string => {
     const svg = template.content.firstElementChild;
     if (svg) el.replaceWith(svg);
   }
-  return parsed.body.innerHTML;
+};
+
+// ================= Render worker client =================
+//
+// The expensive parse + convert work runs in render-worker.ts (a Web
+// Worker), so a render in progress no longer blocks the editor. This
+// section owns the single worker instance and the request/response
+// plumbing: each render gets a monotonic id, its resolve callback is
+// parked in pendingRenders, and the worker's message handler looks the
+// id up and settles the matching promise.
+
+// The worker, created lazily on first render and reused for the
+// process lifetime. null until the first render — and again after a
+// worker crash, when it's dropped so the next render builds a fresh
+// one.
+let renderWorker: Worker | null = null;
+
+// Monotonic request id. Each runInWorker call increments it so the
+// worker's echoed-back id matches a response to its request.
+let workerSeq = 0;
+
+// In-flight worker requests: id → the promise's resolve callback. The
+// worker processes messages in receive order and echoes the id, so
+// the message handler resolves the matching entry and deletes it.
+const pendingRenders = new Map<
+  number,
+  (response: WorkerRenderResponse) => void
+>();
+
+// Lazily construct the worker and wire its listeners.
+//
+// new URL('./render-worker.ts', import.meta.url) is the Vite worker
+// pattern — Vite recognizes this exact form statically and emits the
+// worker module as its own bundle chunk.
+//
+// message handler: resolve whichever pendingRenders entry matches the
+// echoed id. error handler: a worker-level failure (module load
+// error, a throw outside the message handler) can't be tied to one
+// request, so every in-flight request is failed and the worker is
+// dropped — the next render lazily builds a fresh one.
+const getWorker = (): Worker => {
+  if (renderWorker) return renderWorker;
+  const worker = new Worker(
+    new URL('./render-worker.ts', import.meta.url),
+    { type: 'module' },
+  );
+  worker.addEventListener('message', (e: MessageEvent<WorkerRenderResponse>) => {
+    const response = e.data;
+    const settle = pendingRenders.get(response.id);
+    if (settle) {
+      pendingRenders.delete(response.id);
+      settle(response);
+    }
+  });
+  worker.addEventListener('error', (e: ErrorEvent) => {
+    console.error('render worker error:', e.message);
+    const failure: WorkerRenderResponse = {
+      id: -1,
+      ok: false,
+      error: e.message || 'render worker crashed',
+    };
+    for (const settle of pendingRenders.values()) settle(failure);
+    pendingRenders.clear();
+    renderWorker = null;
+  });
+  renderWorker = worker;
+  return worker;
+};
+
+// Send one render request to the worker; resolve with its response.
+// The returned promise always resolves (never rejects) — worker-side
+// failures come back as a WorkerRenderFailure, so callers branch on
+// `response.ok` rather than wrapping this in try/catch.
+const runInWorker = (
+  req: Omit<WorkerRenderRequest, 'id'>,
+): Promise<WorkerRenderResponse> => {
+  const id = ++workerSeq;
+  const worker = getWorker();
+  return new Promise<WorkerRenderResponse>((resolve) => {
+    pendingRenders.set(id, resolve);
+    worker.postMessage({ id, ...req });
+  });
 };
 
 export const asciidoctorRenderer: Renderer = {
@@ -547,32 +600,18 @@ export const asciidoctorRenderer: Renderer = {
     let lineMap: number[] | null = null;
     const t0 = performance.now(); // [perf]
 
-    // Asciidoctor safe mode: config-file override via
-    // userConfig.asciidocSafeMode (set-and-forget knob, no UI), falling
-    // back to 'unsafe' which allows all features (docinfo, book-mode
-    // doctype, includes across directories, etc.). Valid values per
-    // Asciidoctor: unsafe / safe / server / secure.
+    // Asciidoctor load attributes. showtitle renders the doc title in
+    // embedded output. icons: 'font' switches admonition rendering
+    // from text labels to Font Awesome icon markup (<i class="fa
+    // icon-note"> etc.), later swapped for inline SVGs by
+    // replaceAdmonitionIcons; styling for the icons lives in
+    // styles.css (see .admonitionblock td.icon [class^="fa icon-"]).
     //
-    // attributes is typed as Record<string, unknown> so we can spread
-    // additional keys (docname, docfile, docdir) onto it below without
-    // TS narrowing it to the initial `{ showtitle: boolean }` literal
-    // shape. Asciidoctor attribute values span strings, numbers, and
-    // booleans depending on the attribute, so unknown is the right
-    // width here.
-    const loadOpts: {
-      safe: string;
-      sourcemap: boolean;
-      attributes: Record<string, unknown>;
-    } = {
-      safe: userConfig.asciidocSafeMode || 'unsafe',
-      sourcemap: true,
-      // icons: 'font' switches admonition rendering from text labels
-      // to Font Awesome icon markup (<i class="fa icon-note"> etc.),
-      // matching Asciidoctor's standard convention. Styling for the
-      // resulting icons lives in styles.css — see the rules targeting
-      // .admonitionblock td.icon [class^="fa icon-"].
-      attributes: { showtitle: true, icons: 'font' },
-    };
+    // Typed Record<string, unknown> so the docname/docfile/docdir keys
+    // can be spread on below without TS narrowing it to the initial
+    // literal shape. Asciidoctor attribute values span strings,
+    // numbers, and booleans, so unknown is the right width.
+    let attributes: Record<string, unknown> = { showtitle: true, icons: 'font' };
 
     if (context.path) {
       const baseDir = await dirname(context.path);
@@ -603,8 +642,8 @@ export const asciidoctorRenderer: Renderer = {
       // intended.
       const name = await basename(context.path);
       const docname = name.replace(/\.[^.]+$/, '');
-      loadOpts.attributes = {
-        ...loadOpts.attributes,
+      attributes = {
+        ...attributes,
         docname,
         docfile: context.path,
         docdir: baseDir,
@@ -612,58 +651,63 @@ export const asciidoctorRenderer: Renderer = {
     }
     const t1 = performance.now(); // [perf]
 
-    // Load first (so we get the AST for the scroll-sync block map),
-    // then convert. sourcemap=true is a TOP-LEVEL option to load(),
-    // NOT nested under attributes — this is what makes Asciidoctor
-    // annotate blocks with their source line numbers. Getting this
-    // wrong silently produces blocks with null source locations.
+    // Hand the flattened source to the worker for load + convert +
+    // block-line extraction. sourcemap is enabled inside the worker
+    // so blocks carry source line numbers for the scroll-sync map.
     //
-    // Asciidoctor's safe modes (unsafe/safe/server/secure) gate
-    // parser-level features and were designed for a server-rendering
-    // threat model where an untrusted user submits a document that a
-    // trusted server processes on its own filesystem and serves to
-    // other users. That model does not apply to Skrivro — this is
-    // a single-user local editor where users edit their own files.
-    // Restricting safe mode here would cripple legitimate features
-    // (docinfo, book-mode doctype, includes across directories)
-    // without providing real security gain, because the user can
-    // already read any file the OS permits them to read via File →
-    // Open.
-    //
-    // The real security layers are Content-Security-Policy (blocks
-    // all network egress so nothing can phone home) and DOMPurify
-    // on the render output (strips scripts and event handlers from
-    // passthrough-injected HTML before it reaches the DOM). Those
-    // are what protect against actual attacks. The safe mode here
-    // is intentionally open.
-    //
-    // Users who want a stricter mode can override it via skrivro.conf.
-    const doc = ad.load(source, loadOpts);
+    // safe mode: config-file override via userConfig.asciidocSafeMode
+    // (set-and-forget knob, no UI), default 'unsafe'. Asciidoctor's
+    // safe modes (unsafe/safe/server/secure) were designed for a
+    // server-rendering threat model — an untrusted document processed
+    // by a trusted server and served to others. That model does not
+    // apply to Skrivro: this is a single-user local editor where
+    // users edit their own files, and restricting safe mode would
+    // cripple legitimate features (docinfo, book-mode doctype,
+    // cross-directory includes) for no real gain — the user can
+    // already open any OS-readable file via File → Open. The real
+    // protections are Content-Security-Policy (blocks all network
+    // egress so nothing can phone home) and the DOMPurify pass below
+    // (strips scripts / event handlers before the HTML hits the DOM).
+    const res = await runInWorker({
+      kind: 'asciidoc',
+      source,
+      safe: userConfig.asciidocSafeMode || 'unsafe',
+      attributes,
+    });
     const t2 = performance.now(); // [perf]
-    // Swap Asciidoctor's font-icon admonition markers for inline
-    // SVGs before sanitization — see replaceAdmonitionIcons above
-    // for why. DOMPurify keeps <svg> and <path> elements by default
-    // (verified with the Octicons used in GFM alerts), so the
-    // injected markup survives the subsequent sanitize call.
-    const rawHtml = replaceAdmonitionIcons(doc.convert({ standalone: false }));
+    if (!res.ok) throw new Error(res.error);
+
+    // Parse the worker's HTML into a DOM exactly once. The
+    // admonition-icon swap and DOMPurify both operate on that single
+    // DOM — replaceAdmonitionIcons mutates it in place, then
+    // DOMPurify.sanitize takes the node (not a string) and returns a
+    // DocumentFragment, so the markup is never re-serialized. Both
+    // steps need a DOM (DOMParser / DOMPurify), so they run here on
+    // the main thread, not in the worker. DOMPurify keeps <svg>/<path>
+    // elements by default (verified with the Octicons used in GFM
+    // alerts), so the injected icon markup survives sanitization.
+    const parsed = new DOMParser().parseFromString(res.html, 'text/html');
+    replaceAdmonitionIcons(parsed);
+    const fragment = DOMPurify.sanitize(parsed.body, { RETURN_DOM_FRAGMENT: true });
     const t3 = performance.now(); // [perf]
-    const html = DOMPurify.sanitize(rawHtml);
-    const t4 = performance.now(); // [perf]
-    perfLog(`adoc render: total ${(t4 - t0).toFixed(0)}ms (preprocess ${(t1 - t0).toFixed(0)}, parse ${(t2 - t1).toFixed(0)}, convert ${(t3 - t2).toFixed(0)}, sanitize ${(t4 - t3).toFixed(0)})`);
+    perfLog(`adoc render: total ${(t3 - t0).toFixed(0)}ms (preprocess ${(t1 - t0).toFixed(0)}, worker ${(t2 - t1).toFixed(0)}, post ${(t3 - t2).toFixed(0)})`);
 
     // Capture the per-render state in closures. The caller invokes
-    // buildBlockMap after injecting `html` into a container; we walk
-    // the parsed `doc` AST against that container. translateEditorLine
-    // looks up the flat-source line number for a given editor-source
-    // line — identity when there were no includes (lineMap is null),
-    // mapped otherwise.
+    // buildBlockMap after injecting the fragment into a container;
+    // pairAsciidoctorBlockMap pairs the worker's block-line list
+    // against that container's DOM. translateEditorLine looks up the
+    // flat-source line number for a given editor-source line —
+    // identity when there were no includes (lineMap is null), mapped
+    // otherwise.
     const capturedLineMap = lineMap;
+    const blockLines = res.blockLines;
     return {
-      html,
-      buildBlockMap: (rootElement: Element) => buildAsciidoctorBlockMap(doc, rootElement),
+      fragment,
+      buildBlockMap: (rootElement: Element) =>
+        pairAsciidoctorBlockMap(blockLines, rootElement),
       translateEditorLine: (editorLine: number) =>
         capturedLineMap ? (capturedLineMap[editorLine - 1] ?? editorLine) : editorLine,
-      tocPosition: doc.getAttribute('toc-position') || null,
+      tocPosition: res.tocPosition,
     };
   },
 
@@ -674,302 +718,44 @@ export const asciidoctorRenderer: Renderer = {
 
 // ================= MarkedRenderer =================
 //
-// Renders GitHub-Flavored Markdown via marked. No include-style
-// preprocessing (Markdown has no direct equivalent of AsciiDoc's
-// include:: directive), no per-path cache, no scroll-sync block
-// map in this first cut — an empty map means syncPreviewToCaret
-// returns silently for Markdown buffers, which is the intended
-// "not supported yet" behavior. A fuller block map using marked's
-// token tree is possible if/when scroll sync is needed here.
-
-// marked options applied on every render:
-//   gfm: true     — tables, strikethrough, task lists, autolinks,
-//                   fenced code blocks
-//   breaks: false — a single newline in source does NOT become a
-//                   <br> in output; paragraphs still break on blank
-//                   lines. Matches how most documentation is
-//                   authored (soft-wrapped prose that should re-flow
-//                   in the rendered output). GitHub itself uses
-//                   breaks=true for comments/issues and breaks=false
-//                   for repository Markdown; we're in
-//                   documentation-rendering territory so false.
-//   async: false  — marked supports async extensions; we have none,
-//                   so this forces synchronous output (string, not
-//                   Promise<string>) and TypeScript narrows the
-//                   return type accordingly.
-const MARKED_OPTIONS = { gfm: true, breaks: false, async: false } as const;
-
-// ================= GFM alerts extension =================
-//
-// GitHub Flavored Markdown extends the blockquote syntax with
-// "alerts" — blockquotes whose first line is `[!TYPE]` where TYPE is
-// one of NOTE / TIP / IMPORTANT / WARNING / CAUTION. GitHub renders
-// them as colored callouts with a labeled title. Base `marked`
-// treats them as ordinary blockquotes, producing `[!IMPORTANT]` as
-// visible text on the first line — correct per CommonMark, wrong
-// per GFM. This block-level extension intercepts the pattern,
-// strips the marker line, and emits custom markup styled by CSS.
-//
-// Extension shape: tokenizer + renderer pair registered via
-// marked.use. The tokenizer runs BEFORE marked's standard
-// blockquote tokenizer (extensions have priority), so if the
-// pattern matches we claim the input; otherwise marked's default
-// handling takes over and the blockquote renders normally.
-
-// The five recognized alert types. Per the GFM spec the marker is
-// case-sensitive — only exact uppercase `[!NOTE]` / `[!TIP]` etc.
-// are recognized. Anything else (lowercase, typo, custom type)
-// falls through to the default blockquote path and renders as a
-// regular blockquote.
-const GFM_ALERT_TYPES = ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'] as const;
-type GfmAlertType = (typeof GFM_ALERT_TYPES)[number];
-
-// Regex for the top of a GFM alert block.
-//   ^           — must be at start of a line
-//   > ?         — blockquote marker (space optional, matches GitHub's lenient form)
-//   \[!(\w+)\]  — the type tag, captured (case matters; see comment above)
-//   [^\n]*      — rest of the first line (GitHub ignores content here, but we allow it)
-//   \n          — the newline ending that line
-//   ((?:>[^\n]*(?:\n|$))*) — remaining blockquote lines, captured
-const GFM_ALERT_RE = /^> ?\[!(\w+)\][^\n]*\n((?:> ?[^\n]*(?:\n|$))*)/;
-
-// Octicon SVG markup per alert type, copied verbatim from GitHub's
-// markdown API output (POST /markdown with GFM alerts as input).
-// Inlined in the rendered HTML so the glyphs inherit `fill:
-// currentColor` from the title's color rule — single color rule
-// colors border, title text, AND icon together without extra
-// per-icon styling.
-const GFM_ALERT_OCTICONS: Record<GfmAlertType, string> = {
-  NOTE: '<svg class="octicon octicon-info mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>',
-  TIP: '<svg class="octicon octicon-light-bulb mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>',
-  IMPORTANT: '<svg class="octicon octicon-report mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>',
-  WARNING: '<svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>',
-  CAUTION: '<svg class="octicon octicon-stop mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>',
-};
-
-// Register the extension at module load. marked.use merges the
-// tokenizer + renderer into marked's global config. Called once;
-// subsequent marked.parse calls pick it up automatically.
-marked.use({
-  extensions: [
-    {
-      name: 'gfmAlert',
-      level: 'block',
-      // Fast-path detector — marked calls start() on the input to
-      // decide whether to invoke the tokenizer. Return the index
-      // where the token begins, or undefined to skip. Matching
-      // "> [!" covers the pattern's entry point without running
-      // the full regex on every block.
-      start(src: string): number | undefined {
-        const m = /^> ?\[!/m.exec(src);
-        return m ? m.index : undefined;
-      },
-      // Full tokenizer. Returns the alert token, or undefined to
-      // fall through to the default blockquote handler (which
-      // happens when the TYPE tag isn't one of the recognized
-      // values — a typo like `> [!NTO]` or a lowercase `> [!note]`
-      // renders as a normal blockquote with the raw marker visible,
-      // matching GitHub's behavior for unrecognized / wrong-case
-      // markers).
-      //
-      // `this: any` and `token: any` — marked's extension API types
-      // don't narrow cleanly through the `{ extensions: [...] }`
-      // shape, and typing the custom token precisely would require
-      // declaration merging into marked's Tokens namespace. Our
-      // codebase already uses `any` at external-library boundaries
-      // (see eslint.config.js). The property accesses inside are
-      // checked against the local shape we constructed, so the
-      // runtime contract is intact.
-      tokenizer(this: any, src: string) {
-        const match = GFM_ALERT_RE.exec(src);
-        if (!match) return undefined;
-        // No .toUpperCase() — the GFM spec treats the type tag as
-        // case-sensitive. Lowercase `[!note]` or mixed-case `[!Note]`
-        // intentionally fails to match here and falls through to
-        // marked's default blockquote handler.
-        const rawType = match[1] ?? '';
-        if (!GFM_ALERT_TYPES.includes(rawType as GfmAlertType)) return undefined;
-        const type = rawType as GfmAlertType;
-
-        // Strip the leading `> ` (with optional space) from each
-        // remaining line to recover the alert body as ordinary
-        // markdown. Trailing newlines are preserved — downstream
-        // markdown parsing handles paragraph breaks normally.
-        const body = (match[2] ?? '').replace(/^> ?/gm, '');
-
-        // Recursively lex the body so nested markdown (lists,
-        // code, emphasis, links) inside the alert works. `this.lexer`
-        // is marked's lexer context; blockTokens parses the string
-        // as a block-level markdown document.
-        const tokens = this.lexer.blockTokens(body);
-
-        return {
-          type: 'gfmAlert',
-          raw: match[0],
-          alertType: type,
-          tokens,
-        };
-      },
-      // Renderer. marked hands us the token; we return the HTML
-      // string. `this.parser.parse(tokens)` re-serializes the
-      // nested tokens the tokenizer captured, preserving full
-      // markdown semantics inside the alert body.
-      renderer(this: any, token: any): string {
-        const type = token.alertType as GfmAlertType;
-        const lower = type.toLowerCase();
-        // Title shown at the top of the alert block — GitHub uses
-        // capitalized-first-letter form ("Note", "Tip", etc.).
-        const title = type.charAt(0) + type.slice(1).toLowerCase();
-        const icon = GFM_ALERT_OCTICONS[type];
-        const body = this.parser.parse(token.tokens) as string;
-        // Class names match GitHub's rendered HTML (`markdown-alert`
-        // prefix, `markdown-alert-<type>` per variant, title in a
-        // `<p class="markdown-alert-title">`) so downstream tooling
-        // and anyone familiar with GitHub's output recognizes the
-        // shape.
-        return `<div class="markdown-alert markdown-alert-${lower}">` +
-               `<p class="markdown-alert-title">${icon}${title}</p>` +
-               body +
-               '</div>';
-      },
-    },
-  ],
-});
-
-// ================= Emoji shortcodes extension =================
-//
-// GitHub-style `:name:` shortcodes in markdown source render as the
-// corresponding unicode emoji. The shortcode list is `nameToEmoji`
-// from gemoji, a mirror of github/gemoji (the same Ruby gem
-// github.com itself uses) — about 1900 entries covering every
-// unicode-standard emoji and its GitHub-recognized aliases.
-//
-// Renderer returns the raw codepoint, so the output is a literal
-// unicode character — no <img> tags, no font dependencies, no
-// network access. The system emoji font handles glyph display
-// (Segoe UI Emoji on Windows, Apple Color Emoji on macOS, Noto
-// Color Emoji on Linux). All three are already in our --font-sans
-// fallback chain (see styles.css).
-//
-// GitHub's custom non-unicode shortcodes (:octocat:, :shipit:,
-// :trollface:) are NOT in nameToEmoji because they have no unicode
-// codepoint — they exist only as PNGs hosted on GitHub. Those names
-// pass through unchanged as literal `:octocat:` text. Supporting
-// them would require bundling images and rules out the offline
-// guarantee, so they're intentionally excluded.
-//
-// The extension is inline-level (matches inside paragraphs, not
-// just at block boundaries) and only claims input where the name
-// between colons is in the emoji list — unknown names like
-// `:notarealemoji:` fall through unchanged.
-marked.use(markedEmoji({
-  emojis: nameToEmoji,
-  renderer: (token: { emoji: string }) => token.emoji,
-}));
-
-// Marked top-level token types that render to exactly one direct
-// child of the parser's output root. This 1:1 invariant lets
-// buildBlockMap pair the precomputed line list against
-// rootElement.children by index — no DOM rewriting or data-attribute
-// injection needed.
-//
-// Excluded from this whitelist (deliberately — they break the
-// invariant in different ways):
-//   - `space`:  whitespace between blocks; produces no DOM at all.
-//   - `def`:    link reference definitions like `[ref]: url`; consumed
-//               at parse time, no DOM emitted.
-//   - `html`:   a single token can wrap multiple top-level elements
-//               (e.g. `<div>x</div>\n<p>y</p>` is one html token but
-//               two children) or zero (an html comment). Variable.
-//
-// Tokens of excluded types still advance cumulative newline count in
-// computeMarkdownLineMap so subsequent visible tokens land on the
-// right line; they just don't get a lineList entry. Cursoring inside
-// an html block or an orphaned link-ref line falls back to the
-// nearest visible-token entry below the cursor (binary-search floor
-// behavior in syncPreviewToCaret).
-//
-// New marked extensions that add their own block-level token types
-// must be added here to participate in scroll sync. Known internal
-// extension: 'gfmAlert' (see GFM alerts section above).
-const VISIBLE_MD_BLOCK_TYPES = new Set([
-  'heading', 'paragraph', 'list', 'blockquote', 'code', 'table', 'hr',
-  'gfmAlert',
-]);
-
-// Compute starting source-line numbers for marked's visible top-level
-// block tokens. Walks the token list once, accumulating newline
-// counts in each token's `raw` so the next token's starting line is
-// known. Returns one entry per visible top-level token, in order.
-const computeMarkdownLineMap = (tokens: { type: string; raw: string }[]): number[] => {
-  const lines: number[] = [];
-  let cumNewlines = 0;
-  for (const t of tokens) {
-    if (VISIBLE_MD_BLOCK_TYPES.has(t.type)) lines.push(cumNewlines + 1);
-    // String.match returns null when there are no matches; coalesce
-    // to an empty array so .length is always valid.
-    cumNewlines += (t.raw.match(/\n/g) || []).length;
-  }
-  return lines;
-};
+// Renders GitHub-Flavored Markdown. The parse runs in the render
+// worker (render-worker.ts hosts marked plus the gfmAlert and emoji
+// extensions); this renderer assembles the request, sanitizes the
+// worker's HTML, and pairs the worker's block-line list against the
+// rendered DOM for scroll sync.
 
 export const markedRenderer: Renderer = {
-  // Not declared async because nothing in the body awaits anything;
-  // marked.lexer / marked.parser are synchronous (with async: false)
-  // and DOMPurify is also synchronous. Return Promise.resolve to
-  // match the Renderer interface's Promise-returning contract.
-  render(source: string, _context: RenderContext): Promise<RenderResult> {
-    // Single-pass render: marked.parse runs the full lex→parse
-    // pipeline with extensions applied (markedEmoji, gfmAlert).
-    // Extensions registered via `marked.use()` are NOT applied by the
-    // standalone marked.parser(tokens) path, so feeding tokens from
-    // marked.lexer back through marked.parser silently strips emoji
-    // shortcodes and GFM alerts — using marked.parse directly is the
-    // only way to get correct HTML.
+  async render(source: string, _context: RenderContext): Promise<RenderResult> {
     const m0 = performance.now(); // [perf]
-    const rawHtml = marked.parse(source, MARKED_OPTIONS);
+    const res = await runInWorker({ kind: 'markdown', source });
     const m1 = performance.now(); // [perf]
-    // DOMPurify sanitization matches the AsciidoctorRenderer path —
-    // same HTML-injection protections for either format.
-    const html = DOMPurify.sanitize(rawHtml);
-    const m2 = performance.now(); // [perf]
-    perfLog(`md render: total ${(m2 - m0).toFixed(0)}ms (parse ${(m1 - m0).toFixed(0)}, sanitize ${(m2 - m1).toFixed(0)})`);
+    if (!res.ok) throw new Error(res.error);
 
-    return Promise.resolve({
-      html,
-      // Scroll-sync block map is computed LAZILY — only when the
-      // caller (syncPreviewToCaret in preview.ts) actually needs it,
-      // and cached at the call site until the next render. Most users
-      // never trigger scroll sync, so deferring the lexer pass and
-      // DOM walk keeps rendering at single-pass cost. The closure
-      // captures `source` so a second lex can run on demand. Extensions
-      // don't matter for the line map (emoji is inline, doesn't affect
-      // block structure; gfmAlert is block and is accounted for in
-      // VISIBLE_MD_BLOCK_TYPES).
-      buildBlockMap: (rootElement: Element): BlockMapEntry[] => {
-        const tokens = marked.lexer(source, MARKED_OPTIONS);
-        const lineList = computeMarkdownLineMap(tokens);
-        // Pair each rendered top-level child with its captured source
-        // line. Min guards against future divergence from the 1:1
-        // token-to-element invariant — if marked starts emitting more
-        // or fewer top-level elements than non-space tokens, sync
-        // degrades silently rather than throwing.
-        const children = rootElement.children;
-        const n = Math.min(children.length, lineList.length);
-        const map: BlockMapEntry[] = [];
-        for (let i = 0; i < n; i++) {
-          map.push({ line: lineList[i]!, el: children[i]! });
-        }
-        return map;
-      },
-      // No source transformation happens in Markdown rendering (unlike
+    // DOMPurify sanitization matches the AsciiDoc path — the same
+    // HTML-injection protection regardless of format. RETURN_DOM_FRAGMENT
+    // hands back a DocumentFragment the caller injects directly, so the
+    // HTML is parsed once (here, inside DOMPurify) rather than again on
+    // the caller's side.
+    const fragment = DOMPurify.sanitize(res.html, { RETURN_DOM_FRAGMENT: true });
+    const m2 = performance.now(); // [perf]
+    perfLog(`md render: total ${(m2 - m0).toFixed(0)}ms (worker ${(m1 - m0).toFixed(0)}, sanitize ${(m2 - m1).toFixed(0)})`);
+
+    const blockLines = res.blockLines;
+    return {
+      fragment,
+      // Pair the worker's per-token line list against the rendered
+      // top-level children by index (the 1:1 token-to-element
+      // invariant; see pairMarkdownBlockMap).
+      buildBlockMap: (rootElement: Element) =>
+        pairMarkdownBlockMap(blockLines, rootElement),
+      // Markdown rendering does no source transformation (unlike
       // AsciiDoc's include expansion), so editor and output line
       // coordinates coincide — identity translation is correct.
       translateEditorLine: (editorLine: number) => editorLine,
       // Markdown has no `:toc:` analog, so sidebar-TOC layout never
       // activates for markdown documents.
       tocPosition: null,
-    });
+    };
   },
 
   clearCache() {
@@ -1004,11 +790,15 @@ export const textRenderer: Renderer = {
     // touching the generic <pre> used by AsciiDoc listing blocks.
     // DOMPurify pass is redundant here (our escape produces only
     // entity references, no injection vectors) but cheap and keeps
-    // the output path uniform with the other renderers.
-    const html = DOMPurify.sanitize(`<pre class="text-verbatim">${escapeForPre(source)}</pre>`);
+    // the output path uniform with the other renderers. RETURN_DOM_FRAGMENT
+    // matches the fragment-returning contract the other renderers use.
+    const fragment = DOMPurify.sanitize(
+      `<pre class="text-verbatim">${escapeForPre(source)}</pre>`,
+      { RETURN_DOM_FRAGMENT: true },
+    );
 
     return Promise.resolve({
-      html,
+      fragment,
       buildBlockMap: () => [],
       translateEditorLine: (editorLine: number) => editorLine,
       // Plain text has no TOC concept; sidebar-TOC layout never

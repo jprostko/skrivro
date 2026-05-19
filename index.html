@@ -2663,6 +2663,63 @@
   // sites below from rendering "[object Object]" to the user.
   const errMsg = (e) => (e instanceof Error ? e.message : String(e));
 
+  // ================= File-size guard =================
+  //
+  // Hard upper bound on the size of a file Skrivro will open, in
+  // bytes (3 MiB). A file above this is refused before any read, so
+  // an accidental open of a non-document — a disk image, a video, an
+  // archive — cannot pull hundreds of megabytes into the webview and
+  // hang it.
+  //
+  // The limit tracks usability, not just crash-avoidance. Render
+  // cost is roughly linear in source size, so the limit is also the
+  // slowest open Skrivro allows: a file at 3 MiB takes on the order
+  // of ten seconds — large and slow, but it completes — whereas a
+  // much higher ceiling would admit files that take minutes, which
+  // is functionally a hang. 3 MiB still clears any realistic single
+  // document: a ~400,000-word novel (a very long one) is roughly
+  // 2.5 MB as AsciiDoc, comfortably under. To raise it, edit the
+  // constant — there is no config override.
+  const MAX_FILE_BYTES = 3 * 1024 * 1024;
+
+  // Human-readable byte count for the too-large message. 1024-based
+  // (MiB / GiB), matching how file managers and `ls -lh` report
+  // sizes. One decimal, with a trailing ".0" trimmed so a round
+  // value reads "3 MiB" rather than "3.0 MiB". Inputs are always at
+  // or above the limit, so MiB is the smallest unit it handles.
+  const formatBytes = (bytes) => {
+    const MIB = 1024 * 1024;
+    const GIB = MIB * 1024;
+    const [value, unit] = bytes >= GIB ? [bytes / GIB, 'GiB'] : [bytes / MIB, 'MiB'];
+    return `${value.toFixed(1).replace(/\.0$/, '')} ${unit}`;
+  };
+
+  // Thrown by readDocumentText when a file exceeds MAX_FILE_BYTES.
+  // The Error message is the ready-to-display, user-facing string —
+  // call sites catch this type, show e.message via vimMessage, and
+  // skip the load. A distinct class (rather than a flag on a plain
+  // Error) is what lets each catch tell "too large" apart from an
+  // ordinary open failure and message it correctly.
+  class FileTooLargeError extends Error {
+    constructor(name, size) {
+      super(`${name} is ${formatBytes(size)} — too large to open (limit ${formatBytes(MAX_FILE_BYTES)})`);
+      this.name = 'FileTooLargeError';
+    }
+  }
+
+  // Size-guarded stand-in for a bare file.text() when loading a
+  // document into the buffer. Every buffer-open path routes through
+  // this: the file picker, the <input> fallback, drag-and-drop, and
+  // reload. Unlike a path-based read there is no separate stat call —
+  // the File object the browser hands us already carries the real
+  // .size (a picked or dropped symlink is resolved before we see it).
+  const readDocumentText = async (file) => {
+    if (file.size > MAX_FILE_BYTES) {
+      throw new FileTooLargeError(file.name || DEFAULT_NAME, file.size);
+    }
+    return file.text();
+  };
+
   const openFile = () => {
     confirmDiscard(() => {
       if (hasFSA) {
@@ -2675,7 +2732,7 @@
           try {
             const [handle] = await window.showOpenFilePicker({ multiple: false });
             const file = await handle.getFile();
-            setDoc(await file.text());
+            setDoc(await readDocumentText(file));
             currentHandle = handle;
             currentName   = handle.name || file.name || DEFAULT_NAME;
             setBufferFormat(detectFormat(currentName));
@@ -2685,6 +2742,7 @@
             render();
           } catch (e) {
             if (e.name === 'AbortError') return; // user cancelled the picker
+            if (e instanceof FileTooLargeError) { vimMessage(e.message); return; }
             console.error(e);
             vimMessage(`E484: Can't open file (${errMsg(e)})`);
           }
@@ -2697,16 +2755,25 @@
 
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files && fileInput.files[0];
+    // Clear value up front: a later bail-out (no file, or the size
+    // guard refusing it) must still leave the input able to re-fire
+    // change for the same file.
+    fileInput.value = '';
     if (!file) return;
-    setDoc(await file.text());
-    currentHandle = null;
-    currentName   = file.name || DEFAULT_NAME;
-    setBufferFormat(detectFormat(currentName));
-    setDirty(false);
-    clearDraft();
-    updateTitle();
-    render();
-    fileInput.value = ''; // allow re-picking the same file
+    try {
+      setDoc(await readDocumentText(file));
+      currentHandle = null;
+      currentName   = file.name || DEFAULT_NAME;
+      setBufferFormat(detectFormat(currentName));
+      setDirty(false);
+      clearDraft();
+      updateTitle();
+      render();
+    } catch (e) {
+      if (e instanceof FileTooLargeError) { vimMessage(e.message); return; }
+      console.error(e);
+      vimMessage(`E484: Can't open file (${errMsg(e)})`);
+    }
   });
 
   // Drag-and-drop: user drops one or more files onto the Skrivro
@@ -2749,7 +2816,7 @@
             const handle = await item.getAsFileSystemHandle();
             if (!handle || handle.kind !== 'file') return;
             const file = await handle.getFile();
-            setDoc(await file.text());
+            setDoc(await readDocumentText(file));
             currentHandle = handle;
             currentName   = handle.name || file.name || DEFAULT_NAME;
             setBufferFormat(detectFormat(currentName));
@@ -2758,6 +2825,7 @@
             updateTitle();
             render();
           } catch (err) {
+            if (err instanceof FileTooLargeError) { vimMessage(err.message); return; }
             console.error(err);
             vimMessage(`E484: Can't open file (${errMsg(err)})`);
           }
@@ -2772,7 +2840,7 @@
     confirmDiscard(() => {
       (async () => {
         try {
-          setDoc(await file.text());
+          setDoc(await readDocumentText(file));
           currentHandle = null;
           currentName   = file.name || DEFAULT_NAME;
           setBufferFormat(detectFormat(currentName));
@@ -2781,6 +2849,7 @@
           updateTitle();
           render();
         } catch (err) {
+          if (err instanceof FileTooLargeError) { vimMessage(err.message); return; }
           console.error(err);
           vimMessage(`E484: Can't open file (${errMsg(err)})`);
         }
@@ -2873,11 +2942,12 @@
     if (!currentHandle) return;
     try {
       const file = await currentHandle.getFile();
-      setDoc(await file.text());
+      setDoc(await readDocumentText(file));
       setDirty(false);
       clearDraft();
       render();
     } catch (e) {
+      if (e instanceof FileTooLargeError) { vimMessage(e.message); return; }
       console.error(e);
       vimMessage(`E484: Can't open file ${currentName} (${errMsg(e)})`);
     }

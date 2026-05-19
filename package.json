@@ -29,8 +29,8 @@
     "dompurify": "^3.3.3",
     "font-awesome": "^4.7.0",
     "gemoji": "^8.1.0",
-    "marked": "^18.0.2",
-    "marked-emoji": "^2.0.3"
+    "markdown-it": "^14.1.1",
+    "markdown-it-emoji": "^3.0.0"
   },
   "lint-staged": {
     "src/**/*.ts": "eslint"
@@ -38,6 +38,8 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tauri-apps/cli": "^2",
+    "@types/markdown-it": "^14.1.2",
+    "@types/markdown-it-emoji": "^3.0.1",
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
     "husky": "^9.1.7",

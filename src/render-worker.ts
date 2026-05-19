@@ -2,11 +2,11 @@
 // ================= Render worker =================
 //
 // Off-main-thread parse + convert. The preview pipeline used to run
-// Asciidoctor / marked synchronously on the UI thread, freezing the
+// the markup parsers synchronously on the UI thread, freezing the
 // editor for the render's whole duration. This Web Worker hosts the
 // expensive parsing so a render in progress no longer blocks typing.
 //
-// Runs here: Asciidoctor load + convert, marked parse, and the
+// Runs here: Asciidoctor load + convert, Markdown render, and the
 // source-line extraction for scroll-sync block maps. Stays on the
 // main thread (renderer.ts), because each needs an API a worker
 // lacks: the AsciiDoc include:: preprocessor (Tauri file IPC),
@@ -23,8 +23,10 @@ import Asciidoctor, {
   type Document as AsciidoctorDocument,
   type AbstractBlock,
 } from '@asciidoctor/core';
-import { marked } from 'marked';
-import { markedEmoji } from 'marked-emoji';
+import MarkdownIt from 'markdown-it';
+import type Token from 'markdown-it/lib/token.mjs';
+import type StateCore from 'markdown-it/lib/rules_core/state_core.mjs';
+import { bare as markdownItEmoji } from 'markdown-it-emoji';
 import { nameToEmoji } from 'gemoji';
 
 // ================= Message protocol =================
@@ -63,25 +65,44 @@ export interface WorkerRenderFailure {
 
 export type WorkerRenderResponse = WorkerRenderSuccess | WorkerRenderFailure;
 
-// ================= marked setup =================
+// ================= markdown-it setup =================
 
-// marked options applied on every render:
-//   gfm: true     — tables, strikethrough, task lists, autolinks
-//   breaks: false — a single newline does NOT become <br>; paragraphs
-//                   still break on blank lines (documentation-style)
-//   async: false  — forces synchronous output (string, not Promise)
-const MARKED_OPTIONS = { gfm: true, breaks: false, async: false } as const;
+// One configured MarkdownIt instance, built once and reused for every
+// render. Options match GitHub-Flavored Markdown:
+//   html: true    — raw HTML in the source passes through. Raw HTML
+//                   is part of CommonMark, and the main thread runs
+//                   DOMPurify over the output before it reaches the
+//                   DOM, so this is the spec-conforming setting.
+//   linkify: true — bare URLs become links (GFM autolinks extension).
+//   breaks: false — a lone newline is a CommonMark softbreak, not a
+//                   <br>; paragraphs still break on blank lines.
+// langPrefix keeps its 'language-' default, so fenced code emits
+// <code class="language-xxx"> — the class the preview's syntax CSS
+// keys on.
+const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
 
-// ---- GFM alerts extension ----
+// GFM's strikethrough extension renders to <del> (per the GFM spec).
+// markdown-it's built-in strikethrough is its own, non-GFM extension
+// and emits <s>; override its renderer rules to <del> so the output
+// conforms to GFM.
+md.renderer.rules.s_open = () => '<del>';
+md.renderer.rules.s_close = () => '</del>';
+
+// ---- GFM alerts ----
 // GFM extends blockquote syntax with "alerts" — a blockquote whose
-// first line is `[!TYPE]`. Base marked renders the marker as visible
-// text; this block-level extension intercepts the pattern and emits
-// custom callout markup. The marker is case-sensitive per the GFM
-// spec — wrong-case falls through to a normal blockquote.
+// first line is `[!TYPE]`. markdown-it parses such input as an
+// ordinary blockquote; the gfmAlert core rule below retags those
+// blockquote tokens as alert tokens, and the renderer rules emit the
+// callout markup. The marker is case-sensitive — a wrong-case
+// `[!type]` falls through as a normal blockquote, matching GitHub.
 const GFM_ALERT_TYPES = ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'] as const;
 type GfmAlertType = (typeof GFM_ALERT_TYPES)[number];
 
-const GFM_ALERT_RE = /^> ?\[!(\w+)\][^\n]*\n((?:> ?[^\n]*(?:\n|$))*)/;
+// Matches the alert marker at the start of the blockquote's first
+// paragraph — markdown-it has already stripped the `> ` prefix.
+// Capture group 1 is the type word; any text after `[!TYPE]` on the
+// marker line is matched and discarded.
+const GFM_ALERT_MARKER_RE = /^\[!(\w+)\][^\n]*(?:\n|$)/;
 
 // Octicon SVG markup per alert type, copied verbatim from GitHub's
 // markdown API output. Inlined so the glyphs inherit `fill:
@@ -94,69 +115,164 @@ const GFM_ALERT_OCTICONS: Record<GfmAlertType, string> = {
   CAUTION: '<svg class="octicon octicon-stop mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>',
 };
 
-marked.use({
-  extensions: [
-    {
-      name: 'gfmAlert',
-      level: 'block',
-      start(src: string): number | undefined {
-        const m = /^> ?\[!/m.exec(src);
-        return m ? m.index : undefined;
-      },
-      // `this: any` / `token: any` — marked's extension API types
-      // don't narrow through the `{ extensions: [...] }` shape; the
-      // property accesses are checked against the local token shape.
-      tokenizer(this: any, src: string) {
-        const match = GFM_ALERT_RE.exec(src);
-        if (!match) return undefined;
-        const rawType = match[1] ?? '';
-        if (!GFM_ALERT_TYPES.includes(rawType as GfmAlertType)) return undefined;
-        const type = rawType as GfmAlertType;
-        const body = (match[2] ?? '').replace(/^> ?/gm, '');
-        const tokens = this.lexer.blockTokens(body);
-        return { type: 'gfmAlert', raw: match[0], alertType: type, tokens };
-      },
-      renderer(this: any, token: any): string {
-        const type = token.alertType as GfmAlertType;
-        const lower = type.toLowerCase();
-        const title = type.charAt(0) + type.slice(1).toLowerCase();
-        const icon = GFM_ALERT_OCTICONS[type];
-        const body = this.parser.parse(token.tokens) as string;
-        return `<div class="markdown-alert markdown-alert-${lower}">` +
-               `<p class="markdown-alert-title">${icon}${title}</p>` +
-               body +
-               '</div>';
-      },
-    },
-  ],
-});
+// Core rule: scan the block-token stream for blockquotes whose first
+// paragraph opens with a valid `[!TYPE]` marker and retag them as
+// alerts. Registered after `block` (so blockquotes are tokenized) and
+// before `inline` (so the marker text can be cut from the still-raw
+// paragraph content). Nested alerts work for free — the loop visits
+// every blockquote_open token, inner ones included.
+const gfmAlertRule = (state: StateCore): void => {
+  const tokens = state.tokens;
+  for (let i = 0; i < tokens.length; i++) {
+    const open = tokens[i];
+    if (!open || open.type !== 'blockquote_open') continue;
 
-// ---- emoji shortcodes extension ----
-// GitHub-style `:name:` shortcodes render as the unicode emoji.
-// `nameToEmoji` from gemoji is the shortcode list; the renderer
-// returns the raw codepoint so the system emoji font draws it.
-marked.use(markedEmoji({
-  emojis: nameToEmoji,
-  renderer: (token: { emoji: string }) => token.emoji,
-}));
+    // A blockquote's first child must be a paragraph for it to be an
+    // alert — the `[!TYPE]` marker is always plain text.
+    const paraOpen = tokens[i + 1];
+    const inline = tokens[i + 2];
+    const paraClose = tokens[i + 3];
+    if (!paraOpen || paraOpen.type !== 'paragraph_open') continue;
+    if (!inline || inline.type !== 'inline') continue;
+
+    const m = GFM_ALERT_MARKER_RE.exec(inline.content);
+    if (!m) continue;
+    const rawType = m[1] ?? '';
+    if (!GFM_ALERT_TYPES.includes(rawType as GfmAlertType)) continue;
+    const type = rawType as GfmAlertType;
+
+    // Find the matching blockquote_close, tracking nesting depth so a
+    // nested blockquote's close is not taken for this one's. Leave the
+    // blockquote untouched if the stream is malformed and no matching
+    // close is found.
+    let depth = 1;
+    let closeTok: Token | null = null;
+    for (let j = i + 1; j < tokens.length; j++) {
+      const t = tokens[j];
+      if (!t) continue;
+      if (t.type === 'blockquote_open') {
+        depth++;
+      } else if (t.type === 'blockquote_close') {
+        depth--;
+        if (depth === 0) { closeTok = t; break; }
+      }
+    }
+    if (!closeTok) continue;
+
+    // Retag the wrapper tokens; the gfm_alert_open / gfm_alert_close
+    // renderer rules emit the callout <div> and its title.
+    open.type = 'gfm_alert_open';
+    open.tag = 'div';
+    open.meta = { type };
+    closeTok.type = 'gfm_alert_close';
+    closeTok.tag = 'div';
+
+    // Strip the marker line from the first paragraph. If the marker
+    // was the whole paragraph, hide the now-empty wrapper so it does
+    // not render as <p></p>; otherwise keep the paragraph minus its
+    // first line.
+    const rest = inline.content.slice(m[0].length);
+    if (rest.length === 0) {
+      paraOpen.hidden = true;
+      if (paraClose && paraClose.type === 'paragraph_close') {
+        paraClose.hidden = true;
+      }
+      inline.content = '';
+    } else {
+      inline.content = rest;
+    }
+  }
+};
+
+// Renderer rules for the retagged alert tokens. gfm_alert_open emits
+// the callout <div> plus the icon-and-label title <p>; the alert body
+// (every token between open and close) renders in between as usual;
+// gfm_alert_close emits the closing </div>. The markup is identical
+// to what the previous (marked-based) renderer produced.
+md.renderer.rules.gfm_alert_open = (tokens, idx) => {
+  const token = tokens[idx];
+  if (!token) return '';
+  const type = token.meta.type as GfmAlertType;
+  const lower = type.toLowerCase();
+  const title = type.charAt(0) + type.slice(1).toLowerCase();
+  return `<div class="markdown-alert markdown-alert-${lower}">` +
+         `<p class="markdown-alert-title">${GFM_ALERT_OCTICONS[type]}${title}</p>`;
+};
+md.renderer.rules.gfm_alert_close = () => '</div>';
+
+// ---- GFM task lists ----
+// `- [ ]` / `- [x]` list items. markdown-it has no native task-list
+// support; this core rule reproduces the GFM `tasklist` extension.
+// For each list item whose first block is a paragraph beginning with
+// a marker, it replaces the marker text with an <input type="checkbox">
+// at the start of that paragraph's content — the same place cmark-gfm
+// (GitHub's reference implementation) puts it. Registered before
+// `inline` so the marker can be cut from the still-raw paragraph text.
+const GFM_TASK_MARKER_RE = /^\[([ \txX])\][ \t]+/;
+
+const gfmTaskListRule = (state: StateCore): void => {
+  const tokens = state.tokens;
+  for (let i = 0; i < tokens.length; i++) {
+    const liOpen = tokens[i];
+    if (!liOpen || liOpen.type !== 'list_item_open') continue;
+
+    // The first block of the item must be a paragraph — tight-list
+    // paragraphs are hidden but still present as paragraph_open /
+    // inline tokens.
+    const paraOpen = tokens[i + 1];
+    const inline = tokens[i + 2];
+    if (!paraOpen || paraOpen.type !== 'paragraph_open') continue;
+    if (!inline || inline.type !== 'inline') continue;
+
+    const m = GFM_TASK_MARKER_RE.exec(inline.content);
+    if (!m) continue;
+    const marker = m[1] ?? ' ';
+    const checked = marker !== ' ' && marker !== '\t';
+
+    // Replace the marker text with the checkbox at the start of the
+    // paragraph's inline content. With html:true the inline parser
+    // turns the <input> into an html_inline token, so the checkbox
+    // shares the item text's inline flow — checkbox and text stay on
+    // one line in both tight and loose lists. Injecting it instead as
+    // a separate block-level token would put a block boundary between
+    // the checkbox and the text of a loose-list item, breaking them
+    // onto two lines.
+    const checkbox = `<input ${checked ? 'checked="" ' : ''}disabled="" type="checkbox"> `;
+    inline.content = checkbox + inline.content.slice(m[0].length);
+
+    // Tag the <li> so the preview stylesheet can hide its bullet —
+    // GitHub marks task-list items with this same class. Keying the
+    // CSS on the class covers tight and loose items alike, unlike a
+    // structural selector that must know where the <input> sits.
+    liOpen.attrJoin('class', 'task-list-item');
+  }
+};
+
+md.core.ruler.after('block', 'gfm_alert', gfmAlertRule);
+md.core.ruler.after('block', 'gfm_task_list', gfmTaskListRule);
+
+// ---- emoji shortcodes ----
+// GitHub-style `:name:` shortcodes render as the unicode emoji. The
+// `bare` markdown-it-emoji plugin ships no emoji data of its own;
+// feeding it gemoji's nameToEmoji preserves the exact shortcode set
+// the previous (marked-emoji) renderer used. `:)`-style shortcuts
+// stay off — the plugin's default.
+md.use(markdownItEmoji, { defs: nameToEmoji });
 
 // ---- markdown scroll-sync line map ----
-// Top-level token types that render to exactly one direct child of
-// the parser's output root. The 1:1 invariant lets the main thread
-// pair this line list against rootElement.children by index.
-const VISIBLE_MD_BLOCK_TYPES = new Set([
-  'heading', 'paragraph', 'list', 'blockquote', 'code', 'table', 'hr',
-  'gfmAlert',
-]);
-
-// Compute starting source-line numbers for marked's visible top-level
-// block tokens, accumulating newline counts in each token's `raw`.
-const computeMarkdownLineMap = (tokens: { type: string; raw: string }[]): number[] => {
+// One source-line entry per top-level rendered block, in document
+// order, for the main thread to pair against the preview's top-level
+// elements. markdown-it tags every token with a nesting `level` and a
+// `[startLine, endLine]` source `map`; a top-level block is any
+// level-0 token that is not a closing tag (a block_open, or a self-
+// contained block such as fence / hr / html_block). A block token
+// with no map contributes a 0, which the pairing step skips.
+const computeMarkdownLineMap = (tokens: Token[]): number[] => {
   const lines: number[] = [];
-  let cumNewlines = 0;
   for (const t of tokens) {
-    if (VISIBLE_MD_BLOCK_TYPES.has(t.type)) lines.push(cumNewlines + 1);
-    cumNewlines += (t.raw.match(/\n/g) || []).length;
+    if (t.level === 0 && t.nesting !== -1) {
+      lines.push(t.map ? t.map[0] + 1 : 0);
+    }
   }
   return lines;
 };
@@ -235,12 +351,15 @@ const renderAsciidoc = (req: WorkerRenderRequest): WorkerRenderSuccess => {
 };
 
 const renderMarkdown = (req: WorkerRenderRequest): WorkerRenderSuccess => {
-  // marked.parse runs the full lex→parse pipeline with the extensions
-  // applied. A separate marked.lexer pass produces the token list for
-  // the scroll-sync line map — marked.parser(tokens) does not apply
-  // extensions, so the html must come from marked.parse directly.
-  const html = marked.parse(req.source, MARKED_OPTIONS);
-  const tokens = marked.lexer(req.source, MARKED_OPTIONS);
+  // One parse yields the token stream; the renderer turns that same
+  // stream into HTML and computeMarkdownLineMap walks it for the
+  // scroll-sync map — no second pass. (marked needed a separate lexer
+  // call because marked.parser skipped extensions; markdown-it has no
+  // such split.) `env` is markdown-it's per-render sandbox, passed to
+  // both parse and render so reference definitions resolve.
+  const env = {};
+  const tokens = md.parse(req.source, env);
+  const html = md.renderer.render(tokens, md.options, env);
   return {
     id: req.id,
     ok: true,

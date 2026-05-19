@@ -430,11 +430,10 @@ body.mode-split .preview-scroll::after {
 .preview-pane ul, .preview-pane ol { padding-left: 1.5em; margin: 0.8em 0; }
 .preview-pane li { margin: 0.25em 0; }
 
-/* GFM task lists. marked emits `- [ ] / - [x]` items as
-   <li><input type="checkbox" disabled> text</li> with no class
-   marker (GitHub's own renderer adds `.task-list-item`; marked does
-   not). Targeting via :has() on the <li> scopes the rule to
-   task-list items without touching normal list items.
+/* GFM task lists. The Markdown render worker tags each task-list item
+   with a `task-list-item` class — the same class GitHub's renderer
+   uses — so this rule targets them with a plain class selector,
+   tight and loose lists alike.
 
    Hide the native bullet (showing both a bullet AND a checkbox looks
    redundant) and pull the item flush-left by the parent list's
@@ -450,7 +449,7 @@ body.mode-split .preview-scroll::after {
    (the default unchecked box is near-invisible on Catppuccin Mocha).
    vertical-align: middle keeps the checkbox centered on the text
    x-height instead of sitting on the baseline. */
-.preview-pane li:has(> input[type="checkbox"]) {
+.preview-pane li.task-list-item {
   list-style: none;
   margin-left: -1.5em;
 }

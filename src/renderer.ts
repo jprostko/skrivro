@@ -716,15 +716,15 @@ export const asciidoctorRenderer: Renderer = {
   },
 };
 
-// ================= MarkedRenderer =================
+// ================= MarkdownRenderer =================
 //
 // Renders GitHub-Flavored Markdown. The parse runs in the render
-// worker (render-worker.ts hosts marked plus the gfmAlert and emoji
-// extensions); this renderer assembles the request, sanitizes the
-// worker's HTML, and pairs the worker's block-line list against the
-// rendered DOM for scroll sync.
+// worker (render-worker.ts hosts markdown-it plus the gfmAlert,
+// task-list, and emoji extensions); this renderer assembles the
+// request, sanitizes the worker's HTML, and pairs the worker's
+// block-line list against the rendered DOM for scroll sync.
 
-export const markedRenderer: Renderer = {
+export const markdownRenderer: Renderer = {
   async render(source: string, _context: RenderContext): Promise<RenderResult> {
     const m0 = performance.now(); // [perf]
     const res = await runInWorker({ kind: 'markdown', source });
@@ -781,7 +781,7 @@ const escapeForPre = (s: string): string =>
   s.replace(/[&<>]/g, (c) => TEXT_ESCAPE_MAP[c] ?? c);
 
 export const textRenderer: Renderer = {
-  // Not declared async for the same reason as markedRenderer — no
+  // Not declared async for the same reason as markdownRenderer — no
   // awaits inside, Promise.resolve matches the interface contract.
   render(source: string, _context: RenderContext): Promise<RenderResult> {
     // Wrap the escaped source in <pre class="text-verbatim">. The
@@ -824,7 +824,7 @@ export const textRenderer: Renderer = {
 // flag any missing case if Format gains a new member.
 export const getRenderer = (format: Format): Renderer => {
   switch (format) {
-    case 'markdown': return markedRenderer;
+    case 'markdown': return markdownRenderer;
     case 'text':     return textRenderer;
     case 'asciidoc': return asciidoctorRenderer;
   }
@@ -838,7 +838,7 @@ export const getRenderer = (format: Format): Renderer => {
 // io.ts stay agnostic about which renderer holds cacheable state.
 const ALL_RENDERERS: readonly Renderer[] = [
   asciidoctorRenderer,
-  markedRenderer,
+  markdownRenderer,
   textRenderer,
 ];
 

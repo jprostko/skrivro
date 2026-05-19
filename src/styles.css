@@ -435,13 +435,13 @@ body.mode-split .preview-scroll::after {
    uses — so this rule targets them with a plain class selector,
    tight and loose lists alike.
 
-   Hide the native bullet (showing both a bullet AND a checkbox looks
-   redundant) and pull the item flush-left by the parent list's
-   padding so the checkbox sits where the bullet would have — matches
-   GitHub's rendering. The -1.5em cancels the 1.5em padding-left we
-   set on every .preview-pane ul/ol above; nested task lists also shift
-   by their own parent's 1.5em, which keeps them at the correct
-   nested indent relative to their siblings.
+   Hide the native bullet — showing both a bullet and a checkbox is
+   redundant. The checkbox is then pulled left by a negative margin
+   so it sits where the bullet would have, matching GitHub. That
+   negative margin is on the checkbox, NOT the <li>: the <li> keeps
+   its normal place in list flow, so a nested task list still
+   indents under its parent. (A -1.5em on the <li> itself cancels
+   each nested list's 1.5em padding-left and flattens the nesting.)
 
    accent-color sets the checked-state fill to the theme's link
    color; most modern browsers also tint the unchecked border
@@ -451,12 +451,17 @@ body.mode-split .preview-scroll::after {
    x-height instead of sitting on the baseline. */
 .preview-pane li.task-list-item {
   list-style: none;
-  margin-left: -1.5em;
 }
 .preview-pane input[type="checkbox"] {
   accent-color: var(--skr-link);
   margin-right: 0.35em;
   vertical-align: middle;
+}
+/* Negative margin on the checkbox itself, not the <li>, so the item
+   keeps its normal place in list flow and nested task lists indent
+   (see the note above). */
+.preview-pane li.task-list-item input[type="checkbox"] {
+  margin-left: -1.5em;
 }
 
 .preview-pane table {

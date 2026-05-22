@@ -1807,7 +1807,10 @@
 
   // Replace Asciidoctor's font-icon admonition markers (<i class="fa
   // icon-NAME" title="..."></i>) with the corresponding inline SVG.
-  // Called on the rendered HTML string before DOMPurify runs.
+  // Mutates the parsed Document in place — the caller parses the
+  // rendered HTML once and passes the resulting Document through here
+  // and then to DOMPurify, so the markup is never re-serialized to a
+  // string.
   //
   // We target only the admonition icon pattern (`icon-` class prefix).
   // Inline icon:name[] directives emit <i class="fa fa-NAME"> (note
@@ -1815,13 +1818,7 @@
   // unchanged — they're sized inline with surrounding text and the
   // baseline-positioning that makes admonition icons look off is
   // exactly what's wanted for a character-in-text inline icon.
-  //
-  // Implementation via DOMParser so we handle attribute ordering,
-  // quoting, and edge cases properly rather than relying on a regex
-  // over raw HTML.
-  const replaceAdmonitionIcons = (rawHtml) => {
-    const parser = new DOMParser();
-    const parsed = parser.parseFromString(rawHtml, 'text/html');
+  const replaceAdmonitionIcons = (parsed) => {
     // Scope the query to icon cells under admonitionblocks, then
     // extract the type from the `icon-<type>` class so we never
     // accidentally rewrite something else that happens to share the
@@ -1839,7 +1836,6 @@
       const svg = template.content.firstElementChild;
       if (svg) el.replaceWith(svg);
     }
-    return parsed.body.innerHTML;
   };
 
   const asciidoctorRenderer = {
@@ -1885,22 +1881,26 @@
         sourcemap: true,
         attributes: { showtitle: true, icons: 'font' },
       });
-      // Swap Asciidoctor's font-icon admonition markers for inline
-      // SVGs before sanitization — see replaceAdmonitionIcons above
-      // for why. DOMPurify keeps <svg> and <path> elements by default
-      // (verified with the Octicons used elsewhere), so the injected
-      // markup survives the subsequent sanitize call.
-      const rawHtml = replaceAdmonitionIcons(doc.convert({ standalone: false }));
-      const html = DOMPurify.sanitize(rawHtml);
+      // Parse the converted HTML into a DOM exactly once. The
+      // admonition-icon swap and DOMPurify both operate on that single
+      // Document — replaceAdmonitionIcons mutates it in place, then
+      // DOMPurify.sanitize takes the node (not a string) and returns a
+      // DocumentFragment, so the markup is never re-serialized. Both
+      // steps need a DOM, so they run here. DOMPurify keeps <svg>/<path>
+      // by default (verified with the Octicons used elsewhere), so the
+      // injected icon markup survives sanitization.
+      const parsed = new DOMParser().parseFromString(doc.convert({ standalone: false }), 'text/html');
+      replaceAdmonitionIcons(parsed);
+      const fragment = DOMPurify.sanitize(parsed.body, { RETURN_DOM_FRAGMENT: true });
 
-      // Capture the per-render state in closures. The caller invokes
-      // buildBlockMap after injecting `html` into a container; we walk
-      // the parsed `doc` AST against that container. translateEditorLine
-      // is the identity function for standalone — there's no include
+      // Capture the per-render state in closures. The caller appends
+      // `fragment` into a container; buildBlockMap then walks the parsed
+      // `doc` AST against that container. translateEditorLine is the
+      // identity function for standalone — there's no include
       // preprocessing, so editor line numbers and Asciidoctor source-
       // map line numbers are the same coordinate system.
       return {
-        html,
+        fragment,
         buildBlockMap: (rootElement) => buildAsciidoctorBlockMap(doc, rootElement),
         translateEditorLine: (editorLine) => editorLine,
         tocPosition: doc.getAttribute('toc-position') || null,
@@ -2134,10 +2134,13 @@
       const rawHtml = md.render(source);
       // DOMPurify sanitization matches the AsciidoctorRenderer path —
       // the same HTML-injection protection for either format.
-      const html = DOMPurify.sanitize(rawHtml);
+      // RETURN_DOM_FRAGMENT hands back a DocumentFragment the caller
+      // appends directly, so the HTML is parsed into a DOM once (here,
+      // inside DOMPurify) rather than again on the caller's side.
+      const fragment = DOMPurify.sanitize(rawHtml, { RETURN_DOM_FRAGMENT: true });
 
       return Promise.resolve({
-        html,
+        fragment,
         // Scroll-sync block map, built LAZILY — only when
         // syncPreviewToCaret needs it. The closure re-parses `source`
         // (markdown-it is linear and fast); a render that never
@@ -2182,10 +2185,10 @@
       // DOMPurify pass is redundant here (our escape produces only
       // entity references, no injection vectors) but cheap and keeps
       // the output path uniform with the other renderers.
-      const html = DOMPurify.sanitize(`<pre class="text-verbatim">${escapeHtml(source)}</pre>`);
+      const fragment = DOMPurify.sanitize(`<pre class="text-verbatim">${escapeHtml(source)}</pre>`, { RETURN_DOM_FRAGMENT: true });
 
       return Promise.resolve({
-        html,
+        fragment,
         buildBlockMap: () => [],
         translateEditorLine: (editorLine) => editorLine,
         // Plain text has no TOC concept; sidebar-TOC layout never
@@ -2293,7 +2296,10 @@
       // pass for the new buffer.
       if (currentFormat !== renderedFormat || docEpoch !== renderedEpoch) return;
 
-      out.innerHTML = result.html;
+      // append the already-sanitized fragment's nodes into the preview
+      // (replaceChildren empties the fragment into out) — no HTML-string
+      // re-parse; the renderer handed back a DocumentFragment, not a string.
+      out.replaceChildren(result.fragment);
 
       // Invalidate the cached map and stash the new builder for lazy
       // evaluation on the next syncPreviewToCaret call. buildBlockMap

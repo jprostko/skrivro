@@ -2480,26 +2480,41 @@
     updateTitle();
   };
 
-  // ================= Autosave draft =================
+  // ================= Restore snapshot =================
+  //
+  // A single localStorage entry mirrors the current buffer so a page
+  // reload (an accidental F5, a crash) comes back to the same document
+  // instead of a blank untitled.adoc. It records content, name, and
+  // the dirty flag — so a clean, just-opened or just-saved buffer
+  // restores clean (honest ● indicator, no spurious beforeunload
+  // prompt) and a mid-edit buffer restores dirty.
+  //
+  // This replaces the old clear-on-clean draft: rather than DELETING
+  // the entry when the buffer goes clean, every buffer transition
+  // (edit, save, open, new, reload) rewrites it via persistSnapshot,
+  // carrying the live dirty state. The one thing it does NOT preserve
+  // is the File System Access handle (handles can't be JSON-serialized
+  // to localStorage), so after a reload Ctrl+S falls back to save-as
+  // until the file is re-linked. Reattaching the live handle would
+  // need IndexedDB — deliberately out of scope here.
+  const persistSnapshot = () => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        content: getDoc(),
+        name:    currentName,
+        dirty,
+        ts:      Date.now(),
+      }));
+    } catch {}
+  };
 
   const scheduleAutosave = () => {
     clearTimeout(autosaveTimer);
-    autosaveTimer = setTimeout(() => {
-      try {
-        localStorage.setItem(LS_KEY, JSON.stringify({
-          content: getDoc(),
-          name:    currentName,
-          ts:      Date.now(),
-        }));
-      } catch {}
-    }, 500);
-  };
-  const clearDraft = () => {
-    try { localStorage.removeItem(LS_KEY); } catch {}
+    autosaveTimer = setTimeout(persistSnapshot, 500);
   };
 
-  // Resolves the initial doc + name (from saved draft, or defaults).
-  // Side-effect: may set currentName.
+  // Resolves the initial doc + name + dirty state (from the restore
+  // snapshot, or defaults). Side-effect: may set currentName.
   const resolveInitialDoc = () => {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -2508,11 +2523,15 @@
         if (typeof d.content === 'string' && d.content.length > 0) {
           currentName = d.name || DEFAULT_NAME;
           currentFormat = detectFormat(currentName);
-          return { doc: d.content, hasDraft: true };
+          // Restore the snapshot's recorded dirty state instead of
+          // assuming dirty. `dirty !== false` keeps the old always-dirty
+          // behavior for legacy snapshots that predate the field
+          // (undefined → treated as dirty).
+          return { doc: d.content, dirty: d.dirty !== false };
         }
       }
     } catch {}
-    return { doc: DEFAULT_DOC, hasDraft: false };
+    return { doc: DEFAULT_DOC, dirty: false };
   };
 
   // ================= Buffer format =================
@@ -2837,7 +2856,7 @@
             currentName   = handle.name || file.name || DEFAULT_NAME;
             setBufferFormat(detectFormat(currentName));
             setDirty(false);
-            clearDraft();
+            persistSnapshot();
             updateTitle();
             render();
           } catch (e) {
@@ -2866,7 +2885,7 @@
       currentName   = file.name || DEFAULT_NAME;
       setBufferFormat(detectFormat(currentName));
       setDirty(false);
-      clearDraft();
+      persistSnapshot();
       updateTitle();
       render();
     } catch (e) {
@@ -2921,7 +2940,7 @@
             currentName   = handle.name || file.name || DEFAULT_NAME;
             setBufferFormat(detectFormat(currentName));
             setDirty(false);
-            clearDraft();
+            persistSnapshot();
             updateTitle();
             render();
           } catch (err) {
@@ -2945,7 +2964,7 @@
           currentName   = file.name || DEFAULT_NAME;
           setBufferFormat(detectFormat(currentName));
           setDirty(false);
-          clearDraft();
+          persistSnapshot();
           updateTitle();
           render();
         } catch (err) {
@@ -2965,7 +2984,7 @@
         await w.write(ensureTrailingNewline(getDoc()));
         await w.close();
         setDirty(false);
-        clearDraft();
+        persistSnapshot();
       } catch (e) {
         console.error(e);
         vimMessage(`E212: Can't open file for writing: ${currentName} (${errMsg(e)})`);
@@ -2973,7 +2992,7 @@
     } else {
       downloadFile(currentName);
       setDirty(false);
-      clearDraft();
+      persistSnapshot();
     }
   };
 
@@ -2990,7 +3009,7 @@
         currentName   = handle.name || currentName;
         setBufferFormat(detectFormat(currentName));
         setDirty(false);
-        clearDraft();
+        persistSnapshot();
         updateTitle();
       } catch (e) {
         if (e.name === 'AbortError') return; // user cancelled the picker
@@ -3004,7 +3023,7 @@
       updateTitle();
       downloadFile(name);
       setDirty(false);
-      clearDraft();
+      persistSnapshot();
     }
   };
 
@@ -3027,7 +3046,7 @@
       currentName   = DEFAULT_NAME;
       setBufferFormat(detectFormat(null));
       setDirty(false);
-      clearDraft();
+      persistSnapshot();
       updateTitle();
       render();
       editorView.focus();
@@ -3044,7 +3063,7 @@
       const file = await currentHandle.getFile();
       setDoc(await readDocumentText(file));
       setDirty(false);
-      clearDraft();
+      persistSnapshot();
       render();
     } catch (e) {
       if (e instanceof FileTooLargeError) { vimMessage(e.message); return; }
@@ -4205,6 +4224,10 @@
   }
 
   window.addEventListener('beforeunload', (e) => {
+    // Flush the latest buffer to the restore snapshot before the page
+    // goes away, so a reload captures edits typed within the autosave
+    // debounce window (and a clean buffer's snapshot stays current).
+    persistSnapshot();
     if (dirty) {
       e.preventDefault();
       e.returnValue = '';
@@ -4220,7 +4243,7 @@
   applyMacModifierLabels();
   applyWidthMode();
 
-  const { doc: initialDoc, hasDraft } = resolveInitialDoc();
+  const { doc: initialDoc, dirty: initialDirty } = resolveInitialDoc();
 
   editorView = new EditorView({
     doc: initialDoc,
@@ -4261,7 +4284,7 @@
     }
   });
 
-  if (hasDraft) setDirty(true);
+  if (initialDirty) setDirty(true);
   updateTitle();
   render();
   // Initial focus respects the saved display mode — the unconditional

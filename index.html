@@ -1,17 +1,22 @@
 <!doctype html>
 <!--
-  Skrivro — standalone single-file version.
+  Skrivro — standalone single-file build.
 
-  FEATURE-FROZEN as of 2026-04-17. This version receives bug fixes
-  for shared-core behavior (CM6, Asciidoctor rendering) but no new
-  features. Tauri is the sole active development target; for config
-  file support, theming, include:: directives, and all future
-  features, see the tauri/ directory.
+  Browser-only build of Skrivro, kept current with the primary Tauri
+  desktop build wherever browser constraints allow. A few desktop
+  features can't cross into a sandboxed browser page and are
+  intentionally absent here — the skrivro.conf config file and
+  theming, AsciiDoc include:: resolution, arbitrary-path :w / :e, and
+  a true application quit — all of which need native filesystem or
+  window access the browser doesn't grant. Everything else (the
+  editor, vim mode, AsciiDoc and GitHub-Flavored Markdown rendering,
+  scroll sync, status bar, and the display / width modes) tracks the
+  desktop build.
 
-  Kept in the repo for environments where installing a binary isn't
-  practical — single HTML file, zero install, runs in any modern
-  browser. Needs network on first load (ES modules from esm.sh),
-  caches thereafter.
+  Kept for environments where installing a binary isn't practical:
+  one HTML file, zero install, runs in any modern browser. Needs
+  network on the first load (ES modules from esm.sh) and caches
+  thereafter.
 -->
 <html lang="en">
 <head>

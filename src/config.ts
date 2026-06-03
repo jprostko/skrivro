@@ -121,6 +121,13 @@ export interface SkrivroConfig {
   // UI language override. Frontend validates and falls through to
   // auto-detect if the value isn't 'en' or 'sv'.
   language?: string;
+
+  // Offline spellcheck language(s): 'off' | 'en' | 'sv' | 'both'.
+  // undefined/null (key unset) and 'off' both mean the feature is
+  // disabled and no dictionary loads. Read at init by the spellcheck
+  // module to decide which bundled Hunspell dictionary to load into
+  // nspell; a HARD off (the runtime toggle is inert when this is off).
+  spellcheckLanguage?: string;
 }
 
 // Rust-side: struct LaunchInfo { initial_file: Option<String>, cwd: String }.

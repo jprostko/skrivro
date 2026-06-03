@@ -68,6 +68,7 @@ import {
   type LaunchInfo, type SessionState, type SkrivroConfig,
 } from './config.js';
 import { createEditor, editorView } from './editor.js';
+import { initSpellcheck, spellcheckRecompute } from './spellcheck/index.js';
 import { prefs } from './prefs.js';
 import { render, scheduleRender, syncPreviewToCaret } from './preview.js';
 import {
@@ -87,7 +88,7 @@ import {
   applyTitlebar, applyGutter, applyStatusBar, applyDisplayMode,
   applyMacModifierLabels, applyUserConfig, applyWidthMode,
   toggleTitlebar, toggleGutter, toggleStatusBar, toggleVim, toggleHelp,
-  toggleFormat, togglePaneFocus, toggleSyntaxHighlighting,
+  toggleFormat, togglePaneFocus, toggleSyntaxHighlighting, toggleSpellcheck,
   cycleWidthMode, toggleTocVisibility, setDisplayMode, refreshStatus,
 } from './ui.js';
 
@@ -181,6 +182,11 @@ window.addEventListener('keydown', (e) => {
     // Toggles TOC visibility (shown ↔ hidden). Session-scoped
     // override; resets to "shown" on every launch.
     e.preventDefault(); toggleTocVisibility();
+  } else if (second && k === 'k') {
+    // Spellcheck toggle (K for checK). Silences / restores the
+    // misspelling squiggles. No-op with a message when spellcheck is
+    // disabled in the config (spellcheck-language = off).
+    e.preventDefault(); toggleSpellcheck();
   }
   // Primary-only shortcuts. Save/Open/New use the primary modifier alone
   // because those are universal cross-platform conventions (Ctrl+S /
@@ -498,4 +504,17 @@ if (prefs.displayMode === 'preview') {
   editorView!.contentDOM.blur();
 } else {
   editorView!.focus();
+}
+
+// Load the spellcheck dictionary(ies) for the configured language, then
+// force the decoration plugin to recompute — the editor was built
+// before the async load could finish, so its first pass had no
+// dictionary to check against. Runs whenever the config enables a
+// language (regardless of the runtime on/off pref) so the dictionaries
+// are ready the instant the user toggles spellcheck on; no-op when
+// spellcheck-language is off/unset.
+if (userConfig.spellcheckLanguage && userConfig.spellcheckLanguage !== 'off') {
+  void initSpellcheck(userConfig.spellcheckLanguage).then(() => {
+    editorView?.dispatch({ effects: spellcheckRecompute.of(null) });
+  });
 }

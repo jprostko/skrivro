@@ -12,13 +12,13 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { basename, dirname, resolve, isAbsolute } from '@tauri-apps/api/path';
 import { invoke } from '@tauri-apps/api/core';
 
-import { Vim, getCM, getDoc, setDoc, editorView, setEditorLanguage } from './editor.js';
+import { Vim, getCM, getDoc, setDoc, editorView, setEditorLanguage, spellcheckConfigured } from './editor.js';
 import { render, syncPreviewToCaret, requestPreviewScrollToTop } from './preview.js';
 import { clearAllRendererCaches } from './renderer.js';
 import { userConfig } from './config.js';
 import { prefs } from './prefs.js';
 import { tr } from './i18n.js';
-import { refreshStatus, applySyntaxHighlighting, setWidthMode, WIDTH_MODES, applyTocVisibility, isTocHidden } from './ui.js';
+import { refreshStatus, applySyntaxHighlighting, applySpellcheck, setWidthMode, WIDTH_MODES, applyTocVisibility, isTocHidden } from './ui.js';
 
 // ================= Constants =================
 
@@ -779,6 +779,30 @@ Vim.defineEx('syntax', 'syn', (_cm: any, params: VimExParams) => {
     applySyntaxHighlighting(true);
   } else if (a === 'off') {
     applySyntaxHighlighting(false);
+  } else {
+    vimMessage(`E474: Invalid argument "${arg}" (expected on or off)`);
+  }
+});
+
+// `:spell on` / `:spell off` — runtime spellcheck toggle, mirroring
+// `:syntax`. Bare `:spell` reports state (and notes when spellcheck is
+// disabled in the config). The on/off forms route through
+// applySpellcheck, which is inert with a message when the config has
+// spellcheck off. Registered with no short alias on purpose — a
+// 2-letter `:sp` would shadow real Vim's split-window command.
+Vim.defineEx('spell', 'spell', (_cm: any, params: VimExParams) => {
+  const { arg } = parseExArgs(params);
+  if (!arg) {
+    vimMessage(spellcheckConfigured()
+      ? `Spellcheck: ${prefs.spellcheck ? 'on' : 'off'}`
+      : 'Spellcheck: off (disabled in config)');
+    return;
+  }
+  const a = arg.toLowerCase();
+  if (a === 'on') {
+    applySpellcheck(true);
+  } else if (a === 'off') {
+    applySpellcheck(false);
   } else {
     vimMessage(`E474: Invalid argument "${arg}" (expected on or off)`);
   }

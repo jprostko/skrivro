@@ -79,6 +79,7 @@ export const STRINGS_SV: Record<string, string> = {
   'Commands': 'Kommandon',
   'Width': 'Bredd',
   'Table of contents': 'Innehållsförteckning',
+  'Spelling': 'Stavning',
 
   // Help dialog — keyboard shortcut descriptions
   'Save': 'Spara',
@@ -95,6 +96,7 @@ export const STRINGS_SV: Record<string, string> = {
   'Toggle status bar': 'Växla statusfält',
   'Cycle format (AsciiDoc / Markdown / Text)': 'Växla format (AsciiDoc / Markdown / Text)',
   'Toggle syntax highlighting': 'Växla syntaxmarkering',
+  'Toggle spellcheck': 'Växla stavningskontroll',
   'Cycle single-pane width (narrow / medium / wide / full)': 'Växla bredd för enskild panel (smal / medium / bred / full)',
   'Toggle table of contents visibility (resets on launch)': 'Växla synlighet för innehållsförteckning (återställs vid start)',
   'Sync preview to cursor': 'Synka förhandsvisning till markör',
@@ -103,6 +105,13 @@ export const STRINGS_SV: Record<string, string> = {
   // surrounding <kbd>Ctrl+Alt+Y</kbd> is literal and untranslated.
   'Show whether editor syntax highlighting is on or off': 'Visa om syntaxmarkering i redigeraren är på eller av',
   'Turn editor syntax highlighting on or off (mirrors Ctrl+Alt+Y)': 'Slå på eller av syntaxmarkering i redigeraren (motsvarar <kbd>Ctrl+Alt+Y</kbd>)',
+
+  // Ex command descriptions for :spell. The literal config-key name
+  // (spellcheck-language) and the filename (skrivro.conf) stay English
+  // — same convention as the allow-external-images entry below.
+  'Show whether spellcheck is on or off (offline; set the language with spellcheck-language in skrivro.conf)':
+    'Visa om stavningskontroll är på eller av (offline; ställ in språket med spellcheck-language i skrivro.conf)',
+  'Turn spellcheck on or off (mirrors Ctrl+Alt+K)': 'Slå på eller av stavningskontroll (motsvarar <kbd>Ctrl+Alt+K</kbd>)',
 
   // Ex command descriptions for :width. Best-effort first pass.
   'Show the current single-pane width mode': 'Visa aktuellt breddläge för enskild panel',

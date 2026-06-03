@@ -26,6 +26,8 @@ import { vim, Vim, getCM } from '@replit/codemirror-vim';
 
 import { prefs } from './prefs.js';
 import { currentBuffer, type Format } from './io.js';
+import { userConfig } from './config.js';
+import { spellcheckExtension } from './spellcheck/index.js';
 
 // Re-exports used by other modules (io for Vim.defineEx, ui for getCM).
 export { Vim, getCM };
@@ -309,6 +311,12 @@ export const vimCompartment = new Compartment();
 // via setEditorLanguage — no rebuild of the full extension set.
 export const languageCompartment = new Compartment();
 
+// Reconfigured by the runtime spellcheck toggle (Ctrl+Alt+K / :spell).
+// Holds the decoration plugin when spellcheck is active, an empty list
+// when off. The actual dictionaries load asynchronously in the
+// spellcheck module — see setSpellcheck / resolveSpellcheckExtension.
+export const spellcheckCompartment = new Compartment();
+
 // Pre-built markdown language extension wrapping the GFM-base
 // parser from @codemirror/lang-markdown. Constructed once at
 // module load rather than per-reconfigure because the extension
@@ -379,6 +387,32 @@ export const setSyntaxHighlighting = (enabled: boolean) => {
   });
 };
 
+// Whether spellcheck is enabled by config — the `spellcheck-language`
+// key must be set to something other than 'off'. When this is false the
+// feature is hard-off: no dictionary loads and the runtime toggle is
+// inert (ui.ts shows a "disabled in config" message instead of flipping).
+export const spellcheckConfigured = (): boolean =>
+  !!userConfig.spellcheckLanguage && userConfig.spellcheckLanguage !== 'off';
+
+// Initial spellcheck-compartment contents: the decoration plugin when
+// config enables it AND the runtime pref is on, else empty. The plugin
+// can be present before any dictionary has loaded — it just decorates
+// nothing until initSpellcheck (called from main.ts) resolves and
+// dispatches spellcheckRecompute.
+const resolveSpellcheckExtension = (): Extension =>
+  spellcheckConfigured() && prefs.spellcheck ? spellcheckExtension : [];
+
+// Runtime spellcheck toggle — reconfigure the compartment to hold the
+// decoration plugin or an empty list. Symmetric with setSyntaxHighlighting:
+// pure-effect, no pref mutation. ui.ts flips prefs.spellcheck and gates
+// on spellcheckConfigured() before calling here.
+export const setSpellcheck = (enabled: boolean) => {
+  if (!editorView) return;
+  editorView.dispatch({
+    effects: spellcheckCompartment.reconfigure(enabled ? spellcheckExtension : []),
+  });
+};
+
 // ================= Editor extensions =================
 
 // Callbacks passed through createEditor → makeExtensions, wired into
@@ -435,6 +469,14 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   // momentary AsciiDoc-highlighting flash before setEditorLanguage
   // could re-dispatch.
   languageCompartment.of(resolveLanguageExtension(currentBuffer.format)),
+
+  // spellcheck — compartment lets the misspelling-decoration plugin be
+  // toggled at runtime (Ctrl+Alt+K / :spell) without rebuilding the
+  // editor. Initial value reflects config + pref; the dictionaries load
+  // asynchronously after createEditor, so a present-but-unfed plugin
+  // simply decorates nothing until initSpellcheck dispatches
+  // spellcheckRecompute.
+  spellcheckCompartment.of(resolveSpellcheckExtension()),
 
   // highlighting
   syntaxHighlighting(defaultHighlightStyle, { fallback: true }),

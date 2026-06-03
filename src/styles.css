@@ -751,6 +751,19 @@ body.mode-split .preview-scroll::after {
   font-variant-ligatures: none;
 }
 
+/* Spellcheck misspelling marker. The offline checker (nspell) flags
+   words and the editor draws CodeMirror mark decorations carrying this
+   class; the squiggle itself is pure CSS, so it survives CodeMirror's
+   DOM re-renders (the reason the browser-native `spellcheck` attribute
+   is unusable here). skip-ink:none keeps the wave continuous under
+   descenders instead of breaking it; the offset lifts it clear of the
+   glyph baseline. */
+.cm-spell-error {
+  text-decoration: underline wavy var(--skr-error);
+  text-decoration-skip-ink: none;
+  text-underline-offset: 0.2em;
+}
+
 /* ---------- Display modes: split / editor-only / preview-only ---------- */
 body.mode-editor .preview-pane      { display: none; }
 body.mode-preview .editor-pane { display: none; }

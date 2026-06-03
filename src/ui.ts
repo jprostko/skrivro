@@ -9,8 +9,8 @@
 import { tr } from './i18n.js';
 import { prefs, savePrefs } from './prefs.js';
 import { isMac } from './i18n.js';
-import { Vim, editorView, setVimMode, setSyntaxHighlighting, getCM } from './editor.js';
-import { currentBuffer, setBufferFormat, type Format } from './io.js';
+import { Vim, editorView, setVimMode, setSyntaxHighlighting, setSpellcheck, spellcheckConfigured, getCM } from './editor.js';
+import { currentBuffer, setBufferFormat, vimMessage, type Format } from './io.js';
 import { userConfig, type SkrivroConfig } from './config.js';
 
 // ================= DOM refs =================
@@ -464,6 +464,38 @@ export const applySyntaxHighlighting = (enabled: boolean) => {
   prefs.syntaxHighlighting = enabled;
   savePrefs();
   setSyntaxHighlighting(enabled);
+};
+
+// Message shown when the runtime spellcheck toggle is used while the
+// config has spellcheck off. The toggle is inert in that state (no
+// dictionary is loaded), so it tells the user where to enable it
+// rather than appearing to do nothing.
+const SPELLCHECK_OFF_MSG = 'Spellcheck is disabled in config (spellcheck-language = off)';
+
+// Flip editor spellcheck on/off and persist. Same shape as the syntax-
+// highlighting toggle, plus a config gate: when spellcheck-language is
+// off/unset there is no dictionary loaded, so the toggle is inert and
+// instead surfaces why. Called by Ctrl+Alt+K and the :spell Ex command.
+export const toggleSpellcheck = () => {
+  if (!spellcheckConfigured()) {
+    vimMessage(SPELLCHECK_OFF_MSG);
+    return;
+  }
+  prefs.spellcheck = !prefs.spellcheck;
+  savePrefs();
+  setSpellcheck(prefs.spellcheck);
+};
+// Explicit setter for `:spell on` / `:spell off`. Same config gate;
+// no-op when already in the requested state.
+export const applySpellcheck = (enabled: boolean) => {
+  if (!spellcheckConfigured()) {
+    vimMessage(SPELLCHECK_OFF_MSG);
+    return;
+  }
+  if (prefs.spellcheck === enabled) return;
+  prefs.spellcheck = enabled;
+  savePrefs();
+  setSpellcheck(enabled);
 };
 
 // ================= Width mode =================

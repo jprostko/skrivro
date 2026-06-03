@@ -195,6 +195,16 @@ struct SkrivroConfig {
     // Swedish is currently the only non-English locale with a
     // translation table.
     language: Option<String>,
+    // Offline spellcheck language(s) — "off" (default if unset: feature
+    // disabled, no dictionaries loaded), "en" (US English), "sv"
+    // (Swedish), or "both" (en + sv). When not "off", the frontend
+    // loads the matching bundled Hunspell dictionary into nspell and
+    // underlines misspellings as CodeMirror decorations. "off" is a
+    // HARD off: the runtime Ctrl+Alt+K / :spell toggle is inert because
+    // there is nothing to show. Unknown values are rejected with a
+    // debug warning and the field stays None (treated as "off").
+    // English is US-only by design — no en-GB/CA/AU variants.
+    spellcheck_language: Option<String>,
     // Theme colors resolved by load_theme() in get_config(). When the
     // user's `theme` key matches a non-default theme (i.e., anything
     // other than "catppuccin-mocha"), the Rust side loads the theme
@@ -551,6 +561,25 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
                         #[cfg(debug_assertions)]
                         eprintln!(
                             "[skrivro config] line {}: default-format value '{}' not recognized — accepted: asciidoc, markdown, text. Skipping.",
+                            idx + 1,
+                            val
+                        );
+                    }
+                }
+            }
+            "spellcheck-language" => {
+                // Accepted: off, en, sv, both. "off" disables the feature
+                // entirely (no dictionaries load). Unknown values are
+                // rejected with a debug warning; the field stays None,
+                // which the frontend treats the same as "off".
+                match val.to_lowercase().as_str() {
+                    "off" | "en" | "sv" | "both" => {
+                        cfg.spellcheck_language = Some(val.to_lowercase())
+                    }
+                    _ => {
+                        #[cfg(debug_assertions)]
+                        eprintln!(
+                            "[skrivro config] line {}: spellcheck-language value '{}' not recognized — accepted: off, en, sv, both. Skipping.",
                             idx + 1,
                             val
                         );

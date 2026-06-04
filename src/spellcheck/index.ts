@@ -138,8 +138,13 @@ const isMisspelled = (word: string): boolean => {
 const computeDecorations = (view: EditorView): DecorationSet => {
   if (spellers.length === 0) return Decoration.none;
   const builder = new RangeSetBuilder<Decoration>();
-  const { doc } = view.state;
+  const { doc, selection } = view.state;
   const docLen = doc.length;
+  // The word the caret is sitting in (or just after) is being actively
+  // typed/edited — don't flag it mid-keystroke, the way LibreOffice et al.
+  // hold off until the word is finished. Only applies to a bare caret; a
+  // non-empty selection isn't "typing", so -1 disables the skip there.
+  const caret = selection.main.empty ? selection.main.head : -1;
   for (const { from, to } of view.visibleRanges) {
     const text = doc.sliceString(from, to);
     wordRe.lastIndex = 0;
@@ -149,6 +154,10 @@ const computeDecorations = (view: EditorView): DecorationSet => {
       if (!word || word.length < 2) continue;
       const start = from + m.index;
       const end = start + word.length;
+      // Skip the word currently under the caret (caret inside it or at
+      // its trailing edge) — it's being typed. Typing any boundary moves
+      // the caret past `end`, so the word gets checked on the next update.
+      if (caret > start && caret <= end) continue;
       // Skip tokens that sit against a digit — they're part of an
       // identifier ("h1", "utf8", "v2"), not prose, and flagging their
       // letter-run produces false-positive squiggle noise.
@@ -163,6 +172,8 @@ const computeDecorations = (view: EditorView): DecorationSet => {
 
 // View plugin holding the live decoration set. Recomputes on document
 // change, viewport change (scroll / resize brings new lines into view),
+// selection change (so a word left un-flagged because the caret was in
+// it gets re-checked the moment the caret leaves, even with no edit),
 // and the spellcheckRecompute effect (fired once the async dictionary
 // load completes).
 const spellcheckPlugin = ViewPlugin.fromClass(
@@ -175,6 +186,7 @@ const spellcheckPlugin = ViewPlugin.fromClass(
       if (
         update.docChanged ||
         update.viewportChanged ||
+        update.selectionSet ||
         update.transactions.some((tr) =>
           tr.effects.some((e) => e.is(spellcheckRecompute)),
         )

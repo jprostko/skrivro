@@ -43,8 +43,8 @@ let applyResult: ((reqId: number, ranges: MisspelledRange[]) => void) | null = n
 
 // Lazily construct the worker. `new URL('./spellcheck-worker.ts',
 // import.meta.url)` is the Vite worker pattern — recognized statically
-// and emitted as its own bundle chunk (the dictionaries ride along as
-// the worker's `?raw` chunks).
+// and emitted as its own bundle chunk (the dictionaries are separate
+// `?url` assets the worker fetches, so they no longer bloat this chunk).
 const getWorker = (): Worker => {
   if (worker) return worker;
   const w = new Worker(new URL('./spellcheck-worker.ts', import.meta.url), {

@@ -12,10 +12,14 @@
 // that has to stay responsive), and it's the async boundary a future
 // Hunspell-via-WASM engine would want.
 //
-// Dictionaries are vendored under ./dict and imported with Vite `?raw`
-// (the wooorm packages block deep .aff/.dic imports through their
-// `exports` field), dynamically so Vite code-splits each language into
-// its own chunk and only the configured one is fetched.
+// Dictionaries are vendored under ./dict and emitted as standalone
+// assets via Vite `?url`, then fetched at runtime (the wooorm packages
+// block deep .aff/.dic imports through their `exports` field, so the
+// files are vendored locally). Each language is its own asset and only
+// the configured one is fetched, so an `en`-only build never loads the
+// 2.3 MB Swedish dictionary. Fully offline: the assets ship inside the
+// app bundle and `fetch` reads them through the app's own asset
+// protocol — no network.
 
 import nspell from 'nspell';
 
@@ -75,11 +79,17 @@ let spellers: NSpell[] = [];
 // repeat lookups makes them O(1).
 const wordCache = new Map<string, boolean>();
 
+// `?url` gives the bundled asset's URL; fetch reads its text. Same-origin
+// (the worker shares the app's origin), so this resolves through the
+// app's asset protocol with no network access.
+const fetchText = (url: string): Promise<string> => fetch(url).then((r) => r.text());
+
 const loadEn = async (): Promise<NSpell> => {
-  const [aff, dic] = await Promise.all([
-    import('./dict/en-US.aff?raw').then((m) => m.default),
-    import('./dict/en-US.dic?raw').then((m) => m.default),
+  const [affUrl, dicUrl] = await Promise.all([
+    import('./dict/en-US.aff?url').then((m) => m.default),
+    import('./dict/en-US.dic?url').then((m) => m.default),
   ]);
+  const [aff, dic] = await Promise.all([fetchText(affUrl), fetchText(dicUrl)]);
   return nspell(aff, dic);
 };
 
@@ -110,10 +120,11 @@ const stripCompounding = (aff: string): string =>
     .join('\n');
 
 const loadSv = async (): Promise<NSpell> => {
-  const [aff, dic] = await Promise.all([
-    import('./dict/sv.aff?raw').then((m) => m.default),
-    import('./dict/sv.dic?raw').then((m) => m.default),
+  const [affUrl, dicUrl] = await Promise.all([
+    import('./dict/sv.aff?url').then((m) => m.default),
+    import('./dict/sv.dic?url').then((m) => m.default),
   ]);
+  const [aff, dic] = await Promise.all([fetchText(affUrl), fetchText(dicUrl)]);
   return nspell(stripCompounding(aff), dic);
 };
 

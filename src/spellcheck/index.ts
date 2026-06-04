@@ -1,187 +1,147 @@
-// ================= Offline spellcheck =================
+// ================= Offline spellcheck (main-thread client) =================
 //
 // JS-integrated spellcheck — NOT the browser's native `spellcheck`
-// attribute. Native spellcheck is unreliable inside CodeMirror (the
-// editor's constant DOM re-render wipes the squiggles in Chromium /
-// WebKit, which is the whole webview family Tauri ships on), so we do
-// it ourselves: `nspell` (a Hunspell-compatible checker) loads bundled
-// dictionaries and tells us which words are misspelled, and we draw the
-// squiggles as CodeMirror mark decorations. This is deterministic
-// across every webview because it never touches the browser's speller.
+// attribute, which is unreliable inside CodeMirror (the editor's
+// constant DOM re-render wipes the squiggles in the Chromium / WebKit
+// webview family Tauri ships on). Instead the nspell instances and all
+// checking live in spellcheck-worker.ts, off the UI thread; this module
+// is the main-thread client. It spawns the worker, posts the editor's
+// visible text whenever it changes, and renders the misspelled ranges
+// the worker returns as CodeMirror mark decorations.
 //
-// Dictionaries are vendored under ./dict (sourced from the wooorm
-// `dictionary-en` (US) and `dictionary-sv` packages — their `exports`
-// field blocks importing the raw .aff/.dic from node_modules, so we
-// vendor and import the local copies with Vite `?raw`). They're loaded
-// via dynamic import so Vite code-splits each language into its own
-// chunk and only the configured one is fetched at runtime.
+// Why the worker: building nspell parses the 2.3 MB Swedish dictionary
+// in one synchronous shot — second-scale CPU that shouldn't sit on the
+// UI thread — and it's the async boundary a future Hunspell-via-WASM
+// engine would want. See spellcheck-worker.ts for the engine side.
+//
+// Single-editor assumption: the app has one editor window, so the
+// worker and its result hook are module-level singletons.
 
 import {
   ViewPlugin,
   Decoration,
+  EditorView,
   type DecorationSet,
-  type EditorView,
   type ViewUpdate,
 } from '@codemirror/view';
-import { RangeSetBuilder, StateEffect, type Extension } from '@codemirror/state';
-import nspell from 'nspell';
+import {
+  RangeSetBuilder,
+  StateEffect,
+  StateField,
+  type Extension,
+} from '@codemirror/state';
+import type { SpellResponse, MisspelledRange } from './spellcheck-worker.js';
 
-type NSpell = ReturnType<typeof nspell>;
+// ===== Worker singleton =====
 
-// Loaded checkers — one for 'en' or 'sv', two for 'both'. A word is
-// misspelled only if NONE of them accept it (so 'both' passes a word
-// that either English or Swedish knows — right for mixed-language docs).
-let spellers: NSpell[] = [];
+let worker: Worker | null = null;
+let workerReady = false;
+let readyResolvers: Array<() => void> = [];
+// The active plugin instance installs its result hook here; the worker's
+// message listener routes `result` messages to it. One editor → one hook.
+let applyResult: ((reqId: number, ranges: MisspelledRange[]) => void) | null = null;
 
-// Per-word correctness memo. Words recur heavily across a viewport and
-// across keystrokes; nspell lookups are cheap but re-tokenizing and
-// re-checking the whole viewport on every update adds up, so caching
-// makes repeat checks O(1). Cleared whenever the dictionary set changes.
-const wordCache = new Map<string, boolean>();
+// Lazily construct the worker. `new URL('./spellcheck-worker.ts',
+// import.meta.url)` is the Vite worker pattern — recognized statically
+// and emitted as its own bundle chunk (the dictionaries ride along as
+// the worker's `?raw` chunks).
+const getWorker = (): Worker => {
+  if (worker) return worker;
+  const w = new Worker(new URL('./spellcheck-worker.ts', import.meta.url), {
+    type: 'module',
+  });
+  w.addEventListener('message', (e: MessageEvent<SpellResponse>) => {
+    const msg = e.data;
+    if (msg.type === 'ready') {
+      workerReady = true;
+      const resolvers = readyResolvers;
+      readyResolvers = [];
+      resolvers.forEach((resolve) => resolve());
+    } else if (msg.type === 'result') {
+      applyResult?.(msg.reqId, msg.ranges);
+    }
+  });
+  w.addEventListener('error', (e: ErrorEvent) => {
+    console.error('spellcheck worker error:', e.message);
+  });
+  worker = w;
+  return w;
+};
 
-// Dispatched after the async dictionary load finishes, to force the
-// view plugin to recompute decorations — the dictionaries weren't
-// ready when the plugin first ran, so the initial pass found nothing.
+// Build (or rebuild) the dictionaries in the worker for `lang`; resolves
+// once the worker signals it's ready. main.ts calls this at launch when
+// spellcheck-language is configured, then dispatches spellcheckRecompute
+// to kick the first check. 'off' / undefined → no-op (no worker spawned).
+export const initSpellcheck = (lang: string | undefined): Promise<void> => {
+  if (!lang || lang === 'off') return Promise.resolve();
+  const w = getWorker();
+  workerReady = false;
+  const ready = new Promise<void>((resolve) => readyResolvers.push(resolve));
+  w.postMessage({ type: 'init', lang });
+  return ready;
+};
+
+// Kick a re-check — dispatched after the dictionaries finish loading
+// (the plugin's first request runs before the worker is ready and
+// no-ops). The active plugin posts the current viewport on seeing it.
 export const spellcheckRecompute = StateEffect.define<null>();
 
-// Load the bundled dictionary(ies) for the configured language and
-// build the nspell instance(s). 'off' / undefined / unknown → no-op
-// (spellers stays empty, so the plugin decorates nothing). Idempotent:
-// safe to call again on a config change.
-export const initSpellcheck = async (lang: string | undefined): Promise<void> => {
-  wordCache.clear();
-  const loaders: Array<Promise<NSpell>> = [];
-  if (lang === 'en' || lang === 'both') loaders.push(loadEn());
-  if (lang === 'sv' || lang === 'both') loaders.push(loadSv());
-  spellers = await Promise.all(loaders);
-};
+// Carries a fresh set of misspelled ranges from a worker reply into
+// editor state; the decoration field rebuilds from it.
+const setSpellRanges = StateEffect.define<MisspelledRange[]>();
 
-const loadEn = async (): Promise<NSpell> => {
-  const [aff, dic] = await Promise.all([
-    import('./dict/en-US.aff?raw').then((m) => m.default),
-    import('./dict/en-US.dic?raw').then((m) => m.default),
-  ]);
-  return nspell(aff, dic);
-};
-
-// nspell builds Hunspell's COMPOUNDRULE regexes but implements NONE of
-// the CHECKCOMPOUND* guard rules that constrain them. The Swedish
-// dictionary leans hard on compounding (COMPOUNDMIN 1 over single-
-// character stems plus a `0*`-style COMPOUNDRULE), so without the
-// guards nspell decomposes and accepts essentially ANY string — every
-// word validates and nothing is ever flagged. We strip the compound
-// directives before handing the .aff to nspell: base words and the many
-// lexicalized compounds already in the 153k-entry dictionary still
-// validate and garbage is correctly rejected; the cost is that novel /
-// productive compounds not individually listed slip through unflagged.
-// ONLYINCOMPOUND is stripped too. This dictionary applies that flag to
-// ~2,700 headwords (1.8%), and the set is noisy: it tags everyday
-// standalone words like "fick" (past of få) and "hoppar" (present of
-// hoppa), not just genuine bound stems. nspell honors ONLYINCOMPOUND
-// (so does real Hunspell), so keeping it squiggles those common words —
-// the worst failure mode for a checker. Dropping it lets the genuine
-// bound stems ("abborr-", "adoptiv-") validate standalone too, but
-// that's a near-invisible false negative (nobody types those fragments
-// alone) and garbage rejection is unaffected (that comes from
-// COMPOUNDRULE). English ships with no compound directives, so loadEn
-// needs none of this.
-//
-// (When spellcheck moves to a Web Worker, a real Hunspell-via-WASM
-// engine — which does compounding correctly — becomes the natural
-// upgrade. Note it would still need this ONLYINCOMPOUND override: the
-// flag's mis-tagging is in the dictionary data, not in nspell.)
-const SV_COMPOUND_DIRECTIVE =
-  /^(COMPOUNDMIN|COMPOUNDWORDMAX|COMPOUNDRULE|COMPOUNDFLAG|COMPOUNDBEGIN|COMPOUNDMIDDLE|COMPOUNDEND|COMPOUNDPERMITFLAG|COMPOUNDFORBIDFLAG|COMPOUNDROOT|COMPOUNDSYLLABLE|ONLYINCOMPOUND|CHECKCOMPOUND)/;
-
-const stripCompounding = (aff: string): string =>
-  aff
-    .split('\n')
-    .filter((line) => !SV_COMPOUND_DIRECTIVE.test(line))
-    .join('\n');
-
-const loadSv = async (): Promise<NSpell> => {
-  const [aff, dic] = await Promise.all([
-    import('./dict/sv.aff?raw').then((m) => m.default),
-    import('./dict/sv.dic?raw').then((m) => m.default),
-  ]);
-  return nspell(stripCompounding(aff), dic);
-};
-
-// True once at least one dictionary has finished loading.
-export const spellcheckReady = (): boolean => spellers.length > 0;
-
-// One mark decoration, reused for every misspelling. The squiggle is
-// pure CSS (.cm-spell-error in styles.css).
+// One mark decoration, reused for every misspelling. The squiggle itself
+// is pure CSS (.cm-spell-error in styles.css), so it survives
+// CodeMirror's DOM re-renders.
 const misspelledMark = Decoration.mark({ class: 'cm-spell-error' });
 
-// Word-ish token: a run of Unicode letters with optional internal
-// apostrophes (covers "don't", "we're", and accented letters like
-// "café" / "naïve" / Swedish "förälder"). Hyphens are NOT included, so
-// "well-known" is checked as "well" and "known" separately — matching
-// how Hunspell treats hyphen-joined compounds.
-const wordRe = /\p{L}[\p{L}'’]*/gu;
-
-const isMisspelled = (word: string): boolean => {
-  const cached = wordCache.get(word);
-  if (cached !== undefined) return !cached;
-  // Correct if ANY loaded speller accepts it.
-  const ok = spellers.some((s) => s.correct(word));
-  wordCache.set(word, ok);
-  return !ok;
-};
-
-// Build the decoration set for the editor's currently-visible ranges
-// only — checking the whole document on every keystroke would not
-// scale, and off-screen squiggles aren't visible anyway. RangeSetBuilder
-// requires ranges added in ascending order; wordRe yields matches left-
-// to-right and visibleRanges are already ordered, so the order holds.
-const computeDecorations = (view: EditorView): DecorationSet => {
-  if (spellers.length === 0) return Decoration.none;
+const buildDeco = (ranges: MisspelledRange[], docLen: number): DecorationSet => {
   const builder = new RangeSetBuilder<Decoration>();
-  const { doc, selection } = view.state;
-  const docLen = doc.length;
-  // The word the caret is sitting in (or just after) is being actively
-  // typed/edited — don't flag it mid-keystroke, the way LibreOffice et al.
-  // hold off until the word is finished. Only applies to a bare caret; a
-  // non-empty selection isn't "typing", so -1 disables the skip there.
-  const caret = selection.main.empty ? selection.main.head : -1;
-  for (const { from, to } of view.visibleRanges) {
-    const text = doc.sliceString(from, to);
-    wordRe.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = wordRe.exec(text)) !== null) {
-      const word = m[0];
-      if (!word || word.length < 2) continue;
-      const start = from + m.index;
-      const end = start + word.length;
-      // Skip the word currently under the caret (caret inside it or at
-      // its trailing edge) — it's being typed. Typing any boundary moves
-      // the caret past `end`, so the word gets checked on the next update.
-      if (caret > start && caret <= end) continue;
-      // Skip tokens that sit against a digit — they're part of an
-      // identifier ("h1", "utf8", "v2"), not prose, and flagging their
-      // letter-run produces false-positive squiggle noise.
-      const before = start > 0 ? doc.sliceString(start - 1, start) : '';
-      const after = end < docLen ? doc.sliceString(end, end + 1) : '';
-      if (/\d/.test(before) || /\d/.test(after)) continue;
-      if (isMisspelled(word)) builder.add(start, end, misspelledMark);
+  for (const r of ranges) {
+    // Guard against a range from a now-stale check landing out of bounds
+    // (belt-and-suspenders; reqId staleness already drops mismatched docs).
+    if (r.from >= 0 && r.to <= docLen && r.from < r.to) {
+      builder.add(r.from, r.to, misspelledMark);
     }
   }
   return builder.finish();
 };
 
-// View plugin holding the live decoration set. Recomputes on document
-// change, viewport change (scroll / resize brings new lines into view),
-// selection change (so a word left un-flagged because the caret was in
-// it gets re-checked the moment the caret leaves, even with no edit),
-// and the spellcheckRecompute effect (fired once the async dictionary
-// load completes).
+// Holds the squiggle decorations. Maps them through edits so they shift
+// with typing until the next worker result refreshes them, and rebuilds
+// on a setSpellRanges effect.
+const spellDecoField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    deco = deco.map(tr.changes);
+    for (const e of tr.effects) {
+      if (e.is(setSpellRanges)) deco = buildDeco(e.value, tr.newDoc.length);
+    }
+    return deco;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+// Posts the visible text to the worker on edits / scrolls / cursor moves,
+// and applies whichever reply is most recent. Older replies are dropped
+// by reqId: a result landing after a newer change is ignored because a
+// newer request is already in flight for the current state, so the
+// applied ranges always match the current document.
 const spellcheckPlugin = ViewPlugin.fromClass(
   class {
-    decorations: DecorationSet;
-    constructor(view: EditorView) {
-      this.decorations = computeDecorations(view);
+    private reqId = 0;
+    private destroyed = false;
+    private readonly hook: (reqId: number, ranges: MisspelledRange[]) => void;
+
+    constructor(private readonly view: EditorView) {
+      this.hook = (reqId, ranges) => {
+        if (this.destroyed || reqId !== this.reqId) return;
+        this.view.dispatch({ effects: setSpellRanges.of(ranges) });
+      };
+      applyResult = this.hook;
+      this.request();
     }
+
     update(update: ViewUpdate) {
       if (
         update.docChanged ||
@@ -191,14 +151,34 @@ const spellcheckPlugin = ViewPlugin.fromClass(
           tr.effects.some((e) => e.is(spellcheckRecompute)),
         )
       ) {
-        this.decorations = computeDecorations(update.view);
+        this.request();
       }
     }
+
+    private request() {
+      if (!workerReady || !worker) return; // dictionaries not built yet
+      const { state } = this.view;
+      const caret = state.selection.main.empty ? state.selection.main.head : -1;
+      const pieces = this.view.visibleRanges.map(({ from, to }) => ({
+        from,
+        text: state.doc.sliceString(from, to),
+      }));
+      this.reqId += 1;
+      worker.postMessage({ type: 'check', reqId: this.reqId, pieces, caret });
+    }
+
+    destroy() {
+      this.destroyed = true;
+      // Only relinquish the hook if it's still ours — a compartment
+      // reconfigure may have already installed a new instance's hook.
+      if (applyResult === this.hook) applyResult = null;
+    }
   },
-  { decorations: (v) => v.decorations },
 );
 
-// The extension placed in editor.ts's spellcheck compartment when the
-// feature is active. Empty (`[]`) when off — the compartment swaps
-// between this and [] for the runtime toggle.
-export const spellcheckExtension: Extension = [spellcheckPlugin];
+// Field + plugin. editor.ts places this in the spellcheck compartment
+// when the feature is active; swapping the compartment to [] removes
+// both — the squiggles vanish and the plugin's destroy() unhooks from
+// the worker (which stays alive, dictionaries intact, for the next
+// toggle-on).
+export const spellcheckExtension: Extension = [spellDecoField, spellcheckPlugin];

@@ -74,15 +74,24 @@ const loadEn = async (): Promise<NSpell> => {
 // lexicalized compounds already in the 153k-entry dictionary still
 // validate and garbage is correctly rejected; the cost is that novel /
 // productive compounds not individually listed slip through unflagged.
-// ONLYINCOMPOUND is deliberately KEPT so bound compounding stems (e.g.
-// "abborr-", "adoptiv-") stay rejected as standalone words. English
-// ships with no compound directives, so loadEn needs none of this.
+// ONLYINCOMPOUND is stripped too. This dictionary applies that flag to
+// ~2,700 headwords (1.8%), and the set is noisy: it tags everyday
+// standalone words like "fick" (past of få) and "hoppar" (present of
+// hoppa), not just genuine bound stems. nspell honors ONLYINCOMPOUND
+// (so does real Hunspell), so keeping it squiggles those common words —
+// the worst failure mode for a checker. Dropping it lets the genuine
+// bound stems ("abborr-", "adoptiv-") validate standalone too, but
+// that's a near-invisible false negative (nobody types those fragments
+// alone) and garbage rejection is unaffected (that comes from
+// COMPOUNDRULE). English ships with no compound directives, so loadEn
+// needs none of this.
 //
 // (When spellcheck moves to a Web Worker, a real Hunspell-via-WASM
 // engine — which does compounding correctly — becomes the natural
-// upgrade, at which point this strip can be dropped.)
+// upgrade. Note it would still need this ONLYINCOMPOUND override: the
+// flag's mis-tagging is in the dictionary data, not in nspell.)
 const SV_COMPOUND_DIRECTIVE =
-  /^(COMPOUNDMIN|COMPOUNDWORDMAX|COMPOUNDRULE|COMPOUNDFLAG|COMPOUNDBEGIN|COMPOUNDMIDDLE|COMPOUNDEND|COMPOUNDPERMITFLAG|COMPOUNDFORBIDFLAG|COMPOUNDROOT|COMPOUNDSYLLABLE|CHECKCOMPOUND)/;
+  /^(COMPOUNDMIN|COMPOUNDWORDMAX|COMPOUNDRULE|COMPOUNDFLAG|COMPOUNDBEGIN|COMPOUNDMIDDLE|COMPOUNDEND|COMPOUNDPERMITFLAG|COMPOUNDFORBIDFLAG|COMPOUNDROOT|COMPOUNDSYLLABLE|ONLYINCOMPOUND|CHECKCOMPOUND)/;
 
 const stripCompounding = (aff: string): string =>
   aff

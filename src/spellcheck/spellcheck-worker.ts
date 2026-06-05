@@ -48,7 +48,13 @@ export interface CheckRequest {
   caret: number;
 }
 
-export type SpellRequest = InitRequest | CheckRequest;
+export interface SetPersonalRequest {
+  type: 'setPersonal';
+  /** The full custom-word list; replaces the worker's set wholesale. */
+  words: string[];
+}
+
+export type SpellRequest = InitRequest | CheckRequest | SetPersonalRequest;
 
 export interface ReadyResponse {
   type: 'ready';
@@ -73,6 +79,11 @@ export type SpellResponse = ReadyResponse | ResultResponse;
 // misspelled only if NONE of them accept it (so 'both' passes a word
 // either English or Swedish knows — right for mixed-language docs).
 let spellers: NSpell[] = [];
+
+// Custom words (the user's personal dictionary), lowercased for
+// case-insensitive matching. Replaced wholesale by a `setPersonal`
+// message; a word in here is never flagged, in any configured language.
+let personalWords = new Set<string>();
 
 // Per-word correctness memo, cleared whenever the dictionary set changes.
 // Words recur heavily across a viewport and across keystrokes, so caching
@@ -147,8 +158,9 @@ const wordRe = /\p{L}[\p{L}'’]*/gu;
 const isMisspelled = (word: string): boolean => {
   const cached = wordCache.get(word);
   if (cached !== undefined) return !cached;
-  // Correct if ANY loaded speller accepts it.
-  const ok = spellers.some((s) => s.correct(word));
+  // Correct if it's a custom word, or ANY loaded speller accepts it.
+  const ok =
+    personalWords.has(word.toLowerCase()) || spellers.some((s) => s.correct(word));
   wordCache.set(word, ok);
   return !ok;
 };
@@ -205,5 +217,11 @@ self.addEventListener('message', (e: MessageEvent<SpellRequest>) => {
       ranges: check(msg.pieces, msg.caret),
     };
     self.postMessage(result);
+  } else if (msg.type === 'setPersonal') {
+    // Replace the custom-word set (lowercased for case-insensitive
+    // matching) and clear the memo so previously-cached words get
+    // re-judged against the new set on the next check.
+    personalWords = new Set(msg.words.map((w) => w.toLowerCase()));
+    wordCache.clear();
   }
 });

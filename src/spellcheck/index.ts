@@ -40,6 +40,10 @@ let readyResolvers: Array<() => void> = [];
 // The active plugin instance installs its result hook here; the worker's
 // message listener routes `result` messages to it. One editor → one hook.
 let applyResult: ((reqId: number, ranges: MisspelledRange[]) => void) | null = null;
+// The editor view spellcheck is currently attached to, so a re-check can
+// be dispatched from outside the update cycle (e.g. after the custom-word
+// set changes). One editor → one active view.
+let activeView: EditorView | null = null;
 
 // Lazily construct the worker. `new URL('./spellcheck-worker.ts',
 // import.meta.url)` is the Vite worker pattern — recognized statically
@@ -85,6 +89,15 @@ export const initSpellcheck = (lang: string | undefined): Promise<void> => {
 // (the plugin's first request runs before the worker is ready and
 // no-ops). The active plugin posts the current viewport on seeing it.
 export const spellcheckRecompute = StateEffect.define<null>();
+
+// Push the custom-word list into the worker and refresh the squiggles
+// against it. Called by the custom-words module on load and on every
+// add/remove. No-op when the worker hasn't been created (spellcheck off).
+export const setPersonalWords = (words: string[]): void => {
+  if (!worker) return;
+  worker.postMessage({ type: 'setPersonal', words });
+  activeView?.dispatch({ effects: spellcheckRecompute.of(null) });
+};
 
 // Carries a fresh set of misspelled ranges from a worker reply into
 // editor state; the decoration field rebuilds from it.
@@ -139,6 +152,7 @@ const spellcheckPlugin = ViewPlugin.fromClass(
         this.view.dispatch({ effects: setSpellRanges.of(ranges) });
       };
       applyResult = this.hook;
+      activeView = view;
       this.request();
     }
 
@@ -169,9 +183,10 @@ const spellcheckPlugin = ViewPlugin.fromClass(
 
     destroy() {
       this.destroyed = true;
-      // Only relinquish the hook if it's still ours — a compartment
-      // reconfigure may have already installed a new instance's hook.
+      // Only relinquish the hook/view if they're still ours — a
+      // compartment reconfigure may have already installed a new one's.
       if (applyResult === this.hook) applyResult = null;
+      if (activeView === this.view) activeView = null;
     }
   },
 );

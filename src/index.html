@@ -251,9 +251,13 @@
     <h3>Spelling</h3>
     <div class="help-grid">
       <div class="help-key"><kbd>:spell</kbd></div>
-      <div class="help-desc">Show whether spellcheck is on or off (offline; set the language with <kbd>spellcheck-language</kbd> in <kbd>skrivro.conf</kbd>)</div>
+      <div class="help-desc">Show whether spellcheck is on or off (offline, set the language with <kbd>spellcheck-language</kbd> in <kbd>skrivro.conf</kbd>)</div>
       <div class="help-key"><kbd>:spell on</kbd> <kbd>:spell off</kbd></div>
       <div class="help-desc">Turn spellcheck on or off (mirrors <kbd>Ctrl+Alt+K</kbd>)</div>
+      <div class="help-key"><kbd>:spellgood</kbd></div>
+      <div class="help-desc">Add the word under the cursor to your custom dictionary (vim <kbd>zg</kbd>)</div>
+      <div class="help-key"><kbd>:spellundo</kbd></div>
+      <div class="help-desc">Remove the word under the cursor from your custom dictionary (vim <kbd>zug</kbd>)</div>
     </div>
 
     <h3>Width</h3>
@@ -300,6 +304,10 @@
       <div class="help-desc">Save if dirty, quit (same as :x)</div>
       <div class="help-key"><kbd>ZQ</kbd></div>
       <div class="help-desc">Force quit, discard changes (same as :q!)</div>
+      <div class="help-key"><kbd>zg</kbd></div>
+      <div class="help-desc">Add the word under the cursor to your custom dictionary (same as :spellgood)</div>
+      <div class="help-key"><kbd>zug</kbd></div>
+      <div class="help-desc">Remove the word under the cursor from your custom dictionary (same as :spellundo)</div>
     </div>
   </dialog>
 

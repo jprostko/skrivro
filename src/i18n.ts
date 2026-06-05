@@ -109,9 +109,13 @@ export const STRINGS_SV: Record<string, string> = {
   // Ex command descriptions for :spell. The literal config-key name
   // (spellcheck-language) and the filename (skrivro.conf) stay English
   // — same convention as the allow-external-images entry below.
-  'Show whether spellcheck is on or off (offline; set the language with spellcheck-language in skrivro.conf)':
-    'Visa om stavningskontroll är på eller av (offline; ställ in språket med spellcheck-language i skrivro.conf)',
+  'Show whether spellcheck is on or off (offline, set the language with spellcheck-language in skrivro.conf)':
+    'Visa om stavningskontroll är på eller av (offline, ställ in språket med spellcheck-language i skrivro.conf)',
   'Turn spellcheck on or off (mirrors Ctrl+Alt+K)': 'Slå på eller av stavningskontroll (motsvarar <kbd>Ctrl+Alt+K</kbd>)',
+  'Add the word under the cursor to your custom dictionary (vim zg)':
+    'Lägg till ordet under markören i din egen ordlista (vim <kbd>zg</kbd>)',
+  'Remove the word under the cursor from your custom dictionary (vim zug)':
+    'Ta bort ordet under markören från din egen ordlista (vim <kbd>zug</kbd>)',
 
   // Ex command descriptions for :width. Best-effort first pass.
   'Show the current single-pane width mode': 'Visa aktuellt breddläge för enskild panel',
@@ -166,6 +170,10 @@ export const STRINGS_SV: Record<string, string> = {
   'Snap preview to cursor (same as :syncpreview)': 'Snäpp förhandsvisning till markör (samma som :syncpreview)',
   'Save if dirty, quit (same as :x)': 'Spara om osparad, avsluta (samma som :x)',
   'Force quit, discard changes (same as :q!)': 'Tvinga avsluta, kasta ändringar (samma som :q!)',
+  'Add the word under the cursor to your custom dictionary (same as :spellgood)':
+    'Lägg till ordet under markören i din egen ordlista (samma som :spellgood)',
+  'Remove the word under the cursor from your custom dictionary (same as :spellundo)':
+    'Ta bort ordet under markören från din egen ordlista (samma som :spellundo)',
 
   // Preview pane — external-image gate placeholder. The literal
   // `allow-external-images` config-key name stays English in both

@@ -13,6 +13,7 @@ import { basename, dirname, resolve, isAbsolute } from '@tauri-apps/api/path';
 import { invoke } from '@tauri-apps/api/core';
 
 import { Vim, getCM, getDoc, setDoc, editorView, setEditorLanguage, spellcheckConfigured } from './editor.js';
+import { addCustomWord, removeCustomWord } from './spellcheck/custom-words.js';
 import { render, syncPreviewToCaret, requestPreviewScrollToTop } from './preview.js';
 import { clearAllRendererCaches } from './renderer.js';
 import { userConfig } from './config.js';
@@ -808,6 +809,48 @@ Vim.defineEx('spell', 'spell', (_cm: any, params: VimExParams) => {
   }
 });
 
+// `:spellgood` (vim `zg`) adds the word under the cursor to the custom
+// word list so it stops being flagged; `:spellundo` (vim `zug`) removes
+// it. Mirrors Vim's own spellfile commands. Both are inert with a message
+// when spellcheck is disabled in the config. No short alias (would shadow
+// real Vim's `:sp` split).
+const wordUnderCursor = (): string | null => {
+  if (!editorView) return null;
+  const { state } = editorView;
+  const range = state.wordAt(state.selection.main.head);
+  return range ? state.sliceDoc(range.from, range.to) : null;
+};
+
+Vim.defineEx('spellgood', 'spellgood', (_cm: any) => {
+  if (!spellcheckConfigured()) {
+    vimMessage('Spellcheck is disabled in config (spellcheck-language = off)');
+    return;
+  }
+  const word = wordUnderCursor();
+  if (!word) {
+    vimMessage('No word under the cursor');
+    return;
+  }
+  void addCustomWord(word).then((added) =>
+    vimMessage(added ? `Added "${word}" to custom words` : `"${word}" is already a custom word`),
+  );
+});
+
+Vim.defineEx('spellundo', 'spellundo', (_cm: any) => {
+  if (!spellcheckConfigured()) {
+    vimMessage('Spellcheck is disabled in config (spellcheck-language = off)');
+    return;
+  }
+  const word = wordUnderCursor();
+  if (!word) {
+    vimMessage('No word under the cursor');
+    return;
+  }
+  void removeCustomWord(word).then((removed) =>
+    vimMessage(removed ? `Removed "${word}" from custom words` : `"${word}" is not a custom word`),
+  );
+});
+
 // `:width` — sets or reports the single-pane width mode. Bare
 // `:width` reports current; `:width narrow|medium|wide|full` sets.
 // Same E474 error shape as `:syntax` for invalid arguments.
@@ -963,6 +1006,17 @@ try {
   Vim.map('ZQ', ':q!<CR>', 'normal');
 } catch (e) {
   console.error('Vim.map ZZ/ZQ failed:', e);
+}
+
+// Normal mode: zg / zug add/remove the word under the cursor to/from the
+// custom word list (mirroring vim's own spellfile commands), routed
+// through the :spellgood / :spellundo Ex commands. Separate try/catch so
+// a failure here doesn't prevent the others from registering.
+try {
+  Vim.map('zg', ':spellgood<CR>', 'normal');
+  Vim.map('zug', ':spellundo<CR>', 'normal');
+} catch (e) {
+  console.error('Vim.map zg/zug failed:', e);
 }
 
 // Note on visual block mode: Ctrl+V is intercepted by the webview's

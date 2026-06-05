@@ -850,6 +850,87 @@ fn set_session_state(
     Ok(())
 }
 
+// ================= Custom words (personal spellcheck dictionary) =================
+//
+// A user-maintained list of words the spellchecker should never flag —
+// names, invented terms, domain jargon. Stored as a plain text file at
+// <app_config_dir>/custom-words.txt, alongside skrivro.conf and themes/,
+// so the file itself is the management UI (edit it to bulk add/remove).
+// The frontend owns the in-memory list and the dedup; these two commands
+// just read and rewrite the file (resolving the config dir and creating
+// it on first write, exactly like set_session_state).
+
+fn custom_words_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    use tauri::Manager;
+    app.path()
+        .app_config_dir()
+        .ok()
+        .map(|d| d.join("custom-words.txt"))
+}
+
+const CUSTOM_WORDS_HEADER: &str = "\
+# Skrivro custom words: your personal spellcheck dictionary
+#
+# Put one word per line. Blank lines and lines starting with # are
+# ignored. Words listed here are never flagged as misspelled, in any
+# configured language, matched case-insensitively. Edit this file
+# freely, and the app rewrites it when you add or remove a word from
+# within the editor.
+
+";
+
+#[tauri::command]
+fn read_custom_words(app: tauri::AppHandle) -> Vec<String> {
+    let Some(path) = custom_words_path(&app) else {
+        return Vec::new();
+    };
+    let text = match std::fs::read_to_string(&path) {
+        Ok(t) => t,
+        // Expected common case — no custom words yet. Silent.
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Vec::new(),
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!("[skrivro custom-words] read {}: {}", path.display(), e);
+            let _ = e;
+            return Vec::new();
+        }
+    };
+    text.lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(str::to_string)
+        .collect()
+}
+
+#[tauri::command]
+fn write_custom_words(app: tauri::AppHandle, words: Vec<String>) -> Result<(), String> {
+    let Some(path) = custom_words_path(&app) else {
+        return Err("no app-config dir available".to_string());
+    };
+    // Ensure the config dir exists — on a fresh install it may not yet.
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("mkdir {}: {}", parent.display(), e))?;
+    }
+    let mut text = String::from(CUSTOM_WORDS_HEADER);
+    for w in &words {
+        let t = w.trim();
+        if !t.is_empty() {
+            text.push_str(t);
+            text.push('\n');
+        }
+    }
+    // Atomic write (tmp + rename), same as set_session_state.
+    let mut tmp = path.clone().into_os_string();
+    tmp.push(".tmp");
+    let tmp_path = PathBuf::from(tmp);
+    std::fs::write(&tmp_path, &text)
+        .map_err(|e| format!("write {}: {}", tmp_path.display(), e))?;
+    std::fs::rename(&tmp_path, &path)
+        .map_err(|e| format!("rename {} -> {}: {}", tmp_path.display(), path.display(), e))?;
+    Ok(())
+}
+
 // ================= Initial theme state (FOUC prevention) =================
 //
 // The default CSS in index.html uses Catppuccin Mocha values. If the user
@@ -1273,6 +1354,8 @@ pub fn run() {
             get_config,
             get_session_state,
             set_session_state,
+            read_custom_words,
+            write_custom_words,
             take_pending_opens,
             apply_collection_behavior
         ])

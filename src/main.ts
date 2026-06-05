@@ -69,6 +69,7 @@ import {
 } from './config.js';
 import { createEditor, editorView } from './editor.js';
 import { initSpellcheck, spellcheckRecompute } from './spellcheck/index.js';
+import { loadCustomWords, syncCustomWordsToWorker } from './spellcheck/custom-words.js';
 import { prefs } from './prefs.js';
 import { render, scheduleRender, syncPreviewToCaret } from './preview.js';
 import {
@@ -514,7 +515,14 @@ if (prefs.displayMode === 'preview') {
 // are ready the instant the user toggles spellcheck on; no-op when
 // spellcheck-language is off/unset.
 if (userConfig.spellcheckLanguage && userConfig.spellcheckLanguage !== 'off') {
-  void initSpellcheck(userConfig.spellcheckLanguage).then(() => {
+  void Promise.all([
+    initSpellcheck(userConfig.spellcheckLanguage),
+    loadCustomWords(),
+  ]).then(() => {
+    // Dictionaries built and the custom-word list loaded — seed the
+    // worker with the custom words, then kick the first check (which now
+    // applies them).
+    syncCustomWordsToWorker();
     editorView?.dispatch({ effects: spellcheckRecompute.of(null) });
   });
 }

@@ -812,8 +812,8 @@ Vim.defineEx('spell', 'spell', (_cm: any, params: VimExParams) => {
 // `:spellgood` (vim `zg`) adds the word under the cursor to the custom
 // word list so it stops being flagged; `:spellundo` (vim `zug`) removes
 // it. Mirrors Vim's own spellfile commands. Both are inert with a message
-// when spellcheck is disabled in the config. No short alias (would shadow
-// real Vim's `:sp` split).
+// when spellcheck is off, whether disabled in the config or toggled off at
+// runtime. No short alias (would shadow real Vim's `:sp` split).
 const wordUnderCursor = (): string | null => {
   if (!editorView) return null;
   const { state } = editorView;
@@ -824,6 +824,10 @@ const wordUnderCursor = (): string | null => {
 Vim.defineEx('spellgood', 'spellgood', (_cm: any) => {
   if (!spellcheckConfigured()) {
     vimMessage('Spellcheck is disabled in config (spellcheck-language = off)');
+    return;
+  }
+  if (!prefs.spellcheck) {
+    vimMessage('Spellcheck is off in the editor (turn it on to add or remove words)');
     return;
   }
   const word = wordUnderCursor();
@@ -839,6 +843,10 @@ Vim.defineEx('spellgood', 'spellgood', (_cm: any) => {
 Vim.defineEx('spellundo', 'spellundo', (_cm: any) => {
   if (!spellcheckConfigured()) {
     vimMessage('Spellcheck is disabled in config (spellcheck-language = off)');
+    return;
+  }
+  if (!prefs.spellcheck) {
+    vimMessage('Spellcheck is off in the editor (turn it on to add or remove words)');
     return;
   }
   const word = wordUnderCursor();

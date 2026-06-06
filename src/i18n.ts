@@ -80,6 +80,7 @@ export const STRINGS_SV: Record<string, string> = {
   'Width': 'Bredd',
   'Table of contents': 'Innehållsförteckning',
   'Spelling': 'Stavning',
+  'Find': 'Sök',
 
   // Help dialog — keyboard shortcut descriptions
   'Save': 'Spara',
@@ -101,6 +102,9 @@ export const STRINGS_SV: Record<string, string> = {
   'Toggle table of contents visibility (resets on launch)': 'Växla synlighet för innehållsförteckning (återställs vid start)',
   'Sync preview to cursor': 'Synka förhandsvisning till markör',
   'Toggle focus between editor and preview': 'Växla fokus mellan redigerare och förhandsvisning',
+  // Help dialog — find/replace (Ctrl+F keybind + :find Ex command)
+  'Find and replace (vim users use :find)': 'Sök och ersätt (vim-användare använder <kbd>:find</kbd>)',
+  'Open find and replace': 'Öppna sök och ersätt',
   // Ex command description for :syntax. Best-effort first pass; the
   // surrounding <kbd>Ctrl+Alt+Y</kbd> is literal and untranslated.
   'Show whether editor syntax highlighting is on or off': 'Visa om syntaxmarkering i redigeraren är på eller av',

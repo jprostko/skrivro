@@ -803,6 +803,42 @@ body.mode-split .preview-scroll::after {
   background: var(--skr-surface);
 }
 
+/* Find/replace panel (@codemirror/search), themed to match the app, with
+   the same panel background as the spellcheck menu. */
+.cm-panel.cm-search {
+  padding: 0.4rem 0.55rem;
+  background: var(--skr-bg-panel);
+  color: var(--skr-text);
+  border-bottom: 1px solid var(--skr-surface);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+}
+.cm-panel.cm-search .cm-textfield {
+  background: var(--skr-bg-inset);
+  color: var(--skr-text);
+  border: 1px solid var(--skr-surface);
+  border-radius: 4px;
+}
+.cm-panel.cm-search .cm-button {
+  background: var(--skr-surface);
+  background-image: none;
+  color: var(--skr-text);
+  border: 0;
+  border-radius: 4px;
+}
+.cm-panel.cm-search .cm-button:hover {
+  background: var(--skr-surface-hover);
+}
+.cm-panel.cm-search label {
+  color: var(--skr-text-muted);
+}
+.cm-panel.cm-search [name='close'] {
+  color: var(--skr-text-muted);
+}
+.cm-panel.cm-search [name='close']:hover {
+  color: var(--skr-text);
+}
+
 /* ---------- Display modes: split / editor-only / preview-only ---------- */
 body.mode-editor .preview-pane      { display: none; }
 body.mode-preview .editor-pane { display: none; }

@@ -9,13 +9,14 @@
 //   - createEditor(parent, callbacks) — constructs the EditorView
 //   - getCM re-export — used by status bar for reading vim mode state
 
-import { EditorState, Compartment, type Extension } from '@codemirror/state';
+import { EditorState, Compartment, Prec, type Extension } from '@codemirror/state';
 import {
   EditorView, keymap,
   lineNumbers, highlightActiveLine, highlightActiveLineGutter,
   drawSelection,
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { search, searchKeymap } from '@codemirror/search';
 import {
   indentOnInput, bracketMatching, syntaxHighlighting,
   HighlightStyle, defaultHighlightStyle, StreamLanguage,
@@ -492,6 +493,14 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
 
   // base keymap
   keymap.of([...defaultKeymap, ...historyKeymap]),
+
+  // find/replace — CM's search panel, mounted at the top of the editor.
+  // Opened by Mod-f (Ctrl+F, or Cmd+F on Mac) for non-vim users, or the
+  // `:find` Ex command for vim users. searchKeymap is Prec.low, so in vim
+  // mode vim's own keymap wins (its Ctrl-F keeps paging forward); with vim
+  // off, Mod-f opens the panel.
+  search({ top: true }),
+  Prec.low(keymap.of(searchKeymap)),
 
   // change listener -> callback chain (set up by main.ts). Optional
   // call (`?.()`) replaces the short-circuit-and-invoke pattern so the

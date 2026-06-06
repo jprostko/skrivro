@@ -13,6 +13,7 @@ import { basename, dirname, resolve, isAbsolute } from '@tauri-apps/api/path';
 import { invoke } from '@tauri-apps/api/core';
 
 import { Vim, getCM, getDoc, setDoc, editorView, setEditorLanguage, spellcheckConfigured } from './editor.js';
+import { openSearchPanel } from '@codemirror/search';
 import { addCustomWord, removeCustomWord } from './spellcheck/custom-words.js';
 import { render, syncPreviewToCaret, requestPreviewScrollToTop } from './preview.js';
 import { clearAllRendererCaches } from './renderer.js';
@@ -857,6 +858,14 @@ Vim.defineEx('spellundo', 'spellundo', (_cm: any) => {
   void removeCustomWord(word).then((removed) =>
     vimMessage(removed ? `Removed "${word}" from custom words` : `"${word}" is not a custom word`),
   );
+});
+
+// `:find` — opens CodeMirror's find/replace panel. The vim-mode entry
+// point: under vim, Ctrl-F stays page-forward, so vim users open the panel
+// here. Non-vim users press Mod-f (Ctrl+F, or Cmd+F on Mac). The panel
+// handles find, replace, and replace-all.
+Vim.defineEx('find', 'find', () => {
+  if (editorView) openSearchPanel(editorView);
 });
 
 // `:width` — sets or reports the single-pane width mode. Bare

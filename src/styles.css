@@ -797,11 +797,6 @@ body.mode-split .preview-scroll::after {
   background: var(--skr-surface-hover);
   outline: none;
 }
-.spell-menu-suggestion {
-  padding: 0.4rem 0.6rem;
-  color: var(--skr-text-muted);
-  cursor: default;
-}
 .spell-menu-separator {
   height: 1px;
   margin: 0.25rem 0.3rem;

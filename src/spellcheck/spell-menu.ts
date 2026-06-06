@@ -47,6 +47,7 @@ const showMenu = (
   x: number,
   y: number,
   word: string,
+  range: { from: number; to: number } | null,
   suggestions: string[],
 ): void => {
   closeMenu();
@@ -56,14 +57,25 @@ const showMenu = (
   menu.className = 'spell-menu';
   menu.setAttribute('role', 'menu');
 
-  // Spelling suggestions (display-only for now): muted, non-interactive
-  // rows above a separator. They become clickable replacements in a later
-  // step. Only present for a misspelled word, never for the Remove case.
-  if (suggestions.length) {
+  // Spelling suggestions: clickable items above a separator. Clicking one
+  // replaces the misspelled word's range with it in a single transaction
+  // (one undo step), then closes the menu and refocuses the editor with the
+  // cursor after the inserted word. Present only for a misspelled word
+  // (range is set), never for the Remove case.
+  if (suggestions.length && range) {
     for (const suggestion of suggestions) {
-      const row = document.createElement('div');
-      row.className = 'spell-menu-suggestion';
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'spell-menu-item';
       row.textContent = suggestion;
+      row.addEventListener('click', () => {
+        view.dispatch({
+          changes: { from: range.from, to: range.to, insert: suggestion },
+          selection: { anchor: range.from + suggestion.length },
+        });
+        closeMenu();
+        view.focus();
+      });
       menu.appendChild(row);
     }
     const separator = document.createElement('div');
@@ -146,7 +158,7 @@ export const spellMenuExtension: Extension = EditorView.domEventHandlers({
       const { clientX, clientY } = event;
       event.preventDefault();
       void requestSuggestions(word).then((suggestions) => {
-        showMenu(view, clientX, clientY, word, suggestions.slice(0, MAX_SUGGESTIONS));
+        showMenu(view, clientX, clientY, word, range, suggestions.slice(0, MAX_SUGGESTIONS));
       });
       return true;
     }
@@ -160,7 +172,7 @@ export const spellMenuExtension: Extension = EditorView.domEventHandlers({
       const w = view.state.sliceDoc(wordRange.from, wordRange.to);
       if (hasCustomWord(w)) {
         event.preventDefault();
-        showMenu(view, event.clientX, event.clientY, w, []);
+        showMenu(view, event.clientX, event.clientY, w, null, []);
         return true;
       }
     }

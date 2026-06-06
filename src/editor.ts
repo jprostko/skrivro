@@ -28,6 +28,7 @@ import { prefs } from './prefs.js';
 import { currentBuffer, type Format } from './io.js';
 import { userConfig } from './config.js';
 import { spellcheckExtension } from './spellcheck/index.js';
+import { spellMenuExtension } from './spellcheck/spell-menu.js';
 
 // Re-exports used by other modules (io for Vim.defineEx, ui for getCM).
 export { Vim, getCM };
@@ -400,7 +401,9 @@ export const spellcheckConfigured = (): boolean =>
 // nothing until initSpellcheck (called from main.ts) resolves and
 // dispatches spellcheckRecompute.
 const resolveSpellcheckExtension = (): Extension =>
-  spellcheckConfigured() && prefs.spellcheck ? spellcheckExtension : [];
+  spellcheckConfigured() && prefs.spellcheck
+    ? [spellcheckExtension, spellMenuExtension]
+    : [];
 
 // Runtime spellcheck toggle — reconfigure the compartment to hold the
 // decoration plugin or an empty list. Symmetric with setSyntaxHighlighting:
@@ -409,7 +412,9 @@ const resolveSpellcheckExtension = (): Extension =>
 export const setSpellcheck = (enabled: boolean) => {
   if (!editorView) return;
   editorView.dispatch({
-    effects: spellcheckCompartment.reconfigure(enabled ? spellcheckExtension : []),
+    effects: spellcheckCompartment.reconfigure(
+      enabled ? [spellcheckExtension, spellMenuExtension] : [],
+    ),
   });
 };
 

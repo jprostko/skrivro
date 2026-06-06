@@ -44,8 +44,6 @@ export interface CheckRequest {
   /** Monotonic id; the main thread applies only the most recent result. */
   reqId: number;
   pieces: CheckPiece[];
-  /** Bare-caret offset, or -1 when there's a (non-empty) selection. */
-  caret: number;
 }
 
 export interface SetPersonalRequest {
@@ -169,7 +167,7 @@ const isMisspelled = (word: string): boolean => {
 // ranges, in ascending order (pieces arrive ordered and wordRe scans
 // left-to-right, so the main thread can feed them straight into a
 // RangeSetBuilder).
-const check = (pieces: CheckPiece[], caret: number): MisspelledRange[] => {
+const check = (pieces: CheckPiece[]): MisspelledRange[] => {
   if (spellers.length === 0) return [];
   const ranges: MisspelledRange[] = [];
   for (const { from, text } of pieces) {
@@ -181,10 +179,9 @@ const check = (pieces: CheckPiece[], caret: number): MisspelledRange[] => {
       const localStart = m.index;
       const start = from + localStart;
       const end = start + word.length;
-      // Skip the word under the caret (inside it or at its trailing edge)
-      // — it's being typed. Typing any boundary moves the caret past
-      // `end`, so the word gets checked on the next request.
-      if (caret > start && caret <= end) continue;
+      // The caret-skip (hiding the word being typed) is a display concern,
+      // handled in spellcheck/index.ts. This worker flags every misspelling
+      // so the right-click menu can read the full set.
       // Skip a letter-run that sits against a digit ("h1", "utf8", "v2")
       // — an identifier, not prose. Adjacency is read from this slice via
       // charAt, which returns '' past either edge, so a word at the slice
@@ -214,7 +211,7 @@ self.addEventListener('message', (e: MessageEvent<SpellRequest>) => {
     const result: ResultResponse = {
       type: 'result',
       reqId: msg.reqId,
-      ranges: check(msg.pieces, msg.caret),
+      ranges: check(msg.pieces),
     };
     self.postMessage(result);
   } else if (msg.type === 'setPersonal') {

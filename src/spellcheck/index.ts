@@ -28,6 +28,7 @@ import {
   RangeSetBuilder,
   StateEffect,
   StateField,
+  type EditorState,
   type Extension,
 } from '@codemirror/state';
 import type { SpellResponse, MisspelledRange } from './spellcheck-worker.js';
@@ -120,9 +121,13 @@ const buildDeco = (ranges: MisspelledRange[], docLen: number): DecorationSet => 
   return builder.finish();
 };
 
-// Holds the squiggle decorations. Maps them through edits so they shift
-// with typing until the next worker result refreshes them, and rebuilds
-// on a setSpellRanges effect.
+// Holds the RAW misspelled ranges from the worker — every misspelling in
+// the viewport, including the word the cursor is in. Maps them through
+// edits so they shift with typing until the next worker result refreshes
+// them, and rebuilds on a setSpellRanges effect. Not rendered directly:
+// caretSkipDisplay below derives the visible squiggles from it (dropping
+// the word under the caret), and the right-click menu reads it as the
+// ground truth for "is this word misspelled" regardless of what's shown.
 const spellDecoField = StateField.define<DecorationSet>({
   create: () => Decoration.none,
   update(deco, tr) {
@@ -132,14 +137,79 @@ const spellDecoField = StateField.define<DecorationSet>({
     }
     return deco;
   },
-  provide: (f) => EditorView.decorations.from(f),
 });
 
-// Posts the visible text to the worker on edits / scrolls / cursor moves,
-// and applies whichever reply is most recent. Older replies are dropped
-// by reqId: a result landing after a newer change is ignored because a
-// newer request is already in flight for the current state, so the
-// applied ranges always match the current document.
+// The misspelled-word range covering `pos`, or null. The right-click menu
+// uses this to act on the squiggle under the cursor. Reading the
+// decoration field (rather than the DOM) gives the exact flagged range
+// regardless of how the squiggle is split into spans by syntax
+// highlighting.
+export const spellRangeAt = (
+  view: EditorView,
+  pos: number,
+): { from: number; to: number } | null => {
+  const deco = view.state.field(spellDecoField, false);
+  if (!deco) return null;
+  let found: { from: number; to: number } | null = null;
+  deco.between(pos, pos + 1, (from, to) => {
+    if (from <= pos && pos < to) {
+      found = { from, to };
+      return false;
+    }
+    return undefined;
+  });
+  return found;
+};
+
+// Derive the VISIBLE squiggles from the raw field: every misspelling
+// except the word the cursor sits in (or at the trailing edge of). That
+// word is likely being typed or edited, so squiggling it mid-keystroke is
+// noise — it gets flagged the moment the cursor leaves. Doing the skip
+// here, on the main thread, keeps the raw field complete for the
+// right-click menu and costs no worker round-trip (it re-derives instantly
+// as the cursor moves).
+const buildDisplay = (state: EditorState): DecorationSet => {
+  const raw = state.field(spellDecoField);
+  const sel = state.selection.main;
+  if (!sel.empty) return raw; // a real selection, not a bare caret: show all
+  const caret = sel.head;
+  const builder = new RangeSetBuilder<Decoration>();
+  raw.between(0, state.doc.length, (from, to) => {
+    if (caret > from && caret <= to) return; // skip the word under the caret
+    builder.add(from, to, misspelledMark);
+  });
+  return builder.finish();
+};
+
+// Renders the squiggles. Rebuilds the visible set when the document
+// changes, when the cursor moves (so the caret-skip follows it), or when a
+// fresh worker result lands in the raw field.
+const caretSkipDisplay = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = buildDisplay(view.state);
+    }
+
+    update(update: ViewUpdate) {
+      if (
+        update.docChanged ||
+        update.selectionSet ||
+        update.startState.field(spellDecoField) !== update.state.field(spellDecoField)
+      ) {
+        this.decorations = buildDisplay(update.state);
+      }
+    }
+  },
+  { decorations: (v) => v.decorations },
+);
+
+// Posts the visible text to the worker on edits and scrolls, and applies
+// whichever reply is most recent. Older replies are dropped by reqId: a
+// result landing after a newer change is ignored because a newer request
+// is already in flight for the current state, so the applied ranges always
+// match the current document.
 const spellcheckPlugin = ViewPlugin.fromClass(
   class {
     private reqId = 0;
@@ -157,10 +227,12 @@ const spellcheckPlugin = ViewPlugin.fromClass(
     }
 
     update(update: ViewUpdate) {
+      // selectionSet is intentionally absent: a cursor move doesn't need a
+      // worker re-check, since the caret-skip is applied on the main thread
+      // by caretSkipDisplay.
       if (
         update.docChanged ||
         update.viewportChanged ||
-        update.selectionSet ||
         update.transactions.some((tr) =>
           tr.effects.some((e) => e.is(spellcheckRecompute)),
         )
@@ -172,13 +244,12 @@ const spellcheckPlugin = ViewPlugin.fromClass(
     private request() {
       if (!workerReady || !worker) return; // dictionaries not built yet
       const { state } = this.view;
-      const caret = state.selection.main.empty ? state.selection.main.head : -1;
       const pieces = this.view.visibleRanges.map(({ from, to }) => ({
         from,
         text: state.doc.sliceString(from, to),
       }));
       this.reqId += 1;
-      worker.postMessage({ type: 'check', reqId: this.reqId, pieces, caret });
+      worker.postMessage({ type: 'check', reqId: this.reqId, pieces });
     }
 
     destroy() {
@@ -191,9 +262,13 @@ const spellcheckPlugin = ViewPlugin.fromClass(
   },
 );
 
-// Field + plugin. editor.ts places this in the spellcheck compartment
-// when the feature is active; swapping the compartment to [] removes
-// both — the squiggles vanish and the plugin's destroy() unhooks from
+// Field + plugins. editor.ts places this in the spellcheck compartment
+// when the feature is active; swapping the compartment to [] removes them
+// all — the squiggles vanish and spellcheckPlugin's destroy() unhooks from
 // the worker (which stays alive, dictionaries intact, for the next
 // toggle-on).
-export const spellcheckExtension: Extension = [spellDecoField, spellcheckPlugin];
+export const spellcheckExtension: Extension = [
+  spellDecoField,
+  spellcheckPlugin,
+  caretSkipDisplay,
+];

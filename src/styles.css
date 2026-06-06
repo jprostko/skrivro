@@ -764,6 +764,40 @@ body.mode-split .preview-scroll::after {
   text-underline-offset: 0.2em;
 }
 
+/* Spellcheck right-click menu (spell-menu.ts). A small popup over a
+   misspelled word offering add/remove (and, later, suggestions). It's
+   position:fixed and appended to <body>, so it isn't clipped by editor
+   overflow; spell-menu.ts sets left/top from the click coordinates. */
+.spell-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 12rem;
+  padding: 0.25rem;
+  background: var(--skr-bg-panel);
+  border: 1px solid var(--skr-surface);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px var(--skr-shadow);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+}
+.spell-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--skr-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.spell-menu-item:hover,
+.spell-menu-item:focus {
+  background: var(--skr-surface-hover);
+  outline: none;
+}
+
 /* ---------- Display modes: split / editor-only / preview-only ---------- */
 body.mode-editor .preview-pane      { display: none; }
 body.mode-preview .editor-pane { display: none; }

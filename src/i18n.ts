@@ -116,6 +116,11 @@ export const STRINGS_SV: Record<string, string> = {
     'Lägg till ordet under markören i din egen ordlista (vim <kbd>zg</kbd>)',
   'Remove the word under the cursor from your custom dictionary (vim zug)':
     'Ta bort ordet under markören från din egen ordlista (vim <kbd>zug</kbd>)',
+  'Add a misspelled word to your custom dictionary, or remove it':
+    'Lägg till ett felstavat ord i din egen ordlista, eller ta bort det',
+  // Right-click menu items (translated at runtime via tr(), not the DOM sweep).
+  'Add to dictionary': 'Lägg till i ordlistan',
+  'Remove from dictionary': 'Ta bort från ordlistan',
 
   // Ex command descriptions for :width. Best-effort first pass.
   'Show the current single-pane width mode': 'Visa aktuellt breddläge för enskild panel',

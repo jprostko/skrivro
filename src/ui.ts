@@ -641,12 +641,15 @@ export const applyTocVisibility = (visible: boolean) => {
 
 export const isTocHidden = () => tocHidden;
 
-// Rewrite the help dialog's modifier keys on Mac. Apple convention
-// is symbols with no separator — ⌘S, ⌘⇧N, ⌘⌃T — matching what users
-// see in the macOS menu bar, System Settings, and Apple's own
-// documentation. Linux and Windows keep the Ctrl+Shift+N form because
-// that's what's printed on their physical keys and what every other
-// app on those platforms shows.
+// Rewrite the help dialog's modifier keys on Mac. Apple convention is
+// symbols with no separator, in a fixed order: Control, Option, Shift,
+// Command, with Command always LAST (next to the key). So ⌘S, ⇧⌘N, ⌃⌘T,
+// matching the macOS menu bar, System Settings, and Apple's own
+// documentation. We emit the symbols in that canonical order rather than
+// substituting in place, because the source token order (Ctrl, Alt, Shift)
+// maps to a different symbol order under the app's Mac binding (Ctrl
+// becomes ⌘, which then has to move to the end). Linux and Windows keep
+// the Ctrl+Shift+N form, which is what's printed on their physical keys.
 //
 // Two distinct mappings, switched by a CSS class on the <kbd>:
 //
@@ -696,13 +699,25 @@ export const applyMacModifierLabels = () => {
   document.querySelectorAll('.help-dialog .mac-only').forEach((el) => {
     el.classList.remove('mac-only');
   });
+  // Apple's canonical modifier order, with Command last.
+  const order = '⌃⌥⇧⌘';
   document.querySelectorAll('.help-dialog kbd').forEach((kbd) => {
     const isVim = kbd.classList.contains('vim');
-    kbd.textContent = kbd.textContent
-      .replace(/\bCtrl\b/g, isVim ? '⌃' : '⌘')
-      .replace(/\bAlt\b/g, isVim ? '⌥' : '⌃')
-      .replace(/\bShift\b/g, '⇧')
-      .replace(/\+/g, '');
+    // App shortcuts use Cmd as primary / Ctrl as secondary on Mac (Ctrl
+    // becomes ⌘, Alt becomes ⌃); vim kbds are literal physical keys
+    // (Ctrl stays ⌃, Alt stays ⌥).
+    const toSymbol: Record<string, string> = isVim
+      ? { Ctrl: '⌃', Alt: '⌥', Shift: '⇧' }
+      : { Ctrl: '⌘', Alt: '⌃', Shift: '⇧' };
+    const mods: string[] = [];
+    const keys: string[] = [];
+    for (const part of (kbd.textContent ?? '').split('+')) {
+      const symbol = toSymbol[part];
+      if (symbol) mods.push(symbol);
+      else keys.push(part);
+    }
+    mods.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    kbd.textContent = mods.join('') + keys.join('');
   });
 };
 

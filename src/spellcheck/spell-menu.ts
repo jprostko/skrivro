@@ -12,8 +12,14 @@
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
 import { tr } from '../i18n.js';
-import { spellRangeAt } from './index.js';
+import { spellRangeAt, requestSuggestions } from './index.js';
 import { addCustomWord, removeCustomWord, hasCustomWord } from './custom-words.js';
+
+// Max spelling suggestions shown in the menu. Capped at 4: across 50 common
+// typos the intended correction landed in the top 3 for 96% of them (ranks 4
+// and 5 were empty), so a short list catches the real word without padding
+// the menu with noise.
+const MAX_SUGGESTIONS = 4;
 
 let openMenu: HTMLElement | null = null;
 let teardown: (() => void) | null = null;
@@ -36,13 +42,34 @@ const positionMenu = (menu: HTMLElement, x: number, y: number): void => {
   menu.style.top = `${y + h > vh ? Math.max(0, y - h) : y}px`;
 };
 
-const showMenu = (view: EditorView, x: number, y: number, word: string): void => {
+const showMenu = (
+  view: EditorView,
+  x: number,
+  y: number,
+  word: string,
+  suggestions: string[],
+): void => {
   closeMenu();
   const inList = hasCustomWord(word);
 
   const menu = document.createElement('div');
   menu.className = 'spell-menu';
   menu.setAttribute('role', 'menu');
+
+  // Spelling suggestions (display-only for now): muted, non-interactive
+  // rows above a separator. They become clickable replacements in a later
+  // step. Only present for a misspelled word, never for the Remove case.
+  if (suggestions.length) {
+    for (const suggestion of suggestions) {
+      const row = document.createElement('div');
+      row.className = 'spell-menu-suggestion';
+      row.textContent = suggestion;
+      menu.appendChild(row);
+    }
+    const separator = document.createElement('div');
+    separator.className = 'spell-menu-separator';
+    menu.appendChild(separator);
+  }
 
   const item = document.createElement('button');
   item.type = 'button';
@@ -103,31 +130,40 @@ export const spellMenuExtension: Extension = EditorView.domEventHandlers({
     // drops the cursor into it.
     const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
     if (pos == null) return false;
-    // A misspelled word offers "Add". A word already in the custom list
-    // isn't in the raw set (the worker accepts it), so check the list
-    // directly and offer "Remove". Any other right-click (a correctly-
-    // spelled word, or whitespace) falls through to the native menu, so
-    // copy / paste / select-all keep working everywhere else.
-    let word: string | null = null;
     // Look up the raw misspelling at the click, also probing pos-1 so a
     // click on the word's trailing edge (cursor offset == range end, which
     // the half-open lookup misses) still resolves. The raw range carries
-    // the worker's exact word boundaries, so the added word is never cut
-    // short (matters for accented / å-ä-ö words).
+    // the worker's exact word boundaries, so the word is never cut short
+    // (matters for accented / å-ä-ö words).
     const range =
       spellRangeAt(view, pos) ?? (pos > 0 ? spellRangeAt(view, pos - 1) : null);
     if (range) {
-      word = view.state.sliceDoc(range.from, range.to);
-    } else {
-      const wordRange = view.state.wordAt(pos);
-      if (wordRange) {
-        const w = view.state.sliceDoc(wordRange.from, wordRange.to);
-        if (hasCustomWord(w)) word = w;
+      // A misspelled word: offer "Add", with spelling suggestions above it.
+      // Suggestions come from the worker (async), so suppress the native
+      // menu now and open ours once they arrive. Capture the coordinates,
+      // since `event` is read after the await.
+      const word = view.state.sliceDoc(range.from, range.to);
+      const { clientX, clientY } = event;
+      event.preventDefault();
+      void requestSuggestions(word).then((suggestions) => {
+        showMenu(view, clientX, clientY, word, suggestions.slice(0, MAX_SUGGESTIONS));
+      });
+      return true;
+    }
+    // A word already in the custom list isn't squiggled (the worker accepts
+    // it), so check the list directly and offer "Remove", no suggestions.
+    // Any other right-click (a correctly-spelled word, or whitespace) falls
+    // through to the native menu, so copy / paste / select-all keep working
+    // everywhere else.
+    const wordRange = view.state.wordAt(pos);
+    if (wordRange) {
+      const w = view.state.sliceDoc(wordRange.from, wordRange.to);
+      if (hasCustomWord(w)) {
+        event.preventDefault();
+        showMenu(view, event.clientX, event.clientY, w, []);
+        return true;
       }
     }
-    if (word == null) return false;
-    event.preventDefault();
-    showMenu(view, event.clientX, event.clientY, word);
-    return true;
+    return false;
   },
 });

@@ -46,6 +46,12 @@ let applyResult: ((reqId: number, ranges: MisspelledRange[]) => void) | null = n
 // set changes). One editor → one active view.
 let activeView: EditorView | null = null;
 
+// Pending suggestion requests, keyed by reqId and resolved when the worker
+// replies. Right-clicks are infrequent, so a plain map of resolvers is
+// enough — no staleness handling needed.
+let suggestReqId = 0;
+const suggestResolvers = new Map<number, (suggestions: string[]) => void>();
+
 // Lazily construct the worker. `new URL('./spellcheck-worker.ts',
 // import.meta.url)` is the Vite worker pattern — recognized statically
 // and emitted as its own bundle chunk (the dictionaries are separate
@@ -64,6 +70,12 @@ const getWorker = (): Worker => {
       resolvers.forEach((resolve) => resolve());
     } else if (msg.type === 'result') {
       applyResult?.(msg.reqId, msg.ranges);
+    } else if (msg.type === 'suggestions') {
+      const resolve = suggestResolvers.get(msg.reqId);
+      if (resolve) {
+        suggestResolvers.delete(msg.reqId);
+        resolve(msg.suggestions);
+      }
     }
   });
   w.addEventListener('error', (e: ErrorEvent) => {
@@ -98,6 +110,19 @@ export const setPersonalWords = (words: string[]): void => {
   if (!worker) return;
   worker.postMessage({ type: 'setPersonal', words });
   activeView?.dispatch({ effects: spellcheckRecompute.of(null) });
+};
+
+// Fetch ranked spelling suggestions for a misspelled word from the worker
+// (one round-trip). The right-click menu calls this and caps the result for
+// display. Resolves to [] when spellcheck isn't running yet.
+export const requestSuggestions = (word: string): Promise<string[]> => {
+  const w = worker;
+  if (!w || !workerReady) return Promise.resolve([]);
+  const reqId = ++suggestReqId;
+  return new Promise((resolve) => {
+    suggestResolvers.set(reqId, resolve);
+    w.postMessage({ type: 'suggest', reqId, word });
+  });
 };
 
 // Carries a fresh set of misspelled ranges from a worker reply into

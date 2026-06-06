@@ -52,7 +52,19 @@ export interface SetPersonalRequest {
   words: string[];
 }
 
-export type SpellRequest = InitRequest | CheckRequest | SetPersonalRequest;
+/** Ask for spelling suggestions for one misspelled word. */
+export interface SuggestRequest {
+  type: 'suggest';
+  /** Pairs the reply to this request. */
+  reqId: number;
+  word: string;
+}
+
+export type SpellRequest =
+  | InitRequest
+  | CheckRequest
+  | SetPersonalRequest
+  | SuggestRequest;
 
 export interface ReadyResponse {
   type: 'ready';
@@ -69,7 +81,14 @@ export interface ResultResponse {
   ranges: MisspelledRange[];
 }
 
-export type SpellResponse = ReadyResponse | ResultResponse;
+/** Ranked spelling suggestions for a `suggest` request (best first). */
+export interface SuggestionsResponse {
+  type: 'suggestions';
+  reqId: number;
+  suggestions: string[];
+}
+
+export type SpellResponse = ReadyResponse | ResultResponse | SuggestionsResponse;
 
 // ===== Dictionaries =====
 
@@ -198,6 +217,26 @@ const check = (pieces: CheckPiece[]): MisspelledRange[] => {
 
 // ===== Message handler =====
 
+// Ranked spelling suggestions for a misspelled word, merged across the
+// loaded languages in nspell's own order (best guess first) and deduped
+// case-insensitively. nspell already case-matches the input, so a
+// capitalized typo yields capitalized suggestions. The display layer caps
+// the count.
+const suggestFor = (word: string): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const speller of spellers) {
+    for (const suggestion of speller.suggest(word)) {
+      const key = suggestion.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(suggestion);
+      }
+    }
+  }
+  return out;
+};
+
 self.addEventListener('message', (e: MessageEvent<SpellRequest>) => {
   const msg = e.data;
   if (msg.type === 'init') {
@@ -220,5 +259,12 @@ self.addEventListener('message', (e: MessageEvent<SpellRequest>) => {
     // re-judged against the new set on the next check.
     personalWords = new Set(msg.words.map((w) => w.toLowerCase()));
     wordCache.clear();
+  } else if (msg.type === 'suggest') {
+    const result: SuggestionsResponse = {
+      type: 'suggestions',
+      reqId: msg.reqId,
+      suggestions: suggestFor(msg.word),
+    };
+    self.postMessage(result);
   }
 });

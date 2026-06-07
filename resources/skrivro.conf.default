@@ -1,6 +1,6 @@
-# Skrivro config file — every key with its compiled-in default value,
+# Skrivro config file: every key with its compiled-in default value,
 # all commented out. This file ships with the source tree as a
-# reference; to customize Skrivro, copy it to the platform-appropriate
+# reference. To customize Skrivro, copy it to the platform-appropriate
 # location:
 #
 #   Linux:   $XDG_CONFIG_HOME/com.skrivro.editor/skrivro.conf
@@ -9,7 +9,7 @@
 #   Windows: %APPDATA%\com.skrivro.editor\skrivro.conf
 #
 # then uncomment any line and edit. Every value shown below is the
-# actual compiled-in default — uncommenting a line without changing
+# actual compiled-in default. Uncommenting a line without changing
 # it is a no-op.
 #
 # User-supplied themes live alongside this file in a themes/ subdir,
@@ -19,25 +19,24 @@
 #
 # Skrivro's parser ignores missing keys, malformed lines, and unknown
 # keys (with debug-mode warnings only), so you can leave whatever you
-# don't care about commented out. Edits apply on next restart; there
+# don't care about commented out. Edits apply on next restart. There
 # is no hot reload.
 #
 # Duplicate keys: last declaration wins. If you end up with two
 # uncommented lines for the same key (e.g., two `theme = ...` lines
 # left over while trying out different themes), the lower one takes
 # effect. The parser iterates top-to-bottom and each assignment
-# overwrites the previous. Same behavior as Ghostty and most flat
-# config formats.
+# overwrites the previous. Same behavior as most flat config formats.
 
 # ================= Fonts =================
 # Font family keys are PREPENDED to the built-in CSS font stack, so
 # if the font you pick isn't installed on the system the renderer
-# falls through to the original stack — your setting is a preference,
+# falls through to the original stack. Your setting is a preference,
 # not a hard requirement.
 #
 # ALL length-typed values (font sizes, padding, pane widths) REQUIRE
-# an explicit CSS unit. Bare numbers are rejected — writing `14` for
-# a font size is invalid; write `14pt` (or `14px`, `1rem`, etc.).
+# an explicit CSS unit. Bare numbers are rejected: writing `14` for
+# a font size is invalid. Write `14pt` (or `14px`, `1rem`, etc.).
 # The CSS `pt` unit is the same as the typographic point used by
 # Word, PowerPoint, and other print-oriented tools: 1/72 inch.
 # Zero and negative values are also rejected.
@@ -71,7 +70,7 @@
 #
 # Vertical padding scrollbar-length caveat: both panes clip their
 # scrollable viewport to sit inside the padding (geometric clipping
-# instead of an overlay — the overlay approach exhibits sub-pixel
+# instead of an overlay: the overlay approach exhibits sub-pixel
 # bleed on fractional-DPI displays that cannot be fixed in CSS).
 # That means the scroll container is shorter than the pane by
 # 2 × padding-y, and the native scrollbar track shrinks accordingly.
@@ -102,17 +101,17 @@
 # then set `theme = <name>` here. A user-supplied file with the same
 # name as a bundled theme overrides the bundled version. The bundled
 # templates in the source tree end in `.theme.default` to signal
-# "reference template, not a live config"; the user file is the same
+# "reference template, not a live config". The user file is the same
 # format with the `.default` suffix dropped. Copy
 # resources/themes/catppuccin-mocha.theme.default to
-# <app_config_dir>/themes/<name>.theme and fill in your palette —
-# all 24 slots are documented inline in the template.
+# <app_config_dir>/themes/<name>.theme and fill in your palette.
+# All 24 slots are documented inline in the template.
 # theme = catppuccin-mocha
 
 # ================= Format =================
 
-# Default format assigned to a blank untitled buffer — asciidoc /
-# markdown / text (default asciidoc).
+# Default format assigned to a blank untitled buffer: asciidoc /
+# markdown / text (default asciidoc)
 #
 # Applies only when a launch has no file to open: no CLI argument,
 # no OS-dispatched file-open event, and either no saved session to
@@ -121,8 +120,8 @@
 # Saving an untitled buffer with a specific extension (via :saveas
 # foo.md or the save-as dialog) switches it accordingly.
 #
-# 'text' is anything that isn't AsciiDoc or GitHub-flavored Markdown
-# — loose notes, untitled-without-extension scratchpads, or files
+# 'text' is anything that isn't AsciiDoc or GitHub-flavored Markdown:
+# loose notes, untitled-without-extension scratchpads, or files
 # like .txt / .cpp / .js / .css / .html that aren't a supported
 # markup format. Intended for users whose primary habit is writing
 # plain prose without formatting.
@@ -132,33 +131,33 @@
 # default-format = asciidoc
 
 # ================= Asciidoctor =================
-# Asciidoctor safe mode — unsafe / safe / server / secure.
+# Asciidoctor safe mode: unsafe / safe / server / secure
 #
 # Controls which Asciidoctor features are enabled. `unsafe` is the
 # most permissive: includes across directories, docinfo files, book
 # doctype, and arbitrary attribute setting all work. `secure` disables
 # nearly all of it. This is a set-and-forget knob, deliberately not
-# exposed in the UI — once you've chosen a safe mode, runtime display
+# exposed in the UI. Once you've chosen a safe mode, runtime display
 # has no value.
 # asciidoc-safe-mode = unsafe
 
 # ================= Status bar =================
 
-# Cursor position format — verbose / compact / ruler
+# Cursor position format: verbose / compact / ruler
 #   verbose: Ln 42, Col 85    (prose-editor default)
 #   compact: 42:85            (code-editor style)
 #   ruler:   42,85            (Vim ruler style)
 # cursor-position-format = verbose
 
-# Status bar mode pill style — canonical / muted
-#   canonical: bright Catppuccin palette from catppuccin/nvim's
-#              lualine.lua — blue / green / mauve / red / peach
-#   muted:     Normal = surface0 + subtext0, Visual = pink + base;
-#              Insert / Replace / Command stay canonical.
-#              LazyVim-inspired.
+# Status bar mode pill style: canonical / muted
+# canonical from lualine, muted from LazyVim, both using the active
+# theme's colors rather than a fixed palette
+#   canonical: each vim mode gets its own bright accent color
+#   muted:     Normal and Visual are toned down, Insert / Replace /
+#              Command keep their canonical accents
 # statusbar-style = canonical
 
-# Soft column limit — positive integer, no default. When set, the Col
+# Soft column limit: positive integer, no default. When set, the Col
 # indicator in the status bar turns peach once the cursor's column
 # on the current LOGICAL line exceeds this value. Useful for prose
 # workflows with hard line-width conventions (80- or 100-char commit
@@ -170,7 +169,7 @@
 # Document-column, not visual-column: soft wrap is a display concern
 # and does NOT reset the count. If you type 150 characters on one
 # logical line in a window narrow enough to wrap at 60 characters,
-# the indicator still flags at col > limit — because the count is
+# the indicator still flags at col > limit, because the count is
 # based on the source document, not the rendered layout.
 #
 # No default: omit this key entirely if you write prose as "one
@@ -181,7 +180,7 @@
 
 # ================= Session =================
 
-# Restore last session on launch — true / false (default false).
+# Restore last session on launch: true / false (default false)
 #
 # When true, launching Skrivro without a CLI argument reopens the
 # file that was open at the time of the previous clean exit. The
@@ -193,12 +192,12 @@
 #
 # Precedence: a CLI argument (skrivro foo.adoc) always wins over
 # session restore. Crash recovery via the autosave draft also takes
-# priority — if you were mid-edit when the app died, you get the
+# priority. If you were mid-edit when the app died, you get the
 # draft restored (not the pre-crash file reloaded from disk). Session
 # restore only fires on a clean launch with no CLI arg and no draft.
 #
 # If the restored path is missing or unreadable, Skrivro silently
-# falls back to a blank buffer — no error dialog, but the next file
+# falls back to a blank buffer (no error dialog), but the next file
 # operation updates the state as normal.
 #
 # First-enable behavior: the state file is updated on every file
@@ -206,30 +205,31 @@
 # this setting is on. This setting only controls whether state gets
 # READ at launch. So if you have ever opened a file in Skrivro and
 # then flip this from false to true, your next launch will open the
-# file that was most recently touched — which may not be what you
+# file that was most recently touched, which may not be what you
 # expect if you haven't opened anything recently. To start fresh
 # from the moment you enable restore-session, delete the state file
 # before the next launch (see path above for your platform). Matches
-# how VS Code, most browsers, and most editors behave — session
-# state is always tracked; restoring it is a separate choice.
+# how VS Code, most browsers, and most editors behave. Session
+# state is always tracked. Choosing to restore the session
+# is an intentional decision.
 #
 # Accepted forms: true/false, yes/no, on/off, 1/0 (case-insensitive).
 # restore-session = false
 
 # ================= Security =================
 
-# Allow external HTTPS image loading in the preview pane — true /
+# Allow external HTTPS image loading in the preview pane: true /
 # false (default false). Off by default, intentionally.
 #
 # When false (the default), every `<img>` whose src is an external
 # URL (anything other than `data:` or Tauri's `asset:` protocol) is
 # replaced at render time with a small inline placeholder showing
 # the alt text and the original URL on hover. No HTTP request is
-# ever sent — the gate runs in the frontend BEFORE the rendered
+# ever sent. The gate runs in the frontend BEFORE the rendered
 # HTML enters the live DOM, so the webview never sees an external
 # image src to fetch.
 #
-# When true, the gate permits HTTPS image src values through; the
+# When true, the gate permits HTTPS image src values through. The
 # webview loads them normally via Tauri's CSP-allowed https: source.
 # Useful for previewing GitHub-hosted READMEs and similar documents
 # where images live on external CDNs.
@@ -244,10 +244,10 @@
 # documents you're rendering.
 #
 # CSP and restart: enabling this flag does not require Tauri's CSP
-# to be modified — the CSP already allows `https:` for img-src; the
+# to be modified. The CSP already allows `https:` for img-src. The
 # gate is what was blocking. So toggling this and restarting Skrivro
 # is sufficient. (No Skrivro setting can override Tauri's CSP at
-# runtime; if you ever need to lock down the CSP further, that's a
+# runtime. If you ever need to lock down the CSP further, that's a
 # tauri.conf.json edit + rebuild.)
 #
 # Accepted forms: true/false, yes/no, on/off, 1/0 (case-insensitive).
@@ -256,61 +256,61 @@
 # ================= Language =================
 
 # UI language for the status bar labels, help dialog, and confirm
-# dialogs — auto / en / sv. Default auto (detect from browser/system
-# locale; sv for Swedish locale, en for everything else).
+# dialogs: auto / en / sv. Default auto (detect from browser/system
+# locale: sv when it's Swedish, en otherwise).
 #
 # This localizes the user-facing text in Skrivro's own chrome only.
 # It does NOT translate:
-#   - Vim Ex commands (:w, :open, :saveas, :syncpreview, etc.) — these
+#   - Vim Ex commands (:w, :open, :saveas, :syncpreview, etc.): these
 #     stay English because they're input syntax, same rule real Vim
 #     follows regardless of locale
-#   - Keyboard shortcut names (Ctrl+S on Linux/Windows, ⌃⌥T on Mac) —
+#   - Keyboard shortcut names (Ctrl+S on Linux/Windows, ⌃⌥T on Mac):
 #     physical key identifiers, not translatable text
-#   - Your document content or AsciiDoc rendered output — Skrivro
+#   - Your document content or AsciiDoc rendered output: Skrivro
 #     doesn't touch document text at all
 #
 # Supported values:
-#   auto  — detect from navigator.language (sv* → Swedish; everything
-#           else → English). Default if this key is unset.
-#   en    — force English regardless of system locale
-#   sv    — force Swedish regardless of system locale
+#   auto: detect from navigator.language (sv* → Swedish, everything
+#         else → English). Default if this key is unset.
+#   en:   force English regardless of system locale
+#   sv:   force Swedish regardless of system locale
 #
 # Unknown values (e.g. `language = de`) are rejected with a debug
 # warning and fall through to auto-detect. If you want a language
-# other than English or Swedish, there's no translation for it yet —
+# other than English or Swedish, there's no translation for it yet:
 # the translation table lives in src/i18n.ts's STRINGS_SV
 # and is easy to extend if someone contributes a translation.
 # language = auto
 
 # ================= Spellcheck =================
 
-# Offline editor spellcheck — off / en / sv / both (default off).
+# Offline editor spellcheck: off / en / sv / both (default off)
 #
 # When set to a language, Skrivro loads a bundled Hunspell dictionary
 # and underlines misspelled words in the editor with a red squiggle.
-# The checking is entirely offline and local — no network, no service.
+# The checking is entirely offline and local: no network, no service.
 #
-#   off  — disabled. No dictionary is loaded. This is the default, and
-#          it's a HARD off: the Ctrl+Alt+K key / :spell Ex command have
-#          no effect while this is off (there is nothing to toggle).
-#   en   — US English. (UK/Canadian/Australian English are not bundled;
-#          fork and swap the dictionary if you need a different variant.)
-#   sv   — Swedish.
-#   both — English and Swedish at once; a word is accepted if either
-#          dictionary knows it. Useful for mixed-language documents.
+#   off:  disabled. No dictionary is loaded. This is the default, and
+#         it's a HARD off: the runtime toggle has no effect while
+#         this is off (there is nothing to toggle).
+#   en:   US English. (UK/Canadian/Australian English are not bundled.
+#         Fork and swap the dictionary if you need a different variant.)
+#   sv:   Swedish
+#   both: English and Swedish at once. A word is accepted if either
+#         dictionary knows it. Useful for mixed-language documents.
 #
 # This is separate from the `language` key above: that sets the UI
-# chrome language; this sets which spelling dictionary checks your
-# prose. They're independent — you can have an English UI and a Swedish
+# chrome language. This sets which spelling dictionary checks your
+# prose. They're independent. You can have an English UI and a Swedish
 # spellchecker, or vice versa.
 #
-# Runtime toggle: with a language set here, Ctrl+Alt+K (or :spell on /
-# :spell off in vim mode) silences or restores the squiggles without a
-# restart. That on/off state is remembered across launches; the
+# Runtime toggle: with a language set here, you can silence or
+# restore the squiggles at runtime without a restart (the keybind is
+# in Help). That on/off state is remembered across launches. The
 # language choice here is what's loaded.
 #
 # Size note: the dictionaries are bundled into the app. English adds a
-# little; Swedish is larger (it's a compounding language, so its
+# little. Swedish is larger (it's a compounding language, so its
 # dictionary is several times the size of English's). `both` ships both.
 #
 # Unknown values are rejected with a debug warning and treated as off.

@@ -161,13 +161,11 @@ export const installMenu = async () => {
 
   // --- View menu ---
   // Surfaces our app's display toggles and modes via the menu, with the
-  // Cmd+Ctrl+letter accelerators we chose for Mac in commit c57e42e.
-  // Enter/Exit Full Screen is here (Apple HIG convention, matching
-  // every Apple first-party app and runtime-menu Tauri apps like Yaak).
+  // Ctrl+Cmd+letter accelerators we chose for Mac.
+  // Enter/Exit Full Screen is here (Apple HIG convention).
   // Placing Fullscreen in the Window menu instead of here breaks
   // AppKit's Fn+F → Fullscreen-menu-item registration in ways our
-  // workarounds couldn't fix cleanly (Ghostty gets away with Fullscreen
-  // in Window because their NIB-loading path registers differently).
+  // workarounds couldn't fix cleanly.
   const viewMenu = await Submenu.new({
     text: 'View',
     items: [
@@ -249,8 +247,7 @@ export const installMenu = async () => {
     // ourselves — but a manual invoke on a later runloop turn breaks
     // AppKit's Big-Sur Fn+F → Fullscreen-menu-item registration.
     // Using the canonical id is what lets Tauri keep both calls on
-    // the same turn, which is what Yaak does (via WINDOW_SUBMENU_ID
-    // constant in their Rust-side menu setup). Constant value:
+    // the same turn. Constant value:
     // pub const WINDOW_SUBMENU_ID: &str = "__tauri_window_menu__";
     // (tauri-2.10.3/src/menu/menu.rs:19).
     id: '__tauri_window_menu__',
@@ -270,8 +267,8 @@ export const installMenu = async () => {
   // --- Help menu ---
   // macOS auto-injects a Search field at the top. Below it we add our
   // help-dialog opener using the same accelerator the Ctrl+Alt+H shortcut
-  // uses elsewhere (Cmd+Ctrl+H on Mac after the platform-strict modifier
-  // remap in c57e42e).
+  // uses elsewhere (Ctrl+Cmd+H on Mac after the platform-strict modifier
+  // remap).
   const helpMenu = await Submenu.new({
     // Sibling of the Window menu id above — Tauri's init_app_menu
     // helper also handles set_as_help_menu_for_nsapp for this id.
@@ -302,7 +299,5 @@ export const installMenu = async () => {
   // __tauri_window_menu__ / __tauri_help_menu__ ids above, Tauri's
   // init_app_menu (invoked synchronously inside menu.setAsAppMenu)
   // calls set_as_windows_menu_for_nsapp and set_as_help_menu_for_nsapp
-  // on the same main-thread turn as init_for_nsapp. This is what
-  // other Tauri apps like Yaak do via the Rust-side WINDOW_SUBMENU_ID
-  // / HELP_SUBMENU_ID constants.
+  // on the same main-thread turn as init_for_nsapp.
 };

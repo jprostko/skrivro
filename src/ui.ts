@@ -245,7 +245,7 @@ const FORMAT_LABELS: Record<Format, string> = {
 };
 
 // Cycle through formats in a fixed order: asciidoc → markdown → text
-// → asciidoc. Bound to Ctrl+Alt+R / Cmd+Ctrl+R. The mutation work
+// → asciidoc. Bound to Ctrl+Alt+R / Ctrl+Cmd+R. The mutation work
 // (compartment reconfigure, status refresh, re-render) is centralized
 // in setBufferFormat — this just picks the next value and delegates.
 const FORMAT_CYCLE: readonly Format[] = ['asciidoc', 'markdown', 'text'];
@@ -561,7 +561,7 @@ export const setWidthMode = (mode: string) => {
 };
 
 // Cycle narrow → medium → wide → full → narrow. Bound to
-// Ctrl+Alt+C / ⌘⌃C.
+// Ctrl+Alt+C / ⌃⌘C.
 export const cycleWidthMode = () => {
   const i = WIDTH_MODES.indexOf(prefs.widthMode);
   const next = WIDTH_MODES[(i + 1) % WIDTH_MODES.length];
@@ -661,7 +661,7 @@ export const isTocHidden = () => tocHidden;
 //                  see "Keyboard shortcuts" block in main.js for why
 //                  Option doesn't work: macOS layout-level character
 //                  composition breaks letter-matching, plus several
-//                  Cmd+Option+letter combos are OS-reserved at the
+//                  Option+Cmd+letter combos are OS-reserved at the
 //                  system level)
 //     Shift → ⇧
 //
@@ -719,6 +719,14 @@ export const applyMacModifierLabels = () => {
     mods.sort((a, b) => order.indexOf(a) - order.indexOf(b));
     kbd.textContent = mods.join('') + keys.join('');
   });
+  // The titlebar "?" button names the same help shortcut in its accessible
+  // name. That's a plain-text attribute, so it can't carry <kbd> and the
+  // loop above doesn't reach it. Rewrite the keybind to the Mac form here
+  // so screen readers announce the right chord (Ctrl+Alt+H -> Ctrl+Cmd+H).
+  const helpLabel = helpBtn.getAttribute('aria-label');
+  if (helpLabel) {
+    helpBtn.setAttribute('aria-label', helpLabel.replace('Ctrl+Alt+H', 'Ctrl+Cmd+H'));
+  }
 };
 
 export const toggleVim = () => {
@@ -1087,8 +1095,7 @@ if (wrapEl) {
   // focus off the preview and put it on <body>, which breaks
   // keyboard navigation. preventDefault + synchronous focus is the
   // working pattern (queueMicrotask deferred runs AFTER the default
-  // focus shift, so focus ricochets — see standalone commit 79d3092
-  // for the iteration trail).
+  // focus shift, so focus ricochets).
   wrapEl.addEventListener('mousedown', (e: Event) => {
     if (prefs.displayMode !== 'preview') return;
     const me = e as MouseEvent;
@@ -1280,7 +1287,7 @@ window.addEventListener('keydown', (e) => {
   if ((e.key || '').toLowerCase() !== 'a') return;
   // Reject if the secondary modifier or Shift is also held — this
   // handler is for plain Ctrl+A / Cmd+A only, not Ctrl+Alt+A or
-  // Cmd+Ctrl+A or Ctrl+Shift+A. Secondary modifier is Alt on
+  // Ctrl+Cmd+A or Ctrl+Shift+A. Secondary modifier is Alt on
   // Linux/Windows, Ctrl on Mac (since primary is Cmd there); same
   // mapping main.ts uses for app shortcuts.
   const second = isMac ? e.ctrlKey : e.altKey;

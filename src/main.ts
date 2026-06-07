@@ -22,7 +22,7 @@
 // elements at init time and relies on 'unsafe-inline' to be allowed
 // — with Tauri's auto-nonce on an inline <style>, 'unsafe-inline'
 // would be silently disabled per the CSP spec and CM6's theme would
-// fail to apply. See commit 1e1de7b's message for the full story.
+// fail to apply.
 //
 // We tried <link rel="stylesheet"> in the HTML head instead of this
 // JS import, expecting the render-blocking <link> to prevent the dev
@@ -111,20 +111,20 @@ import {
 // Option+letter to Unicode glyphs at the layout level (Option+V → √,
 // Option+T → †, Option+B → ∫, etc.), and the webview's keydown event
 // reports e.key as the COMPOSED character even when Cmd is also held —
-// so e.key for Cmd+Option+V is "√", not "v", and a literal letter
+// so e.key for Option+Cmd+V is "√", not "v", and a literal letter
 // match like `k === 'v'` silently fails. Verified empirically on
-// macOS Dvorak. Ctrl doesn't compose, so Cmd+Ctrl+V reports e.key="v"
-// cleanly. Bonus: macOS reserves several Cmd+Option+letter combos at
-// the system level (Cmd+Option+D toggles Dock auto-hide, Cmd+Option+H
+// macOS Dvorak. Ctrl doesn't compose, so Ctrl+Cmd+V reports e.key="v"
+// cleanly. Bonus: macOS reserves several Option+Cmd+letter combos at
+// the system level (Option+Cmd+D toggles Dock auto-hide, Option+Cmd+H
 // hides other apps, etc.), so Option would have been a minefield even
-// without the composition bug. Cmd+Ctrl has fewer system collisions
-// (Cmd+Ctrl+F fullscreen, Cmd+Ctrl+Q lock screen, Cmd+Ctrl+D look up
-// word, Cmd+Ctrl+Space emoji picker — none of our letters collide).
-// Critically: Cmd+Ctrl+letter is a distinct chord from Vim's plain
+// without the composition bug. Ctrl+Cmd has fewer system collisions
+// (Ctrl+Cmd+F fullscreen, Ctrl+Cmd+Q lock screen, Ctrl+Cmd+D look up
+// word, Ctrl+Cmd+Space emoji picker — none of our letters collide).
+// Critically: Ctrl+Cmd+letter is a distinct chord from Vim's plain
 // Ctrl+letter, so Vim's namespace stays intact.
 //
 // Net effect: exactly one app-shortcut chord per platform.
-//   Mac:           Cmd+letter (primary), Cmd+Ctrl+letter (secondary)
+//   Mac:           Cmd+letter (primary), Ctrl+Cmd+letter (secondary)
 //   Linux/Windows: Ctrl+letter (primary), Ctrl+Alt+letter (secondary)
 window.addEventListener('keydown', (e) => {
   const mod = isMac ? e.metaKey : e.ctrlKey;
@@ -132,7 +132,7 @@ window.addEventListener('keydown', (e) => {
   const second = isMac ? e.ctrlKey : e.altKey;
   const k = (e.key || '').toLowerCase();
 
-  // Secondary-modifier shortcuts first — so Ctrl+Alt+S / Cmd+Ctrl+S (split)
+  // Secondary-modifier shortcuts first — so Ctrl+Alt+S / Ctrl+Cmd+S (split)
   // doesn't match plain Ctrl+S / Cmd+S (save).
   if (second && k === 'v') {
     e.preventDefault(); toggleVim();
@@ -155,7 +155,7 @@ window.addEventListener('keydown', (e) => {
   } else if (second && k === 'r') {
     // Format toggle (R for Representation — cycles the active buffer
     // format: AsciiDoc → Markdown → Text → AsciiDoc). F would be the
-    // obvious letter but Cmd+Ctrl+F on Mac is the Fullscreen menu
+    // obvious letter but Ctrl+Cmd+F on Mac is the Fullscreen menu
     // shortcut that AppKit intercepts before the webview sees it.
     e.preventDefault(); toggleFormat();
   } else if (second && k === 'w') {

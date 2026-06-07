@@ -9,7 +9,7 @@
 // NOT translated (stays English everywhere):
 // - Ex commands (:w, :open, :syncpreview, etc.) — input syntax, same
 //   rule real Vim follows (Swedish vim users still type :w, not :skriv)
-// - Keyboard shortcut names (Ctrl+S, ⌘⌃T on Mac, etc.) — physical key
+// - Keyboard shortcut names (Ctrl+S, ⌃⌘T on Mac, etc.) — physical key
 //   identifiers, not translatable text
 // - Filename strings like untitled.adoc — filenames don't localize
 // - App name "Skrivro" — already a Swedish word
@@ -103,7 +103,7 @@ export const STRINGS_SV: Record<string, string> = {
   'Sync preview to cursor': 'Synka förhandsvisning till markör',
   'Toggle focus between editor and preview': 'Växla fokus mellan redigerare och förhandsvisning',
   // Help dialog — find/replace (Ctrl+F keybind + :find Ex command)
-  'Find and replace (vim users use :find)': 'Sök och ersätt (vim-användare använder <kbd>:find</kbd>)',
+  'Find and replace (vim users use :find)': 'Sök och ersätt (vim-användare använder :find)',
   'Open find and replace': 'Öppna sök och ersätt',
   // Ex command description for :syntax. Best-effort first pass; the
   // surrounding <kbd>Ctrl+Alt+Y</kbd> is literal and untranslated.
@@ -120,8 +120,6 @@ export const STRINGS_SV: Record<string, string> = {
     'Lägg till ordet under markören i din egen ordlista (vim <kbd>zg</kbd>)',
   'Remove the word under the cursor from your custom dictionary (vim zug)':
     'Ta bort ordet under markören från din egen ordlista (vim <kbd>zug</kbd>)',
-  'Add a misspelled word to your custom dictionary, or remove it':
-    'Lägg till ett felstavat ord i din egen ordlista, eller ta bort det',
   // Right-click menu items (translated at runtime via tr(), not the DOM sweep).
   'Add to dictionary': 'Lägg till i ordlistan',
   'Remove from dictionary': 'Ta bort från ordlistan',
@@ -132,7 +130,7 @@ export const STRINGS_SV: Record<string, string> = {
 
   // Ex command descriptions for :toc. Best-effort first pass.
   'Show whether the TOC visibility override is on or off': 'Visa om åsidosättning av innehållsförteckningens synlighet är på eller av',
-  'Show or hide the TOC (mirrors Ctrl+Alt+I; resets on launch)': 'Visa eller dölj innehållsförteckningen (motsvarar <kbd>Ctrl+Alt+I</kbd>; återställs vid start)',
+  'Show or hide the TOC (mirrors Ctrl+Alt+I, resets on launch)': 'Visa eller dölj innehållsförteckningen (motsvarar <kbd>Ctrl+Alt+I</kbd>, återställs vid start)',
 
   // Help dialog — placeholder labels inside <kbd><var>...</var></kbd>
   // syntax examples (e.g. ":w <var>filename</var>"). Translated even

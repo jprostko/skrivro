@@ -371,7 +371,7 @@ const formatBytes = (bytes: number): string => {
 // failure (missing file, permission denied) and message it correctly.
 export class FileTooLargeError extends Error {
   constructor(name: string, size: number) {
-    super(`${name} is ${formatBytes(size)} — too large to open (limit ${formatBytes(MAX_FILE_BYTES)})`);
+    super(`${name} is too large to open (${formatBytes(size)}, limit ${formatBytes(MAX_FILE_BYTES)})`);
     this.name = 'FileTooLargeError';
   }
 }

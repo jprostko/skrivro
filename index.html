@@ -1345,7 +1345,7 @@
       <div class="help-key"><kbd>:format</kbd></div>
       <div class="help-desc">Show the current format</div>
       <div class="help-key"><kbd>:format <var>name</var></kbd></div>
-      <div class="help-desc">Set format — asciidoc / markdown / text</div>
+      <div class="help-desc">Set format: asciidoc / markdown / text</div>
       <div class="help-key"><kbd>:asciidoc</kbd> <kbd>:markdown</kbd> <kbd>:text</kbd></div>
       <div class="help-desc">Direct shortcuts for each format</div>
     </div>
@@ -1371,7 +1371,7 @@
       <div class="help-key"><kbd>:toc</kbd></div>
       <div class="help-desc">Show whether the TOC visibility override is on or off</div>
       <div class="help-key"><kbd>:toc on</kbd> <kbd>:toc off</kbd></div>
-      <div class="help-desc">Show or hide the TOC (mirrors <kbd>Ctrl+Alt+I</kbd>; resets on launch)</div>
+      <div class="help-desc">Show or hide the TOC (mirrors <kbd>Ctrl+Alt+I</kbd>, resets on launch)</div>
     </div>
 
     <h2>Vim normal mode <span class="help-note">(vim mode only)</span></h2>
@@ -2821,7 +2821,7 @@
   // ordinary open failure and message it correctly.
   class FileTooLargeError extends Error {
     constructor(name, size) {
-      super(`${name} is ${formatBytes(size)} — too large to open (limit ${formatBytes(MAX_FILE_BYTES)})`);
+      super(`${name} is too large to open (${formatBytes(size)}, limit ${formatBytes(MAX_FILE_BYTES)})`);
       this.name = 'FileTooLargeError';
     }
   }
@@ -3553,10 +3553,11 @@
   };
 
   // Rewrite the help dialog's modifier-key labels on Mac. Apple
-  // convention is symbols with no separator — ⌘S, ⌘⇧N, ⌘⌃E —
-  // matching what users see in macOS menus and the system keyboard
-  // shortcut UI. On non-Mac the function is a no-op; the labels
-  // stay as authored ("Ctrl+Alt+E").
+  // convention is symbols with no separator, in a fixed order: Control,
+  // Option, Shift, Command, with Command always LAST (next to the key).
+  // So ⌘S, ⇧⌘N, ⌃⌘E, matching what users see in macOS menus and the
+  // system keyboard shortcut UI. On non-Mac the function is a no-op; the
+  // labels stay as authored ("Ctrl+Alt+E").
   //
   // Two passes:
   //   1. Strip the .mac-only class from elements that should appear
@@ -3565,30 +3566,50 @@
   //      but doesn't work on Linux/Windows where Ctrl+V is paste).
   //      Default CSS hides .mac-only; removing the class reveals
   //      the element.
-  //   2. Per-token replacement on every kbd's text content. App
-  //      shortcuts get Ctrl→⌘ and Alt→⌃ (matching the strict-
+  //   2. On every kbd, map each modifier to its symbol and emit the
+  //      symbols in the canonical order above, rather than substituting
+  //      in place (the source token order does not match that order).
+  //      App shortcuts get Ctrl→⌘ and Alt→⌃ (matching the strict-
   //      modifier handler above: primary modifier becomes Cmd,
   //      secondary becomes Ctrl). Vim-namespace kbds (marked
   //      class="vim") get Ctrl→⌃ and Alt→⌥ instead — vim's Ctrl
   //      and Alt namespaces are conceptually separate from app
   //      shortcuts; on Mac users press the actual Control / Option
   //      keys for vim bindings, not Cmd.
-  //
-  // \b word boundaries on the regexes prevent accidentally
-  // matching "Ctrl" inside another word.
   const applyMacModifierLabels = () => {
     if (!isMac) return;
     document.querySelectorAll('.help-dialog .mac-only').forEach((el) => {
       el.classList.remove('mac-only');
     });
+    // Apple's canonical modifier order, with Command last.
+    const order = '⌃⌥⇧⌘';
     document.querySelectorAll('.help-dialog kbd').forEach((kbd) => {
       const isVim = kbd.classList.contains('vim');
-      kbd.textContent = kbd.textContent
-        .replace(/\bCtrl\b/g,  isVim ? '⌃' : '⌘')
-        .replace(/\bAlt\b/g,   isVim ? '⌥' : '⌃')
-        .replace(/\bShift\b/g, '⇧')
-        .replace(/\+/g, '');
+      // App shortcuts are authored as Ctrl+Alt+key (Linux/Windows form).
+      // On Mac the same chord is Cmd+Control (Cmd primary, Control
+      // secondary), so the authored Ctrl maps to ⌘ and the authored Alt
+      // to ⌃. Vim kbds are physical keys: Ctrl stays ⌃, Alt stays ⌥.
+      const toSymbol = isVim
+        ? { Ctrl: '⌃', Alt: '⌥', Shift: '⇧' }
+        : { Ctrl: '⌘', Alt: '⌃', Shift: '⇧' };
+      const mods = [];
+      const keys = [];
+      for (const part of (kbd.textContent ?? '').split('+')) {
+        const symbol = toSymbol[part];
+        if (symbol) mods.push(symbol);
+        else keys.push(part);
+      }
+      mods.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      kbd.textContent = mods.join('') + keys.join('');
     });
+    // The titlebar "?" button names the same help shortcut in its
+    // accessible name. That's a plain-text attribute, so it can't carry
+    // <kbd> and the loop above doesn't reach it. Rewrite the keybind to
+    // the Mac form here too (Ctrl+Alt+H -> Ctrl+Cmd+H).
+    const helpLabel = helpBtn.getAttribute('aria-label');
+    if (helpLabel) {
+      helpBtn.setAttribute('aria-label', helpLabel.replace('Ctrl+Alt+H', 'Ctrl+Cmd+H'));
+    }
   };
   const toggleVim = () => {
     prefs.vimMode = !prefs.vimMode;
@@ -3626,7 +3647,7 @@
   };
 
   // Cycle through formats in a fixed order: asciidoc → markdown → text
-  // → asciidoc. Bound to Ctrl+Alt+R / Cmd+Ctrl+R. The mutation work
+  // → asciidoc. Bound to Ctrl+Alt+R / Ctrl+Cmd+R. The mutation work
   // (compartment reconfigure, status refresh, re-render) is centralized
   // in setBufferFormat — this just picks the next value and delegates.
   const FORMAT_CYCLE = ['asciidoc', 'markdown', 'text'];
@@ -3849,12 +3870,12 @@
   // (Option+V → √, Option+T → †, etc.), and the webview reports e.key
   // as the COMPOSED character even when Cmd is also held — so a
   // literal letter match like `k === 'v'` silently fails. Ctrl
-  // doesn't compose, so Cmd+Ctrl+V reports e.key="v" cleanly.
-  // Critically: Cmd+Ctrl+letter is a distinct chord from vim's plain
+  // doesn't compose, so Ctrl+Cmd+V reports e.key="v" cleanly.
+  // Critically: Ctrl+Cmd+letter is a distinct chord from vim's plain
   // Ctrl+letter, so vim's namespace stays intact.
   //
   // Net effect: exactly one app-shortcut chord per platform.
-  //   Mac:           ⌘letter (primary), ⌘⌃letter (secondary)
+  //   Mac:           ⌘letter (primary), ⌃⌘letter (secondary)
   //   Linux/Windows: Ctrl+letter (primary), Ctrl+Alt+letter (secondary)
   //
   // Forced divergence from master: standalone keeps newFile and
@@ -3868,7 +3889,7 @@
     const second = isMac ? e.ctrlKey : e.altKey;
     const k = (e.key || '').toLowerCase();
 
-    // Secondary-modifier shortcuts first — so Ctrl+Alt+S / ⌘⌃S
+    // Secondary-modifier shortcuts first — so Ctrl+Alt+S / ⌃⌘S
     // (split) doesn't match plain Ctrl+S / ⌘S (save).
     if (second && k === 'n') {
       e.preventDefault(); newFile();
@@ -3914,7 +3935,7 @@
     } else if (second && k === 'r') {
       // Format toggle (R for Representation — cycles the active buffer
       // format: AsciiDoc → Markdown → Text → AsciiDoc). F would be the
-      // obvious letter but Cmd+Ctrl+F on Mac is the Fullscreen menu
+      // obvious letter but Ctrl+Cmd+F on Mac is the Fullscreen menu
       // shortcut that AppKit intercepts before the webview sees it.
       e.preventDefault(); toggleFormat();
     }

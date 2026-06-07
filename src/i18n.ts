@@ -105,8 +105,8 @@ export const STRINGS_SV: Record<string, string> = {
   // Help dialog — find/replace (Ctrl+F keybind + :find Ex command)
   'Find and replace (vim users use :find)': 'Sök och ersätt (vim-användare använder :find)',
   'Open find and replace': 'Öppna sök och ersätt',
-  // Ex command description for :syntax. Best-effort first pass; the
-  // surrounding <kbd>Ctrl+Alt+Y</kbd> is literal and untranslated.
+  // Ex command description for :syntax. The surrounding
+  // <kbd>Ctrl+Alt+Y</kbd> is literal and untranslated.
   'Show whether editor syntax highlighting is on or off': 'Visa om syntaxmarkering i redigeraren är på eller av',
   'Turn editor syntax highlighting on or off (mirrors Ctrl+Alt+Y)': 'Slå på eller av syntaxmarkering i redigeraren (motsvarar <kbd>Ctrl+Alt+Y</kbd>)',
 
@@ -124,11 +124,11 @@ export const STRINGS_SV: Record<string, string> = {
   'Add to dictionary': 'Lägg till i ordlistan',
   'Remove from dictionary': 'Ta bort från ordlistan',
 
-  // Ex command descriptions for :width. Best-effort first pass.
+  // Ex command descriptions for :width.
   'Show the current single-pane width mode': 'Visa aktuellt breddläge för enskild panel',
   "Set the width mode explicitly (mirrors Ctrl+Alt+C's cycle)": "Ställ in breddläget uttryckligen (motsvarar <kbd>Ctrl+Alt+C</kbd>:s växling)",
 
-  // Ex command descriptions for :toc. Best-effort first pass.
+  // Ex command descriptions for :toc.
   'Show whether the TOC visibility override is on or off': 'Visa om åsidosättning av innehållsförteckningens synlighet är på eller av',
   'Show or hide the TOC (mirrors Ctrl+Alt+I, resets on launch)': 'Visa eller dölj innehållsförteckningen (motsvarar <kbd>Ctrl+Alt+I</kbd>, återställs vid start)',
 
@@ -184,8 +184,7 @@ export const STRINGS_SV: Record<string, string> = {
 
   // Preview pane — external-image gate placeholder. The literal
   // `allow-external-images` config-key name stays English in both
-  // languages (input syntax). Best-effort first pass; the
-  // instruction sentence in particular wants native-speaker review.
+  // languages (input syntax).
   'image blocked': 'bild blockerad',
   'see': 'se',
   'External image blocked': 'Extern bild blockerad',

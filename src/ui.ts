@@ -703,9 +703,10 @@ export const applyMacModifierLabels = () => {
   const order = '⌃⌥⇧⌘';
   document.querySelectorAll('.help-dialog kbd').forEach((kbd) => {
     const isVim = kbd.classList.contains('vim');
-    // App shortcuts use Cmd as primary / Ctrl as secondary on Mac (Ctrl
-    // becomes ⌘, Alt becomes ⌃); vim kbds are literal physical keys
-    // (Ctrl stays ⌃, Alt stays ⌥).
+    // App shortcuts are authored as Ctrl+Alt+key (Linux/Windows form).
+    // On Mac the same chord is Cmd+Control (Cmd primary, Control
+    // secondary), so the authored Ctrl maps to ⌘ and the authored Alt
+    // to ⌃. Vim kbds are physical keys: Ctrl stays ⌃, Alt stays ⌥.
     const toSymbol: Record<string, string> = isVim
       ? { Ctrl: '⌃', Alt: '⌥', Shift: '⇧' }
       : { Ctrl: '⌘', Alt: '⌃', Shift: '⇧' };

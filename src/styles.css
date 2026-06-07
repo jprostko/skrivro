@@ -811,13 +811,20 @@ body.mode-split .preview-scroll::after {
   color: var(--skr-text);
   border-bottom: 1px solid var(--skr-surface);
   font-family: var(--font-sans);
-  font-size: 0.85rem;
+  /* One source for the find/replace controls' size. Buttons, inputs, and
+     checkbox labels each read it explicitly, because @codemirror's base
+     themes otherwise size those as a fraction of the panel (.cm-button
+     70%, label 80%), leaving them inconsistently small. Held as a ratio
+     of the editor font so the panel tracks it. */
+  --search-font-size: calc(var(--edit-font-size) * 0.9);
+  font-size: var(--search-font-size);
 }
 .cm-panel.cm-search .cm-textfield {
   background: var(--skr-bg-inset);
   color: var(--skr-text);
   border: 1px solid var(--skr-surface);
   border-radius: 4px;
+  font-size: var(--search-font-size);
 }
 .cm-panel.cm-search .cm-button {
   background: var(--skr-surface);
@@ -825,6 +832,12 @@ body.mode-split .preview-scroll::after {
   color: var(--skr-text);
   border: 0;
   border-radius: 4px;
+  font-size: var(--search-font-size);
+  /* Form controls don't inherit the panel's font-family, so without this
+     the buttons render in the webview's default UI font (Adwaita Sans on
+     GTK) instead of var(--font-sans), ending up a different typeface and
+     apparent size from the labels. */
+  font-family: var(--font-sans);
 }
 .cm-panel.cm-search .cm-button:hover {
   background: var(--skr-surface-hover);

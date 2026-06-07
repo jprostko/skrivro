@@ -180,6 +180,14 @@ const catppuccinTheme = EditorView.theme({
     fontFamily: 'var(--font-mono)',
     padding: '2px 6px',
   },
+  // Checkbox labels (match case, regexp, by word) in the find/replace
+  // panel. @codemirror/search's base theme sizes them with a selector a
+  // plain stylesheet rule can't outrank, so the size comes from this theme
+  // rule, which mounts at higher precedence than the base theme. The value
+  // is the shared --search-font-size from styles.css.
+  '.cm-panel.cm-search label': {
+    fontSize: 'var(--search-font-size)',
+  },
   // Hide the "(JavaScript regexp: set pcre)" / "(Vim regexp: set nopcre)"
   // hint that @replit/codemirror-vim renders next to the search input.
   // makePrompt() in vim.js builds it as a <span style="color:#888"> that

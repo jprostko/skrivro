@@ -21,6 +21,27 @@
 // should graduate to a proper i18n setup. For now it's tractable.
 export const lang = window.__SKRIVRO_LANG__ || 'en';
 
+// Relabels for @codemirror/search's find/replace panel, applied via
+// EditorState.phrases. English just renames "by word" to "whole word"
+// and "regexp" to "regex". Swedish localizes the whole panel. Keys are
+// CM's own phrase strings, so anything not listed falls back to CM's
+// default.
+export const searchPhrases: Record<string, string> = lang === 'sv'
+  ? {
+      'Find': 'Sök',
+      'Replace': 'Ersätt',
+      'next': 'nästa',
+      'previous': 'föregående',
+      'all': 'alla',
+      'match case': 'skiftläge',
+      'regexp': 'regex',
+      'by word': 'helord',
+      'replace': 'ersätt',
+      'replace all': 'ersätt alla',
+      'close': 'stäng',
+    }
+  : { 'by word': 'whole word', 'regexp': 'regex' };
+
 // Mac detection for keyboard conventions. On Mac, the app's shortcut
 // modifier is Cmd (metaKey), not Ctrl — matching every native Mac app.
 // Ctrl on Mac is deliberately left alone so Vim can keep its own

@@ -30,6 +30,7 @@ import { currentBuffer, type Format } from './io.js';
 import { userConfig } from './config.js';
 import { spellcheckExtension } from './spellcheck/index.js';
 import { spellMenuExtension } from './spellcheck/spell-menu.js';
+import { searchPhrases } from './i18n.js';
 
 // Re-exports used by other modules (io for Vim.defineEx, ui for getCM).
 export { Vim, getCM };
@@ -508,6 +509,7 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   // mode vim's own keymap wins (its Ctrl-F keeps paging forward); with vim
   // off, Mod-f opens the panel.
   search({ top: true }),
+  EditorState.phrases.of(searchPhrases),
   Prec.low(keymap.of(searchKeymap)),
 
   // change listener -> callback chain (set up by main.ts). Optional

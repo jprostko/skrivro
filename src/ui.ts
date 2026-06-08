@@ -1261,6 +1261,20 @@ if (previewPaneEl) {
   });
 }
 
+// In production, kill the webview's native context menu on non-editable
+// surfaces (its reload/back/etc. items). Editable targets keep their
+// cut/copy/paste; dev keeps the full menu so Inspect stays. The
+// find/replace panel lives inside .cm-editor, so we key off
+// contenteditable + inputs rather than excluding .cm-editor.
+if (import.meta.env.PROD) {
+  document.addEventListener('contextmenu', (e) => {
+    const target = e.target as Element | null;
+    if (!target?.closest('input, textarea, [contenteditable]')) {
+      e.preventDefault();
+    }
+  });
+}
+
 // Scope Ctrl+A (Cmd+A on Mac) to the preview's content when the
 // preview pane is the focused element. WebKit's default behavior on
 // Ctrl+A applied to a focused non-editable div with `tabindex="-1"`

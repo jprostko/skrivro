@@ -1457,13 +1457,25 @@ pub fn run() {
                     let wv = webview.inner();
                     wv.connect_context_menu(|_wv, menu, _event, _hit| {
                         for item in menu.items() {
-                            if item.stock_action() == ContextMenuAction::Unicode {
+                            // The Unicode submenu (rationale above) and
+                            // webkit's page-navigation items, which do
+                            // nothing in a single-window app.
+                            if matches!(
+                                item.stock_action(),
+                                ContextMenuAction::Unicode
+                                    | ContextMenuAction::Reload
+                                    | ContextMenuAction::Stop
+                                    | ContextMenuAction::GoBack
+                                    | ContextMenuAction::GoForward
+                            ) {
                                 menu.remove(&item);
                             }
                         }
-                        // false = let webkit display the (modified) menu;
-                        // true would suppress the menu entirely.
-                        false
+                        // If the removals emptied the menu, suppress it rather
+                        // than show an empty popup. A menu that still has items
+                        // (Cut/Copy/Paste in a field, Inspect in a dev build)
+                        // shows as normal.
+                        menu.items().is_empty()
                     });
                 })?;
             }

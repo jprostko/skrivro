@@ -1382,6 +1382,17 @@ body.is-dirty .statusbar .status-filename::before {
   white-space: nowrap;
 }
 
+/* Spellcheck-off indicator. refreshStatus() reveals this (clears
+   `hidden`) only when spellcheck is enabled in config but toggled off at
+   runtime, and wraps the text in parens. Uses --skr-text-muted, which
+   intentionally does not match the surrounding status bar text
+   (--skr-text-dim). */
+.statusbar .status-spellcheck {
+  color: var(--skr-text-muted);
+  white-space: nowrap;
+}
+.statusbar .status-spellcheck[hidden] { display: none; }
+
 /* Sync indicator — a small rightwards arrow that lives quietly in the
    right-hand status bar cluster and briefly flashes when the user
    triggers the scroll-sync action (Ctrl+Alt+L, :syncpreview, or gz in

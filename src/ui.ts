@@ -28,6 +28,7 @@ const statusFilename      = document.getElementById('statusFilename')!;
 const statusFiletype      = document.getElementById('statusFiletype')!;
 const statusPosition      = document.getElementById('statusPosition')!;
 const statusWordCount     = document.getElementById('statusWordCount')!;
+const statusSpellcheck    = document.getElementById('statusSpellcheck')!;
 const helpDlg             = document.getElementById('helpDialog') as HTMLDialogElement;
 const helpBtn             = document.getElementById('helpBtn')!;
 const helpCloseBtn        = document.getElementById('helpCloseBtn')!;
@@ -233,6 +234,14 @@ export const refreshStatus = () => {
 
   statusFilename.textContent = currentBuffer.name;
   statusFiletype.textContent = FORMAT_LABELS[currentBuffer.format];
+
+  // Spellcheck-off indicator: shown only when spellcheck is on in config
+  // but toggled off at runtime. The other states show nothing (config-off
+  // has nothing to indicate, toggled-on already shows squiggles). The
+  // label is wrapped in parens here.
+  const spellOff = spellcheckConfigured() && !prefs.spellcheck;
+  statusSpellcheck.hidden = !spellOff;
+  statusSpellcheck.textContent = spellOff ? `(${tr('spellcheck off')})` : '';
 };
 
 // Human-readable display name for the filetype slot in the status bar.
@@ -484,6 +493,7 @@ export const toggleSpellcheck = () => {
   prefs.spellcheck = !prefs.spellcheck;
   savePrefs();
   setSpellcheck(prefs.spellcheck);
+  refreshStatus();
 };
 // Explicit setter for `:spell on` / `:spell off`. Same config gate;
 // no-op when already in the requested state.
@@ -496,6 +506,7 @@ export const applySpellcheck = (enabled: boolean) => {
   prefs.spellcheck = enabled;
   savePrefs();
   setSpellcheck(enabled);
+  refreshStatus();
 };
 
 // ================= Width mode =================

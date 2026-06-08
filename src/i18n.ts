@@ -78,6 +78,10 @@ export const STRINGS_SV: Record<string, string> = {
   'char': 'tecken',
   'chars': 'tecken',  // neuter noun — same plural form as singular
 
+  // Status bar — spellcheck-off indicator (on in config, toggled off at
+  // runtime). Parens added at the call site.
+  'spellcheck off': 'stavningskontroll av',
+
   // Confirm dialog — message and button labels
   'You have unsaved changes. Discard them?': 'Du har osparade ändringar. Kasta dem?',
   'Discard': 'Kasta',

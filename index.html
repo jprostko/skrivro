@@ -811,7 +811,7 @@
   }
 
   /* TOC visibility toggle — when the user has hidden the TOC via
-     Ctrl+Alt+I or `:toc off`, evaluateTocLayout adds .toc-hidden
+     Ctrl+Alt+I / ⌃⌘I or `:toc off`, evaluateTocLayout adds .toc-hidden
      to .preview AND skips adding the sidebar layout classes. So
      this single rule covers both layouts: the inline TOC at the
      top of content (Asciidoctor's default placement) and the
@@ -1046,8 +1046,7 @@
 
   /* ---------- Status bar ---------- */
   /* Canonical Catppuccin mode colors (blue/green/mauve/red/peach) sourced
-     from catppuccin/nvim's lualine.lua. See memory/project_status_bar.md
-     for the full design rationale. */
+     from catppuccin/nvim's lualine.lua. */
   .statusbar {
     display: flex;
     align-items: center;
@@ -1125,7 +1124,7 @@
 
   /* Sync indicator: a small arrow that flashes from the teal
      feedback accent back down to its dim resting color when
-     scroll-sync fires (via Ctrl+Alt+L, :syncpreview, or gz). The
+     scroll-sync fires (via Ctrl+Alt+L / ⌃⌘L, :syncpreview, or gz). The
      flash provides feedback even when the preview doesn't visibly
      move — e.g., if the caret line was already at the top of the
      visible block, scrollIntoView is a no-op but the user still
@@ -1230,8 +1229,7 @@
   </main>
 
   <!-- Status bar: mode pill (vim-only) + filename on the left;
-       file type + cursor position on the right. Toggled by Ctrl+Alt+B.
-       See memory/project_status_bar.md for the design spec. -->
+       file type + cursor position on the right. Toggled by Ctrl+Alt+B / ⌃⌘B. -->
   <footer class="statusbar" id="statusbar">
     <div class="status-left">
       <span class="status-mode-pill" id="statusMode" data-vim-mode="normal" hidden>NORMAL</span>
@@ -1260,7 +1258,7 @@
   </dialog>
 
   <!-- Help overlay with all keyboard shortcuts and vim Ex commands.
-       Toggled by Ctrl+Alt+H or by clicking the "?" button in the titlebar.
+       Toggled by Ctrl+Alt+H / ⌃⌘H or by clicking the "?" button in the titlebar.
        Dismissable via Escape (native <dialog> behavior), backdrop click,
        or the close button. -->
   <dialog id="helpDialog" class="help-dialog">
@@ -1488,7 +1486,7 @@
 
   // ================= Status bar =================
   //
-  // See memory/project_status_bar.md for the design spec. Summary:
+  // Layout:
   //   - Mode pill (left): canonical Catppuccin colors from catppuccin/nvim
   //     (blue/green/mauve/red/peach). Hidden when vim is off.
   //   - Filename (left): dirty indicator + basename
@@ -2401,7 +2399,7 @@
 
   // ================= Scroll sync =================
   // Sync-once: snap the preview to the block containing (or nearest
-  // preceding) the editor caret's source line. Triggered by Ctrl+Alt+L,
+  // preceding) the editor caret's source line. Triggered by Ctrl+Alt+L / ⌃⌘L,
   // the :syncpreview Ex command, or gz in vim normal mode. NOT a
   // continuous sync — both panes stay independently scrollable and we
   // don't touch them unless the user asks.
@@ -2494,7 +2492,7 @@
   // (edit, save, open, new, reload) rewrites it via persistSnapshot,
   // carrying the live dirty state. The one thing it does NOT preserve
   // is the File System Access handle (handles can't be JSON-serialized
-  // to localStorage), so after a reload Ctrl+S falls back to save-as
+  // to localStorage), so after a reload Ctrl+S / Cmd+S falls back to save-as
   // until the file is re-linked. Reattaching the live handle would
   // need IndexedDB — deliberately out of scope here.
   const persistSnapshot = () => {
@@ -2619,7 +2617,7 @@
   };
 
   // ================= Help overlay =================
-  // Ctrl+Alt+H or the "?" button in the titlebar toggles the help
+  // Ctrl+Alt+H / ⌃⌘H or the "?" button in the titlebar toggles the help
   // dialog. Escape (native <dialog> behavior), the close button,
   // and clicking the backdrop all dismiss it.
   //
@@ -2630,7 +2628,7 @@
   //     activeElement would see the button (wrong — we want what
   //     the user was doing before they clicked). Capturing on
   //     mousedown grabs the pre-click activeElement.
-  //   - showHelp fallback: for the keyboard path (Ctrl+Alt+H), no
+  //   - showHelp fallback: for the keyboard path (Ctrl+Alt+H / ⌃⌘H), no
   //     button mousedown fires; capture at showHelp time instead.
   //
   // preHelpFocus is cleared on close so a subsequent open via
@@ -2897,7 +2895,7 @@
 
   // Drag-and-drop: user drops one or more files onto the Skrivro
   // window from a file manager → open the first one in the editor,
-  // same flow as Ctrl+Alt+O would use. Ignores subsequent files
+  // same flow as Ctrl+Alt+O / ⌃⌘O would use. Ignores subsequent files
   // (Skrivro is single-document). The dirty-buffer check goes
   // through confirmDiscard just like openFile, so an accidental
   // drop during unsaved work produces the same Discard/Cancel
@@ -3472,7 +3470,7 @@
     applyWidthMode();
   };
 
-  // Cycle narrow → medium → wide → full → narrow. Bound to Ctrl+Alt+C.
+  // Cycle narrow → medium → wide → full → narrow. Bound to Ctrl+Alt+C / ⌃⌘C.
   const cycleWidthMode = () => {
     const i = WIDTH_MODES.indexOf(prefs.widthMode);
     const next = WIDTH_MODES[(i + 1) % WIDTH_MODES.length];
@@ -3512,7 +3510,7 @@
   let lastTocPosition = null;
 
   // User-controlled override for TOC visibility. Toggled via
-  // Ctrl+Alt+I or the `:toc on|off` Ex command. Session-scoped
+  // Ctrl+Alt+I / ⌃⌘I or the `:toc on|off` Ex command. Session-scoped
   // (not persisted to localStorage) — defaults to false on every
   // launch so a fresh document load always shows whatever the
   // source requested. The reasoning: tocHidden is a per-view
@@ -3537,7 +3535,7 @@
   };
 
   // Flip the TOC visibility override and re-evaluate the layout.
-  // Bound to Ctrl+Alt+I.
+  // Bound to Ctrl+Alt+I / ⌃⌘I.
   const toggleTocVisibility = () => {
     tocHidden = !tocHidden;
     evaluateTocLayout();
@@ -3623,7 +3621,7 @@
 
   // Toggle editor syntax highlighting on/off and persist. Same
   // shape as toggleVim — pref flip, persist, dispatch a compartment
-  // reconfigure. Called by Ctrl+Alt+Y and (via applySyntaxHighlighting)
+  // reconfigure. Called by Ctrl+Alt+Y / ⌃⌘Y and (via applySyntaxHighlighting)
   // by the :syntax Ex command.
   const toggleSyntaxHighlighting = () => {
     prefs.syntaxHighlighting = !prefs.syntaxHighlighting;
@@ -4015,7 +4013,7 @@
   });
 
   // :syncpreview / :syncp — snap the preview to the block containing
-  // the editor caret's source line. Same action as Ctrl+Alt+L.
+  // the editor caret's source line. Same action as Ctrl+Alt+L / ⌃⌘L.
   Vim.defineEx('syncpreview', 'syncp', () => {
     syncPreviewToCaret();
   });
@@ -4024,7 +4022,7 @@
   // namespace for extended commands and is unused in standard vim.
   // Wrapped in try/catch because Vim.map's exact signature in
   // @replit/codemirror-vim isn't documented; if it fails, the Ex
-  // command and Ctrl+Alt+L both still work.
+  // command and Ctrl+Alt+L / ⌃⌘L both still work.
   try {
     Vim.map('gz', ':syncpreview<CR>', 'normal');
   } catch (e) {

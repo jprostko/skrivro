@@ -47,9 +47,9 @@ const escapeHtml = (s: string) =>
 // Localization: the surrounding chrome ("image blocked", "see",
 // "External image blocked", and the full instruction sentence) is
 // translated via tr(); the literal `allow-external-images` config-
-// key name stays English, matching item #13's policy that input
-// syntax doesn't translate (the user types this string into their
-// config file regardless of their UI language).
+// key name stays English, since input syntax doesn't translate (the
+// user types this string into their config file regardless of their
+// UI language).
 //
 // textContent / setAttribute (not innerHTML) so the content can't
 // smuggle markup back in. The .image-placeholder class is a hook for
@@ -97,8 +97,9 @@ let translateEditorLine: (editorLine: number) => number = (n) => n;
 // replacement; combined with the scroll-past-end spacer, that means
 // opening a short file after scrolling deep into a long one can land
 // the viewport in the new file's spacer region (entirely blank). File-
-// load entry points (openFile/Ctrl+O, newFile/Ctrl+N, drag-drop,
-// :e filename, initial session-restore launch) call
+// load entry points (openFile via Ctrl+O / Cmd+O, newFile via
+// Ctrl+N / Cmd+N, drag-drop, :e filename, initial session-restore
+// launch) call
 // requestPreviewScrollToTop() to queue a reset; render() consumes the
 // flag right after writing the new HTML, so the reset lands on the
 // fresh content. Intentionally NOT set by edits, saves, or format
@@ -381,7 +382,7 @@ export const scheduleRender = () => {
 
 // ================= Scroll sync =================
 // Sync-once: snap the preview to the block containing (or nearest
-// preceding) the editor caret's source line. Triggered by Ctrl+Alt+L,
+// preceding) the editor caret's source line. Triggered by Ctrl+Alt+L / ⌃⌘L,
 // the :syncpreview Ex command, or gz in vim normal mode. NOT a
 // continuous sync — both panes stay independently scrollable and we
 // don't touch them unless the user asks.

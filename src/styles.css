@@ -1,9 +1,6 @@
 :root {
   /* Skrivro semantic theme — Catppuccin Mocha port
      24 slots: 7 backgrounds, 2 surfaces, 4 text, 11 accents.
-     See memory/project_theming.md for the full slot schema,
-     palette research (Dracula, Tokyo Night Moon), and the
-     rationale for decoupling from Catppuccin's hue-named tokens.
      To create a new theme, fill in each slot below with your
      palette's best match for the PURPOSE described in the comment. */
 
@@ -82,8 +79,7 @@
 
      When the user sets one of the corresponding keys in skrivro.conf,
      the frontend's applyUserConfig() function writes the override as
-     an inline style on :root, shadowing these defaults. See
-     memory/project_config_file.md for the full spec. */
+     an inline style on :root, shadowing these defaults. */
   --edit-font-size: 0.9rem;
   --preview-font-size: 0.95rem;
   --editor-padding-x: 2.5rem;
@@ -249,7 +245,7 @@ body.no-titlebar .titlebar { display: none; }
   scrollbar-color: var(--skr-surface-hover) var(--skr-bg);
   scrollbar-width: thin;
   /* tabindex="-1" on this element lets it receive focus for the
-     Ctrl+Alt+W pane-toggle. Suppress the default browser focus ring
+     Ctrl+Alt+W / ⌃⌘W pane-toggle. Suppress the default browser focus ring
      — the active-pane outline on .preview-pane provides the signal. */
   outline: none;
 }
@@ -1035,7 +1031,7 @@ body.mode-preview .preview-pane.has-sidebar-toc {
 }
 
 /* TOC visibility toggle — when the user has hidden the TOC via
-   Ctrl+Alt+I or `:toc off`, evaluateTocLayout adds .toc-hidden
+   Ctrl+Alt+I / ⌃⌘I or `:toc off`, evaluateTocLayout adds .toc-hidden
    to .preview-pane AND skips adding the sidebar layout classes.
    So this single rule covers both layouts: the inline TOC at
    the top of content (Asciidoctor's default placement) and the
@@ -1265,8 +1261,7 @@ dialog.help-dialog::backdrop {
 
 /* ---------- Status bar ---------- */
 /* Canonical Catppuccin mode colors (blue/green/mauve/red/peach) sourced
-   from catppuccin/nvim's lualine.lua. See memory/project_status_bar.md
-   for the full design rationale. */
+   from catppuccin/nvim's lualine.lua. */
 .statusbar {
   display: flex;
   align-items: center;
@@ -1301,7 +1296,7 @@ body.mode-preview .statusbar .status-mode-pill,
 body.mode-preview .statusbar .status-position { display: none; }
 
 /* Sync indicator: visible only in split mode. The arrow signals
-   the scroll-sync action (Ctrl+Alt+L / :syncpreview / gz) that
+   the scroll-sync action (Ctrl+Alt+L / ⌃⌘L / :syncpreview / gz) that
    moves the preview to track the editor caret. With either pane
    hidden — preview-only OR editor-only — there is nothing to
    sync against, so showing the indicator there would be visual
@@ -1354,8 +1349,7 @@ body.mode-preview .statusbar .status-word-count { display: inline-block; }
    values for Replace/Command to know what they look like muted. If the
    user later wants the full LazyVim palette, we can extend these rules
    — but the canonical values are sane defaults for the uncaptured
-   modes. See memory/project_config_file.md and memory/project_status_bar.md
-   for the full discussion. */
+   modes. */
 body.mode-pill-muted .statusbar .status-mode-pill[data-vim-mode="normal"] {
   background: var(--skr-surface);
   color: var(--skr-text-dim);
@@ -1395,7 +1389,7 @@ body.is-dirty .statusbar .status-filename::before {
 
 /* Sync indicator — a small rightwards arrow that lives quietly in the
    right-hand status bar cluster and briefly flashes when the user
-   triggers the scroll-sync action (Ctrl+Alt+L, :syncpreview, or gz in
+   triggers the scroll-sync action (Ctrl+Alt+L / ⌃⌘L, :syncpreview, or gz in
    vim normal mode). Confirms the action happened even when the preview
    doesn't visibly move — e.g., when the caret line is already at the
    top of the visible block and scrollIntoView is a no-op.
@@ -1446,9 +1440,7 @@ body.is-dirty .statusbar .status-filename::before {
    The check is document-column-based, not visual-column-based:
    soft wrap does not reset the count, so a logical line of 150
    characters triggers the indicator at col > limit even if the
-   line has wrapped across multiple visual rows. See the soft-
-   column-limit note in memory/project_config_file.md for the
-   full rationale. */
+   line has wrapped across multiple visual rows. */
 .statusbar .status-position.over-limit {
   color: var(--skr-emphasis);
   border: 1px solid var(--skr-emphasis);

@@ -645,7 +645,7 @@ Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
   } else {
     // :saveas (no args) — non-standard: show the save dialog. Real Vim
     // errors with "Argument required" here, but a dialog is friendlier
-    // for a GUI editor and matches what Ctrl+Shift+S does. Error
+    // for a GUI editor and matches what Ctrl+Shift+S / ⇧⌘S does. Error
     // reporting happens inside saveFileAs.
     void saveFileAs();
   }
@@ -710,7 +710,7 @@ Vim.defineEx('open', 'op', () => {
 });
 
 // :syncpreview / :syncp — snap the preview to the block containing
-// the editor caret's source line. Same action as Ctrl+Alt+L.
+// the editor caret's source line. Same action as Ctrl+Alt+L / ⌃⌘L.
 Vim.defineEx('syncpreview', 'syncp', () => {
   syncPreviewToCaret();
 });
@@ -1007,7 +1007,7 @@ Vim.defineEx('xall', 'xa', exitIfDirty);
 // namespace for extended commands and is unused in standard vim.
 // Wrapped in try/catch because Vim.map's exact signature in
 // @replit/codemirror-vim isn't documented; if it fails, the Ex
-// command and Ctrl+Alt+L both still work.
+// command and Ctrl+Alt+L / ⌃⌘L both still work.
 try {
   Vim.map('gz', ':syncpreview<CR>', 'normal');
 } catch (e) {

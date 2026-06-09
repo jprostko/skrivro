@@ -322,7 +322,7 @@ export const vimCompartment = new Compartment();
 // via setEditorLanguage — no rebuild of the full extension set.
 export const languageCompartment = new Compartment();
 
-// Reconfigured by the runtime spellcheck toggle (Ctrl+Alt+K / :spell).
+// Reconfigured by the runtime spellcheck toggle (Ctrl+Alt+K / ⌃⌘K / :spell).
 // Holds the decoration plugin when spellcheck is active, an empty list
 // when off. The actual dictionaries load asynchronously in the
 // spellcheck module — see setSpellcheck / resolveSpellcheckExtension.
@@ -486,7 +486,7 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   languageCompartment.of(resolveLanguageExtension(currentBuffer.format)),
 
   // spellcheck — compartment lets the misspelling-decoration plugin be
-  // toggled at runtime (Ctrl+Alt+K / :spell) without rebuilding the
+  // toggled at runtime (Ctrl+Alt+K / ⌃⌘K / :spell) without rebuilding the
   // editor. Initial value reflects config + pref; the dictionaries load
   // asynchronously after createEditor, so a present-but-unfed plugin
   // simply decorates nothing until initSpellcheck dispatches

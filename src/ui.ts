@@ -36,7 +36,7 @@ const previewPaneEl       = document.querySelector('.preview-pane');
 
 // ================= Status bar =================
 //
-// See memory/project_status_bar.md for the design spec. Summary:
+// Layout:
 //   - Mode pill (left): canonical Catppuccin colors from catppuccin/nvim
 //     (blue/green/mauve/red/peach). Hidden when vim is off.
 //   - Filename (left): dirty indicator + basename
@@ -296,7 +296,7 @@ export const updateWordCount = () => {
 };
 
 // ================= Help overlay =================
-// Ctrl+Alt+H or the "?" button in the titlebar toggles the help
+// Ctrl+Alt+H / ⌃⌘H or the "?" button in the titlebar toggles the help
 // dialog. Escape (native <dialog> behavior), the close button,
 // and clicking the backdrop all dismiss it.
 //
@@ -318,7 +318,7 @@ export const updateWordCount = () => {
 //     `?` button captures the button itself as the "previous focus"
 //     (wrong — the actual previous focus was whatever the user was
 //     doing before they clicked).
-//   - showHelp fallback: for the keyboard path (Ctrl+Alt+H), no
+//   - showHelp fallback: for the keyboard path (Ctrl+Alt+H / ⌃⌘H), no
 //     button mousedown fires; capture at showHelp time instead.
 //
 // preHelpFocus is cleared on hideHelp so a subsequent open via
@@ -484,7 +484,7 @@ const SPELLCHECK_OFF_MSG = 'Spellcheck is disabled in config (spellcheck-languag
 // Flip editor spellcheck on/off and persist. Same shape as the syntax-
 // highlighting toggle, plus a config gate: when spellcheck-language is
 // off/unset there is no dictionary loaded, so the toggle is inert and
-// instead surfaces why. Called by Ctrl+Alt+K and the :spell Ex command.
+// instead surfaces why. Called by Ctrl+Alt+K / ⌃⌘K and the :spell Ex command.
 export const toggleSpellcheck = () => {
   if (!spellcheckConfigured()) {
     vimMessage(tr(SPELLCHECK_OFF_MSG));
@@ -605,7 +605,7 @@ export const cycleWidthMode = () => {
 let lastTocPosition: string | null = null;
 
 // User-controlled override for TOC visibility. Toggled via
-// Ctrl+Alt+I or the `:toc on|off` Ex command. Session-scoped
+// Ctrl+Alt+I / ⌃⌘I or the `:toc on|off` Ex command. Session-scoped
 // (not persisted to localStorage) — defaults to false on every
 // launch so a fresh document load always shows whatever the
 // source requested. Reasoning: tocHidden is a per-view override
@@ -635,7 +635,7 @@ export const evaluateTocLayout = () => {
 };
 
 // Flip the TOC visibility override and re-evaluate the layout.
-// Bound to Ctrl+Alt+I.
+// Bound to Ctrl+Alt+I / ⌃⌘I.
 export const toggleTocVisibility = () => {
   tocHidden = !tocHidden;
   evaluateTocLayout();
@@ -886,8 +886,6 @@ export const setDisplayMode = (mode: string) => {
 // because the CM6 theme extension reads CSS variables at editor
 // construction time. Overriding afterwards would require a dispatched
 // reconfigure.
-//
-// See memory/project_config_file.md for the spec.
 export const applyUserConfig = (cfg: SkrivroConfig) => {
   const root = document.documentElement;
 

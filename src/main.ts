@@ -45,16 +45,14 @@ import './styles.css';
 // hardcodes `"fa fa-#{target}"` at line 357 of lib/asciidoctor.rb,
 // and modern FA versions use different class prefixes (fas, far, fab,
 // fa-solid, etc.). Using FA4 matches Asciidoctor's output 1:1 with no
-// shim CSS, no class rewriting, smallest bundle. See
-// memory/project_asciidoctor_includes.md and asciidoctor#2535 for
-// the upstream discussion.
+// shim CSS, no class rewriting, smallest bundle. See asciidoctor#2535
+// for the upstream discussion.
 //
 // License: MIT (CSS) + SIL Open Font License 1.1 (font files).
 // Both permissive and compatible with Skrivro's 0BSD source
 // license. The OFL has a Reserved Font Name clause for "Font
 // Awesome" — we bundle unmodified so that clause doesn't affect
-// us. See memory/project_licensing.md for the full aggregation
-// rationale. Bundle cost: ~240 KB (CSS ~75 KB, woff2 font ~165 KB).
+// us. Bundle cost: ~240 KB (CSS ~75 KB, woff2 font ~165 KB).
 import 'font-awesome/css/font-awesome.min.css';
 
 import { invoke } from '@tauri-apps/api/core';
@@ -169,8 +167,7 @@ window.addEventListener('keydown', (e) => {
     // better but Ctrl+S / Ctrl+Shift+S are already in the save family
     // and adding Ctrl+Alt+S would overload the letter), but the
     // secondary-modifier namespace is crowded enough that "works and
-    // doesn't conflict" wins over "readable mnemonic." See item #25
-    // in project_pending_features.md for the design discussion.
+    // doesn't conflict" wins over "readable mnemonic."
     e.preventDefault(); toggleSyntaxHighlighting();
   } else if (second && k === 'c') {
     // Width-mode cycle (narrow → medium → wide → full → narrow).
@@ -329,8 +326,6 @@ setLaunchCwd(launchInfo.cwd || '');
 // because the CM6 theme extension reads --edit-font-size and
 // --editor-padding at construction time. Setting them afterwards
 // would require a dispatched reconfigure.
-//
-// See memory/project_config_file.md for the full spec.
 try {
   setUserConfig(await invoke<SkrivroConfig>('get_config'));
 } catch (e) {

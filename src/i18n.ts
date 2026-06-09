@@ -82,6 +82,34 @@ export const STRINGS_SV: Record<string, string> = {
   // runtime). Parens added at the call site.
   'spellcheck off': 'stavningskontroll av',
 
+  // Vim-panel / Ex-command channel — error messages and readbacks. By
+  // design these stay English (the Vim way): E-code prefixes
+  // (E37:/E212:/E474:), command-argument tokens
+  // (on/off/narrow/medium/wide/full), config keys (spellcheck-language),
+  // and the ! modifier. %s placeholders fill positionally from tr() args.
+  // "Format: %s" and "TOC: %s" have no entry — Format is identical in
+  // Swedish and TOC is an acronym.
+  'E212: Can\'t open file for writing: %s (%s)': 'E212: Kan inte öppna filen för skrivning: %s (%s)',
+  'E212: Can\'t open file for writing (%s)': 'E212: Kan inte öppna filen för skrivning (%s)',
+  'E484: Can\'t open file %s (%s)': 'E484: Kan inte öppna filen %s (%s)',
+  'E484: Can\'t open file (%s)': 'E484: Kan inte öppna filen (%s)',
+  'E37: No write since last change (add ! to override)': 'E37: Ingen skrivning sedan senaste ändring (lägg till ! för att tvinga)',
+  'E474: Invalid format "%s" (expected asciidoc, markdown, or text)': 'E474: Ogiltigt format "%s" (förväntade asciidoc, markdown eller text)',
+  'E474: Invalid argument "%s" (expected on or off)': 'E474: Ogiltigt argument "%s" (förväntade on eller off)',
+  'E474: Invalid argument "%s" (expected narrow, medium, wide, or full)': 'E474: Ogiltigt argument "%s" (förväntade narrow, medium, wide eller full)',
+  'Syntax highlighting: %s': 'Syntaxmarkering: %s',
+  'Spellcheck: %s': 'Stavningskontroll: %s',
+  'Spellcheck: off (disabled in config)': 'Stavningskontroll: off (inaktiverad i konfigurationen)',
+  'Width mode: %s': 'Breddläge: %s',
+  'Spellcheck is disabled in config (spellcheck-language = off)': 'Stavningskontroll är inaktiverad i konfigurationen (spellcheck-language = off)',
+  'Spellcheck is off in the editor (turn it on to add or remove words)': 'Stavningskontroll är av i editorn (slå på den för att lägga till eller ta bort ord)',
+  'No word under the cursor': 'Inget ord under markören',
+  'Added "%s" to custom words': 'La till "%s" i egna ord',
+  '"%s" is already a custom word': '"%s" är redan ett eget ord',
+  'Removed "%s" from custom words': 'Tog bort "%s" från egna ord',
+  '"%s" is not a custom word': '"%s" är inte ett eget ord',
+  '%s is too large to open (%s, limit %s)': '%s är för stor för att öppna (%s, gräns %s)',
+
   // Confirm dialog — message and button labels
   'You have unsaved changes. Discard them?': 'Du har osparade ändringar. Kasta dem?',
   'Discard': 'Kasta',
@@ -226,9 +254,14 @@ export const STRINGS_SV: Record<string, string> = {
 // taken as module-level import alias for @lezer/highlight's `tags`
 // (`import { tags as t }`). Renaming our helper to `tr` is simpler
 // than renaming the deeply-used Lezer import.
-export const tr = (en: string): string => {
-  if (lang !== 'sv') return en;
-  return STRINGS_SV[en] ?? en;
+// Optional %s placeholders are filled positionally from args, so a
+// message with interpolated values stays one translatable key (the
+// vim-panel error/readback channel needs this; static UI uses tr(en)).
+export const tr = (en: string, ...args: unknown[]): string => {
+  const s = lang === 'sv' ? (STRINGS_SV[en] ?? en) : en;
+  if (args.length === 0) return s;
+  let i = 0;
+  return s.replace(/%s/g, () => String(args[i++]));
 };
 
 // Translate the help dialog's static content in-place. Runs once at

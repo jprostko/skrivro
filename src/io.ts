@@ -371,7 +371,7 @@ const formatBytes = (bytes: number): string => {
 // failure (missing file, permission denied) and message it correctly.
 export class FileTooLargeError extends Error {
   constructor(name: string, size: number) {
-    super(`${name} is too large to open (${formatBytes(size)}, limit ${formatBytes(MAX_FILE_BYTES)})`);
+    super(tr('%s is too large to open (%s, limit %s)', name, formatBytes(size), formatBytes(MAX_FILE_BYTES)));
     this.name = 'FileTooLargeError';
   }
 }
@@ -461,7 +461,7 @@ export const saveFile = async () => {
     clearDraft();
   } catch (e) {
     console.error(e);
-    vimMessage(`E212: Can't open file for writing: ${currentBuffer.path} (${errMsg(e)})`);
+    vimMessage(tr('E212: Can\'t open file for writing: %s (%s)', currentBuffer.path, errMsg(e)));
   }
 };
 
@@ -487,8 +487,8 @@ export const saveFileAs = async () => {
     // resolved. If the dialog itself threw, selected is still null
     // and we fall back to a generic message.
     vimMessage(selected
-      ? `E212: Can't open file for writing: ${selected} (${errMsg(e)})`
-      : `E212: Can't open file for writing (${errMsg(e)})`);
+      ? tr('E212: Can\'t open file for writing: %s (%s)', selected, errMsg(e))
+      : tr('E212: Can\'t open file for writing (%s)', errMsg(e)));
   }
 };
 
@@ -530,7 +530,7 @@ export const reloadFile = async () => {
     // oversize case is live here, not only at first open.
     vimMessage(e instanceof FileTooLargeError
       ? e.message
-      : `E484: Can't open file ${currentBuffer.path} (${errMsg(e)})`);
+      : tr('E484: Can\'t open file %s (%s)', currentBuffer.path, errMsg(e)));
   }
 };
 
@@ -604,8 +604,8 @@ Vim.defineEx('write', 'w', async (_cm: any, params: VimExParams) => {
     } catch (e) {
       console.error(e);
       vimMessage(targetPath
-        ? `E212: Can't open file for writing: ${targetPath} (${errMsg(e)})`
-        : `E212: Can't open file for writing (${errMsg(e)})`);
+        ? tr('E212: Can\'t open file for writing: %s (%s)', targetPath, errMsg(e))
+        : tr('E212: Can\'t open file for writing (%s)', errMsg(e)));
     }
   } else {
     // :w or :w! — save to current file. Error reporting happens inside
@@ -639,8 +639,8 @@ Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
     } catch (e) {
       console.error(e);
       vimMessage(targetPath
-        ? `E212: Can't open file for writing: ${targetPath} (${errMsg(e)})`
-        : `E212: Can't open file for writing (${errMsg(e)})`);
+        ? tr('E212: Can\'t open file for writing: %s (%s)', targetPath, errMsg(e))
+        : tr('E212: Can\'t open file for writing (%s)', errMsg(e)));
     }
   } else {
     // :saveas (no args) — non-standard: show the save dialog. Real Vim
@@ -658,7 +658,7 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
   // a new one). Match vim's exact wording — users who know the E37
   // code from vim recognise it instantly.
   if (currentBuffer.dirty && !bang) {
-    vimMessage('E37: No write since last change (add ! to override)');
+    vimMessage(tr('E37: No write since last change (add ! to override)'));
     return;
   }
   if (arg) {
@@ -684,8 +684,8 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
       vimMessage(e instanceof FileTooLargeError
         ? e.message
         : (sourcePath
-            ? `E484: Can't open file ${sourcePath} (${errMsg(e)})`
-            : `E484: Can't open file (${errMsg(e)})`));
+            ? tr('E484: Can\'t open file %s (%s)', sourcePath, errMsg(e))
+            : tr('E484: Can\'t open file (%s)', errMsg(e))));
     }
   } else {
     // :e or :e! — reload current file from disk. Error reporting
@@ -750,12 +750,12 @@ const FORMAT_DISPLAY_NAME: Record<Format, string> = {
 Vim.defineEx('format', 'format', (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
-    vimMessage(`Format: ${FORMAT_DISPLAY_NAME[currentBuffer.format]}`);
+    vimMessage(tr('Format: %s', FORMAT_DISPLAY_NAME[currentBuffer.format]));
     return;
   }
   const fmt = parseFormat(arg);
   if (!fmt) {
-    vimMessage(`E474: Invalid format "${arg}" (expected asciidoc, markdown, or text)`);
+    vimMessage(tr('E474: Invalid format "%s" (expected asciidoc, markdown, or text)', arg));
     return;
   }
   setBufferFormat(fmt);
@@ -773,7 +773,7 @@ Vim.defineEx('text', 'text', () => { setBufferFormat('text'); });
 Vim.defineEx('syntax', 'syn', (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
-    vimMessage(`Syntax highlighting: ${prefs.syntaxHighlighting ? 'on' : 'off'}`);
+    vimMessage(tr('Syntax highlighting: %s', prefs.syntaxHighlighting ? 'on' : 'off'));
     return;
   }
   const a = arg.toLowerCase();
@@ -782,7 +782,7 @@ Vim.defineEx('syntax', 'syn', (_cm: any, params: VimExParams) => {
   } else if (a === 'off') {
     applySyntaxHighlighting(false);
   } else {
-    vimMessage(`E474: Invalid argument "${arg}" (expected on or off)`);
+    vimMessage(tr('E474: Invalid argument "%s" (expected on or off)', arg));
   }
 });
 
@@ -796,8 +796,8 @@ Vim.defineEx('spell', 'spell', (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
     vimMessage(spellcheckConfigured()
-      ? `Spellcheck: ${prefs.spellcheck ? 'on' : 'off'}`
-      : 'Spellcheck: off (disabled in config)');
+      ? tr('Spellcheck: %s', prefs.spellcheck ? 'on' : 'off')
+      : tr('Spellcheck: off (disabled in config)'));
     return;
   }
   const a = arg.toLowerCase();
@@ -806,7 +806,7 @@ Vim.defineEx('spell', 'spell', (_cm: any, params: VimExParams) => {
   } else if (a === 'off') {
     applySpellcheck(false);
   } else {
-    vimMessage(`E474: Invalid argument "${arg}" (expected on or off)`);
+    vimMessage(tr('E474: Invalid argument "%s" (expected on or off)', arg));
   }
 });
 
@@ -824,39 +824,39 @@ const wordUnderCursor = (): string | null => {
 
 Vim.defineEx('spellgood', 'spellgood', (_cm: any) => {
   if (!spellcheckConfigured()) {
-    vimMessage('Spellcheck is disabled in config (spellcheck-language = off)');
+    vimMessage(tr('Spellcheck is disabled in config (spellcheck-language = off)'));
     return;
   }
   if (!prefs.spellcheck) {
-    vimMessage('Spellcheck is off in the editor (turn it on to add or remove words)');
+    vimMessage(tr('Spellcheck is off in the editor (turn it on to add or remove words)'));
     return;
   }
   const word = wordUnderCursor();
   if (!word) {
-    vimMessage('No word under the cursor');
+    vimMessage(tr('No word under the cursor'));
     return;
   }
   void addCustomWord(word).then((added) =>
-    vimMessage(added ? `Added "${word}" to custom words` : `"${word}" is already a custom word`),
+    vimMessage(added ? tr('Added "%s" to custom words', word) : tr('"%s" is already a custom word', word)),
   );
 });
 
 Vim.defineEx('spellundo', 'spellundo', (_cm: any) => {
   if (!spellcheckConfigured()) {
-    vimMessage('Spellcheck is disabled in config (spellcheck-language = off)');
+    vimMessage(tr('Spellcheck is disabled in config (spellcheck-language = off)'));
     return;
   }
   if (!prefs.spellcheck) {
-    vimMessage('Spellcheck is off in the editor (turn it on to add or remove words)');
+    vimMessage(tr('Spellcheck is off in the editor (turn it on to add or remove words)'));
     return;
   }
   const word = wordUnderCursor();
   if (!word) {
-    vimMessage('No word under the cursor');
+    vimMessage(tr('No word under the cursor'));
     return;
   }
   void removeCustomWord(word).then((removed) =>
-    vimMessage(removed ? `Removed "${word}" from custom words` : `"${word}" is not a custom word`),
+    vimMessage(removed ? tr('Removed "%s" from custom words', word) : tr('"%s" is not a custom word', word)),
   );
 });
 
@@ -874,14 +874,14 @@ Vim.defineEx('find', 'find', () => {
 Vim.defineEx('width', 'width', (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
-    vimMessage(`Width mode: ${prefs.widthMode}`);
+    vimMessage(tr('Width mode: %s', prefs.widthMode));
     return;
   }
   const a = arg.toLowerCase();
   if (WIDTH_MODES.includes(a)) {
     setWidthMode(a);
   } else {
-    vimMessage(`E474: Invalid argument "${arg}" (expected narrow, medium, wide, or full)`);
+    vimMessage(tr('E474: Invalid argument "%s" (expected narrow, medium, wide, or full)', arg));
   }
 });
 
@@ -891,7 +891,7 @@ Vim.defineEx('width', 'width', (_cm: any, params: VimExParams) => {
 Vim.defineEx('toc', 'toc', (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
-    vimMessage(`TOC: ${isTocHidden() ? 'off' : 'on'}`);
+    vimMessage(tr('TOC: %s', isTocHidden() ? 'off' : 'on'));
     return;
   }
   const a = arg.toLowerCase();
@@ -900,7 +900,7 @@ Vim.defineEx('toc', 'toc', (_cm: any, params: VimExParams) => {
   } else if (a === 'off') {
     applyTocVisibility(false);
   } else {
-    vimMessage(`E474: Invalid argument "${arg}" (expected on or off)`);
+    vimMessage(tr('E474: Invalid argument "%s" (expected on or off)', arg));
   }
 });
 

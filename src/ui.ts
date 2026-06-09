@@ -487,7 +487,7 @@ const SPELLCHECK_OFF_MSG = 'Spellcheck is disabled in config (spellcheck-languag
 // instead surfaces why. Called by Ctrl+Alt+K and the :spell Ex command.
 export const toggleSpellcheck = () => {
   if (!spellcheckConfigured()) {
-    vimMessage(SPELLCHECK_OFF_MSG);
+    vimMessage(tr(SPELLCHECK_OFF_MSG));
     return;
   }
   prefs.spellcheck = !prefs.spellcheck;
@@ -499,7 +499,7 @@ export const toggleSpellcheck = () => {
 // no-op when already in the requested state.
 export const applySpellcheck = (enabled: boolean) => {
   if (!spellcheckConfigured()) {
-    vimMessage(SPELLCHECK_OFF_MSG);
+    vimMessage(tr(SPELLCHECK_OFF_MSG));
     return;
   }
   if (prefs.spellcheck === enabled) return;

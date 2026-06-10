@@ -847,6 +847,14 @@ body.mode-split .preview-scroll::after {
 .cm-panel.cm-search [name='close']:hover {
   color: var(--skr-text);
 }
+/* The regex toggle is deliberately hidden: the average user doesn't
+   know what regex means, and vim's own / search still provides regex
+   matching for those who do. The panel code, the regex engine, and the
+   regexp-to-regex relabel all stay intact, so deleting this rule
+   restores the checkbox. */
+.cm-panel.cm-search label:has(input[name='re']) {
+  display: none;
+}
 
 /* ---------- Display modes: split / editor-only / preview-only ---------- */
 body.mode-editor .preview-pane      { display: none; }

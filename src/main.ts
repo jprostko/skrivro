@@ -303,9 +303,12 @@ applyTitlebar();
 applyGutter();
 applyStatusBar();
 applyDisplayMode();
-applyMacModifierLabels();
 applyWidthMode();
+// Order matters: translateStaticText matches elements by their
+// authored English text and injects the Swedish <kbd> elements.
+// applyMacModifierLabels then rewrites both.
 translateStaticText();
+applyMacModifierLabels();
 
 // Query Rust for launch-time info (CLI argument, shell CWD). If a file
 // path was passed on the command line, that wins over the autosave draft.

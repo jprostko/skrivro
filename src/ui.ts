@@ -737,6 +737,10 @@ export const applyMacModifierLabels = () => {
       if (symbol) mods.push(symbol);
       else keys.push(part);
     }
+    // A kbd with no modifier tokens (:w <var>filename</var>, zg) has
+    // nothing to rewrite, and reassigning textContent would flatten
+    // its inner markup — the <var> placeholders. Leave it untouched.
+    if (mods.length === 0) return;
     mods.sort((a, b) => order.indexOf(a) - order.indexOf(b));
     kbd.textContent = mods.join('') + keys.join('');
   });

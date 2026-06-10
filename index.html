@@ -63,6 +63,7 @@
     "@codemirror/commands":      "https://esm.sh/@codemirror/commands@6",
     "@codemirror/language":      "https://esm.sh/@codemirror/language@6",
     "@codemirror/lang-markdown": "https://esm.sh/@codemirror/lang-markdown@6",
+    "@codemirror/search":        "https://esm.sh/@codemirror/search@6",
     "@lezer/highlight":          "https://esm.sh/@lezer/highlight@1",
     "@replit/codemirror-vim":    "https://esm.sh/@replit/codemirror-vim@6",
     "@asciidoctor/core":         "https://esm.sh/@asciidoctor/core@3",
@@ -698,6 +699,55 @@
     height: 1px;
     margin: 0.25rem 0.3rem;
     background: var(--skr-surface);
+  }
+
+  /* Find/replace panel (@codemirror/search), themed to match the app,
+     with the same panel background as the spellcheck menu. */
+  .cm-panel.cm-search {
+    padding: 0.4rem 0.55rem;
+    background: var(--skr-bg-panel);
+    color: var(--skr-text);
+    border-bottom: 1px solid var(--skr-surface);
+    font-family: var(--font-sans);
+    /* One source for the find/replace controls' size. Buttons, inputs,
+       and checkbox labels each read it explicitly, because @codemirror's
+       base themes otherwise size those as a fraction of the panel
+       (.cm-button 70%, label 80%), leaving them inconsistently small.
+       Held as a ratio of the editor font so the panel tracks it. */
+    --search-font-size: calc(var(--edit-font-size) * 0.9);
+    font-size: var(--search-font-size);
+  }
+  .cm-panel.cm-search .cm-textfield {
+    background: var(--skr-bg-inset);
+    color: var(--skr-text);
+    border: 1px solid var(--skr-surface);
+    border-radius: 4px;
+    font-size: var(--search-font-size);
+  }
+  .cm-panel.cm-search .cm-button {
+    background: var(--skr-surface);
+    background-image: none;
+    color: var(--skr-text);
+    border: 0;
+    border-radius: 4px;
+    font-size: var(--search-font-size);
+    /* Form controls don't inherit the panel's font-family, so without
+       this the buttons render in the browser's default UI font instead
+       of var(--font-sans), ending up a different typeface and apparent
+       size from the labels. */
+    font-family: var(--font-sans);
+  }
+  .cm-panel.cm-search .cm-button:hover {
+    background: var(--skr-surface-hover);
+  }
+  .cm-panel.cm-search label {
+    color: var(--skr-text-muted);
+  }
+  .cm-panel.cm-search [name='close'] {
+    color: var(--skr-text-muted);
+  }
+  .cm-panel.cm-search [name='close']:hover {
+    color: var(--skr-text);
   }
 
   /* ---------- Display modes: split / editor-only / preview-only ---------- */
@@ -1381,6 +1431,8 @@
       <div class="help-desc">Sync preview to cursor</div>
       <div class="help-key"><kbd>Ctrl+Alt+W</kbd></div>
       <div class="help-desc">Toggle focus between editor and preview (split mode only)</div>
+      <div class="help-key"><kbd>Ctrl+F</kbd></div>
+      <div class="help-desc">Find and replace (vim users use :find)</div>
     </div>
 
     <h2>Vim Ex commands <span class="help-note">(vim mode only)</span></h2>
@@ -1405,6 +1457,12 @@
     <div class="help-grid">
       <div class="help-key"><kbd>:syncpreview</kbd> <kbd>:syncp</kbd></div>
       <div class="help-desc">Snap preview to the block containing the caret line</div>
+    </div>
+
+    <h3>Find</h3>
+    <div class="help-grid">
+      <div class="help-key"><kbd>:find</kbd></div>
+      <div class="help-desc">Open find and replace</div>
     </div>
 
     <h3>Format</h3>
@@ -1491,7 +1549,7 @@
   import { bare as markdownItEmoji } from 'markdown-it-emoji';
   import { nameToEmoji } from 'gemoji';
   import {
-    EditorState, Compartment, StateField, StateEffect, RangeSetBuilder,
+    EditorState, Compartment, StateField, StateEffect, RangeSetBuilder, Prec,
   } from '@codemirror/state';
   import {
     EditorView, keymap,
@@ -1499,6 +1557,7 @@
     drawSelection, ViewPlugin, Decoration,
   } from '@codemirror/view';
   import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+  import { search, searchKeymap, openSearchPanel } from '@codemirror/search';
   import {
     indentOnInput, bracketMatching, syntaxHighlighting,
     HighlightStyle, defaultHighlightStyle, StreamLanguage,
@@ -3908,6 +3967,16 @@
     // base keymap
     keymap.of([...defaultKeymap, ...historyKeymap]),
 
+    // find/replace — CM's search panel, mounted at the top of the editor.
+    // Opened by Mod-f (Ctrl+F, or Cmd+F on Mac) for non-vim users, or the
+    // `:find` Ex command for vim users. searchKeymap is Prec.low, so in
+    // vim mode vim's own keymap wins (its Ctrl-F keeps paging forward);
+    // with vim off, Mod-f opens the panel. The phrases entries rename two
+    // of CM's default labels; unlisted keys fall back to CM's defaults.
+    search({ top: true }),
+    EditorState.phrases.of({ 'by word': 'whole word', 'regexp': 'regex' }),
+    Prec.low(keymap.of(searchKeymap)),
+
     // change listener -> dirty / render / autosave + status bar refresh
     EditorView.updateListener.of((update) => {
       if (update.docChanged && !suppressDocEvents) {
@@ -4844,6 +4913,14 @@
     }
     const removed = removeCustomWord(word);
     vimMessage(removed ? `Removed "${word}" from custom words` : `"${word}" is not a custom word`);
+  });
+
+  // `:find` — opens CodeMirror's find/replace panel. The vim-mode entry
+  // point: under vim, Ctrl-F stays page-forward, so vim users open the
+  // panel here. Non-vim users press Mod-f (Ctrl+F, or Cmd+F on Mac).
+  // The panel handles find, replace, and replace-all.
+  Vim.defineEx('find', 'find', () => {
+    openSearchPanel(editorView);
   });
 
   // :width — sets or reports the single-pane width mode. Bare

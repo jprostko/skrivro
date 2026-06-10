@@ -1393,6 +1393,10 @@
       <div class="help-desc">Show whether spellcheck is on or off (English only)</div>
       <div class="help-key"><kbd>:spell on</kbd> <kbd>:spell off</kbd></div>
       <div class="help-desc">Turn spellcheck on or off (mirrors <kbd>Ctrl+Alt+K</kbd>)</div>
+      <div class="help-key"><kbd>:spellgood</kbd></div>
+      <div class="help-desc">Add the word under the cursor to your custom dictionary (vim <kbd>zg</kbd>)</div>
+      <div class="help-key"><kbd>:spellundo</kbd></div>
+      <div class="help-desc">Remove the word under the cursor from your custom dictionary (vim <kbd>zug</kbd>)</div>
     </div>
 
     <h3>Width</h3>
@@ -1435,6 +1439,10 @@
     <div class="help-grid">
       <div class="help-key"><kbd>gz</kbd></div>
       <div class="help-desc">Snap preview to cursor (same as :syncpreview)</div>
+      <div class="help-key"><kbd>zg</kbd></div>
+      <div class="help-desc">Add the word under the cursor to your custom dictionary (same as :spellgood)</div>
+      <div class="help-key"><kbd>zug</kbd></div>
+      <div class="help-desc">Remove the word under the cursor from your custom dictionary (same as :spellundo)</div>
     </div>
   </dialog>
 
@@ -3405,14 +3413,70 @@
     return engineLoading;
   };
 
+  // ----- Custom words (personal dictionary) -----
+  // A user-maintained list of words the spellchecker never flags:
+  // character names, place names, invented terms, domain jargon. Matched
+  // case-insensitively and consulted before the engine. Unlike master,
+  // which keeps the list in an editable custom-words.txt in the config
+  // dir, this build persists it as a localStorage key — there is no file
+  // to bulk-edit, so vim zg/zug (and the right-click menu) are the whole
+  // management surface.
+
+  const CUSTOM_WORDS_KEY = 'adoc-editor-custom-words-v1';
+
+  // lowercased key → original-case word. The map dedupes
+  // case-insensitively (so "Frodo" and "frodo" can't both be present)
+  // while keeping the casing the user added.
+  const customWords = new Map();
+  try {
+    const raw = localStorage.getItem(CUSTOM_WORDS_KEY);
+    if (raw) {
+      for (const w of JSON.parse(raw)) {
+        const t = String(w).trim();
+        if (t) customWords.set(t.toLowerCase(), t);
+      }
+    }
+  } catch {}
+
+  // Case-insensitive membership — the right-click menu uses this to
+  // choose between "Add to dictionary" and "Remove from dictionary".
+  const hasCustomWord = (word) => customWords.has(word.trim().toLowerCase());
+
+  // Write the list, drop the stale verdicts, and refresh the squiggles.
+  const persistCustomWords = () => {
+    try {
+      localStorage.setItem(CUSTOM_WORDS_KEY, JSON.stringify([...customWords.values()]));
+    } catch {}
+    wordCache.clear();
+    editorView.dispatch({ effects: spellcheckRecompute.of(null) });
+  };
+
+  // Add a word. Returns false if blank or already present.
+  const addCustomWord = (word) => {
+    const t = word.trim();
+    if (!t || customWords.has(t.toLowerCase())) return false;
+    customWords.set(t.toLowerCase(), t);
+    persistCustomWords();
+    return true;
+  };
+
+  // Remove a word. Returns false if it wasn't in the list.
+  const removeCustomWord = (word) => {
+    if (!customWords.delete(word.trim().toLowerCase())) return false;
+    persistCustomWords();
+    return true;
+  };
+
   // Per-word correctness memo. Words recur heavily across a viewport and
-  // across keystrokes, so caching repeat lookups makes them O(1).
+  // across keystrokes, so caching repeat lookups makes them O(1). Cleared
+  // whenever the custom-word list changes.
   const wordCache = new Map();
 
   const isMisspelled = (word) => {
     const cached = wordCache.get(word);
     if (cached !== undefined) return !cached;
-    const ok = spellEngine.correct(word);
+    // Correct if it's a custom word, or the engine accepts it.
+    const ok = customWords.has(word.toLowerCase()) || spellEngine.correct(word);
     wordCache.set(word, ok);
     return !ok;
   };
@@ -4347,6 +4411,17 @@
     console.error('Vim.map gz failed:', e);
   }
 
+  // Normal mode: zg / zug add/remove the word under the cursor to/from
+  // the custom word list (mirroring vim's own spellfile commands), routed
+  // through the :spellgood / :spellundo Ex commands. Separate try/catch
+  // so a failure here doesn't prevent the others from registering.
+  try {
+    Vim.map('zg', ':spellgood<CR>', 'normal');
+    Vim.map('zug', ':spellundo<CR>', 'normal');
+  } catch (e) {
+    console.error('Vim.map zg/zug failed:', e);
+  }
+
   // ================= Quit-family Ex commands =================
   //
   // Implemented as graceful no-ops that emit a vim message
@@ -4512,6 +4587,45 @@
     } else {
       vimMessage(`E474: Invalid argument "${arg}" (expected on or off)`);
     }
+  });
+
+  // `:spellgood` (vim `zg`) adds the word under the cursor to the custom
+  // word list so it stops being flagged; `:spellundo` (vim `zug`) removes
+  // it. Mirrors Vim's own spellfile commands. Both are inert with a
+  // message when spellcheck is toggled off. No short alias (would shadow
+  // real Vim's `:sp` split).
+  const wordUnderCursor = () => {
+    const { state } = editorView;
+    const range = state.wordAt(state.selection.main.head);
+    return range ? state.sliceDoc(range.from, range.to) : null;
+  };
+
+  Vim.defineEx('spellgood', 'spellgood', () => {
+    if (!spellcheckOn()) {
+      vimMessage('Spellcheck is off in the editor (turn it on to add or remove words)');
+      return;
+    }
+    const word = wordUnderCursor();
+    if (!word) {
+      vimMessage('No word under the cursor');
+      return;
+    }
+    const added = addCustomWord(word);
+    vimMessage(added ? `Added "${word}" to custom words` : `"${word}" is already a custom word`);
+  });
+
+  Vim.defineEx('spellundo', 'spellundo', () => {
+    if (!spellcheckOn()) {
+      vimMessage('Spellcheck is off in the editor (turn it on to add or remove words)');
+      return;
+    }
+    const word = wordUnderCursor();
+    if (!word) {
+      vimMessage('No word under the cursor');
+      return;
+    }
+    const removed = removeCustomWord(word);
+    vimMessage(removed ? `Removed "${word}" from custom words` : `"${word}" is not a custom word`);
   });
 
   // :width — sets or reports the single-pane width mode. Bare

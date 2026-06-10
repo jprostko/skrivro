@@ -1261,6 +1261,14 @@
        Toggled by Ctrl+Alt+H / ⌃⌘H or by clicking the "?" button in the titlebar.
        Dismissable via Escape (native <dialog> behavior), backdrop click,
        or the close button. -->
+  <!-- kbd authoring convention: app-shortcut kbds are written in the
+       Linux/Windows form. On Mac, applyMacModifierLabels (in the module
+       script below) rewrites them at init to Apple symbol form (Ctrl→⌘,
+       Alt→⌃, Shift→⇧, Command last), so authored Ctrl+Shift+Z renders as
+       ⇧⌘Z. kbds marked class="vim" are physical keys (Ctrl→⌃, Alt→⌥).
+       class="mac-only" elements show only on Mac; class="non-mac"
+       elements are removed on Mac (used where the Linux/Windows chord is
+       not the Mac chord, like redo's Ctrl+Y vs ⇧⌘Z). -->
   <dialog id="helpDialog" class="help-dialog">
     <button type="button" class="help-close" id="helpCloseBtn" aria-label="Close help">×</button>
 
@@ -1276,6 +1284,14 @@
       <div class="help-desc">Open</div>
       <div class="help-key"><kbd>Ctrl+Alt+N</kbd></div>
       <div class="help-desc">New</div>
+    </div>
+
+    <h3>Editing</h3>
+    <div class="help-grid">
+      <div class="help-key"><kbd>Ctrl+Z</kbd></div>
+      <div class="help-desc">Undo the last edit</div>
+      <div class="help-key"><kbd class="non-mac">Ctrl+Y</kbd> <kbd class="mac-only">Ctrl+Shift+Z</kbd></div>
+      <div class="help-desc">Redo the last undone edit (vim users use Ctrl+R)</div>
     </div>
 
     <h3>Display</h3>
@@ -3563,7 +3579,12 @@
   //      which works on Mac because browser paste is Cmd+V there
   //      but doesn't work on Linux/Windows where Ctrl+V is paste).
   //      Default CSS hides .mac-only; removing the class reveals
-  //      the element.
+  //      the element. .non-mac is the inverse: visible by default
+  //      (no CSS rule needed), removed here on Mac. Used where the
+  //      authored Linux/Windows chord would rewrite into a wrong or
+  //      unbound Mac chord — e.g., redo's Ctrl+Y, whose Mac form is
+  //      Shift+Cmd+Z rather than Cmd+Y, so the help row pairs a
+  //      .non-mac Ctrl+Y with a .mac-only Ctrl+Shift+Z.
   //   2. On every kbd, map each modifier to its symbol and emit the
   //      symbols in the canonical order above, rather than substituting
   //      in place (the source token order does not match that order).
@@ -3578,6 +3599,9 @@
     if (!isMac) return;
     document.querySelectorAll('.help-dialog .mac-only').forEach((el) => {
       el.classList.remove('mac-only');
+    });
+    document.querySelectorAll('.help-dialog .non-mac').forEach((el) => {
+      el.remove();
     });
     // Apple's canonical modifier order, with Command last.
     const order = '⌃⌥⇧⌘';

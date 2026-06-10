@@ -26,7 +26,10 @@
 <!-- Restrictive Content Security Policy. Blocks all external origins
      except esm.sh (which is required because the standalone version loads
      its JavaScript modules from esm.sh's CDN at runtime — we have no build
-     step to bundle them locally) and https image sources (so external
+     step to bundle them locally), unpkg.com on connect-src only (the
+     spellcheck dictionary's .aff/.dic files are fetched from there,
+     since esm.sh serves only module builds, not raw package files), and
+     https image sources (so external
      image references in user documents — image::https://...[] in AsciiDoc,
      ![](https://...) in Markdown — actually load instead of silently
      failing). The Tauri version has a JavaScript-layer gate on top of the
@@ -45,7 +48,7 @@
   style-src 'self' 'unsafe-inline';
   img-src 'self' https: data:;
   font-src 'self';
-  connect-src 'self' https://esm.sh;
+  connect-src 'self' https://esm.sh https://unpkg.com;
   object-src 'none';
   frame-src 'none';
   base-uri 'self';
@@ -66,6 +69,7 @@
     "markdown-it":               "https://esm.sh/markdown-it@14",
     "markdown-it-emoji":         "https://esm.sh/markdown-it-emoji@3",
     "gemoji":                    "https://esm.sh/gemoji@8",
+    "nspell":                    "https://esm.sh/nspell@2",
     "dompurify":                 "https://esm.sh/dompurify@3"
   }
 }
@@ -647,6 +651,15 @@
      JetBrains Mono, Fira Code, etc. enable them by default. */
   .cm-content, .preview code, .preview pre {
     font-variant-ligatures: none;
+  }
+
+  /* Spellcheck squiggle. Drawn by us as a CM6 mark decoration rather
+     than the browser's native spellcheck underline, which CM6's DOM
+     re-renders wipe. */
+  .cm-spell-error {
+    text-decoration: underline wavy var(--skr-error);
+    text-decoration-skip-ink: none;
+    text-underline-offset: 0.2em;
   }
 
   /* ---------- Display modes: split / editor-only / preview-only ---------- */
@@ -1316,6 +1329,8 @@
       <div class="help-desc">Cycle format (AsciiDoc / Markdown / Text)</div>
       <div class="help-key"><kbd>Ctrl+Alt+Y</kbd></div>
       <div class="help-desc">Toggle syntax highlighting</div>
+      <div class="help-key"><kbd>Ctrl+Alt+K</kbd></div>
+      <div class="help-desc">Toggle spellcheck (English only)</div>
       <div class="help-key"><kbd>Ctrl+Alt+C</kbd></div>
       <div class="help-desc">Cycle single-pane width (narrow / medium / wide / full)</div>
       <div class="help-key"><kbd>Ctrl+Alt+I</kbd></div>
@@ -1372,6 +1387,14 @@
       <div class="help-desc">Turn editor syntax highlighting on or off (mirrors <kbd>Ctrl+Alt+Y</kbd>)</div>
     </div>
 
+    <h3>Spelling</h3>
+    <div class="help-grid">
+      <div class="help-key"><kbd>:spell</kbd></div>
+      <div class="help-desc">Show whether spellcheck is on or off (English only)</div>
+      <div class="help-key"><kbd>:spell on</kbd> <kbd>:spell off</kbd></div>
+      <div class="help-desc">Turn spellcheck on or off (mirrors <kbd>Ctrl+Alt+K</kbd>)</div>
+    </div>
+
     <h3>Width</h3>
     <div class="help-grid">
       <div class="help-key"><kbd>:width</kbd></div>
@@ -1421,11 +1444,13 @@
   import MarkdownIt from 'markdown-it';
   import { bare as markdownItEmoji } from 'markdown-it-emoji';
   import { nameToEmoji } from 'gemoji';
-  import { EditorState, Compartment } from '@codemirror/state';
+  import {
+    EditorState, Compartment, StateField, StateEffect, RangeSetBuilder,
+  } from '@codemirror/state';
   import {
     EditorView, keymap,
     lineNumbers, highlightActiveLine, highlightActiveLineGutter,
-    drawSelection,
+    drawSelection, ViewPlugin, Decoration,
   } from '@codemirror/view';
   import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
   import {
@@ -1472,7 +1497,7 @@
 
   // ================= Prefs =================
 
-  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split', gutterHidden: true, statusBarHidden: false, syntaxHighlighting: true, widthMode: 'medium' };
+  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split', gutterHidden: true, statusBarHidden: false, syntaxHighlighting: true, spellcheck: false, widthMode: 'medium' };
 
   const loadPrefs = () => {
     try {
@@ -3338,6 +3363,211 @@
   // from setBufferFormat — no rebuild of the full extension set.
   const langCompartment = new Compartment();
 
+  // ================= Spellcheck =================
+  // JS-integrated spellcheck. The browser-native `spellcheck` attribute
+  // is unreliable inside CodeMirror (the editor's constant DOM re-render
+  // wipes the native squiggles), so nspell checks the words and the
+  // squiggles are drawn as CM6 mark decorations, which live in editor
+  // state and survive re-renders.
+  //
+  // Differences from master: English only (this build has no language
+  // layer), everything runs on the main thread (the English dictionary
+  // parses in well under a second and per-word checks are microseconds,
+  // so master's Web Worker buys nothing here), and the engine plus
+  // dictionary load lazily from the CDN on first enable — spellcheck is
+  // off by default, so a user who never turns it on never pays the
+  // download.
+
+  const spellCompartment = new Compartment();
+
+  // Lazy engine. `engineLoading` memoizes the in-flight load so repeated
+  // toggles share one download; it resets to null on failure so the next
+  // toggle-on can retry.
+  let spellEngine = null;
+  let engineLoading = null;
+  // A non-ok response throws instead of returning the CDN's error page,
+  // which nspell would otherwise happily parse into a garbage dictionary
+  // that flags everything.
+  const fetchDict = (url) =>
+    fetch(url).then((r) => {
+      if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+      return r.text();
+    });
+  const ensureEngine = () => {
+    engineLoading ??= (async () => {
+      const [{ default: nspell }, aff, dic] = await Promise.all([
+        import('nspell'),
+        fetchDict('https://unpkg.com/dictionary-en@4/index.aff'),
+        fetchDict('https://unpkg.com/dictionary-en@4/index.dic'),
+      ]);
+      spellEngine = nspell(aff, dic);
+    })();
+    return engineLoading;
+  };
+
+  // Per-word correctness memo. Words recur heavily across a viewport and
+  // across keystrokes, so caching repeat lookups makes them O(1).
+  const wordCache = new Map();
+
+  const isMisspelled = (word) => {
+    const cached = wordCache.get(word);
+    if (cached !== undefined) return !cached;
+    const ok = spellEngine.correct(word);
+    wordCache.set(word, ok);
+    return !ok;
+  };
+
+  // Word-ish token: a run of Unicode letters with optional internal
+  // apostrophes (covers "don't" and accented letters like "café").
+  // Hyphens are NOT included, so "well-known" is checked as "well" and
+  // "known" separately.
+  const wordRe = /\p{L}[\p{L}'’]*/gu;
+
+  // Tokenize the visible ranges and return the misspelled words' ranges,
+  // in ascending order (visibleRanges arrive ordered and wordRe scans
+  // left-to-right, so the result feeds straight into a RangeSetBuilder).
+  const checkVisible = (view) => {
+    if (!spellEngine) return [];
+    const ranges = [];
+    for (const { from, to } of view.visibleRanges) {
+      const text = view.state.doc.sliceString(from, to);
+      wordRe.lastIndex = 0;
+      let m;
+      while ((m = wordRe.exec(text)) !== null) {
+        const word = m[0];
+        if (!word || word.length < 2) continue;
+        const start = from + m.index;
+        // Skip a letter-run that sits against a digit ("h1", "utf8") — an
+        // identifier, not prose. charAt returns '' past either edge, so a
+        // word at the slice boundary sees no neighbour and isn't skipped.
+        const before = text.charAt(m.index - 1);
+        const after = text.charAt(m.index + word.length);
+        if (/\d/.test(before) || /\d/.test(after)) continue;
+        if (isMisspelled(word)) ranges.push({ from: start, to: start + word.length });
+      }
+    }
+    return ranges;
+  };
+
+  // Kick a re-check from outside the update cycle — dispatched after the
+  // engine finishes loading.
+  const spellcheckRecompute = StateEffect.define();
+
+  // Carries a fresh set of misspelled ranges into editor state; the
+  // decoration field rebuilds from it.
+  const setSpellRanges = StateEffect.define();
+
+  // One mark decoration, reused for every misspelling. The squiggle is
+  // pure CSS (.cm-spell-error above), so it survives CM6's DOM re-renders.
+  const misspelledMark = Decoration.mark({ class: 'cm-spell-error' });
+
+  const buildSpellDeco = (ranges, docLen) => {
+    const builder = new RangeSetBuilder();
+    for (const r of ranges) {
+      if (r.from >= 0 && r.to <= docLen && r.from < r.to) {
+        builder.add(r.from, r.to, misspelledMark);
+      }
+    }
+    return builder.finish();
+  };
+
+  // Holds the RAW misspelled ranges — every misspelling in the viewport,
+  // including the word the cursor is in. Maps them through edits so they
+  // shift with typing until the next check refreshes them. Not rendered
+  // directly: caretSkipDisplay derives the visible squiggles from it
+  // (dropping the word under the caret).
+  const spellDecoField = StateField.define({
+    create: () => Decoration.none,
+    update(deco, tr) {
+      deco = deco.map(tr.changes);
+      for (const e of tr.effects) {
+        if (e.is(setSpellRanges)) deco = buildSpellDeco(e.value, tr.newDoc.length);
+      }
+      return deco;
+    },
+  });
+
+  // Derive the VISIBLE squiggles from the raw field: every misspelling
+  // except the word the cursor sits in (or at the trailing edge of). That
+  // word is likely being typed, so squiggling it mid-keystroke is noise —
+  // it gets flagged the moment the cursor leaves.
+  const buildSpellDisplay = (state) => {
+    const raw = state.field(spellDecoField);
+    const sel = state.selection.main;
+    if (!sel.empty) return raw; // a real selection, not a bare caret: show all
+    const caret = sel.head;
+    const builder = new RangeSetBuilder();
+    raw.between(0, state.doc.length, (from, to) => {
+      if (caret > from && caret <= to) return; // skip the word under the caret
+      builder.add(from, to, misspelledMark);
+    });
+    return builder.finish();
+  };
+
+  // Renders the squiggles. Rebuilds when the document changes, when the
+  // cursor moves (so the caret-skip follows it), or when a fresh check
+  // lands in the raw field.
+  const caretSkipDisplay = ViewPlugin.fromClass(
+    class {
+      constructor(view) {
+        this.decorations = buildSpellDisplay(view.state);
+      }
+      update(update) {
+        if (
+          update.docChanged ||
+          update.selectionSet ||
+          update.startState.field(spellDecoField) !== update.state.field(spellDecoField)
+        ) {
+          this.decorations = buildSpellDisplay(update.state);
+        }
+      }
+    },
+    { decorations: (v) => v.decorations },
+  );
+
+  // Re-checks the visible text on edits and scrolls. The check itself is
+  // synchronous and viewport-sized (well under a millisecond), but a CM6
+  // plugin cannot dispatch from inside an update cycle, so the recheck is
+  // deferred to a microtask and recomputes from the view's then-current
+  // state — there is no stale-result window to guard against.
+  const spellcheckPlugin = ViewPlugin.fromClass(
+    class {
+      constructor(view) {
+        this.view = view;
+        this.destroyed = false;
+        this.scheduled = false;
+        this.recheck();
+      }
+      update(update) {
+        // selectionSet is intentionally absent: a cursor move re-derives
+        // the display layer; the raw set is unchanged.
+        if (
+          update.docChanged ||
+          update.viewportChanged ||
+          update.transactions.some((tr) =>
+            tr.effects.some((e) => e.is(spellcheckRecompute)),
+          )
+        ) {
+          this.recheck();
+        }
+      }
+      recheck() {
+        if (this.scheduled) return;
+        this.scheduled = true;
+        queueMicrotask(() => {
+          this.scheduled = false;
+          if (this.destroyed || !spellEngine) return;
+          this.view.dispatch({ effects: setSpellRanges.of(checkVisible(this.view)) });
+        });
+      }
+      destroy() {
+        this.destroyed = true;
+      }
+    },
+  );
+
+  const spellcheckExtension = [spellDecoField, spellcheckPlugin, caretSkipDisplay];
+
   // ================= Editor extensions =================
 
   const makeExtensions = () => [
@@ -3380,6 +3610,11 @@
     // toggle and setBufferFormat can reconfigure its contents at
     // runtime via resolveLanguageExtension(currentFormat).
     langCompartment.of(resolveLanguageExtension(currentFormat)),
+
+    // spellcheck — compartment lets the squiggle machinery be toggled at
+    // runtime without rebuilding the editor. The engine loads lazily on
+    // first enable; until it arrives the plugin's rechecks no-op.
+    spellCompartment.of(prefs.spellcheck ? spellcheckExtension : []),
 
     // highlighting
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
@@ -3672,6 +3907,58 @@
     });
   };
 
+  // Shared by the keybinding toggle and the :spell Ex command. Same shape
+  // as the syntax-highlighting toggle, with one difference forced by the
+  // async engine load: enabling persists only AFTER the engine actually
+  // loads. Persisting at the keypress would strand spellcheck: true in
+  // storage whenever the load is interrupted (page closed or reloaded
+  // mid-download), which makes spellcheck look enabled by default on the
+  // next launch. Disabling cannot fail, so it persists immediately.
+  let spellEnabling = false;
+  const setSpellcheck = (enabled) => {
+    if (!enabled) {
+      spellEnabling = false;
+      prefs.spellcheck = false;
+      savePrefs();
+      editorView.dispatch({ effects: spellCompartment.reconfigure([]) });
+      return;
+    }
+    spellEnabling = true;
+    editorView.dispatch({
+      effects: spellCompartment.reconfigure(spellcheckExtension),
+    });
+    ensureEngine()
+      .then(() => {
+        if (!spellEnabling) return; // toggled back off while loading
+        spellEnabling = false;
+        prefs.spellcheck = true;
+        savePrefs();
+        editorView.dispatch({ effects: spellcheckRecompute.of(null) });
+      })
+      .catch((err) => {
+        console.error('spellcheck failed to load:', err);
+        engineLoading = null; // let a later attempt retry the download
+        if (!spellEnabling) return;
+        spellEnabling = false;
+        editorView.dispatch({ effects: spellCompartment.reconfigure([]) });
+        vimMessage('Spellcheck failed to load (check your network)');
+      });
+  };
+
+  // The user-facing on/off state: enabled, or enabling with the load in
+  // flight. The stored pref alone lags during a load, since it is only
+  // written once the engine arrives.
+  const spellcheckOn = () => prefs.spellcheck || spellEnabling;
+
+  const toggleSpellcheck = () => setSpellcheck(!spellcheckOn());
+
+  // Explicit setter for `:spell on` / `:spell off` — no-op when already
+  // in the requested state.
+  const applySpellcheck = (enabled) => {
+    if (spellcheckOn() === enabled) return;
+    setSpellcheck(enabled);
+  };
+
   // Cycle through formats in a fixed order: asciidoc → markdown → text
   // → asciidoc. Bound to Ctrl+Alt+R / Ctrl+Cmd+R. The mutation work
   // (compartment reconfigure, status refresh, re-render) is centralized
@@ -3945,6 +4232,9 @@
       // crowded enough that "works and doesn't conflict" wins
       // over "readable mnemonic." Same letter as master uses.
       e.preventDefault(); toggleSyntaxHighlighting();
+    } else if (second && k === 'k') {
+      // K for checK. Same letter as master uses.
+      e.preventDefault(); toggleSpellcheck();
     } else if (second && k === 'c') {
       // C for Column / Cap. Cycles the width mode (narrow →
       // medium → wide → narrow). The secondary modifier (Alt
@@ -4204,6 +4494,26 @@
     }
   });
 
+  // :spell — sets or reports the runtime spellcheck toggle. Bare
+  // `:spell` reports current state. English-only on this build, and
+  // the dictionary loads from the CDN on first enable. Same E474
+  // error shape as :syntax for invalid arguments.
+  Vim.defineEx('spell', 'spell', (cm, params) => {
+    const { arg } = parseExArgs(params);
+    if (!arg) {
+      vimMessage(`Spellcheck: ${spellcheckOn() ? 'on' : 'off'}`);
+      return;
+    }
+    const a = arg.toLowerCase();
+    if (a === 'on') {
+      applySpellcheck(true);
+    } else if (a === 'off') {
+      applySpellcheck(false);
+    } else {
+      vimMessage(`E474: Invalid argument "${arg}" (expected on or off)`);
+    }
+  });
+
   // :width — sets or reports the single-pane width mode. Bare
   // `:width` reports current; `:width narrow|medium|wide|full` sets.
   // Same E474 error shape as :syntax for invalid arguments.
@@ -4297,6 +4607,20 @@
     parent: host,
     extensions: makeExtensions(),
   });
+
+  // Spellcheck was left on last session: start the lazy engine load now.
+  // A failure here leaves the stored pref alone. The pref records the
+  // user's intent, and a transient offline launch should not erase it.
+  // The squiggles stay absent and the next toggle or launch retries.
+  if (prefs.spellcheck) {
+    void ensureEngine()
+      .then(() => editorView.dispatch({ effects: spellcheckRecompute.of(null) }))
+      .catch((err) => {
+        console.error('spellcheck failed to load:', err);
+        engineLoading = null;
+        vimMessage('Spellcheck failed to load (check your network)');
+      });
+  }
 
   // Status bar event hooks.
   //

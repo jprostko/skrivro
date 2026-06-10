@@ -134,12 +134,15 @@ export const STRINGS_SV: Record<string, string> = {
   'Table of contents': 'Innehållsförteckning',
   'Spelling': 'Stavning',
   'Find': 'Sök',
+  'Editing': 'Redigering',
 
   // Help dialog — keyboard shortcut descriptions
   'Save': 'Spara',
   'Save as': 'Spara som',
   'Open': 'Öppna',
   'New': 'Ny',
+  'Undo the last edit': 'Ångra senaste ändringen',
+  'Redo the last undone edit (vim users use Ctrl+R)': 'Gör om senaste ångrade ändringen (vim-användare använder Ctrl+R)',
   'Toggle titlebar': 'Växla titelrad',
   'Toggle gutter': 'Växla radnummermarginal',
   'Toggle vim mode': 'Växla vim-läge',
@@ -158,6 +161,12 @@ export const STRINGS_SV: Record<string, string> = {
   // Help dialog — find/replace (Ctrl+F keybind + :find Ex command)
   'Find and replace (vim users use :find)': 'Sök och ersätt (vim-användare använder :find)',
   'Open find and replace': 'Öppna sök och ersätt',
+  // Ex command descriptions for :format. The format names (asciidoc /
+  // markdown / text) stay English — they are the literal command
+  // arguments the user types.
+  'Show the current format': 'Visa aktuellt format',
+  'Set format: asciidoc / markdown / text': 'Ställ in format: asciidoc / markdown / text',
+  'Direct shortcuts for each format': 'Direkta genvägar för varje format',
   // Ex command description for :syntax. The surrounding
   // <kbd>Ctrl+Alt+Y</kbd> is literal and untranslated.
   'Show whether editor syntax highlighting is on or off': 'Visa om syntaxmarkering i redigeraren är på eller av',
@@ -192,6 +201,7 @@ export const STRINGS_SV: Record<string, string> = {
   // of the command syntax. Distinct from actual filename strings
   // (e.g. untitled.adoc), which don't localize per the rules above.
   'filename': 'filnamn',
+  'name': 'namn',
 
   // Help dialog — Vim Ex command descriptions
   'Save current file': 'Spara aktuell fil',

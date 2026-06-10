@@ -699,6 +699,12 @@ export const isTocHidden = () => tocHidden;
 // on Mac (Linux/Windows webviews intercept Ctrl+V for paste before
 // it reaches Vim).
 //
+// .non-mac is the inverse: visible by default (no CSS rule needed),
+// removed here on Mac. Used where the authored Linux/Windows chord
+// would rewrite into a wrong or unbound Mac chord — e.g., redo's
+// Ctrl+Y, whose Mac form is Shift+Cmd+Z rather than Cmd+Y, so the
+// help row pairs a .non-mac Ctrl+Y with a .mac-only Ctrl+Shift+Z.
+//
 // Runs once at init since the help dialog's DOM is static — no need
 // to re-run on each dialog open.
 //
@@ -709,6 +715,9 @@ export const applyMacModifierLabels = () => {
   if (!isMac) return;
   document.querySelectorAll('.help-dialog .mac-only').forEach((el) => {
     el.classList.remove('mac-only');
+  });
+  document.querySelectorAll('.help-dialog .non-mac').forEach((el) => {
+    el.remove();
   });
   // Apple's canonical modifier order, with Command last.
   const order = '⌃⌥⇧⌘';

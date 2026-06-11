@@ -11,6 +11,8 @@
     "tauri": "tauri",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepare": "husky"
   },
   "dependencies": {
@@ -46,10 +48,12 @@
     "@types/markdown-it-emoji": "^3.0.1",
     "eslint": "^10.4.0",
     "globals": "^17.6.0",
+    "happy-dom": "^20.10.2",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.5",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.3",
-    "vite": "^8.0.13"
+    "vite": "^8.0.13",
+    "vitest": "^4.1.8"
   }
 }

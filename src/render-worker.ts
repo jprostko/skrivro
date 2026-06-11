@@ -79,7 +79,9 @@ export type WorkerRenderResponse = WorkerRenderSuccess | WorkerRenderFailure;
 // langPrefix keeps its 'language-' default, so fenced code emits
 // <code class="language-xxx"> — the class the preview's syntax CSS
 // keys on.
-const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
+// Exported so the test suite exercises this exact configured instance
+// rather than a lookalike.
+export const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
 
 // GFM's strikethrough extension renders to <del> (per the GFM spec).
 // markdown-it's built-in strikethrough is its own, non-GFM extension
@@ -279,7 +281,7 @@ md.use(markdownItEmoji, { defs: nameToEmoji });
 // level-0 token that is not a closing tag (a block_open, or a self-
 // contained block such as fence / hr / html_block). A block token
 // with no map contributes a 0, which the pairing step skips.
-const computeMarkdownLineMap = (tokens: Token[]): number[] => {
+export const computeMarkdownLineMap = (tokens: Token[]): number[] => {
   const lines: number[] = [];
   for (const t of tokens) {
     if (t.level === 0 && t.nesting !== -1) {

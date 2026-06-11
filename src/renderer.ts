@@ -411,7 +411,7 @@ const pairAsciidoctorBlockMap = (
 // order; rootElement.children are the rendered top-level elements.
 // Min guards a future divergence from the 1:1 token-to-element
 // invariant — sync degrades silently rather than throwing.
-const pairMarkdownBlockMap = (
+export const pairMarkdownBlockMap = (
   blockLines: number[],
   rootElement: Element,
 ): BlockMapEntry[] => {

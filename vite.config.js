@@ -28,4 +28,11 @@ export default defineConfig({
     // every build.
     chunkSizeWarningLimit: 2000,
   },
+  // Vitest (pnpm test). The tests are their own target: builds never
+  // run them, and no app code imports a test file, so they never
+  // bundle. happy-dom supplies the DOM globals that several modules
+  // expect at import time.
+  test: {
+    environment: "happy-dom",
+  },
 });

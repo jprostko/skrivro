@@ -1337,7 +1337,8 @@
   </main>
 
   <!-- Status bar: mode pill (vim-only) + filename on the left;
-       file type + cursor position on the right. Toggled by Ctrl+Alt+B / ⌃⌘B. -->
+       file type + cursor position on the right. Toggled by
+       Ctrl+Alt+B / ⌃⌘B. -->
   <footer class="statusbar" id="statusbar">
     <div class="status-left">
       <span class="status-mode-pill" id="statusMode" data-vim-mode="normal" hidden>NORMAL</span>
@@ -1366,9 +1367,9 @@
   </dialog>
 
   <!-- Help overlay with all keyboard shortcuts and vim Ex commands.
-       Toggled by Ctrl+Alt+H / ⌃⌘H or by clicking the "?" button in the titlebar.
-       Dismissable via Escape (native <dialog> behavior), backdrop click,
-       or the close button. -->
+       Toggled by Ctrl+Alt+H / ⌃⌘H or by clicking the "?" button in
+       the titlebar. Dismissable via Escape (native <dialog> behavior),
+       backdrop click, or the close button. -->
   <!-- kbd authoring convention: app-shortcut kbds are written in the
        Linux/Windows form. On Mac, applyMacModifierLabels (in the module
        script below) rewrites them at init to Apple symbol form (Ctrl→⌘,
@@ -2564,8 +2565,8 @@
 
   // ================= Scroll sync =================
   // Sync-once: snap the preview to the block containing (or nearest
-  // preceding) the editor caret's source line. Triggered by Ctrl+Alt+L / ⌃⌘L,
-  // the :syncpreview Ex command, or gz in vim normal mode. NOT a
+  // preceding) the editor caret's source line. Triggered by Ctrl+Alt+L /
+  // ⌃⌘L, the :syncpreview Ex command, or gz in vim normal mode. NOT a
   // continuous sync — both panes stay independently scrollable and we
   // don't touch them unless the user asks.
 
@@ -4091,7 +4092,8 @@
     applyWidthMode();
   };
 
-  // Cycle narrow → medium → wide → full → narrow. Bound to Ctrl+Alt+C / ⌃⌘C.
+  // Cycle narrow → medium → wide → full → narrow. Bound to
+  // Ctrl+Alt+C / ⌃⌘C.
   const cycleWidthMode = () => {
     const i = WIDTH_MODES.indexOf(prefs.widthMode);
     const next = WIDTH_MODES[(i + 1) % WIDTH_MODES.length];
@@ -4252,10 +4254,10 @@
     refreshStatus();
   };
 
-  // Toggle editor syntax highlighting on/off and persist. Same
-  // shape as toggleVim — pref flip, persist, dispatch a compartment
-  // reconfigure. Called by Ctrl+Alt+Y / ⌃⌘Y and (via applySyntaxHighlighting)
-  // by the :syntax Ex command.
+  // Toggle editor syntax highlighting on/off and persist. Same shape
+  // as toggleVim — pref flip, persist, dispatch a compartment
+  // reconfigure. Called by Ctrl+Alt+Y / ⌃⌘Y and (via
+  // applySyntaxHighlighting) by the :syntax Ex command.
   const toggleSyntaxHighlighting = () => {
     prefs.syntaxHighlighting = !prefs.syntaxHighlighting;
     savePrefs();

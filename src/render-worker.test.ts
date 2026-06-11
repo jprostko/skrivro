@@ -5,7 +5,9 @@
 // handler at import time; happy-dom supplies the addEventListener
 // global it expects.
 import { describe, expect, it } from 'vitest';
-import { computeMarkdownLineMap, md } from './render-worker.js';
+import {
+  ad, computeMarkdownLineMap, extractAsciidoctorBlockLines, md,
+} from './render-worker.js';
 
 const parseAndRender = (source: string) => {
   const env = {};
@@ -89,5 +91,65 @@ describe('token-to-element pairing invariant', () => {
     expect(map[headingIndex]).toBe(10);
     const paragraphIndex = children.findIndex((el) => el.tagName === 'P');
     expect(map[paragraphIndex]).toBe(12);
+  });
+});
+
+describe('extractAsciidoctorBlockLines', () => {
+  it('collects one source line per mappable block in document order', () => {
+    const fixture = [
+      '== Section',     // line 1
+      '',
+      'para one',       // line 3
+      '',
+      '* a',            // line 5
+      '* b',
+      '',
+      '----',           // line 8
+      'code',
+      '----',
+      '',
+      'NOTE: heads up', // line 12
+    ].join('\n');
+    const doc = ad.load(fixture, { sourcemap: true, safe: 'unsafe' });
+    expect(extractAsciidoctorBlockLines(doc)).toEqual([1, 3, 5, 8, 12]);
+  });
+
+  // The walk is duck-typed over getBlocks / getContext /
+  // getSourceLocation, so hand-built trees can exercise the paths a
+  // real parse rarely produces.
+  const stubBlock = (
+    ctx: string,
+    line: number | null,
+    children: unknown[] = [],
+  ) => ({
+    getContext: () => ctx,
+    getSourceLocation: () => (line === null ? null : { getLineNumber: () => line }),
+    getBlocks: () => children,
+  });
+  const stubDoc = (children: unknown[]) => ({ getBlocks: () => children });
+
+  it('emits a 0 for a block with no source location, holding its slot', () => {
+    const doc = stubDoc([
+      stubBlock('paragraph', 4),
+      stubBlock('paragraph', null),
+      stubBlock('paragraph', 9),
+    ]);
+    expect(extractAsciidoctorBlockLines(doc as never)).toEqual([4, 0, 9]);
+  });
+
+  it('emits a 0 for a non-numeric line number', () => {
+    const doc = stubDoc([{
+      getContext: () => 'paragraph',
+      getSourceLocation: () => ({ getLineNumber: () => undefined }),
+      getBlocks: () => [],
+    }]);
+    expect(extractAsciidoctorBlockLines(doc as never)).toEqual([0]);
+  });
+
+  it('recurses through non-mappable containers without counting them', () => {
+    const doc = stubDoc([
+      stubBlock('preamble', 1, [stubBlock('paragraph', 2)]),
+    ]);
+    expect(extractAsciidoctorBlockLines(doc as never)).toEqual([2]);
   });
 });

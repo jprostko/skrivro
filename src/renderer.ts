@@ -386,7 +386,7 @@ const DOM_BLOCK_SELECTOR = [
 // the same order, so domEls[i] is that block's element. A blockLines
 // entry of 0 marks a block with no usable source location — the index
 // still advances so the alignment holds, the entry is just skipped.
-const pairAsciidoctorBlockMap = (
+export const pairAsciidoctorBlockMap = (
   blockLines: number[],
   rootElement: Element,
 ): BlockMapEntry[] => {
@@ -493,7 +493,7 @@ const ADMONITION_ICON_SVGS: Record<AdmonitionType, string> = {
 // unchanged — they're sized inline with surrounding text and the
 // baseline-positioning that makes admonition icons look off is
 // exactly what's wanted for a character-in-text inline icon.
-const replaceAdmonitionIcons = (parsed: Document): void => {
+export const replaceAdmonitionIcons = (parsed: Document): void => {
   // Scope the query to icon cells under admonitionblocks, then
   // extract the type from the `icon-<type>` class so we never
   // accidentally rewrite something else that happens to share the

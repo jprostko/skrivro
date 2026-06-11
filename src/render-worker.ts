@@ -293,7 +293,9 @@ export const computeMarkdownLineMap = (tokens: Token[]): number[] => {
 
 // ================= Asciidoctor setup =================
 
-const ad = Asciidoctor();
+// Exported so the test suite exercises this exact configured instance
+// rather than a lookalike.
+export const ad = Asciidoctor();
 
 // Asciidoctor block contexts that map to a scrollable preview
 // element. Excludes purely structural contexts (document, preamble)
@@ -313,7 +315,7 @@ const MAPPABLE_CONTEXTS = new Set([
 // thread skips while keeping the index aligned. getBlocks() is typed
 // `any[]` by @asciidoctor/core, so the children walked here are
 // effectively untyped.
-const extractAsciidoctorBlockLines = (doc: AsciidoctorDocument): number[] => {
+export const extractAsciidoctorBlockLines = (doc: AsciidoctorDocument): number[] => {
   const out: number[] = [];
   try {
     const walk = (block: AbstractBlock): void => {

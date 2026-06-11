@@ -25,8 +25,9 @@ vi.mock('@tauri-apps/api/path', () => ({
 
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import {
-  applyIncludeAttrs, clearAllRendererCaches, pairMarkdownBlockMap,
-  parseIncludeAttrs, preprocessSource,
+  applyIncludeAttrs, clearAllRendererCaches, pairAsciidoctorBlockMap,
+  pairMarkdownBlockMap, parseIncludeAttrs, preprocessSource,
+  replaceAdmonitionIcons,
 } from './renderer.js';
 
 // ================= Virtual filesystem =================
@@ -243,5 +244,85 @@ describe('pairMarkdownBlockMap', () => {
   it('stops at the shorter of the two lists', () => {
     expect(pairMarkdownBlockMap([1, 2, 3, 4, 5], containerWith(3)).length).toBe(3);
     expect(pairMarkdownBlockMap([1, 2], containerWith(6)).length).toBe(2);
+  });
+});
+
+// ================= AsciiDoc block-map pairing =================
+
+describe('pairAsciidoctorBlockMap', () => {
+  // Three elements matching the block selector, in document order.
+  const asciidocContainer = (): Element => {
+    const root = document.createElement('div');
+    for (const cls of ['paragraph', 'ulist', 'listingblock']) {
+      const el = document.createElement('div');
+      el.className = cls;
+      root.appendChild(el);
+    }
+    return root;
+  };
+
+  it('pairs lines to selector-matched elements by index', () => {
+    const map = pairAsciidoctorBlockMap([3, 7, 11], asciidocContainer());
+    expect(map.map((entry) => entry.line)).toEqual([3, 7, 11]);
+    expect(map[0]!.el.className).toBe('paragraph');
+    expect(map[2]!.el.className).toBe('listingblock');
+  });
+
+  it('skips zero entries while still advancing the element index', () => {
+    // The zero marks a block with no usable source line. Its element
+    // gets no entry, but the elements after it still pair with their
+    // own lines rather than shifting down a slot.
+    const map = pairAsciidoctorBlockMap([3, 0, 11], asciidocContainer());
+    expect(map.length).toBe(2);
+    expect(map[1]!.line).toBe(11);
+    expect(map[1]!.el.className).toBe('listingblock');
+  });
+
+  it('ignores elements the block selector does not match', () => {
+    const root = asciidocContainer();
+    root.insertBefore(document.createElement('span'), root.firstChild);
+    const map = pairAsciidoctorBlockMap([3, 7, 11], root);
+    expect(map[0]!.el.className).toBe('paragraph');
+  });
+
+  it('returns entries sorted by source line', () => {
+    const map = pairAsciidoctorBlockMap([11, 3, 7], asciidocContainer());
+    expect(map.map((entry) => entry.line)).toEqual([3, 7, 11]);
+  });
+});
+
+// ================= Admonition icon swap =================
+
+describe('replaceAdmonitionIcons', () => {
+  const docWith = (iconClass: string): Document =>
+    new DOMParser().parseFromString(
+      `<div class="admonitionblock note"><table><tbody><tr>
+         <td class="icon"><i class="fa ${iconClass}" title="Note"></i></td>
+         <td class="content">text</td>
+       </tr></tbody></table></div>
+       <p>inline <i class="fa fa-heart"></i> icon</p>`,
+      'text/html',
+    );
+
+  it('swaps a known admonition icon for an inline SVG', () => {
+    const doc = docWith('icon-note');
+    replaceAdmonitionIcons(doc);
+    expect(doc.querySelector('td.icon i')).toBeNull();
+    expect(doc.querySelector('td.icon svg')).not.toBeNull();
+  });
+
+  it('leaves unknown admonition types alone', () => {
+    const doc = docWith('icon-bogus');
+    replaceAdmonitionIcons(doc);
+    expect(doc.querySelector('td.icon i')).not.toBeNull();
+    expect(doc.querySelector('td.icon svg')).toBeNull();
+  });
+
+  it('leaves inline fa- icons untouched', () => {
+    // Inline icon:name[] directives emit fa-NAME classes and are
+    // deliberately outside the swap's scope.
+    const doc = docWith('icon-note');
+    replaceAdmonitionIcons(doc);
+    expect(doc.querySelector('p i.fa-heart')).not.toBeNull();
   });
 });

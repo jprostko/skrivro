@@ -1,6 +1,6 @@
 = Skrivro (standalone)
 
-This branch hosts the standalone single-file build of Skrivro: a self-contained `index.html` that runs entirely in a web browser.
+This branch hosts the standalone single-file build of Skrivro: a self-contained `skrivro.html` that runs entirely in a web browser.
 No installation, no native binary, no build step: open the file in a browser and it works.
 
 The full Skrivro experience (config file, themes, AsciiDoc `include::` support, OS integration) lives on the `master` branch as a Tauri desktop application.
@@ -51,7 +51,7 @@ This branch exists for cases where installing the desktop application isn't an o
 
 == Running
 
-Open `index.html` in a Chromium-based browser (Chrome, Edge, Brave, etc.) for the full feature set.
+Open `skrivro.html` in a Chromium-based browser (Chrome, Edge, Brave, etc.) for the full feature set.
 Other browsers work with reduced functionality (file save typically falls back to a download).
 
 == Documentation

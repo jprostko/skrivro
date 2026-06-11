@@ -88,6 +88,18 @@ const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
 md.renderer.rules.s_open = () => '<del>';
 md.renderer.rules.s_close = () => '</del>';
 
+// Raw-HTML blocks are the one top-level token type whose default
+// rendering can produce any number of elements — several siblings in
+// one blank-line-delimited chunk, or none at all for a comment. That
+// breaks the 1:1 token-to-element invariant the scroll-sync pairing
+// relies on, shifting every pairing after the block. Wrap each
+// html_block's output in a single neutral container so every top-level
+// token renders as exactly one element. The wrapper also survives
+// sanitization when its content is stripped, so the invariant holds in
+// the live DOM.
+md.renderer.rules.html_block = (tokens, idx) =>
+  `<div class="raw-html-block">${tokens[idx]!.content}</div>`;
+
 // ---- GFM alerts ----
 // GFM extends blockquote syntax with "alerts" — a blockquote whose
 // first line is `[!TYPE]`. markdown-it parses such input as an

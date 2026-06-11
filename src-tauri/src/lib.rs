@@ -46,7 +46,7 @@ fn get_launch_info(state: tauri::State<LaunchInfo>) -> LaunchInfo {
 //
 // Both paths converge on frontend's loadFileFromPath, wrapped in
 // confirmDiscard so a dropped-in-during-unsaved-work file gets the
-// same discard prompt as Ctrl+O would.
+// same discard prompt as Ctrl+O / Cmd+O would.
 
 #[derive(Default)]
 struct PendingOpens(Mutex<Vec<String>>);
@@ -61,8 +61,7 @@ fn take_pending_opens(state: tauri::State<PendingOpens>) -> Vec<String> {
 //
 // Skrivro reads a user-editable flat `key = value` config file at startup
 // for font / size / padding / mode-style overrides. Not required — missing
-// file means "use compiled-in defaults." See memory/project_config_file.md
-// for the full design rationale and spec.
+// file means "use compiled-in defaults."
 //
 // File location (resolved via Tauri's app_config_dir, which joins the
 // platform's config root with the identifier from tauri.conf.json):
@@ -77,11 +76,11 @@ fn take_pending_opens(state: tauri::State<PendingOpens>) -> Vec<String> {
 //   edit-font = JetBrains Mono
 //   preview-font = Charter
 //
-//   # All length-typed values (font sizes, padding, pane widths) require
-//   # an explicit CSS unit. Bare numbers are rejected — the rule is
-//   # uniform across every length-typed key. Valid units: pt, px, rem,
-//   # em, %, vw, vh, ch, ex, etc. (we don't maintain an allowlist; the
-//   # webview's CSS engine is the ultimate validator).
+//   # All length-typed values (font sizes, padding) require an
+//   # explicit CSS unit. Bare numbers are rejected — the rule is
+//   # uniform across every length-typed key. Valid units: pt, px,
+//   # rem, em, %, vw, vh, ch, ex, etc. (we don't maintain an
+//   # allowlist; the webview's CSS engine is the ultimate validator).
 //   edit-font-size = 14pt
 //   preview-font-size = 15pt
 //
@@ -200,10 +199,10 @@ struct SkrivroConfig {
     // (Swedish), or "both" (en + sv). When not "off", the frontend
     // loads the matching bundled Hunspell dictionary into nspell and
     // underlines misspellings as CodeMirror decorations. "off" is a
-    // HARD off: the runtime Ctrl+Alt+K / :spell toggle is inert because
-    // there is nothing to show. Unknown values are rejected with a
-    // debug warning and the field stays None (treated as "off").
-    // English is US-only by design — no en-GB/CA/AU variants.
+    // HARD off: the runtime Ctrl+Alt+K / ⌃⌘K / :spell toggle is inert
+    // because there is nothing to show. Unknown values are rejected
+    // with a debug warning and the field stays None (treated as
+    // "off"). English is US-only by design — no en-GB/CA/AU variants.
     spellcheck_language: Option<String>,
     // Theme colors resolved by load_theme() in get_config(). When the
     // user's `theme` key matches a non-default theme (i.e., anything
@@ -218,9 +217,9 @@ struct SkrivroConfig {
 
 /// 24 semantic theme color slots. Each field maps to a `--skr-*` CSS
 /// custom property. Theme files provide values for these slots in flat
-/// `key = value` format (same parser as skrivro.conf). See
-/// memory/project_theming.md for the full slot schema and purpose of
-/// each.
+/// `key = value` format (same parser as skrivro.conf). The reference
+/// template (resources/themes/catppuccin-mocha.theme.default) documents
+/// each slot's purpose.
 ///
 /// All fields are `Option<String>` so a theme file that omits a slot
 /// falls through to the CSS-default Catppuccin Mocha value for that
@@ -386,8 +385,8 @@ fn skrivro_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
 }
 
 /// Normalize a length value for every length-typed config key (font
-/// sizes, padding, pane widths). All length values REQUIRE an explicit
-/// unit suffix — bare numbers are rejected because no single unit
+/// sizes, padding). All length values REQUIRE an explicit unit
+/// suffix — bare numbers are rejected because no single unit
 /// assumption is universally intuitive across the different length
 /// categories, and requiring units makes user intent unambiguous
 /// without parser heuristics.
@@ -402,7 +401,6 @@ fn skrivro_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
 /// Multi-token support: `max_tokens` caps the number of whitespace-
 /// separated values the key accepts.
 /// - Font-size keys pass `1` (only a single length makes sense).
-/// - Pane-width keys pass `1` (single length, no reading-order split).
 /// - Padding keys pass `2` (one value for uniform, two for asymmetric
 ///   start/end in reading order).
 ///
@@ -420,13 +418,6 @@ fn skrivro_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
 /// Called from `parse_skrivro_config` for:
 /// - Font-size keys (`edit-font-size`, `preview-font-size`, max_tokens=1)
 /// - Padding keys (`edit/preview-padding-x/y`, max_tokens=2)
-///
-/// Historical note: previously split into two functions (normalize_length
-/// for font sizes + padding with `bare = pt` convention, and
-/// normalize_dimension for pane widths with strict unit requirement).
-/// Merged when the bare-number convention was dropped in favor of
-/// "all length values require units." See memory/project_config_file.md
-/// for the decision rationale.
 #[cfg_attr(not(debug_assertions), allow(unused_variables))]
 fn normalize_length(key: &str, val: &str, line_num: usize, max_tokens: usize) -> Option<String> {
     let tokens: Vec<&str> = val.split_whitespace().collect();
@@ -487,15 +478,13 @@ fn normalize_length(key: &str, val: &str, line_num: usize, max_tokens: usize) ->
 /// - Malformed lines (missing `=`): warn and skip
 /// - Empty values treated as "unset" — struct field stays `None`, frontend
 ///   falls through to compiled-in defaults
-/// - All length-valued keys (font sizes, padding, pane widths) go
-///   through `normalize_length`, which REJECTS bare numbers (an
-///   explicit CSS unit is required) and rejects negative values. The
-///   helper takes a `max_tokens` argument: font-size and pane-width
-///   keys pass `1` (single length only); padding keys pass `2` to
-///   accept both `= 2rem` (uniform) and `= 2rem 3rem` (asymmetric
-///   start/end) forms. See that function's doc comment for the full
-///   rules and the rationale for dropping the historical `bare = pt`
-///   convention.
+/// - All length-valued keys (font sizes, padding) go through
+///   `normalize_length`, which REJECTS bare numbers (an explicit CSS
+///   unit is required) and rejects negative values. The helper takes
+///   a `max_tokens` argument: font-size keys pass `1` (single length
+///   only); padding keys pass `2` to accept both `= 2rem` (uniform)
+///   and `= 2rem 3rem` (asymmetric start/end) forms. See that
+///   function's doc comment for the full rules.
 /// - `soft-column-limit` is parsed inline as a strict positive
 ///   integer (not a CSS length) and stored in `Option<u32>` — the
 ///   only numeric-typed field in `SkrivroConfig`. Non-integer, zero,

@@ -34,12 +34,12 @@
 # falls through to the original stack. Your setting is a preference,
 # not a hard requirement.
 #
-# ALL length-typed values (font sizes, padding, pane widths) REQUIRE
-# an explicit CSS unit. Bare numbers are rejected: writing `14` for
-# a font size is invalid. Write `14pt` (or `14px`, `1rem`, etc.).
-# The CSS `pt` unit is the same as the typographic point used by
-# Word, PowerPoint, and other print-oriented tools: 1/72 inch.
-# Zero and negative values are also rejected.
+# ALL length-typed values (font sizes, padding) REQUIRE an explicit
+# CSS unit. Bare numbers are rejected: writing `14` for a font size
+# is invalid. Write `14pt` (or `14px`, `1rem`, etc.). The CSS `pt`
+# unit is the same as the typographic point used by Word,
+# PowerPoint, and other print-oriented tools: 1/72 inch. Zero and
+# negative values are also rejected.
 
 # Editor (monospace) font. Built-in fallback stack:
 #   ui-monospace, JetBrains Mono, Cascadia Code, Fira Code,

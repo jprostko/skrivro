@@ -483,8 +483,9 @@ const SPELLCHECK_OFF_MSG = 'Spellcheck is disabled in config (spellcheck-languag
 
 // Flip editor spellcheck on/off and persist. Same shape as the syntax-
 // highlighting toggle, plus a config gate: when spellcheck-language is
-// off/unset there is no dictionary loaded, so the toggle is inert and
-// instead surfaces why. Called by Ctrl+Alt+K / ⌃⌘K and the :spell Ex command.
+// off/unset there is no dictionary loaded, so the toggle is inert
+// and instead surfaces why. Called by Ctrl+Alt+K / ⌃⌘K and the
+// :spell Ex command.
 export const toggleSpellcheck = () => {
   if (!spellcheckConfigured()) {
     vimMessage(tr(SPELLCHECK_OFF_MSG));

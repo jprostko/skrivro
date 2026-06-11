@@ -382,8 +382,8 @@ export const scheduleRender = () => {
 
 // ================= Scroll sync =================
 // Sync-once: snap the preview to the block containing (or nearest
-// preceding) the editor caret's source line. Triggered by Ctrl+Alt+L / ⌃⌘L,
-// the :syncpreview Ex command, or gz in vim normal mode. NOT a
+// preceding) the editor caret's source line. Triggered by Ctrl+Alt+L /
+// ⌃⌘L, the :syncpreview Ex command, or gz in vim normal mode. NOT a
 // continuous sync — both panes stay independently scrollable and we
 // don't touch them unless the user asks.
 

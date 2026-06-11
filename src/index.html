@@ -51,8 +51,8 @@
        otherwise no app-level way to drag. The help button inside remains
        clickable — Tauri's drag-region handling excludes interactive
        elements (buttons, inputs, etc.) from triggering drag. Users who
-       hide the titlebar via Ctrl+Alt+T / ⌃⌘T lose the drag region along with
-       it; that's an accepted tradeoff of the "minimal UI" toggle. -->
+       hide the titlebar via Ctrl+Alt+T / ⌃⌘T lose the drag region along
+       with it; that's an accepted tradeoff of the "minimal UI" toggle. -->
   <header class="titlebar" data-tauri-drag-region>
     <div data-tauri-drag-region><span class="name" id="name">untitled.adoc</span></div>
     <button type="button" id="helpBtn" class="help-button"
@@ -79,9 +79,9 @@
          resources/skrivro.conf.default.
 
          tabindex="-1" on .preview-scroll makes it programmatically
-         focusable (click or Ctrl+Alt+W / ⌃⌘W pane-toggle) without entering
-         Tab order. The id="out" stays on .preview-scroll so existing
-         JS (preview rendering via .innerHTML, scroll sync via
+         focusable (click or Ctrl+Alt+W / ⌃⌘W pane-toggle) without
+         entering Tab order. The id="out" stays on .preview-scroll so
+         existing JS (preview rendering via .innerHTML, scroll sync via
          .scrollTop, word count via .textContent) continues to work
          against the same element handle. The :focus-within selector
          on .preview-pane still fires when its inner descendant is
@@ -92,12 +92,14 @@
   </main>
 
   <!-- Status bar: mode pill (vim-only) + filename on the left;
-       file type + cursor position on the right. Toggled by Ctrl+Alt+B / ⌃⌘B. -->
+       file type + cursor position on the right. Toggled by
+       Ctrl+Alt+B / ⌃⌘B. -->
   <!-- data-tauri-drag-region: second drag handle for the window, so users
-       who hide the titlebar via Ctrl+Alt+T / ⌃⌘T still have a way to drag. All
-       status bar slots are non-interactive (mode pill, filename, filetype,
-       position, word count, sync indicator — all display-only spans with
-       no click handlers), so nothing gets swallowed by the drag behavior. -->
+       who hide the titlebar via Ctrl+Alt+T / ⌃⌘T still have a way to
+       drag. All status bar slots are non-interactive (mode pill,
+       filename, filetype, position, word count, sync indicator — all
+       display-only spans with no click handlers), so nothing gets
+       swallowed by the drag behavior. -->
   <footer class="statusbar" id="statusbar" data-tauri-drag-region>
     <div class="status-left" data-tauri-drag-region>
       <span class="status-mode-pill" id="statusMode" data-vim-mode="normal" hidden>NORMAL</span>

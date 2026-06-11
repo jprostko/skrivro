@@ -245,8 +245,9 @@ body.no-titlebar .titlebar { display: none; }
   scrollbar-color: var(--skr-surface-hover) var(--skr-bg);
   scrollbar-width: thin;
   /* tabindex="-1" on this element lets it receive focus for the
-     Ctrl+Alt+W / ⌃⌘W pane-toggle. Suppress the default browser focus ring
-     — the active-pane outline on .preview-pane provides the signal. */
+     Ctrl+Alt+W / ⌃⌘W pane-toggle. Suppress the default browser focus
+     ring — the active-pane outline on .preview-pane provides the
+     signal. */
   outline: none;
 }
 .preview-scroll:focus { outline: none; }
@@ -1397,10 +1398,10 @@ body.is-dirty .statusbar .status-filename::before {
 
 /* Sync indicator — a small rightwards arrow that lives quietly in the
    right-hand status bar cluster and briefly flashes when the user
-   triggers the scroll-sync action (Ctrl+Alt+L / ⌃⌘L, :syncpreview, or gz in
-   vim normal mode). Confirms the action happened even when the preview
-   doesn't visibly move — e.g., when the caret line is already at the
-   top of the visible block and scrollIntoView is a no-op.
+   triggers the scroll-sync action (Ctrl+Alt+L / ⌃⌘L, :syncpreview, or
+   gz in vim normal mode). Confirms the action happened even when the
+   preview doesn't visibly move — e.g., when the caret line is already
+   at the top of the visible block and scrollIntoView is a no-op.
 
    At rest: dim overlay0, easy to ignore but visible as part of the
    status bar layout. The → glyph matches the editor→preview data-flow

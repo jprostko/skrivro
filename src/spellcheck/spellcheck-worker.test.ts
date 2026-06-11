@@ -4,8 +4,8 @@
 // postMessage replies come back as window message events — the same
 // black-box surface the main thread sees. The dictionary `?url`
 // imports resolve to asset paths; fetch is stubbed to read those
-// files from disk, so the suite runs against the real English
-// dictionary.
+// files from disk, so the suite runs against the real vendored
+// dictionaries.
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -124,5 +124,57 @@ describe('setPersonal', () => {
 
     send({ type: 'setPersonal', words: [] });
     expect(await flaggedWords('zzqx')).toEqual(['zzqx']);
+  });
+});
+
+// The Swedish dictionary is the one whose loading involves Skrivro
+// logic: nspell builds Hunspell's COMPOUNDRULE patterns without the
+// guard rules that constrain them, so the raw .aff makes it accept
+// any string, and loadSv strips the compound directives — including
+// ONLYINCOMPOUND, which the dictionary mis-applies to everyday
+// standalone words. Both failure directions are pinned here:
+// stripping too little flags common words, and the strip itself is
+// what keeps garbage rejected.
+describe('Swedish dictionary', () => {
+  beforeAll(async () => {
+    await request(
+      { type: 'init', lang: 'sv' },
+      (data: { type: string }) => data.type === 'ready',
+    );
+  });
+
+  it('accepts everyday words the dictionary marks compound-only', async () => {
+    expect(await flaggedWords('fick hoppar allmän abnorm')).toEqual([]);
+  });
+
+  it('accepts common Swedish words with diacritics', async () => {
+    expect(await flaggedWords('och inte barn förälder')).toEqual([]);
+  });
+
+  it('still rejects garbage, so the compound strip did not over-accept', async () => {
+    expect(await flaggedWords('qzqzqzqz')).toEqual(['qzqzqzqz']);
+  });
+
+  it('flags English words under the Swedish dictionary', async () => {
+    // Loanwords are no good for this check — "keyboard" is genuinely
+    // in the Swedish dictionary. "thoroughly" is not.
+    expect(await flaggedWords('thoroughly')).toEqual(['thoroughly']);
+  });
+
+  it('keeps a word with diacritics as a single token', async () => {
+    expect(await flaggedWords('päronx')).toEqual(['päronx']);
+  });
+});
+
+describe('both languages', () => {
+  beforeAll(async () => {
+    await request(
+      { type: 'init', lang: 'both' },
+      (data: { type: string }) => data.type === 'ready',
+    );
+  });
+
+  it('accepts a word when either dictionary knows it', async () => {
+    expect(await flaggedWords('keyboard förälder qzqzqzqz')).toEqual(['qzqzqzqz']);
   });
 });

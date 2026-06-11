@@ -1,9 +1,9 @@
 = Skrivro (standalone)
 
 This branch hosts the standalone single-file build of Skrivro: a self-contained `index.html` that runs entirely in a web browser.
-No installation, no native binary, no build step — open the file in a browser and it works.
+No installation, no native binary, no build step: open the file in a browser and it works.
 
-The full Skrivro experience — config files, themes loaded from disk, AsciiDoc `include::` support, OS integration — lives on the `master` branch as a Tauri desktop application.
+The full Skrivro experience (config file, themes, AsciiDoc `include::` support, OS integration) lives on the `master` branch as a Tauri desktop application.
 This branch exists for cases where installing the desktop application isn't an option.
 
 == Differences from the desktop version
@@ -15,23 +15,38 @@ This branch exists for cases where installing the desktop application isn't an o
 | Config file
 | No `skrivro.conf`. Settings (fonts, padding, theme, status bar style, cursor position format, soft column limit, default format) are compiled-in defaults. Where a runtime toggle is exposed, its state persists via `localStorage` instead of a config file.
 
+| Language
+| English only. The desktop version is localized in English and Swedish via the `language` config key.
+
 | Themes
-| Catppuccin Mocha only. The desktop version bundles seven themes and reads custom themes from a `themes/` directory; standalone has neither mechanism.
+| Catppuccin Mocha only. The desktop version bundles seven themes and reads custom themes from a `themes/` directory. Standalone has neither mechanism.
 
 | AsciiDoc `include::`
 | Doesn't pre-expand. Browser security prevents reading sibling files. Asciidoctor's "Unresolved directive" placeholder appears in the preview wherever an `include::` would have rendered.
 
 | File open / save
-| Uses the browser's File System Access API. Modern Chromium-based browsers (Chrome, Edge, Brave) support direct file editing; Firefox and Safari fall back to download-based saves.
+| Uses the browser's File System Access API. Chromium-based browsers (Chrome, Edge, Brave) support direct in-place saving. Firefox and Safari fall back to download-based saves.
+
+| Session restore
+| The document text, name, and unsaved-changes state survive a reload or browser restart, but the link to the file on disk cannot. The first save after a reload is a save-as.
+
+| Spellcheck
+| English only, off by default. Enable with Ctrl+Alt+K (Ctrl+Cmd+K on Mac) or `:spell on`. The dictionary downloads on first enable. Custom words persist in `localStorage`. There is no editable `custom-words.txt` like the desktop version has.
 
 | Keyboard shortcuts for open / new
-| `Ctrl+Alt+O` and `Ctrl+Alt+N`, not `Ctrl+O` and `Ctrl+N`. Browsers reserve plain `Ctrl+O` for the browser's own file dialog and `Ctrl+N` for new windows; web pages can't reliably override them.
+| `Ctrl+Alt+O` and `Ctrl+Alt+N` (Ctrl+Cmd+O and Ctrl+Cmd+N on Mac), not plain `Ctrl+O` / `Ctrl+N`. Browsers reserve those for their own file dialog and new-window action, and web pages can't reliably override them.
+
+| Vim commands that touch files or the window
+| `:w filename`, `:e filename`, and `:saveas filename` are ignored (the browser cannot read or write arbitrary paths). The `:q` family shows a message instead of quitting, since a page cannot close its own tab. Close the tab manually.
 
 | External images in preview
-| Governed by browser CSP, not a Skrivro setting. There is no `allow-external-images` config key.
+| Governed by the page's Content Security Policy, not a Skrivro setting. There is no `allow-external-images` config key.
 
 | OS integration
-| No file associations, no drag-and-drop from the OS file manager (drag-and-drop within the browser window does work, where supported), no single-instance routing, no system tray, no native menu bar.
+| No file associations, no single-instance routing, no native menu bar, no window-state persistence. Dropping a file from the OS file manager onto the window does open it.
+
+| Network
+| The desktop version runs fully offline. Standalone loads its libraries from a CDN, so the first load (and the spellcheck dictionary's first download) needs network access. Later loads can run from the browser cache.
 |===
 
 == Running
@@ -42,4 +57,4 @@ Other browsers work with reduced functionality (file save typically falls back t
 == Documentation
 
 Day-to-day usage, keyboard shortcuts, vim mode, and configuration documentation live with the desktop version on the `master` branch.
-The shortcut reference and vim Ex commands are also visible inside the app via the `?` button or `Ctrl+Alt+H`.
+The shortcut reference and vim Ex commands are also visible inside the app via the `?` button or Ctrl+Alt+H (Ctrl+Cmd+H on Mac).

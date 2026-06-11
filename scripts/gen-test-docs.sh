@@ -9,6 +9,14 @@
 # admonition, table — so the renderer is exercised on real features
 # rather than flat text.
 #
+# Also emits sync-drift-test.md, a fixed-content Markdown document that
+# demonstrates the scroll-sync drift on raw-HTML blocks (the sync map
+# pairs one block token to one preview element; a raw-HTML token can
+# render as several elements or none, shifting every later pairing).
+# It has a control zone that syncs exactly, an HTML zone with a known
+# engineered shift, and numbered markers where the drift shows — a
+# before/after artifact for fixing that pairing.
+#
 # Output goes to test-data/ at the repo root, overwriting any previous
 # run. The output is generated, not authored — it is not part of the app.
 #
@@ -135,6 +143,79 @@ for ((i = 1; i <= INCLUDE_CHUNKS; i++)); do
   chunk="$(printf 'chunk-%03d.adoc' "$i")"
   emit_adoc "$i" > "$INC/$chunk"
   printf 'include::includes/%s[]\n\n' "$chunk" >> "$main"
+done
+
+# --- scroll-sync drift document ----------------------------------------
+# Fixed content plus a marker loop. The HTML chunks are deliberately
+# blank-line-separated so each chunk is ONE markdown-it html_block token;
+# a chunk of three divs renders as three top-level elements (+2 pairing
+# shift each), the two-div chunk as two (+1), and the comment renders as
+# zero (-1). Net shift: +6.
+
+DRIFT_MD="$OUT/sync-drift-test.md"
+
+cat <<'EOF' > "$DRIFT_MD"
+# Scroll-sync drift test
+
+How to use this file: open it in split mode as Markdown. Put the cursor
+on a heading in the CONTROL zone and trigger sync (Ctrl+Alt+L on
+Linux/Windows, Ctrl+Cmd+L on Mac, or gz in vim normal mode). The
+preview should land exactly on that heading. Then put the cursor on any
+MARKER heading below the HTML zone and sync again. While the drift bug
+is present, the preview lands visibly BEFORE the marker, because the
+raw-HTML blocks above shifted the pairing. With the bug fixed, it lands
+exactly on the marker, same as the control zone.
+
+## Control zone
+
+### Control A
+
+Plain Markdown only above this line, so token-to-element pairing is
+still one-to-one. Syncing from this heading should be precise.
+
+### Control B
+
+Second control point. Also expected to be exact, with or without the
+bug.
+
+## Drift zone
+
+Each three-div chunk below is ONE markdown-it block token that renders
+as THREE top-level elements, shifting every later pairing by two. The
+two-div chunk shifts by one, and the comment is one token that renders
+as ZERO elements, shifting by minus one. Net engineered drift below
+this zone: +6 elements, which is exactly three markers.
+
+<div>html block one, element a</div>
+<div>html block one, element b</div>
+<div>html block one, element c</div>
+
+<div>html block two, element a</div>
+<div>html block two, element b</div>
+<div>html block two, element c</div>
+
+<div>html block three, element a</div>
+<div>html block three, element b</div>
+<div>html block three, element c</div>
+
+<!-- one comment block: one token, zero rendered elements -->
+
+<div>html block four, element a</div>
+<div>html block four, element b</div>
+
+## Marker zone
+
+EOF
+
+for ((i = 1; i <= 12; i++)); do
+  cat <<EOF >> "$DRIFT_MD"
+### Marker $(printf '%02d' "$i")
+
+Filler text so each marker occupies real vertical space. The drift is
+easiest to see when neighboring markers cannot share the viewport.
+Line two of filler. Line three of filler.
+
+EOF
 done
 
 # --- summary ----------------------------------------------------------

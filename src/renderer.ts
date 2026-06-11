@@ -112,7 +112,7 @@ let includeCache = new Map<string, string>();
 // raw didn't include that key, so downstream `if (attrs.leveloffset)`
 // truthiness checks still do the right runtime work while TS's
 // narrowing accepts them.
-const parseIncludeAttrs = (raw: string): Record<string, string> => {
+export const parseIncludeAttrs = (raw: string): Record<string, string> => {
   const attrs: Record<string, string> = {};
   if (!raw) return attrs;
   for (const part of raw.split(',')) {
@@ -129,7 +129,7 @@ const parseIncludeAttrs = (raw: string): Record<string, string> => {
 // Handles lines=, tag=/tags=, and indent=. (leveloffset= is applied
 // later by the caller since it needs to wrap the recursively-expanded
 // content, not the raw pre-expansion content.)
-const applyIncludeAttrs = (content: string, attrs: Record<string, string>): string => {
+export const applyIncludeAttrs = (content: string, attrs: Record<string, string>): string => {
   // lines=N..M or lines=N..M;X..Y — keep specified 1-indexed ranges.
   // Open-ended ranges like `lines=5..` mean "from line 5 to end".
   if (attrs.lines) {
@@ -301,7 +301,7 @@ const expandRecursively = async (
 // the mapping points to the FIRST line of expanded content — so
 // scroll-syncing on an `include::chapter-05/content.adoc[]` line
 // jumps the preview to the top of chapter 5.
-const preprocessSource = async (
+export const preprocessSource = async (
   rootSource: string,
   baseDir: string,
 ): Promise<{ source: string; lineMap: number[] }> => {

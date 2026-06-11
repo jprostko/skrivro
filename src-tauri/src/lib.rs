@@ -1528,3 +1528,244 @@ pub fn run() {
             let _ = (app_handle, event);
         });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ----- normalize_length ------------------------------------------
+
+    #[test]
+    fn length_accepts_single_value_with_unit() {
+        assert_eq!(
+            normalize_length("edit-font-size", "1.2rem", 1, 1),
+            Some("1.2rem".to_string())
+        );
+    }
+
+    #[test]
+    fn length_rejects_bare_numbers() {
+        // A unitless value is ambiguous (px? rem? pt?), so the parser
+        // refuses to guess. Anything f64 can parse counts as bare:
+        // integers, decimals, leading-dot fractions, and scientific
+        // notation.
+        for bare in ["14", "2.5", ".5", "1e2"] {
+            assert_eq!(normalize_length("edit-font-size", bare, 1, 1), None);
+        }
+    }
+
+    #[test]
+    fn length_rejects_negative_values() {
+        // "-1rem" survives the bare-number check (the unit suffix makes
+        // the f64 parse fail), so the explicit sign check has to catch
+        // it. Negative paddings and font sizes are never meaningful.
+        assert_eq!(normalize_length("editor-padding-x", "-1rem", 1, 2), None);
+        assert_eq!(
+            normalize_length("editor-padding-x", "1rem -2rem", 1, 2),
+            None
+        );
+    }
+
+    #[test]
+    fn length_normalizes_whitespace_between_tokens() {
+        // The accepted value is re-joined with single spaces so the
+        // frontend can drop it straight into a CSS custom property.
+        assert_eq!(
+            normalize_length("editor-padding-y", "  1rem \t  2rem  ", 1, 2),
+            Some("1rem 2rem".to_string())
+        );
+    }
+
+    #[test]
+    fn length_enforces_the_token_cap() {
+        // Font sizes take exactly one value; padding takes one or two
+        // (CSS shorthand). Anything past the cap is dropped whole.
+        assert_eq!(normalize_length("edit-font-size", "1rem 2rem", 1, 1), None);
+        assert_eq!(
+            normalize_length("editor-padding-x", "1rem 2rem 3rem", 1, 2),
+            None
+        );
+    }
+
+    #[test]
+    fn length_rejects_whitespace_only_values() {
+        assert_eq!(normalize_length("edit-font-size", "   ", 1, 1), None);
+    }
+
+    #[test]
+    fn length_drops_the_whole_pair_when_either_token_is_bad() {
+        // One valid token doesn't excuse the other. The whole value is
+        // rejected so the frontend falls back to its default instead of
+        // applying half a padding declaration.
+        assert_eq!(normalize_length("editor-padding-x", "1rem 2", 1, 2), None);
+        assert_eq!(normalize_length("editor-padding-x", "2 1rem", 1, 2), None);
+    }
+
+    // ----- parse_skrivro_config --------------------------------------
+
+    #[test]
+    fn config_defaults_to_all_unset() {
+        let cfg = parse_skrivro_config("");
+        assert_eq!(cfg.edit_font, None);
+        assert_eq!(cfg.theme, None);
+        assert_eq!(cfg.default_format, None);
+        assert_eq!(cfg.soft_column_limit, None);
+        assert_eq!(cfg.restore_session, None);
+        assert_eq!(cfg.language, None);
+    }
+
+    #[test]
+    fn config_ignores_comments_and_blank_lines() {
+        let cfg = parse_skrivro_config(
+            "# leading comment\n\n   \n   # indented comment\ntheme = nord\n",
+        );
+        assert_eq!(cfg.theme.as_deref(), Some("nord"));
+    }
+
+    #[test]
+    fn config_trims_whitespace_around_key_and_value() {
+        let cfg = parse_skrivro_config("   edit-font   =   Iosevka   \n");
+        assert_eq!(cfg.edit_font.as_deref(), Some("Iosevka"));
+    }
+
+    #[test]
+    fn config_preserves_internal_value_spacing() {
+        // Font names and other free-string values keep their internal
+        // spaces; only the surrounding whitespace is trimmed.
+        let cfg = parse_skrivro_config("edit-font = Iosevka Comfy\n");
+        assert_eq!(cfg.edit_font.as_deref(), Some("Iosevka Comfy"));
+    }
+
+    #[test]
+    fn config_has_no_trailing_comments() {
+        // Comments are full-line only: a '#' after the '=' belongs to
+        // the value. Pinned so the parser never grows mid-line comment
+        // stripping that would corrupt values legitimately containing
+        // '#' (color-like strings, font names).
+        let cfg = parse_skrivro_config("theme = nord # my favourite\n");
+        assert_eq!(cfg.theme.as_deref(), Some("nord # my favourite"));
+    }
+
+    #[test]
+    fn config_skips_malformed_lines_and_continues() {
+        let cfg = parse_skrivro_config(
+            "edit-font = Iosevka\nthis line has no equals sign\npreview-font = Alegreya\n",
+        );
+        assert_eq!(cfg.edit_font.as_deref(), Some("Iosevka"));
+        assert_eq!(cfg.preview_font.as_deref(), Some("Alegreya"));
+    }
+
+    #[test]
+    fn config_skips_unknown_keys() {
+        // Keys are exact and case-sensitive: a typo or a case variant
+        // is an unknown key, not a fuzzy match.
+        let cfg = parse_skrivro_config("edit-fnot = Iosevka\nEDIT-FONT = Iosevka\n");
+        assert_eq!(cfg.edit_font, None);
+    }
+
+    #[test]
+    fn config_treats_empty_value_as_unset() {
+        let cfg = parse_skrivro_config("theme =\n");
+        assert_eq!(cfg.theme, None);
+        // An empty value is "no opinion", not "reset": it cannot clear
+        // a value an earlier line already set.
+        let cfg = parse_skrivro_config("theme = nord\ntheme =\n");
+        assert_eq!(cfg.theme.as_deref(), Some("nord"));
+    }
+
+    #[test]
+    fn config_duplicate_key_last_wins() {
+        let cfg = parse_skrivro_config("theme = nord\ntheme = dracula\n");
+        assert_eq!(cfg.theme.as_deref(), Some("dracula"));
+    }
+
+    #[test]
+    fn config_font_sizes_take_one_unit_value() {
+        let cfg = parse_skrivro_config("edit-font-size = 1.1rem\npreview-font-size = 16\n");
+        assert_eq!(cfg.edit_font_size.as_deref(), Some("1.1rem"));
+        assert_eq!(cfg.preview_font_size, None);
+    }
+
+    #[test]
+    fn config_padding_takes_one_or_two_values() {
+        let cfg = parse_skrivro_config(
+            "editor-padding-x = 2rem\neditor-padding-y = 1rem 2rem\npreview-padding-x = 1rem 2rem 3rem\n",
+        );
+        assert_eq!(cfg.editor_padding_x.as_deref(), Some("2rem"));
+        assert_eq!(cfg.editor_padding_y.as_deref(), Some("1rem 2rem"));
+        assert_eq!(cfg.preview_padding_x, None);
+    }
+
+    #[test]
+    fn config_default_format_is_validated_and_lowercased() {
+        let cfg = parse_skrivro_config("default-format = Markdown\n");
+        assert_eq!(cfg.default_format.as_deref(), Some("markdown"));
+        let cfg = parse_skrivro_config("default-format = docx\n");
+        assert_eq!(cfg.default_format, None);
+    }
+
+    #[test]
+    fn config_spellcheck_language_is_validated_and_lowercased() {
+        let cfg = parse_skrivro_config("spellcheck-language = BOTH\n");
+        assert_eq!(cfg.spellcheck_language.as_deref(), Some("both"));
+        let cfg = parse_skrivro_config("spellcheck-language = de\n");
+        assert_eq!(cfg.spellcheck_language, None);
+    }
+
+    #[test]
+    fn config_soft_column_limit_requires_a_positive_integer() {
+        let cfg = parse_skrivro_config("soft-column-limit = 80\n");
+        assert_eq!(cfg.soft_column_limit, Some(80));
+        for bad in ["0", "-5", "8.5", "abc", "80px"] {
+            let cfg = parse_skrivro_config(&format!("soft-column-limit = {bad}\n"));
+            assert_eq!(cfg.soft_column_limit, None, "value {bad:?} should be rejected");
+        }
+    }
+
+    #[test]
+    fn config_bool_keys_accept_common_spellings() {
+        for yes in ["true", "YES", "on", "1"] {
+            let cfg = parse_skrivro_config(&format!("restore-session = {yes}\n"));
+            assert_eq!(cfg.restore_session, Some(true), "value {yes:?} should mean true");
+        }
+        for no in ["false", "No", "off", "0"] {
+            let cfg = parse_skrivro_config(&format!("restore-session = {no}\n"));
+            assert_eq!(cfg.restore_session, Some(false), "value {no:?} should mean false");
+        }
+        let cfg = parse_skrivro_config("restore-session = maybe\n");
+        assert_eq!(cfg.restore_session, None);
+        // allow-external-images shares the same accepted spellings.
+        let cfg = parse_skrivro_config("allow-external-images = yes\n");
+        assert_eq!(cfg.allow_external_images, Some(true));
+    }
+
+    #[test]
+    fn config_language_auto_means_no_override() {
+        let cfg = parse_skrivro_config("language = SV\n");
+        assert_eq!(cfg.language.as_deref(), Some("sv"));
+        let cfg = parse_skrivro_config("language = auto\n");
+        assert_eq!(cfg.language, None);
+        // "auto" is an active reset, not a skip: it clears an override
+        // set by an earlier line.
+        let cfg = parse_skrivro_config("language = en\nlanguage = auto\n");
+        assert_eq!(cfg.language, None);
+        let cfg = parse_skrivro_config("language = fi\n");
+        assert_eq!(cfg.language, None);
+    }
+
+    #[test]
+    fn config_one_bad_line_does_not_abort_the_rest() {
+        let text = "\
+edit-font = Iosevka
+soft-column-limit = ninety
+!!! not a config line
+preview-font-size = -2rem
+theme = gruvbox-dark
+";
+        let cfg = parse_skrivro_config(text);
+        assert_eq!(cfg.edit_font.as_deref(), Some("Iosevka"));
+        assert_eq!(cfg.theme.as_deref(), Some("gruvbox-dark"));
+        assert_eq!(cfg.soft_column_limit, None);
+        assert_eq!(cfg.preview_font_size, None);
+    }
+}

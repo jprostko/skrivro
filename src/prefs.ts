@@ -16,11 +16,11 @@ const defaultPrefs = {
   gutterHidden: true,
   statusBarHidden: false,
   syntaxHighlighting: true,
-  // Runtime spellcheck on/off. Default true so that, when the user has
-  // enabled spellcheck in skrivro.conf (spellcheck-language != off),
-  // the squiggles show on launch; the Ctrl+Alt+K / ⌃⌘K / :spell toggle
-  // then silences/restores them, and that choice persists here. Inert
-  // when the config has spellcheck off (nothing to show regardless).
+  // Runtime spellcheck on/off. Default true so that, when spellcheck is
+  // active (spellcheck-language is anything but off, and auto is now the
+  // default), the squiggles show on launch; the Ctrl+Alt+K / ⌃⌘K / :spell
+  // toggle then silences/restores them, and that choice persists here.
+  // Inert when the config has spellcheck off (nothing to show regardless).
   spellcheck: true,
   widthMode: 'medium',
 };

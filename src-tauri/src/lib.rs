@@ -159,19 +159,22 @@ struct SkrivroConfig {
     // parser's match arm; invalid values leave the field None and
     // the frontend falls through to "no limit, no over-limit coloring."
     soft_column_limit: Option<u32>,
-    // When true, launch restores the last-opened file's path from
-    // session state at $APP_LOCAL_DATA/state.json. Default false —
-    // normal launches start blank. Crash recovery via the autosave
-    // draft is independent of this setting and takes priority over
-    // it; session-restore only fires when no draft is present.
-    // See the Session state section below for the state file format
-    // and the get_session_state / set_session_state commands.
+    // Launch restores the last-opened file's path from session state
+    // at $APP_LOCAL_DATA/state.json. The frontend defaults this ON
+    // when the key is unset (None): a normal launch reopens the most
+    // recently touched file. Set restore-session = false to start
+    // blank instead. Crash recovery via the autosave draft is
+    // independent of this setting and takes priority over it;
+    // session-restore only fires when no draft is present. See the
+    // Session state section below for the state file format and the
+    // get_session_state / set_session_state commands.
     restore_session: Option<bool>,
-    // When true, the preview pane is permitted to load images from
-    // external HTTPS URLs (e.g., GitHub-hosted README images).
-    // Default false — external image src attributes are rewritten
-    // to inline placeholders by the frontend's render-time post-
-    // processing before any fetch can happen. The CSP relaxation
+    // The preview pane loads images from external HTTPS URLs
+    // (e.g., GitHub-hosted README images). The frontend defaults this
+    // ON when the key is unset (None). Set allow-external-images =
+    // false to block them: external image src attributes are then
+    // rewritten to inline placeholders by the frontend's render-time
+    // post-processing before any fetch can happen. The CSP relaxation
     // in tauri.conf.json (img-src includes `https:`) is what makes
     // external loading possible WHEN the gate allows; the gate is
     // the actual security boundary, not the CSP.
@@ -194,15 +197,18 @@ struct SkrivroConfig {
     // Swedish is currently the only non-English locale with a
     // translation table.
     language: Option<String>,
-    // Offline spellcheck language(s) — "off" (default if unset: feature
-    // disabled, no dictionaries loaded), "en" (US English), "sv"
-    // (Swedish), or "both" (en + sv). When not "off", the frontend
-    // loads the matching bundled Hunspell dictionary into nspell and
-    // underlines misspellings as CodeMirror decorations. "off" is a
-    // HARD off: the runtime Ctrl+Alt+K / ⌃⌘K / :spell toggle is inert
-    // because there is nothing to show. Unknown values are rejected
-    // with a debug warning and the field stays None (treated as
-    // "off"). English is US-only by design — no en-GB/CA/AU variants.
+    // Offline spellcheck language: "auto" (default), "off", "en" (US
+    // English), "sv" (Swedish), or "both" (en + sv). "auto" detects the
+    // dictionary from the system locale on the frontend (Swedish locale
+    // → Swedish, else English) and is stored here as None — same as the
+    // `language` key's auto — so an unset key, "auto", and an
+    // unrecognized value all arrive as None and the frontend treats them
+    // as auto. "off" is the one disabling value and a HARD off: no
+    // dictionary loads and the runtime Ctrl+Alt+K / ⌃⌘K / :spell toggle
+    // is inert. When a language is active the frontend loads the matching
+    // bundled Hunspell dictionary into nspell and underlines misspellings
+    // as CodeMirror decorations. English is US-only by design — no
+    // en-GB/CA/AU variants.
     spellcheck_language: Option<String>,
     // Theme colors resolved by load_theme() in get_config(). When the
     // user's `theme` key matches a non-default theme (i.e., anything
@@ -557,18 +563,22 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
                 }
             }
             "spellcheck-language" => {
-                // Accepted: off, en, sv, both. "off" disables the feature
-                // entirely (no dictionaries load). Unknown values are
-                // rejected with a debug warning; the field stays None,
-                // which the frontend treats the same as "off".
+                // Accepted: auto (default), off, en, sv, both. "auto" maps
+                // to None — the frontend detects the dictionary from the
+                // system locale, the same representation the `language`
+                // key's auto uses. "off" disables the feature entirely (no
+                // dictionaries load). Unknown values are rejected with a
+                // debug warning and stay None, which the frontend treats as
+                // the auto default.
                 match val.to_lowercase().as_str() {
                     "off" | "en" | "sv" | "both" => {
                         cfg.spellcheck_language = Some(val.to_lowercase())
                     }
+                    "auto" => cfg.spellcheck_language = None,
                     _ => {
                         #[cfg(debug_assertions)]
                         eprintln!(
-                            "[skrivro config] line {}: spellcheck-language value '{}' not recognized — accepted: off, en, sv, both. Skipping.",
+                            "[skrivro config] line {}: spellcheck-language value '{}' not recognized — accepted: auto, off, en, sv, both. Skipping.",
                             idx + 1,
                             val
                         );
@@ -597,7 +607,7 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
                 // Boolean-valued key. Accept common spellings of true/false
                 // so users don't have to remember one specific form. The
                 // frontend reads cfg.restoreSession as `undefined | true | false`
-                // and treats undefined the same as false (default off).
+                // and treats undefined as true (restore on by default).
                 match val.to_lowercase().as_str() {
                     "true" | "yes" | "on" | "1" => cfg.restore_session = Some(true),
                     "false" | "no" | "off" | "0" => cfg.restore_session = Some(false),
@@ -613,10 +623,11 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
             }
             "allow-external-images" => {
                 // Boolean-valued. Same accepted spellings as restore-session.
-                // Default off (None → false). When on, the preview gate
-                // permits HTTPS image src attributes to load via the CSP-
-                // allowed `https:` source. `http:` is always blocked by the
-                // gate regardless of this flag (HTTPS-only policy).
+                // Default on (None → allowed). When off, the preview gate
+                // blocks HTTPS image src attributes instead of letting them
+                // load via the CSP-allowed `https:` source. `http:` is always
+                // blocked by the gate regardless of this flag (HTTPS-only
+                // policy).
                 match val.to_lowercase().as_str() {
                     "true" | "yes" | "on" | "1" => cfg.allow_external_images = Some(true),
                     "false" | "no" | "off" | "0" => cfg.allow_external_images = Some(false),
@@ -706,9 +717,9 @@ fn get_config(app: tauri::AppHandle) -> SkrivroConfig {
 //
 // Machine-local state persisted across clean exits. Currently just
 // stores the last-opened file path for the restore-session feature —
-// when `restore-session = true` is set in skrivro.conf and no CLI
-// argument is given at launch and no crash-recovery draft is present,
-// the frontend loads the file at `lastFilePath` from here.
+// unless `restore-session = false` is set in skrivro.conf (it defaults
+// on), and no CLI argument is given at launch and no crash-recovery
+// draft is present, the frontend loads the file at `lastFilePath` here.
 //
 // File location uses Tauri's platform-appropriate app-local-data dir
 // rather than a hardcoded XDG path. This works correctly on all three
@@ -1697,6 +1708,12 @@ mod tests {
     fn config_spellcheck_language_is_validated_and_lowercased() {
         let cfg = parse_skrivro_config("spellcheck-language = BOTH\n");
         assert_eq!(cfg.spellcheck_language.as_deref(), Some("both"));
+        // auto is the default and maps to None, the same representation
+        // the language key's auto uses (the frontend detects the locale).
+        let cfg = parse_skrivro_config("spellcheck-language = auto\n");
+        assert_eq!(cfg.spellcheck_language, None);
+        // Unrecognized values are rejected and also leave it None, which
+        // the frontend treats as the auto default.
         let cfg = parse_skrivro_config("spellcheck-language = de\n");
         assert_eq!(cfg.spellcheck_language, None);
     }

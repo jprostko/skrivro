@@ -399,12 +399,13 @@ export const setSyntaxHighlighting = (enabled: boolean) => {
   });
 };
 
-// Whether spellcheck is enabled by config — the `spellcheck-language`
-// key must be set to something other than 'off'. When this is false the
+// Whether spellcheck is enabled by config. It's on by default — an unset
+// key or 'auto' resolves to a locale-detected language — and only an
+// explicit 'off' disables it. When this is false (explicit 'off') the
 // feature is hard-off: no dictionary loads and the runtime toggle is
 // inert (ui.ts shows a "disabled in config" message instead of flipping).
 export const spellcheckConfigured = (): boolean =>
-  !!userConfig.spellcheckLanguage && userConfig.spellcheckLanguage !== 'off';
+  userConfig.spellcheckLanguage !== 'off';
 
 // Initial spellcheck-compartment contents: the decoration plugin when
 // config enables it AND the runtime pref is on, else empty. The plugin

@@ -51,8 +51,8 @@
 #   Helvetica Neue, Arial, sans-serif
 # preview-font = system-ui
 
-# edit-font-size = 0.9rem
-# preview-font-size = 0.95rem
+# edit-font-size = 0.95rem
+# preview-font-size = 1rem
 
 # ================= Layout =================
 # Padding keys are split by axis: `-x` for horizontal (left/right),
@@ -180,7 +180,7 @@
 
 # ================= Session =================
 
-# Restore last session on launch: true / false (default false)
+# Restore last session on launch: true / false (default true)
 #
 # When true, launching Skrivro without a CLI argument reopens the
 # file that was open at the time of the previous clean exit. The
@@ -200,58 +200,54 @@
 # falls back to a blank buffer (no error dialog), but the next file
 # operation updates the state as normal.
 #
-# First-enable behavior: the state file is updated on every file
-# operation (open, save-as, new, :e filename) regardless of whether
-# this setting is on. This setting only controls whether state gets
-# READ at launch. So if you have ever opened a file in Skrivro and
-# then flip this from false to true, your next launch will open the
-# file that was most recently touched, which may not be what you
-# expect if you haven't opened anything recently. To start fresh
-# from the moment you enable restore-session, delete the state file
-# before the next launch (see path above for your platform). Matches
-# how VS Code, most browsers, and most editors behave. Session
-# state is always tracked. Choosing to restore the session
-# is an intentional decision.
+# Behavior note: the state file is updated on every file operation
+# (open, save-as, new, :e filename) regardless of this setting, so
+# session state is always tracked. The setting only controls whether
+# that state is READ at launch. Because it defaults to on, a clean
+# launch with no file argument reopens the most recently touched
+# file. Set this to false if you would rather always start with a
+# blank buffer. To keep restore on but start fresh once, delete the
+# state file before the next launch (see path above for your
+# platform).
 #
 # Accepted forms: true/false, yes/no, on/off, 1/0 (case-insensitive).
-# restore-session = false
+# restore-session = true
 
 # ================= Security =================
 
 # Allow external HTTPS image loading in the preview pane: true /
-# false (default false). Off by default, intentionally.
+# false (default true)
 #
-# When false (the default), every `<img>` whose src is an external
-# URL (anything other than `data:` or Tauri's `asset:` protocol) is
-# replaced at render time with a small inline placeholder showing
-# the alt text and the original URL on hover. No HTTP request is
-# ever sent. The gate runs in the frontend BEFORE the rendered
-# HTML enters the live DOM, so the webview never sees an external
-# image src to fetch.
+# When true (the default), the gate permits HTTPS image src values
+# through. The webview loads them normally via Tauri's CSP-allowed
+# https: source. Useful for previewing GitHub-hosted READMEs and
+# similar documents where images live on external CDNs.
 #
-# When true, the gate permits HTTPS image src values through. The
-# webview loads them normally via Tauri's CSP-allowed https: source.
-# Useful for previewing GitHub-hosted READMEs and similar documents
-# where images live on external CDNs.
+# When false, every `<img>` whose src is an external URL (anything
+# other than `data:` or Tauri's `asset:` protocol) is replaced at
+# render time with a small inline placeholder showing the alt text
+# and the original URL on hover. No HTTP request is ever sent. The
+# gate runs in the frontend BEFORE the rendered HTML enters the live
+# DOM, so the webview never sees an external image src to fetch.
 #
 # HTTPS-only policy: even when this flag is true, plain `http:`
 # image sources are still placeholdered. There's no opt-in for HTTP.
 #
-# Privacy implication: enabling this lets every preview render of a
-# document with external images send your IP and User-Agent to
-# whatever servers are hosting those images (a tracking vector for
-# documents from untrusted sources). Only enable if you trust the
-# documents you're rendering.
+# Privacy implication: with this on, every preview render of a
+# document with external images sends your IP and User-Agent to
+# whatever servers host those images (a tracking vector for
+# documents from untrusted sources). Set this to false if you render
+# documents you do not trust.
 #
-# CSP and restart: enabling this flag does not require Tauri's CSP
-# to be modified. The CSP already allows `https:` for img-src. The
-# gate is what was blocking. So toggling this and restarting Skrivro
-# is sufficient. (No Skrivro setting can override Tauri's CSP at
-# runtime. If you ever need to lock down the CSP further, that's a
+# CSP and restart: this flag does not require Tauri's CSP to be
+# modified. The CSP already allows `https:` for img-src. The gate is
+# what blocks when this is off. So toggling this and restarting
+# Skrivro is sufficient. (No Skrivro setting can override Tauri's CSP
+# at runtime. If you ever need to lock down the CSP further, that's a
 # tauri.conf.json edit + rebuild.)
 #
 # Accepted forms: true/false, yes/no, on/off, 1/0 (case-insensitive).
-# allow-external-images = false
+# allow-external-images = true
 
 # ================= Language =================
 
@@ -284,15 +280,20 @@
 
 # ================= Spellcheck =================
 
-# Offline editor spellcheck: off / en / sv / both (default off)
+# Offline editor spellcheck: auto / off / en / sv / both (default auto)
 #
-# When set to a language, Skrivro loads a bundled Hunspell dictionary
+# When a language is active, Skrivro loads a bundled Hunspell dictionary
 # and underlines misspelled words in the editor with a red squiggle.
 # The checking is entirely offline and local: no network, no service.
 #
-#   off:  disabled. No dictionary is loaded. This is the default, and
-#         it's a HARD off: the runtime toggle has no effect while
-#         this is off (there is nothing to toggle).
+#   auto: the default. Detect the dictionary from your system locale
+#         (a Swedish locale gets Swedish, everything else gets English)
+#         and turn spellcheck on. It reads the locale directly, so it is
+#         independent of the `language` key above: an English UI with
+#         auto still spellchecks in Swedish on a Swedish system.
+#   off:  disabled. No dictionary is loaded. A HARD off: the runtime
+#         toggle has no effect while this is off (there is nothing to
+#         toggle).
 #   en:   US English. (UK/Canadian/Australian English are not bundled.
 #         Fork and swap the dictionary if you need a different variant.)
 #   sv:   Swedish
@@ -304,14 +305,15 @@
 # prose. They're independent. You can have an English UI and a Swedish
 # spellchecker, or vice versa.
 #
-# Runtime toggle: with a language set here, you can silence or
-# restore the squiggles at runtime without a restart (the keybind is
-# in Help). That on/off state is remembered across launches. The
-# language choice here is what's loaded.
+# Runtime toggle: when spellcheck is on (auto or an explicit language),
+# you can silence or restore the squiggles at runtime without a restart
+# (the keybind is in Help). That on/off state is remembered across
+# launches. The language here is what gets loaded.
 #
 # Size note: the dictionaries are bundled into the app. English adds a
 # little. Swedish is larger (it's a compounding language, so its
 # dictionary is several times the size of English's). `both` ships both.
 #
-# Unknown values are rejected with a debug warning and treated as off.
-# spellcheck-language = off
+# Unknown values are rejected with a debug warning and fall through to
+# auto (the default).
+# spellcheck-language = auto

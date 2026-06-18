@@ -80,8 +80,8 @@
      When the user sets one of the corresponding keys in skrivro.conf,
      the frontend's applyUserConfig() function writes the override as
      an inline style on :root, shadowing these defaults. */
-  --edit-font-size: 0.9rem;
-  --preview-font-size: 0.95rem;
+  --edit-font-size: 0.95rem;
+  --preview-font-size: 1rem;
   --editor-padding-x: 2.5rem;
   --editor-padding-y: 2rem;
   --preview-padding-x: 2.5rem;
@@ -564,10 +564,11 @@ body.mode-split .preview-scroll::after {
   padding: 0;
 }
 .preview-pane .admonitionblock > table td.icon {
-  /* Fixed-width icon column scaling with preview font size; ~75px
-     at default preview-font-size (close to Asciidoctor's stock 80px).
-     `flex: 0 0 5em` = no grow, no shrink, fixed 5em basis. Internal
-     flex container centers the SVG both axes. */
+  /* Fixed-width icon column that scales with the preview font size: the
+     `flex: 0 0 5em` basis renders ~80px at the default preview-font-size
+     (1rem), roughly the width of Asciidoctor's stock admonition icon
+     column. No grow, no shrink; the internal flex container centers the
+     SVG on both axes. */
   flex: 0 0 5em;
   display: flex;
   align-items: center;

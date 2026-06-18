@@ -66,7 +66,7 @@ import {
   type LaunchInfo, type SessionState, type SkrivroConfig,
 } from './config.js';
 import { createEditor, editorView } from './editor.js';
-import { initSpellcheck, spellcheckRecompute } from './spellcheck/index.js';
+import { initSpellcheck, resolveSpellcheckLanguage, spellcheckRecompute } from './spellcheck/index.js';
 import { loadCustomWords, syncCustomWordsToWorker } from './spellcheck/custom-words.js';
 import { prefs } from './prefs.js';
 import { render, scheduleRender, syncPreviewToCaret } from './preview.js';
@@ -343,9 +343,9 @@ applyUserConfig(userConfig);
 //      delivered to us through invoke('take_pending_opens')) — same
 //      user intent as a CLI arg, just a different transport
 //   3. Autosave draft — crash recovery, always wins over session restore
-//   4. Session restore — only if `restore-session = true` in the user
-//      config AND a prior clean exit left a non-null lastFilePath
-//      AND that file exists/is readable now
+//   4. Session restore — on by default (skipped only if
+//      `restore-session = false`) AND a prior clean exit left a non-null
+//      lastFilePath AND that file exists/is readable now
 //   5. Default blank buffer
 //
 // Drain pending OS-dispatched opens regardless of whether we'll use
@@ -416,12 +416,12 @@ if (launchInfo.initial_file) {
   }
 } else {
   // No CLI arg — try draft first (crash recovery), then session
-  // restore if configured, then default.
+  // restore unless disabled, then default.
   const r = resolveInitialDoc();
   if (r.hasDraft) {
     initialDoc = r.doc;
     hasDraft = true;
-  } else if (userConfig.restoreSession) {
+  } else if (userConfig.restoreSession !== false) {
     try {
       const state = await invoke<SessionState>('get_session_state');
       if (state && state.lastFilePath) {
@@ -505,16 +505,18 @@ if (prefs.displayMode === 'preview') {
   editorView!.focus();
 }
 
-// Load the spellcheck dictionary(ies) for the configured language, then
+// Load the spellcheck dictionary(ies) for the resolved language, then
 // force the decoration plugin to recompute — the editor was built
 // before the async load could finish, so its first pass had no
-// dictionary to check against. Runs whenever the config enables a
+// dictionary to check against. Runs whenever spellcheck resolves to a
 // language (regardless of the runtime on/off pref) so the dictionaries
-// are ready the instant the user toggles spellcheck on; no-op when
-// spellcheck-language is off/unset.
-if (userConfig.spellcheckLanguage && userConfig.spellcheckLanguage !== 'off') {
+// are ready the instant the user toggles spellcheck on. The resolver
+// returns null only for an explicit 'off'; an unset key or 'auto'
+// detect the language from the system locale.
+const resolvedSpellcheckLang = resolveSpellcheckLanguage(userConfig.spellcheckLanguage);
+if (resolvedSpellcheckLang) {
   void Promise.all([
-    initSpellcheck(userConfig.spellcheckLanguage),
+    initSpellcheck(resolvedSpellcheckLang),
     loadCustomWords(),
   ]).then(() => {
     // Dictionaries built and the custom-word list loaded — seed the

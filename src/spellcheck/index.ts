@@ -86,9 +86,10 @@ const getWorker = (): Worker => {
 };
 
 // Build (or rebuild) the dictionaries in the worker for `lang`; resolves
-// once the worker signals it's ready. main.ts calls this at launch when
-// spellcheck-language is configured, then dispatches spellcheckRecompute
-// to kick the first check. 'off' / undefined → no-op (no worker spawned).
+// once the worker signals it's ready. main.ts calls this at launch with
+// the resolved language whenever spellcheck is on (auto or explicit),
+// then dispatches spellcheckRecompute to kick the first check. 'off' /
+// undefined → no-op (no worker spawned).
 export const initSpellcheck = (lang: string | undefined): Promise<void> => {
   if (!lang || lang === 'off') return Promise.resolve();
   const w = getWorker();
@@ -96,6 +97,21 @@ export const initSpellcheck = (lang: string | undefined): Promise<void> => {
   const ready = new Promise<void>((resolve) => readyResolvers.push(resolve));
   w.postMessage({ type: 'init', lang });
   return ready;
+};
+
+// Resolve the configured spellcheck-language to a concrete dictionary
+// choice, or null when spellcheck is off. The Rust parser maps 'auto'
+// (the default) to None, so an unset value means auto: detect from the
+// system locale (navigator.language: sv* → Swedish, else English),
+// independent of the UI `language` setting. 'off' returns null; an
+// explicit 'en' / 'sv' / 'both' is used as-is.
+export const resolveSpellcheckLanguage = (
+  cfg: string | undefined,
+): 'en' | 'sv' | 'both' | null => {
+  if (cfg === 'off') return null;
+  if (cfg === 'en' || cfg === 'sv' || cfg === 'both') return cfg;
+  // unset or 'auto' → locale-detected default
+  return /^sv/i.test(navigator.language || '') ? 'sv' : 'en';
 };
 
 // Kick a re-check — dispatched after the dictionaries finish loading

@@ -177,11 +177,12 @@ const renderOnce = async () => {
     //   2. Gate scheme-having URLs based on which scheme they use:
     //        - data:, asset: — always allow (inline data URIs and
     //          Tauri's own asset protocol are both safe and intended)
-    //        - https: — allow only if userConfig.allowExternalImages
-    //          is true; otherwise replace with an inline placeholder
+    //        - https: — allowed by default; replaced with an inline
+    //          placeholder only when userConfig.allowExternalImages
+    //          is explicitly false
     //        - http: — always replace with an inline placeholder
-    //          (HTTPS-only policy: no opt-in for HTTP, even if
-    //          allowExternalImages is true)
+    //          (HTTPS-only policy: no opt-in for HTTP, even when
+    //          allowExternalImages is on)
     //        - anything else (file:, ftp:, etc.) — placeholder
     //
     //      Replacing in the detached wrapper element BEFORE attaching
@@ -196,7 +197,7 @@ const renderOnce = async () => {
     // Format-agnostic — applies to whatever HTML the active renderer
     // produced — so it lives here in preview.ts rather than in a
     // specific renderer implementation.
-    const allowExternalImages = userConfig.allowExternalImages === true;
+    const allowExternalImages = userConfig.allowExternalImages !== false;
     const baseDir = currentBuffer.path ? await dirname(currentBuffer.path) : null;
     const wrapper = document.createElement('div');
     // append() moves the fragment's already-parsed, already-sanitized

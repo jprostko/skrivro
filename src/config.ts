@@ -110,23 +110,28 @@ export interface SkrivroConfig {
   // Numeric: Option<u32> in Rust serializes to `null | number`.
   softColumnLimit?: number | null;
 
-  // Boolean: Option<bool> serializes to `null | boolean`.
+  // Whether launch restores the last-opened file. Defaults to true when
+  // unset (Rust None → frontend treats undefined/null as on). Set to
+  // false to always start blank. Option<bool> serializes to `null | boolean`.
   restoreSession?: boolean | null;
   // Whether the preview pane is allowed to load external HTTPS
-  // images. Default false (Rust None → frontend treats undefined/null
-  // as false). Read by preview.ts's render() to gate which <img>
-  // elements get replaced with inline placeholders.
+  // images. Defaults to true when unset (Rust None → frontend treats
+  // undefined/null as allowed). Set to false to block external
+  // images and replace them with inline placeholders. Read by
+  // preview.ts's render() to gate which <img> elements get replaced.
   allowExternalImages?: boolean | null;
 
   // UI language override. Frontend validates and falls through to
   // auto-detect if the value isn't 'en' or 'sv'.
   language?: string;
 
-  // Offline spellcheck language(s): 'off' | 'en' | 'sv' | 'both'.
-  // undefined/null (key unset) and 'off' both mean the feature is
-  // disabled and no dictionary loads. Read at init by the spellcheck
-  // module to decide which bundled Hunspell dictionary to load into
-  // nspell; a HARD off (the runtime toggle is inert when this is off).
+  // Offline spellcheck language: 'off' | 'auto' | 'en' | 'sv' | 'both'.
+  // The Rust parser maps 'auto' (the default) to None, so undefined/null
+  // here means auto: the spellcheck module detects the dictionary from
+  // navigator.language (Swedish locale → Swedish, else English) and turns
+  // spellcheck on, independent of the `language` UI setting. 'off' is the
+  // one disabling value and a HARD off (no dictionary loads, the runtime
+  // toggle inert). 'en' | 'sv' | 'both' load that dictionary directly.
   spellcheckLanguage?: string;
 }
 

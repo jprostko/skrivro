@@ -114,6 +114,12 @@
 
     --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
+    --edit-font-size: 0.95rem;
+    --preview-font-size: 1rem;
+    --editor-padding-x: 2.5rem;
+    --editor-padding-y: 2rem;
+    --preview-padding-x: 2.5rem;
+    --preview-padding-y: 2rem;
 
     /* Single-pane width cap (consumed by .cm-scroller in editor-only
        and .preview in preview-only). Default value is the medium
@@ -218,11 +224,11 @@
 
   .preview {
     overflow: auto;
-    padding: 2rem 2.5rem;
+    padding: var(--preview-padding-y) var(--preview-padding-x);
     background: var(--skr-bg-panel);
     color: var(--skr-text);
     font-family: var(--font-sans);
-    font-size: 1rem;
+    font-size: var(--preview-font-size);
     line-height: 1.65;
     scrollbar-color: var(--skr-surface-hover) var(--skr-bg);
     scrollbar-width: thin;
@@ -3243,7 +3249,7 @@
       color: 'var(--skr-text)',
       backgroundColor: 'var(--skr-bg)',
       height: '100%',
-      fontSize: '0.95rem',
+      fontSize: 'var(--edit-font-size)',
     },
     '.cm-scroller': {
       fontFamily: 'var(--font-mono)',
@@ -3253,10 +3259,10 @@
     },
     '.cm-content': {
       caretColor: 'var(--skr-cursor)',
-      padding: '2rem 0',
+      padding: 'var(--editor-padding-y) 0',
     },
     '.cm-line': {
-      padding: '0 2.5rem',
+      padding: '0 var(--editor-padding-x)',
     },
     '.cm-cursor, .cm-dropCursor': {
       borderLeftColor: 'var(--skr-cursor)',

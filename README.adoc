@@ -31,7 +31,7 @@ This branch exists for cases where installing the desktop application isn't an o
 | The document text, name, and unsaved-changes state survive a reload or browser restart, but the link to the file on disk cannot. The first save after a reload is a save-as.
 
 | Spellcheck
-| English only, off by default. Enable with Ctrl+Alt+K (Ctrl+Cmd+K on Mac) or `:spell on`. The dictionary downloads on first enable. Custom words persist in `localStorage`. There is no editable `custom-words.txt` like the desktop version has.
+| English only, on by default. Ctrl+Alt+K (Ctrl+Cmd+K on Mac) toggles it, or use `:spell on` and `:spell off`. The dictionary downloads on first use. Custom words persist in `localStorage`. There is no editable `custom-words.txt` like the desktop version has.
 
 | Keyboard shortcuts for open / new
 | `Ctrl+Alt+O` and `Ctrl+Alt+N` (Ctrl+Cmd+O and Ctrl+Cmd+N on Mac), not plain `Ctrl+O` / `Ctrl+N`. Browsers reserve those for their own file dialog and new-window action, and web pages can't reliably override them.

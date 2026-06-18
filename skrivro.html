@@ -222,7 +222,7 @@
     background: var(--skr-bg-panel);
     color: var(--skr-text);
     font-family: var(--font-sans);
-    font-size: 0.95rem;
+    font-size: 1rem;
     line-height: 1.65;
     scrollbar-color: var(--skr-surface-hover) var(--skr-bg);
     scrollbar-width: thin;
@@ -1610,7 +1610,7 @@
 
   // ================= Prefs =================
 
-  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split', gutterHidden: true, statusBarHidden: false, syntaxHighlighting: true, spellcheck: false, widthMode: 'medium' };
+  const defaultPrefs = { titlebarHidden: false, vimMode: false, displayMode: 'split', gutterHidden: true, statusBarHidden: false, syntaxHighlighting: true, spellcheck: true, widthMode: 'medium' };
 
   const loadPrefs = () => {
     try {
@@ -3243,7 +3243,7 @@
       color: 'var(--skr-text)',
       backgroundColor: 'var(--skr-bg)',
       height: '100%',
-      fontSize: '0.9rem',
+      fontSize: '0.95rem',
     },
     '.cm-scroller': {
       fontFamily: 'var(--font-mono)',
@@ -3499,9 +3499,10 @@
   // layer), everything runs on the main thread (the English dictionary
   // parses in well under a second and per-word checks are microseconds,
   // so master's Web Worker buys nothing here), and the engine plus
-  // dictionary load lazily from the CDN on first enable — spellcheck is
-  // off by default, so a user who never turns it on never pays the
-  // download.
+  // dictionary load lazily from the CDN the first time spellcheck is
+  // active. Spellcheck is on by default, so that load normally happens
+  // at launch — a user who turns it off avoids the download on later
+  // launches.
 
   const spellCompartment = new Compartment();
 

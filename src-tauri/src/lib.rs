@@ -931,6 +931,77 @@ fn write_custom_words(app: tauri::AppHandle, words: Vec<String>) -> Result<(), S
     Ok(())
 }
 
+// ================= User-supplied dictionaries =================
+//
+// Skrivro bundles only the English (en-US) Hunspell dictionary. Swedish,
+// and any non en-US English variant, are user-supplied: the user drops
+// <lang>.aff + <lang>.dic into <app_config_dir>/dictionaries/ and the
+// frontend loads them at startup, preferring a user file over the bundled
+// English. Swedish is deliberately not bundled (its DSSO dictionary is
+// LGPL-3.0, and keeping it out of the binary keeps Skrivro's distribution
+// permissive). This command reads one language's pair; the frontend's
+// resolver (resolveSpellcheck) decides which language(s) to ask for.
+// Mirrors the themes resolver and read_custom_words: app_config_dir joined
+// with a fixed subdir.
+
+#[derive(serde::Serialize)]
+struct UserDictionary {
+    aff: String,
+    dic: String,
+}
+
+fn skrivro_dictionaries_dir(app: &tauri::AppHandle) -> Option<PathBuf> {
+    use tauri::Manager;
+    app.path()
+        .app_config_dir()
+        .ok()
+        .map(|d| d.join("dictionaries"))
+}
+
+/// A Hunspell `.dic` begins with a word-count integer (optionally behind
+/// a UTF-8 BOM). A `.aff` never does: it starts with directives or `#`
+/// comment lines. So if the file in the `.dic` slot doesn't begin with a
+/// count, the pair is swapped or the file isn't a dictionary, and we treat
+/// it as absent rather than feed nspell garbage (a swapped pair makes it
+/// flag every word). This also rejects the hyph_*.dic hyphenation files
+/// (whose first line is the charset, not a count). The leading BOM is
+/// stripped only when present, so a BOM-less `.dic` is never truncated.
+fn dic_starts_with_count(dic: &str) -> bool {
+    dic.strip_prefix('\u{feff}')
+        .unwrap_or(dic)
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .and_then(|line| line.split_whitespace().next())
+        .is_some_and(|token| token.parse::<u64>().is_ok())
+}
+
+/// Read the user-supplied Hunspell pair for `lang` from
+/// <app_config_dir>/dictionaries/<lang>.{aff,dic}. Returns Some only when
+/// BOTH files are present, valid UTF-8, and the `.dic` is shaped like a real
+/// dictionary (see dic_starts_with_count). A missing, unreadable, non-UTF-8,
+/// or swapped/malformed file yields None, which the frontend surfaces as
+/// "dictionary not found". `lang` is whitelisted to the known slots so it can
+/// never escape the dictionaries directory.
+#[tauri::command]
+fn read_user_dictionary(app: tauri::AppHandle, lang: String) -> Option<UserDictionary> {
+    if lang != "en" && lang != "sv" {
+        return None;
+    }
+    let dir = skrivro_dictionaries_dir(&app)?;
+    let aff = std::fs::read_to_string(dir.join(format!("{lang}.aff"))).ok()?;
+    let dic = std::fs::read_to_string(dir.join(format!("{lang}.dic"))).ok()?;
+    if !dic_starts_with_count(&dic) {
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "[skrivro dictionaries] {lang}.dic does not start with a word count \
+             (swapped with {lang}.aff, or not a Hunspell dictionary?)"
+        );
+        return None;
+    }
+    Some(UserDictionary { aff, dic })
+}
+
 // ================= Initial theme state (FOUC prevention) =================
 //
 // The default CSS in index.html uses Catppuccin Mocha values. If the user
@@ -1356,6 +1427,7 @@ pub fn run() {
             set_session_state,
             read_custom_words,
             write_custom_words,
+            read_user_dictionary,
             take_pending_opens,
             apply_collection_behavior
         ])
@@ -1773,5 +1845,39 @@ theme = gruvbox-dark
         assert_eq!(cfg.theme.as_deref(), Some("gruvbox-dark"));
         assert_eq!(cfg.soft_column_limit, None);
         assert_eq!(cfg.preview_font_size, None);
+    }
+
+    // ----- dic_starts_with_count (user-dictionary sanity check) -------
+
+    #[test]
+    fn dic_accepts_a_word_count_header() {
+        // Normal Hunspell .dic shape: a count line, then words.
+        assert!(dic_starts_with_count("153714\nfönster/ACFJUXY\n"));
+        // A count followed by junk still passes on the first token.
+        assert!(dic_starts_with_count("97199 ignored\nword\n"));
+        // Leading blank lines are skipped to the first real line.
+        assert!(dic_starts_with_count("\n  \n42\nword\n"));
+    }
+
+    #[test]
+    fn dic_accepts_a_bom_prefixed_count() {
+        // en_GB.dic / en_ZA.dic ship a UTF-8 BOM before the count; it is
+        // stripped only when present, so a BOM-less .dic is never truncated.
+        assert!(dic_starts_with_count("\u{feff}97199\nword\n"));
+    }
+
+    #[test]
+    fn dic_rejects_aff_content_so_a_swap_is_caught() {
+        // A swapped pair puts .aff content in the .dic slot. Affix files lead
+        // with SET or # comment lines, never a count.
+        assert!(!dic_starts_with_count("SET UTF-8\nTRY esianrtolcd\n"));
+        assert!(!dic_starts_with_count(
+            "# Affix file for British English Hunspell dictionary.\nSET UTF-8\n"
+        ));
+        // hyph_*.dic hyphenation files lead with the charset, not a count.
+        assert!(!dic_starts_with_count("UTF-8\nLEFTHYPHENMIN 2\n"));
+        // Empty / whitespace-only is not a dictionary.
+        assert!(!dic_starts_with_count(""));
+        assert!(!dic_starts_with_count("   \n\n"));
     }
 }

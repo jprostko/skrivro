@@ -66,7 +66,7 @@ import {
   type LaunchInfo, type SessionState, type SkrivroConfig,
 } from './config.js';
 import { createEditor, editorView } from './editor.js';
-import { initSpellcheck, resolveSpellcheckLanguage, spellcheckRecompute } from './spellcheck/index.js';
+import { initSpellcheck, resolveSpellcheck, spellcheckRecompute } from './spellcheck/index.js';
 import { loadCustomWords, syncCustomWordsToWorker } from './spellcheck/custom-words.js';
 import { prefs } from './prefs.js';
 import { render, scheduleRender, syncPreviewToCaret } from './preview.js';
@@ -505,24 +505,20 @@ if (prefs.displayMode === 'preview') {
   editorView!.focus();
 }
 
-// Load the spellcheck dictionary(ies) for the resolved language, then
-// force the decoration plugin to recompute — the editor was built
-// before the async load could finish, so its first pass had no
-// dictionary to check against. Runs whenever spellcheck resolves to a
-// language (regardless of the runtime on/off pref) so the dictionaries
-// are ready the instant the user toggles spellcheck on. The resolver
-// returns null only for an explicit 'off'; an unset key or 'auto'
-// detect the language from the system locale.
-const resolvedSpellcheckLang = resolveSpellcheckLanguage(userConfig.spellcheckLanguage);
-if (resolvedSpellcheckLang) {
-  void Promise.all([
-    initSpellcheck(resolvedSpellcheckLang),
-    loadCustomWords(),
-  ]).then(() => {
-    // Dictionaries built and the custom-word list loaded — seed the
-    // worker with the custom words, then kick the first check (which now
-    // applies them).
-    syncCustomWordsToWorker();
-    editorView?.dispatch({ effects: spellcheckRecompute.of(null) });
-  });
-}
+// Resolve the spellcheck dictionaries (reading any user-supplied files from
+// <config>/dictionaries/), build them in the worker, then force the
+// decoration plugin to recompute — the editor was built before the async
+// resolution could finish, so its first pass had no dictionary to check
+// against. resolveSpellcheck also sets the status-bar indicator state (e.g. a
+// missing Swedish dictionary), so refresh the bar once it lands. Runs
+// regardless of the runtime on/off pref so the dictionaries are ready the
+// instant the user toggles spellcheck on.
+void resolveSpellcheck(userConfig.spellcheckLanguage).then(async (dicts) => {
+  refreshStatus();
+  if (!dicts || (!dicts.en && !dicts.sv)) return; // 'off', or nothing to load
+  await Promise.all([initSpellcheck(dicts), loadCustomWords()]);
+  // Dictionaries built and the custom-word list loaded — seed the worker with
+  // the custom words, then kick the first check (which now applies them).
+  syncCustomWordsToWorker();
+  editorView?.dispatch({ effects: spellcheckRecompute.of(null) });
+});

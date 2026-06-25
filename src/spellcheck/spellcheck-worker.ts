@@ -12,14 +12,15 @@
 // that has to stay responsive), and it's the async boundary a future
 // Hunspell-via-WASM engine would want.
 //
-// Dictionaries are vendored under ./dict and emitted as standalone
-// assets via Vite `?url`, then fetched at runtime (the wooorm packages
-// block deep .aff/.dic imports through their `exports` field, so the
-// files are vendored locally). Each language is its own asset and only
-// the configured one is fetched, so an `en`-only build never loads the
-// 2.3 MB Swedish dictionary. Fully offline: the assets ship inside the
-// app bundle and `fetch` reads them through the app's own asset
-// protocol — no network.
+// English ships bundled: its dictionary is vendored under ./dict and
+// emitted as a standalone asset via Vite `?url`, then fetched at runtime
+// (the wooorm package blocks deep .aff/.dic imports through its `exports`
+// field, so the file is vendored locally). Swedish is NOT bundled — it,
+// and any English override, are user-supplied files the main thread reads
+// from the app config dir and hands in through the init message, so the
+// LGPL Swedish dictionary stays out of our binary. Offline either way: the
+// bundled asset ships inside the app and `fetch` reads it through the app's
+// own asset protocol, and user files never leave the machine.
 
 import nspell from 'nspell';
 
@@ -27,10 +28,20 @@ type NSpell = ReturnType<typeof nspell>;
 
 // ===== Message protocol (shared with the main-thread client) =====
 
+/** A Hunspell dictionary pair, already decoded to UTF-8 text. */
+export interface DictPayload {
+  aff: string;
+  dic: string;
+}
+
 export interface InitRequest {
   type: 'init';
-  /** 'en' | 'sv' | 'both' — already filtered (never 'off') by the caller. */
-  lang: string;
+  // English source: 'bundled' loads the built-in en-US asset, a payload is
+  // a user-supplied override (en_GB, en_AU, ...), null = English not active.
+  en: 'bundled' | DictPayload | null;
+  // Swedish source: a user-supplied payload, or null when Swedish isn't
+  // active. There is no bundled Swedish fallback.
+  sv: DictPayload | null;
 }
 
 /** One visible slice of the document: its text and its absolute start offset. */
@@ -112,7 +123,9 @@ const wordCache = new Map<string, boolean>();
 // app's asset protocol with no network access.
 const fetchText = (url: string): Promise<string> => fetch(url).then((r) => r.text());
 
-const loadEn = async (): Promise<NSpell> => {
+// Bundled English: fetch the vendored en-US asset. This is the only
+// dictionary that ships in the binary; everything else is user-supplied.
+const loadEnBundled = async (): Promise<NSpell> => {
   const [affUrl, dicUrl] = await Promise.all([
     import('./dict/en-US.aff?url').then((m) => m.default),
     import('./dict/en-US.dic?url').then((m) => m.default),
@@ -120,6 +133,10 @@ const loadEn = async (): Promise<NSpell> => {
   const [aff, dic] = await Promise.all([fetchText(affUrl), fetchText(dicUrl)]);
   return nspell(aff, dic);
 };
+
+// User-supplied English override (en_GB / en_AU / ...). Plain nspell —
+// English variants ship no compound directives.
+const buildEn = (d: DictPayload): NSpell => nspell(d.aff, d.dic);
 
 // nspell builds Hunspell's COMPOUNDRULE regexes but implements NONE of
 // the CHECKCOMPOUND* guard rules that constrain them. The Swedish
@@ -137,31 +154,33 @@ const loadEn = async (): Promise<NSpell> => {
 // it squiggles common words. Dropping it lets genuine bound stems
 // ("abborr-", "adoptiv-") validate standalone, a near-invisible false
 // negative; garbage rejection comes from COMPOUNDRULE and is unaffected.
-// English ships with no compound directives, so loadEn needs none of it.
+// English carries a few compound directives too (bundled en-US and the
+// en variants both do), but narrow ones for number/ordinal forms, not
+// Swedish's broad single-stem compounding. They don't over-accept, so
+// the English path needs no stripping (the tests confirm en-US flags
+// garbage unstripped).
 const SV_COMPOUND_DIRECTIVE =
   /^(COMPOUNDMIN|COMPOUNDWORDMAX|COMPOUNDRULE|COMPOUNDFLAG|COMPOUNDBEGIN|COMPOUNDMIDDLE|COMPOUNDEND|COMPOUNDPERMITFLAG|COMPOUNDFORBIDFLAG|COMPOUNDROOT|COMPOUNDSYLLABLE|ONLYINCOMPOUND|CHECKCOMPOUND)/;
 
-const stripCompounding = (aff: string): string =>
+export const stripCompounding = (aff: string): string =>
   aff
     .split('\n')
     .filter((line) => !SV_COMPOUND_DIRECTIVE.test(line))
     .join('\n');
 
-const loadSv = async (): Promise<NSpell> => {
-  const [affUrl, dicUrl] = await Promise.all([
-    import('./dict/sv.aff?url').then((m) => m.default),
-    import('./dict/sv.dic?url').then((m) => m.default),
-  ]);
-  const [aff, dic] = await Promise.all([fetchText(affUrl), fetchText(dicUrl)]);
-  return nspell(stripCompounding(aff), dic);
-};
+// User-supplied Swedish. Always routed through stripCompounding: whether
+// it's the DSSO dictionary we point users at or another sv variant, nspell's
+// partial compound support would otherwise accept essentially any string.
+const buildSv = (d: DictPayload): NSpell => nspell(stripCompounding(d.aff), d.dic);
 
-const initSpellcheck = async (lang: string): Promise<void> => {
+const initSpellcheck = async (req: InitRequest): Promise<void> => {
   wordCache.clear();
-  const loaders: Array<Promise<NSpell>> = [];
-  if (lang === 'en' || lang === 'both') loaders.push(loadEn());
-  if (lang === 'sv' || lang === 'both') loaders.push(loadSv());
-  spellers = await Promise.all(loaders);
+  // English first so its suggestions rank ahead of Swedish for `both`.
+  const tasks: Array<Promise<NSpell>> = [];
+  if (req.en === 'bundled') tasks.push(loadEnBundled());
+  else if (req.en) tasks.push(Promise.resolve(buildEn(req.en)));
+  if (req.sv) tasks.push(Promise.resolve(buildSv(req.sv)));
+  spellers = await Promise.all(tasks);
 };
 
 // ===== Checking =====
@@ -242,7 +261,7 @@ self.addEventListener('message', (e: MessageEvent<SpellRequest>) => {
   if (msg.type === 'init') {
     // Build the dictionaries, then announce readiness. A `check` that
     // somehow arrives first finds `spellers` empty and returns [].
-    void initSpellcheck(msg.lang).then(() => {
+    void initSpellcheck(msg).then(() => {
       const ready: ReadyResponse = { type: 'ready' };
       self.postMessage(ready);
     });

@@ -10,6 +10,7 @@ import { tr } from './i18n.js';
 import { prefs, savePrefs } from './prefs.js';
 import { isMac } from './i18n.js';
 import { Vim, editorView, setVimMode, setSyntaxHighlighting, setSpellcheck, spellcheckConfigured, getCM } from './editor.js';
+import { getSpellcheckStatus } from './spellcheck/index.js';
 import { currentBuffer, setBufferFormat, vimMessage, type Format } from './io.js';
 import { userConfig, type SkrivroConfig } from './config.js';
 
@@ -235,13 +236,31 @@ export const refreshStatus = () => {
   statusFilename.textContent = currentBuffer.name;
   statusFiletype.textContent = FORMAT_LABELS[currentBuffer.format];
 
-  // Spellcheck-off indicator: shown only when spellcheck is on in config
-  // but toggled off at runtime. The other states show nothing (config-off
-  // has nothing to indicate, toggled-on already shows squiggles). The
-  // label is wrapped in parens here.
-  const spellOff = spellcheckConfigured() && !prefs.spellcheck;
-  statusSpellcheck.hidden = !spellOff;
-  statusSpellcheck.textContent = spellOff ? `(${tr('spellcheck off')})` : '';
+  // Spellcheck indicator: shown when spellcheck is on in config but either
+  // toggled off at runtime, or a requested Swedish dictionary is missing
+  // (Swedish is user-supplied — see resolveSpellcheck). A normal, working
+  // spellcheck shows nothing (the squiggles are the feedback), and config-off
+  // has nothing to indicate. The label is wrapped in parens here.
+  let spellNote = '';
+  if (spellcheckConfigured()) {
+    if (!prefs.spellcheck) {
+      spellNote = tr('spellcheck off');
+    } else {
+      switch (getSpellcheckStatus()) {
+        case 'sv-missing-off':
+          spellNote = tr('Swedish dictionary not found');
+          break;
+        case 'sv-missing-en-only':
+          spellNote = tr('Swedish dictionary not found, English only');
+          break;
+        case 'sv-missing-using-en':
+          spellNote = tr('Swedish dictionary not found, using English');
+          break;
+      }
+    }
+  }
+  statusSpellcheck.hidden = !spellNote;
+  statusSpellcheck.textContent = spellNote ? `(${spellNote})` : '';
 };
 
 // Human-readable display name for the filetype slot in the status bar.

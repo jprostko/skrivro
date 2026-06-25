@@ -282,9 +282,11 @@
 
 # Offline editor spellcheck: auto / off / en / sv / both (default auto)
 #
-# When a language is active, Skrivro loads a bundled Hunspell dictionary
-# and underlines misspelled words in the editor with a red squiggle.
-# The checking is entirely offline and local: no network, no service.
+# When a language is active, Skrivro underlines misspelled words in the
+# editor with a red squiggle, using a Hunspell dictionary. The checking
+# is entirely offline and local: no network, no service. US English is
+# built in. Swedish and other variants are supplied by you (see the
+# Dictionaries note below).
 #
 #   auto: the default. Detect the dictionary from your system locale
 #         (a Swedish locale gets Swedish, everything else gets English)
@@ -294,11 +296,15 @@
 #   off:  disabled. No dictionary is loaded. A HARD off: the runtime
 #         toggle has no effect while this is off (there is nothing to
 #         toggle).
-#   en:   US English. (UK/Canadian/Australian English are not bundled.
-#         Fork and swap the dictionary if you need a different variant.)
-#   sv:   Swedish
+#   en:   English. The built-in dictionary is US English. For another
+#         variant (UK, Canadian, Australian), drop your own en.dic and
+#         en.aff in the dictionaries folder (see below).
+#   sv:   Swedish. Not built in, so you supply sv.dic and sv.aff (see
+#         below). Without them, Swedish spellcheck stays off and the
+#         status bar says so.
 #   both: English and Swedish at once. A word is accepted if either
-#         dictionary knows it. Useful for mixed-language documents.
+#         dictionary knows it. Useful for mixed-language documents. With
+#         no Swedish files in place it checks English only.
 #
 # This is separate from the `language` key above: that sets the UI
 # chrome language. This sets which spelling dictionary checks your
@@ -310,9 +316,15 @@
 # (the keybind is in Help). That on/off state is remembered across
 # launches. The language here is what gets loaded.
 #
-# Size note: the dictionaries are bundled into the app. English adds a
-# little. Swedish is larger (it's a compounding language, so its
-# dictionary is several times the size of English's). `both` ships both.
+# Dictionaries: only US English ships with the app. To add Swedish or a
+# different English variant, put a Hunspell pair in a dictionaries folder
+# inside your Skrivro config directory (where skrivro.conf lives): sv.dic
+# and sv.aff for Swedish, or en.dic and en.aff in any English variant to
+# take the place of the built-in US English. You can have both pairs in
+# place at once, not just one or the other. Both the Swedish dictionary
+# and the non-US English variants come from the LibreOffice dictionaries
+# project, and CONFIG.adoc in the project repository has the exact
+# download links and supported variants.
 #
 # Unknown values are rejected with a debug warning and fall through to
 # auto (the default).

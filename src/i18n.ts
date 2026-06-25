@@ -82,6 +82,14 @@ export const STRINGS_SV: Record<string, string> = {
   // runtime). Parens added at the call site.
   'spellcheck off': 'stavningskontroll av',
 
+  // Status bar — user-supplied-dictionary states. Swedish (and any non
+  // en-US English) is loaded from <config>/dictionaries/; these show when
+  // a requested Swedish dictionary file is absent. Parens added at the
+  // call site.
+  'Swedish dictionary not found': 'svensk ordlista saknas',
+  'Swedish dictionary not found, English only': 'svensk ordlista saknas, endast engelska',
+  'Swedish dictionary not found, using English': 'svensk ordlista saknas, använder engelska',
+
   // Vim-panel / Ex-command channel — error messages and readbacks. By
   // design these stay English (the Vim way): E-code prefixes
   // (E37:/E212:/E474:), command-argument tokens

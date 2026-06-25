@@ -31,7 +31,13 @@ import {
   type EditorState,
   type Extension,
 } from '@codemirror/state';
-import type { SpellResponse, MisspelledRange } from './spellcheck-worker.js';
+import { invoke } from '@tauri-apps/api/core';
+import type {
+  SpellResponse,
+  MisspelledRange,
+  DictPayload,
+  InitRequest,
+} from './spellcheck-worker.js';
 
 // ===== Worker singleton =====
 
@@ -85,33 +91,105 @@ const getWorker = (): Worker => {
   return w;
 };
 
-// Build (or rebuild) the dictionaries in the worker for `lang`; resolves
-// once the worker signals it's ready. main.ts calls this at launch with
-// the resolved language whenever spellcheck is on (auto or explicit),
-// then dispatches spellcheckRecompute to kick the first check. 'off' /
-// undefined → no-op (no worker spawned).
-export const initSpellcheck = (lang: string | undefined): Promise<void> => {
-  if (!lang || lang === 'off') return Promise.resolve();
+// The resolved dictionary sources the worker should build. English is always
+// available ('bundled' en-US or a user override); Swedish is a user-supplied
+// payload or absent.
+export type EnSource = 'bundled' | DictPayload | null;
+export interface ResolvedDicts {
+  en: EnSource;
+  sv: DictPayload | null;
+}
+
+// Build (or rebuild) the dictionaries in the worker from already-resolved
+// content; resolves once the worker signals it's ready. main.ts calls this at
+// launch with the output of resolveSpellcheck, then dispatches
+// spellcheckRecompute to kick the first check. Nothing to load (both null) →
+// no-op, no worker spawned.
+export const initSpellcheck = (dicts: ResolvedDicts): Promise<void> => {
+  if (!dicts.en && !dicts.sv) return Promise.resolve();
   const w = getWorker();
   workerReady = false;
   const ready = new Promise<void>((resolve) => readyResolvers.push(resolve));
-  w.postMessage({ type: 'init', lang });
+  const init: InitRequest = { type: 'init', en: dicts.en, sv: dicts.sv };
+  w.postMessage(init);
   return ready;
 };
 
-// Resolve the configured spellcheck-language to a concrete dictionary
-// choice, or null when spellcheck is off. The Rust parser maps 'auto'
-// (the default) to None, so an unset value means auto: detect from the
-// system locale (navigator.language: sv* → Swedish, else English),
-// independent of the UI `language` setting. 'off' returns null; an
-// explicit 'en' / 'sv' / 'both' is used as-is.
-export const resolveSpellcheckLanguage = (
+// Status-bar indicator state for spellcheck dictionary resolution, set by
+// resolveSpellcheck and read by ui.ts. 'normal' = the configured language(s)
+// loaded; the others flag a missing user-supplied Swedish dictionary.
+export type SpellcheckStatus =
+  | 'normal'
+  | 'sv-missing-off' // explicit 'sv', no dict: spellcheck off
+  | 'sv-missing-en-only' // 'both', no sv dict: English only
+  | 'sv-missing-using-en'; // auto, Swedish locale, no sv dict: English fallback
+
+let spellcheckStatus: SpellcheckStatus = 'normal';
+export const getSpellcheckStatus = (): SpellcheckStatus => spellcheckStatus;
+
+// Read a user-supplied Hunspell pair from
+// <config>/dictionaries/<lang>.{aff,dic} via the Rust command. Returns
+// null when the pair is absent or unreadable (a missing file, or a
+// non-UTF-8 dictionary the Rust side couldn't decode).
+const readUserDictionary = async (lang: string): Promise<DictPayload | null> => {
+  try {
+    return (await invoke<DictPayload | null>('read_user_dictionary', { lang })) ?? null;
+  } catch (e) {
+    console.error('[spellcheck] read user dictionary failed:', e);
+    return null;
+  }
+};
+
+// Resolve the configured spellcheck-language to the dictionaries the
+// worker should load, reading user files from <config>/dictionaries/ and
+// applying the agreed behavior table. Side effect: sets the status-bar
+// indicator state. Returns null only for an explicit 'off' (hard off, no
+// worker).
+//
+// The Rust parser maps 'auto' (the default) to None, so an unset value
+// means auto: detect from navigator.language (sv* → Swedish, else
+// English), independent of the UI `language` setting. English is always
+// available (bundled en-US, or a user en.* override). Swedish has no
+// bundled fallback, so a missing sv.* turns spellcheck off (explicit
+// 'sv') or drops to English ('both', or locale-detected 'auto').
+export const resolveSpellcheck = async (
   cfg: string | undefined,
-): 'en' | 'sv' | 'both' | null => {
-  if (cfg === 'off') return null;
-  if (cfg === 'en' || cfg === 'sv' || cfg === 'both') return cfg;
-  // unset or 'auto' → locale-detected default
-  return /^sv/i.test(navigator.language || '') ? 'sv' : 'en';
+): Promise<ResolvedDicts | null> => {
+  if (cfg === 'off') {
+    spellcheckStatus = 'normal';
+    return null;
+  }
+
+  const swedishLocale = /^sv/i.test(navigator.language || '');
+  const fromAuto = cfg == null || cfg === 'auto';
+  const wantEn = cfg === 'en' || cfg === 'both' || (fromAuto && !swedishLocale);
+  const wantSv = cfg === 'sv' || cfg === 'both' || (fromAuto && swedishLocale);
+
+  // Bundled-or-override English, resolved on demand (a user en.* wins).
+  const enSource = async (): Promise<EnSource> =>
+    (await readUserDictionary('en')) ?? 'bundled';
+
+  if (wantSv) {
+    const sv = await readUserDictionary('sv');
+    if (sv) {
+      // Swedish loaded. English rides along only for explicit 'both'.
+      spellcheckStatus = 'normal';
+      return { en: wantEn ? await enSource() : null, sv };
+    }
+    // Swedish requested but its file is absent.
+    if (cfg === 'sv') {
+      // Explicit Swedish only: off. Don't check Swedish text against English.
+      spellcheckStatus = 'sv-missing-off';
+      return { en: null, sv: null };
+    }
+    // 'both' or auto-Swedish: fall back to English.
+    spellcheckStatus = fromAuto ? 'sv-missing-using-en' : 'sv-missing-en-only';
+    return { en: await enSource(), sv: null };
+  }
+
+  // English only (explicit 'en', or auto in a non-Swedish locale).
+  spellcheckStatus = 'normal';
+  return { en: await enSource(), sv: null };
 };
 
 // Kick a re-check — dispatched after the dictionaries finish loading

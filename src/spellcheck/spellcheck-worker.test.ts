@@ -13,7 +13,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type {
   MisspelledRange, ResultResponse, SpellRequest,
 } from './spellcheck-worker.js';
-import './spellcheck-worker.js';
+import { stripCompounding } from './spellcheck-worker.js';
 
 // The module's `?url` imports resolve to server-rooted asset paths, so
 // the stub maps them to the dictionary files on disk. The directory is
@@ -70,7 +70,7 @@ const flaggedWords = async (text: string): Promise<string[]> => {
 
 beforeAll(async () => {
   await request(
-    { type: 'init', lang: 'en' },
+    { type: 'init', en: 'bundled', sv: null },
     (data: { type: string }) => data.type === 'ready',
   );
 });
@@ -127,41 +127,57 @@ describe('setPersonal', () => {
   });
 });
 
-// The Swedish dictionary is the one whose loading involves Skrivro
-// logic: nspell builds Hunspell's COMPOUNDRULE patterns without the
-// guard rules that constrain them, so the raw .aff makes it accept
-// any string, and loadSv strips the compound directives — including
-// ONLYINCOMPOUND, which the dictionary mis-applies to everyday
-// standalone words. Both failure directions are pinned here:
-// stripping too little flags common words, and the strip itself is
-// what keeps garbage rejected.
-describe('Swedish dictionary', () => {
+// stripCompounding is Skrivro's own logic: nspell builds Hunspell's
+// COMPOUNDRULE patterns without the guard rules that constrain them, so the
+// raw Swedish .aff makes it accept any string. We strip the compound
+// directives (including ONLYINCOMPOUND, which the DSSO dictionary mis-applies
+// to everyday standalone words) before handing the .aff to nspell. The live
+// Swedish behavior is validated manually against a user-supplied dictionary;
+// here we pin the filter itself, which is the part that's our code.
+describe('stripCompounding', () => {
+  it('drops every compound directive and keeps the rest of the .aff', () => {
+    const aff = [
+      'SET UTF-8',
+      'COMPOUNDMIN 1',
+      'COMPOUNDRULE 2',
+      'COMPOUNDRULE n*',
+      'COMPOUNDFLAG z',
+      'ONLYINCOMPOUND x',
+      'SFX A Y 1',
+      'SFX A 0 s .',
+    ].join('\n');
+    const lines = stripCompounding(aff).split('\n');
+    expect(lines).toContain('SET UTF-8');
+    expect(lines).toContain('SFX A Y 1');
+    expect(lines).toContain('SFX A 0 s .');
+    expect(lines.some((l) => /^COMPOUND/.test(l))).toBe(false);
+    expect(lines.some((l) => /^ONLYINCOMPOUND/.test(l))).toBe(false);
+  });
+});
+
+// A tiny synthetic Hunspell pair (no compounding) standing in for a
+// user-supplied Swedish dictionary. The real DSSO dictionary is LGPL and no
+// longer bundled, so the worker's user-supplied-content path is exercised
+// with a controlled fixture rather than the shipped dictionary.
+const userSv = { aff: 'SET UTF-8\n', dic: '3\nförälder\nbarn\npäron\n' };
+
+describe('user-supplied Swedish dictionary', () => {
   beforeAll(async () => {
     await request(
-      { type: 'init', lang: 'sv' },
+      { type: 'init', en: null, sv: userSv },
       (data: { type: string }) => data.type === 'ready',
     );
   });
 
-  it('accepts everyday words the dictionary marks compound-only', async () => {
-    expect(await flaggedWords('fick hoppar allmän abnorm')).toEqual([]);
+  it('accepts words from the supplied dictionary, including diacritics', async () => {
+    expect(await flaggedWords('förälder barn päron')).toEqual([]);
   });
 
-  it('accepts common Swedish words with diacritics', async () => {
-    expect(await flaggedWords('och inte barn förälder')).toEqual([]);
-  });
-
-  it('still rejects garbage, so the compound strip did not over-accept', async () => {
-    expect(await flaggedWords('qzqzqzqz')).toEqual(['qzqzqzqz']);
-  });
-
-  it('flags English words under the Swedish dictionary', async () => {
-    // Loanwords are no good for this check — "keyboard" is genuinely
-    // in the Swedish dictionary. "thoroughly" is not.
+  it('flags words outside it', async () => {
     expect(await flaggedWords('thoroughly')).toEqual(['thoroughly']);
   });
 
-  it('keeps a word with diacritics as a single token', async () => {
+  it('keeps a diacritic word as a single token', async () => {
     expect(await flaggedWords('päronx')).toEqual(['päronx']);
   });
 });
@@ -169,7 +185,7 @@ describe('Swedish dictionary', () => {
 describe('both languages', () => {
   beforeAll(async () => {
     await request(
-      { type: 'init', lang: 'both' },
+      { type: 'init', en: 'bundled', sv: userSv },
       (data: { type: string }) => data.type === 'ready',
     );
   });

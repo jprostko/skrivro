@@ -1,0 +1,61 @@
+= Credits
+:experimental:
+:toc: left
+:toclevels: 2
+
+Skrivro stands on a lot of other people's work.
+The link:../NOTICES[NOTICES] file lists every dependency comprehensively (auto-generated from `license-checker` for npm packages and `cargo-about` for Rust crates).
+This file is the curated version: the major projects that do most of the heavy lifting, with a sentence or two on what each contributes.
+
+All third-party dependencies are permissively licensed (MIT, Apache-2.0, BSD, ISC, OFL-1.1, and similar) or, in a few cases, the file-level MPL-2.0. There is no GPL-family copyleft. Of the MPL-2.0 crates, only option-ext (reached transitively through dirs) ships in the distributed binary. The rest are build-time only. Because MPL-2.0 is file-level, it never reaches Skrivro's own 0BSD source.
+
+== The framework
+
+* *https://tauri.app/[Tauri]*: the application framework. Provides the Rust ↔ WebView IPC, native window management, plugin system, and bundler. Skrivro's "small native binary that hosts a system WebView" architecture is what Tauri exists to enable.
+* *https://github.com/tauri-apps/plugins-workspace[Tauri plugins]* used:
+  ** `tauri-plugin-dialog`: native file open/save dialogs
+  ** `tauri-plugin-fs`: filesystem read/write from the WebView
+  ** `tauri-plugin-shell`: open external URLs in the system browser
+  ** `tauri-plugin-single-instance`: route a second `skrivro foo.adoc` launch to the existing window on Linux/Windows
+  ** `tauri-plugin-window-state`: persist window size/position across launches
+
+== Editor core
+
+* *https://codemirror.net/[CodeMirror 6]*: the editor engine. Every keystroke, every selection, every visible character in the editor pane goes through CM6. Modular, modern, well-documented, and the standout piece of Skrivro's stack.
+* *https://github.com/replit/codemirror-vim[@replit/codemirror-vim]*: the Vim mode plugin. Provides motion, visual mode (character / line / block), replace mode, ex commands, marks, registers, search, the works. Replit maintains it, and Skrivro uses it as-is.
+* *https://github.com/codemirror/lang-markdown[@codemirror/lang-markdown]*: Markdown syntax highlighting in the editor pane.
+* *https://github.com/codemirror/search[@codemirror/search]*: the find-and-replace panel and its underlying search logic.
+
+== Rendering
+
+* *https://asciidoctor.org/[Asciidoctor]* (`@asciidoctor/core`): AsciiDoc → HTML conversion. The official JavaScript port of the Ruby implementation, supporting the full AsciiDoc spec including `include::` directives, attributes, admonitions, blocks, and so on. Skrivro pre-expands `include::` before handing source to Asciidoctor (filesystem includes via Tauri's fs plugin).
+* *https://github.com/markdown-it/markdown-it[markdown-it]*: Markdown → HTML conversion. Fast, CommonMark-compliant, and extensible through plugins. Skrivro layers its GitHub-Flavored extras (task lists, alerts, strikethrough) on top as custom rules.
+* *https://github.com/markdown-it/markdown-it-emoji[markdown-it-emoji]*: the markdown-it plugin for emoji shortcode rendering (`:smile:` → 😄). Used in its `bare` form.
+* *https://github.com/wooorm/gemoji[gemoji]*: the canonical emoji shortcode database that drives markdown-it-emoji's lookups.
+* *https://github.com/cure53/DOMPurify[DOMPurify]*: HTML sanitization. Run over the rendered output before injection into the preview DOM, it blocks XSS vectors that could come in via untrusted documents.
+* *https://fontawesome.com/v4/[Font Awesome 4.7]*: the source of Skrivro's admonition icons (NOTE, TIP, IMPORTANT, and so on). The FA4 glyph paths are extracted and embedded as inline SVGs, which Skrivro swaps in for Asciidoctor's `<i class="fa ...">` output during render post-processing. FA4 specifically because that is the class-name vocabulary Asciidoctor's `icons: font` mode emits.
+
+== Themes
+
+* *https://catppuccin.com/[Catppuccin]*: the default theme and the theming pattern. Catppuccin's "ports" model (each app maps Catppuccin's palette tokens onto its own semantic slots) is exactly the architecture Skrivro adopted. Catppuccin Mocha is the compiled-in CSS default, and Latte is bundled as the light companion.
+* *https://draculatheme.com/[Dracula]*, *https://www.nordtheme.com/[Nord]*, *https://github.com/morhetz/gruvbox[Gruvbox]*, *https://github.com/folke/tokyonight.nvim[Tokyo Night]*: the other bundled theme palettes. Standard cross-platform color schemes that Skrivro maps onto its own 24-slot vocabulary.
+
+== Build tools
+
+* *https://vite.dev/[Vite]*: frontend build and dev server. Hot module reload during development, plus bundling, transpiling, and tree-shaking for production.
+* *https://www.typescriptlang.org/[TypeScript]*: the frontend language. Strict mode catches null / undefined errors and type mismatches at compile time.
+* *https://vitest.dev/[Vitest]*: the test runner for the frontend suite (`pnpm test`). See link:BUILDING.adoc[] for what it covers.
+* *https://eslint.org/[ESLint]* + *https://typescript-eslint.io/[typescript-eslint]*: linting.
+* *https://typicode.github.io/husky/[Husky]* + *https://github.com/lint-staged/lint-staged[lint-staged]*: the pre-commit hook that runs a whole-project typecheck plus ESLint over staged files.
+* *https://github.com/davglass/license-checker[license-checker]* (npm) and *https://github.com/EmbarkStudios/cargo-about[cargo-about]* (Rust): used to generate the link:../NOTICES[NOTICES] file by aggregating license metadata from every transitive dependency in both ecosystems. Run via `scripts/gen-notices.sh` when dependencies change.
+
+== Platform-specific
+
+=== macOS
+
+* *https://github.com/madsmtm/objc2[objc2]* and the *objc2-app-kit* / *objc2-foundation* crates: direct Cocoa interop from Rust. Used for hiding the macOS window chrome (titlebar, traffic lights) while keeping the predefined menu items working. Pattern borrowed from https://ghostty.org/[Ghostty].
+
+=== Linux
+
+* *webkit2gtk* (Rust binding): used for filtering the GTK-inherited "Insert Unicode Control Character" submenu out of the right-click context menu in the editor.
+* *glib* (Rust binding): used for `glib::set_prgname()` early at startup as a workaround for a Wayland app_id propagation bug in Tauri's GTK backend.

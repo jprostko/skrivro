@@ -1,0 +1,249 @@
+= Building from source
+:experimental:
+:toc: left
+:toclevels: 2
+
+Skrivro is a Tauri 2 application: a Rust binary that hosts a system WebView pointed at a bundled JavaScript / TypeScript frontend.
+Building from source means installing both toolchains, then running one command.
+
+The actual build is single-step.
+Most of the friction is in getting the prerequisites in place.
+
+== Prerequisites
+
+=== All platforms
+
+* *Rust toolchain*: install via `rustup` from https://rustup.rs/[rustup.rs]. Stable channel is fine. Skrivro tracks no specific MSRV beyond what Tauri 2 itself requires.
+* *Node.js*: any recent LTS will do. The frontend build runs through Vite, which works on Node 18+.
+* *pnpm*: Skrivro's package manager, pinned via the `packageManager` field in `package.json`. If your Node ships Corepack, `corepack enable pnpm` activates the pinned version automatically. Otherwise install pnpm per https://pnpm.io/installation[pnpm.io/installation].
+* *Git*: for cloning the source.
+
+=== Linux
+
+Tauri 2 on Linux uses WebKitGTK as the WebView backend.
+You need the development headers for that, plus a few common build tools.
+
+On Debian / Ubuntu:
+
+[source,bash]
+----
+sudo apt install \
+  build-essential curl wget file libssl-dev \
+  libwebkit2gtk-4.1-dev librsvg2-dev \
+  libayatana-appindicator3-dev
+----
+
+On Arch / Artix (and derivatives):
+
+[source,bash]
+----
+sudo pacman -S \
+  base-devel curl wget file openssl \
+  webkit2gtk-4.1 librsvg
+# AUR if you want libayatana (Tauri references it, but it's not strictly required for Skrivro):
+# yay -S libayatana-appindicator
+----
+
+On Fedora:
+
+[source,bash]
+----
+sudo dnf install \
+  @development-tools curl wget file openssl-devel \
+  webkit2gtk4.1-devel librsvg2-devel \
+  libayatana-appindicator3-devel
+----
+
+Other distros: install the equivalents.
+The required pieces are: a C toolchain, OpenSSL dev headers, WebKitGTK 4.1 dev headers, and librsvg dev headers.
+
+=== macOS
+
+* *Xcode Command Line Tools.* Install via `xcode-select --install`. Provides the C/C++ toolchain, the macOS SDK, and code-signing utilities.
+
+That's it.
+WebKit is built into macOS (Skrivro uses WKWebView), and there's no separate package to install for it.
+
+=== Windows
+
+* *Microsoft C++ Build Tools.* Either install Visual Studio (Community Edition is free) with the "Desktop development with C++" workload, or install the standalone "Build Tools for Visual Studio" with the same workload.
+* *WebView2 Runtime.* Bundled with Windows 11 by default. On Windows 10, install the Evergreen Runtime from Microsoft (https://developer.microsoft.com/en-us/microsoft-edge/webview2/[microsoft.com/...webview2]).
+
+Skrivro on Windows uses WebView2 (Chromium-based), not WebKit.
+This is automatic. Tauri picks the right backend per platform.
+
+== Clone and install
+
+[source,bash]
+----
+git clone <repo URL>
+cd skrivro
+pnpm install
+----
+
+`pnpm install` pulls the JavaScript / TypeScript dependencies (CodeMirror, Asciidoctor.js, markdown-it, the Tauri JS bindings, etc.) and runs the husky pre-commit hook setup.
+
+The repo's `pnpm-workspace.yaml` carries a few supply-chain settings. The one you'll notice is `minimumReleaseAge`, which makes `pnpm install` hold back dependency versions published within the last few days. A brand-new release not resolving yet is expected, not an error.
+
+The Rust dependencies install lazily on the first build. There's no separate Rust install step.
+
+== Development build
+
+[source,bash]
+----
+pnpm tauri dev
+----
+
+This command:
+
+1. Starts Vite's dev server on `http://localhost:1420`, which serves the frontend with hot module reload.
+2. Builds and runs the Rust binary in debug mode, pointed at that dev server.
+
+Hot reload works for the frontend (CSS, TypeScript, HTML edits reflect immediately).
+Rust changes require killing the dev process and restarting. Cargo will incrementally recompile and Tauri will relaunch.
+
+First-launch dev build is slow (Rust compiles dozens of crates from scratch).
+Subsequent runs are fast: incremental compilation and the dependency graph is cached.
+
+== Production build
+
+[source,bash]
+----
+pnpm tauri build
+----
+
+This produces:
+
+1. The Vite-built frontend (in `dist/`).
+2. The release-mode Rust binary, statically linked where possible.
+3. Platform-specific bundles (DMG on macOS, MSI/NSIS on Windows, AppImage / DEB on Linux depending on what's available locally).
+
+Output locations:
+
+[cols="1,3"]
+|===
+| Raw binary | `src-tauri/target/release/skrivro` (or `skrivro.exe` on Windows)
+| macOS bundle | `src-tauri/target/release/bundle/dmg/Skrivro_<version>_<arch>.dmg`
+| Windows installer | `src-tauri/target/release/bundle/msi/Skrivro_<version>_x64_en-US.msi` (or NSIS variant)
+| Linux AppImage | `src-tauri/target/release/bundle/appimage/skrivro_<version>_amd64.AppImage`
+| Linux DEB | `src-tauri/target/release/bundle/deb/skrivro_<version>_amd64.deb`
+|===
+
+Linux bundle types depend on what's available: `dpkg-deb` for DEB packages, `appimagetool` for AppImage.
+On Arch / Artix, neither ships by default. The raw binary at `src-tauri/target/release/skrivro` is what to use, or write your own PKGBUILD.
+
+The release binary is small (~15-20 MB on Linux) because Tauri uses the system WebView rather than bundling Chromium.
+
+== Tauri CLI
+
+Skrivro uses the pnpm-installed Tauri CLI (`@tauri-apps/cli`), not a globally-installed `cargo install tauri-cli`.
+That's why the build commands are `pnpm tauri ...` and not `cargo tauri ...`.
+
+If you happen to have `tauri-cli` installed via cargo at a different version than what `package.json` pins, the pnpm-installed version is what runs through `pnpm tauri ...` and what stays in sync with the Rust crates.
+You can safely uninstall any cargo-installed copy:
+
+[source,bash]
+----
+cargo uninstall tauri-cli
+----
+
+Skrivro pins matching versions of `@tauri-apps/cli` and the Tauri Rust crates so they line up.
+If you ever see a `Found version mismatched Tauri packages` error during build, the pinned version of one of the `@tauri-apps/plugin-*` packages drifted behind the Rust-side version.
+Bump the pin in `package.json` to match the resolved Rust version and re-run `pnpm install`.
+
+== Type checking
+
+[source,bash]
+----
+pnpm typecheck
+----
+
+Runs `tsc --noEmit` over the TypeScript source.
+Strict mode is on. This should pass clean.
+
+The husky pre-commit hook runs the same whole-project typecheck on every commit.
+
+== Linting
+
+[source,bash]
+----
+pnpm lint
+----
+
+Runs ESLint over the source.
+Like typecheck, this should pass clean, and pre-commit also runs ESLint over staged files.
+
+== Testing
+
+Skrivro has automated tests on both sides of the IPC boundary, covering the pure-logic layer that's awkward to exercise by clicking around the running app.
+
+=== Frontend (Vitest)
+
+[source,bash]
+----
+pnpm test
+----
+
+Runs the Vitest suite once and exits. `pnpm test:watch` keeps it running in watch mode.
+
+It covers format detection, the Markdown and AsciiDoc scroll-sync block mapping, the AsciiDoc `include::` preprocessor, and the spellcheck worker's checking protocol (the compound-strip filter and the user-supplied dictionary path).
+Test files sit next to the code they exercise: `src/renderer.test.ts`, `src/render-worker.test.ts`, `src/io.test.ts`, and `src/spellcheck/spellcheck-worker.test.ts`.
+
+=== Rust (cargo test)
+
+[source,bash]
+----
+cd src-tauri
+cargo test
+----
+
+Covers the `skrivro.conf` parser and the `normalize_length` validation for length-typed config values.
+
+=== Scope
+
+The suites cover pure logic only: there's no UI-level or end-to-end testing, and no CI pipeline. They run locally on demand.
+Confirming that the running app behaves correctly (keystrokes, rendering, platform chrome) is still done by hand.
+
+== Common gotchas
+
+=== "Found version mismatched Tauri packages"
+
+Bump the affected `@tauri-apps/plugin-*` version in `package.json` to match what Cargo resolved on the Rust side, then `pnpm install`.
+See the Tauri CLI section above for the why.
+
+=== Linux: "package webkit2gtk-4.1 not found"
+
+Your distro is missing the WebKitGTK 4.1 development headers.
+Install them per the platform notes above.
+On older distros that ship only WebKitGTK 4.0, Tauri 2 won't work. You'd need to upgrade or use a distro that ships 4.1.
+
+=== Wayland: window decorations don't appear when `decorations: true`
+
+Tauri's Linux client-side decoration implementation has known issues on Wayland (see https://github.com/tauri-apps/tao/issues/1046[tao#1046]).
+Skrivro ships with `decorations: false` for this reason on Linux and Windows, and uses platform-specific Cocoa code on macOS to hide the chrome while keeping the predefined menu items working.
+Don't change `tauri.conf.json`'s `decorations` value unless you understand the tradeoff.
+
+=== macOS: build fails with "ld: framework not found ..."
+
+Usually means the Xcode Command Line Tools didn't install fully.
+`sudo xcode-select --reset` followed by `xcode-select --install` re-runs the installer.
+On a fresh macOS install, you may also need to accept the license: `sudo xcodebuild -license accept`.
+
+=== Windows: "MSVCP140.dll not found" at runtime
+
+The C++ runtime for the version of MSVC that built the binary isn't installed on the target system.
+Install the Microsoft Visual C++ Redistributable (latest version covers earlier ones).
+
+== Cleaning
+
+To wipe everything and start fresh:
+
+[source,bash]
+----
+rm -rf node_modules dist src-tauri/target
+pnpm install
+pnpm tauri build
+----
+
+Useful after toolchain upgrades, dependency rejiggering, or if you suspect cached build artifacts are interfering.
+First rebuild after a clean takes minutes (Rust recompiles everything). Subsequent builds are fast again.

@@ -1,0 +1,312 @@
+= Configuration
+:experimental:
+:toc: left
+:toclevels: 2
+
+Skrivro is configured via a single text file, `skrivro.conf`.
+The format is flat `key = value` pairs: no DSL, no JSON, no TOML, no parsing surprises.
+Comments start with `#`. Blank lines are ignored.
+
+The file doesn't exist by default.
+Skrivro uses compiled-in defaults until you create one, so you only need to write keys for settings you want to override.
+
+[#file-location]
+== File location
+
+[cols="1,3"]
+|===
+| Linux | `~/.config/com.skrivro.editor/skrivro.conf` (or `$XDG_CONFIG_HOME/com.skrivro.editor/skrivro.conf` if set)
+| macOS | `~/Library/Application Support/com.skrivro.editor/skrivro.conf`
+| Windows | `%APPDATA%\com.skrivro.editor\skrivro.conf`
+|===
+
+To get started, copy `resources/skrivro.conf.default` from the source tree (or wherever your installer placed it) to that location and edit.
+The default file ships with every key documented inline and commented out: uncomment any line and edit to override the compiled-in default.
+
+== Format conventions
+
+[cols="1,3", options="header"]
+|===
+| Convention | Detail
+
+| Comments
+| Lines starting with `#` are ignored. Inline comments after a value are NOT supported: `theme = dracula # my favorite` would set the theme to the literal string `dracula # my favorite`, which would then fail to load.
+
+| Blank lines
+| Ignored.
+
+| Whitespace
+| Whitespace around `=`, leading whitespace, and trailing whitespace are all stripped. `theme=dracula` and `theme = dracula` are equivalent.
+
+| Unknown keys
+| Skipped silently in release builds. Debug builds emit a warning to stderr. So a typo in a key name (`them = dracula`) is invisible at runtime: your setting just doesn't take effect.
+
+| Malformed lines
+| Lines without `=` are skipped (debug warning).
+
+| Duplicate keys
+| Last declaration wins. If the file has two `theme =` lines, the lower one takes effect. Same convention as Ghostty and most flat config formats.
+
+| Hot reload
+| Not supported. Skrivro reads the config at launch, so you need to restart the app for changes to take effect.
+|===
+
+== Length values
+
+Several keys take CSS length values: font sizes and padding.
+
+*All length values require an explicit unit.*
+Bare numbers are rejected: `edit-font-size = 14` is invalid. Write `edit-font-size = 14pt`.
+This is uniform: any key documented as a length must include a unit.
+
+Acceptable units: anything CSS itself accepts.
+Common choices: `pt`, `px`, `rem`, `em`, `%`, `vw`, `ch`.
+The CSS engine validates the value at render time, so `14potato` would be accepted by the parser but ignored by the renderer.
+
+The CSS `pt` unit is the same as the typographic point used by Word, PowerPoint, and other print-oriented tools (1/72 inch).
+
+Zero and negative values are also rejected.
+
+== Padding
+
+Padding keys split by axis: `-x` for horizontal (left/right), `-y` for vertical (top/bottom).
+
+Each padding key accepts one or two values:
+
+* One value: applies uniformly to both ends of the axis.
+* Two values: in reading order. For `-y`, that's top then bottom. For `-x`, that's left then right.
+
+[source]
+----
+editor-padding-y = 2rem 3rem    # top = 2rem, bottom = 3rem
+editor-padding-x = 20px         # both left and right = 20px
+----
+
+Three or more values are rejected.
+
+== Key reference
+
+Organized into the same sections as `skrivro.conf.default`.
+The compiled-in defaults shown are what Skrivro uses if the key is unset.
+
+=== Fonts
+
+[cols="1,1,2,2", options="header"]
+|===
+| Key | Type | Default | Notes
+
+| `edit-font` | font family | `ui-monospace` | Editor (monospace) font. Prepended to the built-in CSS font stack: if the named font isn't installed, the renderer falls through.
+| `preview-font` | font family | `system-ui` | Preview (sans-serif) font. Same prepend-to-stack behavior.
+| `edit-font-size` | length | `0.95rem` | Editor font size.
+| `preview-font-size` | length | `1rem` | Preview font size.
+|===
+
+=== Layout
+
+[cols="1,1,2,2", options="header"]
+|===
+| Key | Type | Default | Notes
+
+| `editor-padding-x` | length(s) | `2.5rem` | Horizontal editor padding (left/right).
+| `editor-padding-y` | length(s) | `2rem` | Vertical editor padding (top/bottom).
+| `preview-padding-x` | length(s) | `2.5rem` | Horizontal preview padding.
+| `preview-padding-y` | length(s) | `2rem` | Vertical preview padding.
+|===
+
+Vertical padding has a scrollbar-length caveat: both panes clip their scrollable viewport to sit inside the padding (geometric clipping rather than overlay), which means the native scrollbar track is shorter than the pane by 2 × padding-y.
+At default 2rem, this is barely noticeable.
+At larger values (around 6rem and up), the scrollbar track becomes visibly stubby.
+
+=== Theme
+
+[cols="1,1,2,2", options="header"]
+|===
+| Key | Type | Default | Notes
+
+| `theme` | name | `catppuccin-mocha` | Bundled name (catppuccin-mocha, catppuccin-latte, dracula, gruvbox-dark, nord, tokyo-night-day, tokyo-night-moon) or your own user-supplied theme name.
+|===
+
+For full theming details (bundled themes, where user themes live, the 24 slot reference, and how to author your own), see link:THEMING.adoc[].
+
+=== Format
+
+[cols="1,1,2,2", options="header"]
+|===
+| Key | Type | Default | Notes
+
+| `default-format` | enum | `asciidoc` | Format assigned to a brand-new blank buffer (no CLI argument, no session restore, no file loaded). Accepts `asciidoc`, `markdown`, or `text`.
+|===
+
+File-extension detection always wins over `default-format`: opening `foo.md` is markdown regardless of this setting.
+This key only affects the case where there's no file at all.
+
+`text` covers anything that isn't AsciiDoc or GitHub-Flavored Markdown: loose notes, untitled-without-extension scratchpads, source files like `.cpp` or `.html` that you want to read as plain text.
+Set `default-format = text` if your primary use is writing plain prose without markup.
+
+=== Asciidoctor
+
+[cols="1,1,2,2", options="header"]
+|===
+| Key | Type | Default | Notes
+
+| `asciidoc-safe-mode` | enum | `unsafe` | Asciidoctor safe mode. Accepts `unsafe`, `safe`, `server`, `secure`. Controls which Asciidoctor features are enabled.
+|===
+
+`unsafe` is the most permissive: includes across directories, docinfo files, book doctype, and arbitrary attribute setting all work.
+`secure` disables nearly all of it.
+This is a set-and-forget knob: once you've chosen a safe mode, runtime UI exposure of it has no value.
+
+If you don't know which to pick, leave it at `unsafe`.
+Unsafe means "trust the document content," which is appropriate for files you authored or files you're previewing from a trusted source.
+
+=== Status bar
+
+[cols="1,1,2,2", options="header"]
+|===
+| Key | Type | Default | Notes
+
+| `cursor-position-format` | enum | `verbose` | Cursor position display style. Accepts `verbose` (`Ln 42, Col 85`), `compact` (`42:85`), or `ruler` (`42,85`).
+| `statusbar-style` | enum | `canonical` | Status bar mode pill palette. Accepts `canonical` (bright Catppuccin colors from `catppuccin/nvim`'s `lualine` config) or `muted` (subtler, LazyVim-inspired).
+| `soft-column-limit` | positive integer | unset | When set and the cursor's column on the current logical line exceeds this value, the cursor position indicator turns peach. Useful for prose with hard line-width conventions (80- or 100-char commit messages, etc.).
+|===
+
+`soft-column-limit` is character-based (counts codepoints, not bytes or visual cells) and document-column-based (soft wrap doesn't reset the count).
+
+Omit `soft-column-limit` entirely if you write paragraphs as one logical line each and let the editor soft-wrap visually: there's nothing to count against.
+
+=== Session
+
+[cols="1,1,2,2", options="header"]
+|===
+| Key | Type | Default | Notes
+
+| `restore-session` | bool | `true` | Reopens the file that was open at the previous clean exit. Set `false` to start with a blank buffer instead. Accepts `true/false`, `yes/no`, `on/off`, `1/0` (case-insensitive).
+|===
+
+The state file (containing the last-opened file path) is at:
+
+[cols="1,3"]
+|===
+| Linux | `~/.local/share/com.skrivro.editor/state.json`
+| macOS | `~/Library/Application Support/com.skrivro.editor/state.json`
+| Windows | `%LOCALAPPDATA%\com.skrivro.editor\state.json`
+|===
+
+Launch priority order:
+
+1. CLI argument (`skrivro foo.adoc`) always wins, even over crash recovery.
+2. OS-dispatched file open (e.g. macOS `open -a Skrivro foo.adoc`): same priority as the CLI arg, different transport.
+3. Autosave draft from a previous crash: restored before session restore. Skrivro can't tell crash recovery apart from "I just want my file back" cleanly.
+4. Session restore: only if `restore-session` is on (the default), with no CLI arg, no draft, and the saved file still present.
+5. Default blank buffer.
+
+If the restored file is missing or unreadable (network mount disconnected, file deleted, permission revoked), Skrivro silently falls back to a blank buffer.
+The state isn't cleared in that case: if the file comes back next time, it'll be picked up again.
+
+State is *always* tracked, regardless of `restore-session`.
+The setting only controls whether that state gets *read* at launch.
+Because it defaults to on, Skrivro reopens your most recently open file unless you set `restore-session = false`, which can surprise you if you haven't opened anything in a while.
+To always start fresh, set `restore-session = false`, or delete the state file for a one-time blank launch.
+
+=== Security
+
+[cols="1,1,2,2", options="header"]
+|===
+| Key | Type | Default | Notes
+
+| `allow-external-images` | bool | `true` | Whether the preview loads images from external HTTPS URLs. Set `false` to block them. Accepts the same boolean spellings as `restore-session`.
+|===
+
+When this is `true` (the default), HTTPS image sources in the preview load normally.
+Set it to `false` to block them: every `<img>` whose `src` is an external URL is then replaced at render time with a small inline placeholder (the alt text, plus the original URL on hover), and no HTTP request is sent.
+
+`http:` (no S) is always blocked regardless of this setting: there is no opt-in for plain HTTP.
+
+Privacy implication: with this on, every preview render of a document that has external images sends your IP and User-Agent to whoever hosts them.
+For documents from untrusted sources that is a tracking vector, so `allow-external-images = false` is the safer choice there.
+For your own documents, the default is fine.
+
+The setting takes effect on next launch: the underlying CSP relaxation is applied at webview creation.
+
+=== Language
+
+[cols="1,1,2,2", options="header"]
+|===
+| Key | Type | Default | Notes
+
+| `language` | enum | `auto` | UI language for status bar labels, help dialog, and confirm dialogs. Accepts `auto` (detect from system locale), `en` (force English), or `sv` (force Swedish).
+|===
+
+`auto` reads `navigator.language` from the webview at startup.
+Currently maps anything starting with `sv` to Swedish, and everything else to English.
+
+This localizes Skrivro's own chrome only.
+It does NOT translate:
+
+* Vim Ex commands (`:w`, `:open`, `:syncpreview`, etc.): these stay English because they're input syntax, the same rule real Vim follows
+* Keyboard shortcut names (kbd:[Ctrl+S], kbd:[Cmd+Ctrl+T]): physical key identifiers
+* Filenames (`untitled.adoc`)
+* Your document content or rendered output
+
+Unknown values fall back to auto-detect (with a debug warning).
+Currently only English and Swedish ship.
+If you'd like another language, the translation table is in `src/i18n.ts` and is straightforward to extend. The project itself isn't taking translation contributions, but a fork could add them.
+
+=== Spellcheck
+
+[cols="1,1,2,2", options="header"]
+|===
+| Key | Type | Default | Notes
+
+| `spellcheck-language` | enum | `auto` | Offline spellcheck. Accepts `auto` (detect from the system locale: a Swedish locale gets Swedish, everything else English), `off`, `en` (English), `sv` (Swedish), or `both` (English and Swedish together).
+|===
+
+`off` is a hard off: no dictionary loads, and the runtime spellcheck toggle stays inert.
+
+Only US English ships with Skrivro.
+Swedish, and any non-US English variant, are user-supplied: you place a Hunspell dictionary in a `dictionaries` folder inside your config directory (the same folder as `skrivro.conf`, whose path per platform is in <<file-location>>), and Skrivro loads it at startup.
+The files are named for the language, not the variant: `sv.dic` and `sv.aff` for Swedish, `en.dic` and `en.aff` for English.
+A user-supplied `en` pair takes the place of the built-in US English, so a British or Australian speller is just a matter of dropping the files in.
+
+==== Getting a dictionary
+
+The dictionaries come from the wooorm dictionaries collection, the same source as Skrivro's built-in US English.
+Each language has a folder under `dictionaries/` in https://github.com/wooorm/dictionaries[the repository], holding an `index.dic` and an `index.aff`.
+Download that pair, rename them to `en.dic` and `en.aff` (or `sv.dic` and `sv.aff`), and drop them in the folder above.
+
+[cols="1,2", options="header"]
+|===
+| Language | Folder
+
+| Swedish (Sweden)
+| `dictionaries/sv`
+
+| Swedish (Finland)
+| `dictionaries/sv-FI`
+
+| British, Australian, Canadian, South African English
+| `dictionaries/en-GB`, `dictionaries/en-AU`, `dictionaries/en-CA`, `dictionaries/en-ZA`
+|===
+
+If this collection no longer carries the dictionary you need, https://github.com/LibreOffice/dictionaries[the LibreOffice dictionaries] have equivalent `.dic` and `.aff` files for the same languages.
+
+IMPORTANT: The rename is required.
+Every folder's two files are named `index.dic` and `index.aff`, but Skrivro only looks for `en.dic` and `en.aff`, or `sv.dic` and `sv.aff`.
+If you leave them at their downloaded names, Skrivro does not find them, and you get the missing-dictionary behavior described below.
+
+The files must be UTF-8, which these are.
+If you swap the `.dic` and `.aff` by mistake, or the file is not actually a dictionary, Skrivro treats it as absent rather than loading garbage.
+
+NOTE: Only English and Swedish are supported. Renaming another language's dictionary to `en` or `sv` is not guaranteed to work, even if it loads, so it is best avoided.
+
+==== When a dictionary is missing
+
+If `spellcheck-language` asks for Swedish but no `sv` dictionary is present, the behavior depends on the setting:
+
+* `sv` turns spellcheck off, and the status bar notes the missing dictionary.
+* `both` checks English only.
+* `auto` on a Swedish system falls back to English.
+
+English never goes missing this way, since US English is built in.
+
+See link:USAGE.adoc[] for the runtime spellcheck toggle and the custom-word commands.

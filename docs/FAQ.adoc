@@ -1,0 +1,257 @@
+= FAQ
+:experimental:
+:toc: left
+:toclevels: 2
+
+Common questions and troubleshooting.
+For day-to-day shortcuts and workflow, see link:USAGE.adoc[].
+For configuration, see link:CONFIG.adoc[].
+For themes, see link:THEMING.adoc[].
+
+== Window and chrome
+
+=== Where's the title bar? How do I close the window?
+
+Skrivro intentionally ships without a title bar or window controls (`decorations: false`).
+The window border, minimize/maximize/close buttons, and titlebar drag region that most apps draw are all absent.
+This makes the window blend cleanly into tiling window managers and reduces chrome for keyboard-driven users.
+
+Closing depends on your platform:
+
+[cols="1,3", options="header"]
+|===
+| Platform | How to close
+
+| Linux
+| Use your window manager's close shortcut. Most desktop environments respect kbd:[Alt+F4]. Tiling window managers use whatever close binding you've configured.
+
+| Windows
+| kbd:[Alt+F4] to close. kbd:[Win+Down] to minimize, kbd:[Win+Up] to maximize, kbd:[Win+Left] / kbd:[Win+Right] to snap. kbd:[Alt+Space] opens the system menu.
+
+| macOS
+| kbd:[Cmd+Q] to quit, kbd:[Cmd+M] to minimize, kbd:[Cmd+W] to close window. All three honor the dirty-buffer confirm.
+|===
+
+You can also close from inside the editor with Vim's `:q` / `:q!` / `:wq` / `:x`.
+
+In all cases, if the buffer has unsaved changes, Skrivro shows a "Discard changes?" confirm dialog before quitting.
+
+=== Can I move / resize the window?
+
+Yes. Drag the top bar (the strip with the filename) to move the window, double-click that same strip to maximize / restore.
+Resizing works via your window manager (drag a window edge, or whatever shortcut your WM provides).
+
+=== The window remembers its size and position. Where's that stored?
+
+Via the `tauri-plugin-window-state` plugin.
+The state file lives in the platform-appropriate app data directory:
+
+[cols="1,3"]
+|===
+| Linux | `~/.local/share/com.skrivro.editor/`
+| macOS | `~/Library/Application Support/com.skrivro.editor/`
+| Windows | `%LOCALAPPDATA%\com.skrivro.editor\`
+|===
+
+Delete the window-state file in that directory if you want to reset to the default size.
+
+On Wayland, restore behavior depends on the compositor: some respect window-position restoration, some don't.
+This isn't something Skrivro can control.
+
+== Customization
+
+=== How do I change the font, padding, or colors?
+
+Settings live in `skrivro.conf` in the platform-appropriate config directory:
+
+[cols="1,3"]
+|===
+| Linux | `~/.config/com.skrivro.editor/skrivro.conf`
+| macOS | `~/Library/Application Support/com.skrivro.editor/skrivro.conf`
+| Windows | `%APPDATA%\com.skrivro.editor\skrivro.conf`
+|===
+
+The file doesn't exist by default. Skrivro uses compiled-in defaults until you create one.
+Copy `resources/skrivro.conf.default` (in the source tree, or wherever your installer placed it) to that location and edit.
+Every key is documented inline.
+
+For the full key reference, see link:CONFIG.adoc[].
+For themes specifically, see link:THEMING.adoc[].
+
+=== A setting I changed in the config doesn't seem to take effect.
+
+Skrivro reads the config at launch. There's no hot reload.
+Quit and relaunch after editing.
+
+=== I created a theme file but Skrivro isn't loading it.
+
+Check that:
+
+* The filename ends in `.theme`.
+* The file is in your config directory's `themes/` subdirectory: `~/.config/com.skrivro.editor/themes/<name>.theme` on Linux, or the equivalent on macOS / Windows.
+* You've set `theme = <name>` in `skrivro.conf`, where `<name>` matches the filename without the `.theme` extension.
+* You've restarted Skrivro after creating the file. There's no hot reload.
+
+See link:THEMING.adoc[] for the full setup with examples.
+
+== File handling
+
+=== What file types does Skrivro open?
+
+[cols="1,3", options="header"]
+|===
+| Extension | Format
+
+| `.adoc`, `.asciidoc` | AsciiDoc
+| `.md`, `.markdown` | Markdown (GitHub Flavored)
+| anything else (or no extension) | Plain text
+|===
+
+You can open any text file regardless of extension. The format affects how Skrivro renders the preview, but editing always works.
+
+=== Can I export to PDF, HTML, EPUB, etc.?
+
+No.
+Skrivro is intentionally just an editor plus live preview. Export is out of scope.
+
+For one-off exports, point an existing converter at your `.adoc` or `.md` file.
+For AsciiDoc: the `asciidoctor` CLI (Ruby) or `asciidoctor-pdf`.
+For Markdown: `pandoc`, `marked` (CLI), or any of dozens of others.
+These tools are mature and produce better output than anything Skrivro could ship as a built-in feature.
+
+=== Why aren't external images showing up in my preview?
+
+They should be showing up. External images (HTTPS-hosted images referenced by URL, like the badges and screenshots in a typical GitHub README) load automatically.
+
+If some aren't loading, check two things. First, whether you've set `allow-external-images = false` in `skrivro.conf`, which blocks them. Second, whether the source is `http:` rather than `https:`. Plain HTTP is always blocked, regardless of the setting.
+
+When external images are blocked, you'll see inline placeholder text where each one would have appeared, with the original URL visible on hover.
+
+You might set `allow-external-images = false` deliberately for documents from untrusted sources: every external image fetch reveals your IP and User-Agent to the hosting server. That's the tracking-pixel mechanism, and it's why email clients block remote images by default. For your own documents, the default is fine.
+
+See link:CONFIG.adoc[] for the full setting documentation.
+
+=== Why doesn't my AsciiDoc `include::` directive work?
+
+If you're seeing "Unresolved directive" placeholders where an included file should appear, check that:
+
+* The included file path is correct relative to the document being rendered.
+* You have read permission on the included file.
+* You aren't hitting an include cycle (Skrivro detects cycles and reports them).
+
+Skrivro pre-expands every `include::` directive via the filesystem before handing the source to Asciidoctor, so the XHR-based limitations of browser-only AsciiDoc renderers don't apply here.
+
+== Privacy and data
+
+=== Does Skrivro need internet access?
+
+No, not for core operation.
+The editor, preview, file I/O, themes, Vim mode, scroll sync: all of that works fully offline.
+
+The one internet-touching feature is external images in the preview pane. They load by default, but only when a document references them, and you can turn them off with `allow-external-images = false`.
+See <<Why aren't external images showing up in my preview?>> above.
+
+=== Does Skrivro phone home?
+
+No.
+Skrivro makes no network requests of its own: no telemetry, no update checks, no analytics, no error reporting.
+The only network access is content-driven: external images in your preview (on by default, blocked with `allow-external-images = false`) and external links you deliberately click in a rendered preview.
+
+=== Where does Skrivro store my data?
+
+Three locations, all platform-appropriate:
+
+[cols="1,3", options="header"]
+|===
+| Purpose | Path
+
+| Config file (your `skrivro.conf` and `themes/`)
+| `~/.config/com.skrivro.editor/` (Linux), `~/Library/Application Support/com.skrivro.editor/` (macOS), `%APPDATA%\com.skrivro.editor\` (Windows)
+
+| Session state (last-opened file path, window state)
+| `~/.local/share/com.skrivro.editor/` (Linux), `~/Library/Application Support/com.skrivro.editor/` (macOS), `%LOCALAPPDATA%\com.skrivro.editor\` (Windows)
+
+| Autosave draft (crash recovery)
+| Browser-style localStorage inside the WebView's profile
+|===
+
+All three are fully local.
+None of this data leaves your machine unless you explicitly back it up or sync your home directory.
+
+== Editor behavior
+
+=== Why does the editor pane look lighter than the preview pane?
+
+That's Skrivro's convention: editor lighter, preview darker.
+The reasoning is that the active work surface (where you're typing) gets the visual priority, and the lighter shade draws the eye.
+
+Some bundled themes (Nord, Gruvbox) have the opposite pairing in their canonical palette. For those, the bundled theme files swap the values to match Skrivro's convention.
+If you want to use a theme's natural pairing instead, author your own version of the theme file and put the values where you want them.
+See link:THEMING.adoc[].
+
+=== Why is my Vim search not case-sensitive when I expect it to be?
+
+Search in Skrivro's Vim mode is always case-insensitive.
+The `@replit/codemirror-vim` plugin hard-codes the behavior, and there's no way to override it from `skrivro.conf` or at runtime.
+
+This is an upstream limitation of the Vim plugin, not a Skrivro choice.
+If you rely on Vim's standard case-sensitivity controls (`set ignorecase`, `set smartcase`, `\C` / `\c` regex escapes, `/I` / `/i` search flags), expect none of them to take effect in Skrivro.
+
+=== I scroll the preview and the editor doesn't move (or vice versa).
+
+That's intentional.
+Scroll-sync in Skrivro is one-shot, not continuous: both panes stay independently scrollable.
+When you want them aligned, hit kbd:[Ctrl+Alt+L] (kbd:[Cmd+Ctrl+L] on macOS), or `:syncpreview` in Vim mode, or `gz` in Vim normal mode, to snap the preview to whatever block contains the editor cursor.
+
+Continuous sync sounds nice in principle but in practice fights you constantly when you want to look at one part of the doc while editing another.
+Sync-on-demand is the better default for prose work.
+
+=== Why don't search and Vim commands work in preview-only mode?
+
+Preview-only mode hides the editor, and those are editor features. Typing, Vim Ex commands, and find/replace all act on the editor: find/replace searches the editor's source text rather than the rendered preview, and keystrokes are routed to the editor pane. With the editor hidden, there's nothing for them to land on.
+
+App-level shortcuts still work in preview-only mode (saving, opening, switching modes). Only the editor-internal actions need the editor visible.
+
+To use them, switch to split or editor-only mode. There's no separate "find within the rendered preview" feature.
+
+=== I lost my unsaved changes after a crash. Did Skrivro auto-save anything?
+
+Probably yes.
+Skrivro autosaves the in-progress buffer to a draft file every 500ms after a change.
+On next launch, if the draft exists and is non-empty, Skrivro restores it.
+
+If the draft was lost (rare), it usually means the crash happened before the first 500ms timer fired after your most recent edits, or the localStorage was cleared by something external.
+
+== Limitations
+
+=== Is there a version I can run without installing anything?
+
+A limited single-file HTML build lives on the `standalone` branch. It runs in a browser with no install, which is the point for locked-down environments. It gives up what needs a native app: no `skrivro.conf` customization, no `include::` expansion, browser-mediated file open/save, and dependencies loaded from a CDN on first run. The `standalone` branch documents the specifics.
+
+=== Can I install plugins or extensions?
+
+No.
+Skrivro doesn't have a plugin system.
+The feature set is fixed at compile time.
+
+If you want a feature Skrivro doesn't have, the 0BSD license permits forking. See the link:../README.adoc#about-this-project[About section in the README] for the project's stance on forks.
+
+=== Is there a CLI for batch conversion?
+
+No.
+Skrivro is a GUI editor.
+Use `asciidoctor` (for AsciiDoc) or `pandoc` (for Markdown) for batch / CLI conversion. Those tools are purpose-built and produce better output than anything Skrivro would ship.
+
+The Skrivro binary does accept a single file path on the command line (`skrivro foo.adoc`) to open that file at launch, but that's app integration, not batch processing.
+
+=== Will Skrivro support multiple windows / tabs / workspaces?
+
+No.
+Skrivro is single-window and single-document, and launching the binary a second time won't open a second window. The second launch is routed back to the running instance on every platform (via `tauri-plugin-single-instance` on Linux and Windows, and via the OS itself on macOS for `.app` bundles).
+If you launch with a file argument while Skrivro is already running, that file opens in the existing window.
+
+=== Will Skrivro ever do [X]?
+
+The project is published for use under the 0BSD license, but isn't actively maintained as an open-source project in the traditional sense: no triaged issues, no PR review, no roadmap commitments.
+If you need Skrivro to do something different, the realistic path is to fork it.
+See the link:../README.adoc#about-this-project[About section in the README].

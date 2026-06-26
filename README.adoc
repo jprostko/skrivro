@@ -1,0 +1,118 @@
+= Skrivro
+:experimental:
+
+_Keyboard-first AsciiDoc and Markdown editor with live preview._
+
+[IMPORTANT]
+====
+*INSERT LOGO HERE.* When the icon artwork lands, place a 128px (or larger) PNG above this line via:
+`image::path/to/logo.png[Skrivro logo, 128, 128]`
+====
+
+Skrivro is a desktop application for writing AsciiDoc and Markdown documents with side-by-side live preview.
+It's built around keyboard-driven workflows (with optional Vim mode), runs as a native Tauri application on Linux, macOS, and Windows, and ships small. The WebKit-based binary is under 20 MB on Linux.
+
+Version 0.1.0. Useful for day-to-day writing, but the config surface and feature set may shift before 1.0.
+
+A limited single-file HTML build of Skrivro also exists on the `standalone` branch, browser-based, for locked-down environments where installing native software isn't an option. It necessarily gives up the features that depend on a native app. The `standalone` branch documents what differs.
+
+== Screenshots
+
+[IMPORTANT]
+====
+*INSERT SCREENSHOT (SPLIT MODE):* editor pane on the left with AsciiDoc source, rendered preview on the right. Default Catppuccin Mocha theme. A short multi-section document is a good subject (heading, paragraph, list, code block, table, enough to show that rendering works without dominating the screenshot).
+====
+
+[IMPORTANT]
+====
+*INSERT SCREENSHOT (VIM MODE):* single-pane editor view with the Vim mode pill visible in the status bar (NORMAL or INSERT, your call). Optional but nice to show that Vim is supported.
+====
+
+[IMPORTANT]
+====
+*INSERT SCREENSHOT (PREVIEW-ONLY MODE):* rendered output of a longer document filling the window, demonstrating how the app reads as a finished doc.
+====
+
+== Features
+
+* *Live preview* for AsciiDoc and Markdown (GitHub Flavored, with task lists, alerts, and emoji shortcodes), updated as you type.
+* *Three display modes:* editor only, split (editor + preview), or preview only.
+* *Keyboard-first.* Every action has a shortcut.
+Mouse and trackpad work everywhere they should, but the app is designed to be driven from the keyboard.
+* *Optional Vim mode.* Motion, visual, replace, ex commands: the full Vim experience inside the editor pane.
+* *Configurable* via a flat `skrivro.conf` file: fonts, padding, theme, default format, status bar style, soft column limits, session restore, spellcheck, and more. Every key is documented inline in the default config template.
+* *Offline spellcheck.* Bundled US English plus user-supplied Swedish and other variants, with a personal word list and right-click suggestions.
+* *Themes.* Seven bundled themes (five dark, including Catppuccin Mocha and Dracula, plus two light). User-supplied themes drop into a `themes/` directory and override bundled versions of the same name.
+* *AsciiDoc include:: support.* Multi-file books and documentation projects work: `include::` directives are pre-expanded via the filesystem before Asciidoctor sees the source.
+* *Scroll sync.* Snap the preview to the block under the editor cursor on demand. Sync-once, not continuous. Both panes stay independently scrollable until you ask for a sync.
+* *Cross-platform.* Linux (X11 and Wayland, including tiling window managers), macOS (Apple Silicon and Intel), Windows.
+* *Localized UI.* English and Swedish at present. Auto-detects from system locale, and can be forced via config.
+* *Session restore.* On by default: reopens the file from your last session on launch. Set `restore-session = false` to start with a blank buffer instead.
+* *File associations.* Double-click `.adoc` or `.md` files to open them in Skrivro.
+* *Private by default.* The app itself makes no network requests: no telemetry, no phone-home, no update checks. The one thing that can reach out is external images in your preview, which load by default for convenience but can be blocked with `allow-external-images = false`. The CSP relaxation stays scoped strictly to images, so script, font, frame, and connect sources are always locked down.
+
+== Getting started
+
+Skrivro doesn't ship pre-built binaries yet. To build from source:
+
+[source,bash]
+----
+git clone <INSERT REPO URL HERE (Forgejo, GitHub mirror, etc.)>
+cd skrivro
+pnpm install
+pnpm tauri build
+----
+
+The built binary lands in `src-tauri/target/release/`.
+Platform-specific system dependencies (webkit2gtk-4.1 on Linux, etc.) and packaging notes live in link:docs/BUILDING.adoc[].
+
+== Documentation
+
+[cols="1,3"]
+|===
+| link:docs/USAGE.adoc[USAGE.adoc]
+| Keyboard shortcuts, Vim commands, modes, day-to-day workflow
+
+| link:docs/CONFIG.adoc[CONFIG.adoc]
+| `skrivro.conf` format, every key with examples
+
+| link:docs/THEMING.adoc[THEMING.adoc]
+| Theme system, bundled themes, authoring your own
+
+| link:docs/BUILDING.adoc[BUILDING.adoc]
+| Building from source, system dependencies, packaging
+
+| link:docs/ARCHITECTURE.adoc[ARCHITECTURE.adoc]
+| High-level architecture, module breakdown, IPC pattern
+
+| link:docs/CREDITS.adoc[CREDITS.adoc]
+| Major incorporated projects and what they contribute
+
+| link:docs/FAQ.adoc[FAQ.adoc]
+| Common questions and troubleshooting
+|===
+
+== About this project
+
+Skrivro was built primarily through AI pair-programming. Most of the code, and most of this documentation, came out of long iterative sessions between the original author and Anthropic's Claude model.
+The author drove design decisions, tested every change, and made the final calls on what shipped. The model handled much of the keyboard work and architecture exploration.
+
+This is worth disclosing up front because some readers reasonably evaluate code differently knowing how it was produced.
+The codebase is reviewable: every commit has a substantive message explaining the *why*, the architecture is documented in link:docs/ARCHITECTURE.adoc[], and testing pairs a Vitest and cargo-test suite over the pure-logic layer with the author running the app to verify behavior. There is no CI pipeline.
+
+The project would not exist in this form without AI assistance.
+It's a years-long backlog item that the author wouldn't have realistically shipped working on it on and off.
+
+*This is not a maintained open-source project in the traditional sense.*
+It's published so that anyone who finds it useful can use it, audit it, or build on it under the 0BSD license, but the author doesn't plan to triage issues, review pull requests, or take feature requests.
+The most likely path forward for someone who wants Skrivro to do something different is to fork it. The codebase is small and the architecture is documented enough that adapting it is realistic.
+
+[IMPORTANT]
+====
+*PERSONALIZE IF DESIRED:* this section uses "the author" / "the original author" rather than naming you specifically. If you'd rather write in first person, swap "the author" → "I" and adjust verbs accordingly. The structure works either way.
+====
+
+== License
+
+0BSD. See link:LICENSE[] for the full text.
+Third-party dependency licenses are aggregated in link:NOTICES[].

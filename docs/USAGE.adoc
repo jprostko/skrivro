@@ -1,0 +1,410 @@
+= Usage
+:experimental:
+:toc: left
+:toclevels: 2
+
+Skrivro is a keyboard-first editor.
+Every action has a shortcut, and the app expects you to drive it from the keyboard most of the time.
+The mouse and trackpad still work where they should.
+
+This doc covers day-to-day operation: shortcuts, display modes, Vim integration, format handling, find and replace, spellcheck, and the conventions that aren't immediately obvious.
+
+== Keyboard convention
+
+[NOTE]
+====
+*The shortcuts in this doc are written in their Linux/Windows form.* On macOS the mapping is: kbd:[Ctrl] becomes kbd:[Cmd], and kbd:[Ctrl+Alt] becomes kbd:[Cmd+Ctrl]. So kbd:[Ctrl+Alt+E] on Linux/Windows is kbd:[Cmd+Ctrl+E] on a Mac.
+
+*The best reference for the exact keys on your own machine is Skrivro's in-app help overlay* (kbd:[Ctrl+Alt+H], or kbd:[Cmd+Ctrl+H] on a Mac). It renders every shortcut for the platform you're actually running on. Mac users see the native Apple symbols (kbd:[⌘S], kbd:[⌃⌘T], and so on). When this doc and your keyboard seem to disagree, trust the help overlay.
+====
+
+Skrivro uses one consistent shortcut convention across all platforms:
+
+[cols="1,2,2", options="header"]
+|===
+| Modifier role | Linux / Windows | macOS
+
+| Primary modifier (file ops)
+| kbd:[Ctrl]
+| kbd:[Cmd]
+
+| Secondary modifier (mode toggles, display toggles)
+| kbd:[Ctrl+Alt]
+| kbd:[Cmd+Ctrl]
+|===
+
+Why kbd:[Cmd+Ctrl] on Mac instead of the more common kbd:[Cmd+Option]: Option-letter combos compose into Unicode glyphs at the keyboard layout level on US/Dvorak (kbd:[Option+V] becomes √, kbd:[Option+T] becomes †, etc.), and the webview reports the composed character in keydown events even when kbd:[Cmd] is held.
+That breaks literal letter matching.
+kbd:[Ctrl] doesn't compose, so kbd:[Cmd+Ctrl+letter] is reliable.
+Bonus: it stays out of Vim's kbd:[Ctrl+letter] namespace.
+
+== File operations
+
+[cols="1,3", options="header"]
+|===
+| Shortcut | Action
+
+| kbd:[Ctrl+S]
+| Save current file. If untitled, opens the save-as dialog.
+
+| kbd:[Ctrl+Shift+S]
+| Save as. Opens the dialog regardless of whether the file already has a path.
+
+| kbd:[Ctrl+O]
+| Open file via the system file picker. Refuses if the current buffer is dirty (offers a "Discard changes?" confirm).
+
+| kbd:[Ctrl+N]
+| New empty buffer. Same dirty-buffer protection as kbd:[Ctrl+O].
+|===
+
+Other ways to open a file:
+
+* *Drag and drop* a file onto the Skrivro window from your file manager.
+* *Pass on the command line:* `skrivro foo.adoc` from a shell.
+* *File association:* double-click a `.adoc`, `.asciidoc`, `.md`, or `.markdown` file from your file manager (after installing Skrivro and registering the file types).
+
+All entry points go through the same dirty-buffer check, so Skrivro won't quietly throw away unsaved changes.
+
+== Display modes
+
+Skrivro has three display modes.
+The current mode persists across launches via the prefs file (separate from the config file).
+
+[cols="1,3", options="header"]
+|===
+| Shortcut | Mode
+
+| kbd:[Ctrl+Alt+E]
+| *Editor only*: the editor fills the window and the preview is hidden. Reach for it when you're drafting and a live preview would only get in the way.
+
+| kbd:[Ctrl+Alt+S]
+| *Split*: the editor sits on the left and the live preview on the right, each filling half the window.
+
+| kbd:[Ctrl+Alt+P]
+| *Preview only*: the preview fills the window and the editor is hidden. Reach for it when you're reading a finished document.
+|===
+
+In split mode, kbd:[Ctrl+Alt+W] toggles which pane has focus (the focused pane gets a colored outline and receives keyboard input).
+
+== Format handling
+
+Skrivro handles three document formats: AsciiDoc, GitHub-Flavored Markdown, and plain text.
+
+Format is detected from the file extension when opening:
+
+[cols="1,2", options="header"]
+|===
+| Extension | Format
+
+| `.adoc`, `.asciidoc`
+| AsciiDoc
+
+| `.md`, `.markdown`
+| Markdown (GFM with task lists, alerts, emoji shortcodes)
+
+| anything else (or no extension)
+| Plain text
+|===
+
+For untitled buffers (no file yet), the format defaults to whatever the `default-format` config key specifies. See link:CONFIG.adoc[].
+
+To switch formats explicitly:
+
+* kbd:[Ctrl+Alt+R] cycles AsciiDoc → Markdown → Text → AsciiDoc.
+* In Vim mode: `:format <name>`, `:asciidoc`, `:markdown`, `:text` (see <<Vim Ex commands>> below).
+
+The active format is shown in the status bar.
+
+=== Scroll sync
+
+When you're working in split mode and want the preview to jump to where you're editing:
+
+* kbd:[Ctrl+Alt+L] snaps the preview to the block containing the editor cursor.
+* In Vim normal mode: `gz` (same effect).
+* In Vim Ex mode: `:syncpreview`.
+
+Sync is one-shot, not continuous.
+The two panes stay independently scrollable, and you ask for a sync when you want one.
+
+A small indicator in the status bar flashes when sync fires, so you know the keystroke registered even when the preview was already showing the right block.
+
+== Find and replace
+
+kbd:[Ctrl+F] opens a find-and-replace panel at the top of the editor.
+The panel has a search field, a replace field, next and previous buttons, replace and replace-all buttons, and toggles for case sensitivity, regular expressions, and whole-word matching.
+
+Find and replace works on the editor's source text, not the rendered preview, so the editor pane has to be visible.
+It works in split and editor-only modes, and does nothing in preview-only mode.
+
+In Vim mode, kbd:[Ctrl+F] keeps its standard Vim meaning (scroll forward one page), so open the panel with the `:find` Ex command instead.
+
+== Spellcheck
+
+Skrivro spellchecks offline against Hunspell dictionaries, with no network lookup and no third-party service.
+
+The `spellcheck-language` key in `skrivro.conf` decides which dictionary loads, and whether spellcheck runs at all: `en` (US English), `sv` (Swedish), `both`, `auto` (pick from the system locale), or `off`.
+The default is `auto`, so spellcheck is normally on.
+See link:CONFIG.adoc[] for the key details.
+
+Misspelled words get a red wavy underline as you type.
+kbd:[Ctrl+Alt+K] hides and shows the underlines for the session, as do `:spell on` and `:spell off` in Vim mode.
+`:spell` on its own reports the current state.
+This toggle only shows or hides the squiggles. It does not load a dictionary, so when `spellcheck-language` is `off` there is nothing to toggle and the keystroke does nothing.
+
+To deal with a flagged word, right-click it.
+The menu shows up to four spelling suggestions (click one to replace the word) and an *Add to dictionary* item.
+Right-clicking a word you have already added shows *Remove from dictionary* instead.
+
+The custom dictionary is a plain `custom-words.txt` file in your config directory next to `skrivro.conf`, one word per line, which you can also edit by hand.
+From the keyboard, `:spellgood` (Vim `zg`) adds the word under the cursor to it, and `:spellundo` (Vim `zug`) removes the word under the cursor from it.
+
+== Vim mode
+
+Skrivro embeds CodeMirror 6's Vim plugin (`@replit/codemirror-vim`).
+Toggle Vim mode with kbd:[Ctrl+Alt+V].
+The status bar shows a colored mode pill (NORMAL, INSERT, VISUAL, etc.) when Vim is active.
+
+Most of the standard Vim feature set works: motion, visual mode (character, line, block), replace mode, Ex commands, macros, marks, registers, search.
+Skrivro doesn't customize the Vim implementation beyond what's documented here, so external Vim references apply.
+
+One platform note: visual block mode is entered with kbd:[Ctrl+Q] on Linux and Windows, where the webview claims kbd:[Ctrl+V] for paste.
+On Mac, kbd:[Ctrl+V] enters visual block as usual.
+
+=== Vim Ex commands
+
+Skrivro adds the following Ex commands.
+All of these run in Vim mode by typing kbd:[:] in normal mode and then the command.
+
+==== File operations
+
+[cols="1,3", options="header"]
+|===
+| Command | Action
+
+| `:w`
+| Save current file.
+
+| `:w <filename>`
+| Write buffer contents to the given path. The current buffer's file association is unchanged, the same as `:write` in real Vim.
+
+| `:saveas <filename>`
+| Save as. Same as `:w <filename>`, but also rebinds the buffer to the new path.
+
+| `:e`
+| Reload current file from disk (refuses if dirty).
+
+| `:e <filename>`
+| Open a different file (refuses if dirty).
+
+| `:e!` / `:e! <filename>`
+| Force reload or open, discarding the dirty buffer.
+
+| `:enew`
+| New empty buffer (refuses if dirty).
+
+| `:open`
+| Show the file-picker dialog (same as kbd:[Ctrl+O]).
+|===
+
+==== Quitting
+
+[cols="1,3", options="header"]
+|===
+| Command | Action
+
+| `:q`
+| Quit. Confirms if dirty.
+
+| `:q!`
+| Force quit, discard unsaved changes without prompting.
+
+| `:wq`
+| Save and quit. Always writes (updates mtime even on a clean buffer).
+
+| `:x`
+| Save only if dirty, then quit. Mtime untouched on a clean buffer.
+
+| `:x!`
+| Force-save (even if clean), then quit.
+
+| `:qa` / `:qa!` / `:wqa` / `:xa`
+| All-windows variants. Skrivro is single-window, so these are aliases for the corresponding non-`a` versions.
+|===
+
+==== Display
+
+[cols="1,3", options="header"]
+|===
+| Command | Action
+
+| `:syncpreview`
+| Snap preview to the block containing the cursor (same as kbd:[Ctrl+Alt+L]).
+
+| `:format` / `:format <name>`
+| Show the active format (no arg) or switch to `asciidoc` / `markdown` / `text`.
+
+| `:asciidoc` / `:markdown` / `:text`
+| Switch directly to the named format.
+
+| `:syntax` / `:syntax on` / `:syntax off` / `:syn ...`
+| Show editor syntax-highlighting state, or turn it on/off. Same effect as kbd:[Ctrl+Alt+Y].
+
+| `:width` / `:width <mode>`
+| Show the current single-pane width cap (no arg) or set it to `narrow` / `medium` / `wide` / `full`. Same effect as kbd:[Ctrl+Alt+C].
+
+| `:toc` / `:toc on` / `:toc off`
+| Show the table-of-contents visibility state, or turn it on/off. Same effect as kbd:[Ctrl+Alt+I].
+|===
+
+==== Find
+
+[cols="1,3", options="header"]
+|===
+| Command | Action
+
+| `:find`
+| Open the find-and-replace panel. The Vim-mode way in, since kbd:[Ctrl+F] scrolls forward. See <<Find and replace>>.
+|===
+
+==== Spelling
+
+[cols="1,3", options="header"]
+|===
+| Command | Action
+
+| `:spell`
+| Show whether spellcheck is on or off.
+
+| `:spell on` / `:spell off`
+| Turn the spellcheck underlines on or off. Same effect as kbd:[Ctrl+Alt+K].
+
+| `:spellgood`
+| Add the word under the cursor to the custom dictionary (same as the `zg` normal-mode binding).
+
+| `:spellundo`
+| Remove the word under the cursor from the custom dictionary (same as `zug`).
+|===
+
+=== Vim normal mode bindings
+
+A few normal-mode keys do app-level things in addition to their standard Vim behavior:
+
+[cols="1,3", options="header"]
+|===
+| Key | Action
+
+| `gz`
+| Snap preview to cursor (same as `:syncpreview`).
+
+| `ZZ`
+| Save if dirty, quit (same as `:x`).
+
+| `ZQ`
+| Force quit, discard changes (same as `:q!`).
+
+| `zg`
+| Add the word under the cursor to the custom dictionary (same as `:spellgood`).
+
+| `zug`
+| Remove the word under the cursor from the custom dictionary (same as `:spellundo`).
+|===
+
+The rest of normal mode behaves the way you'd expect: motion, operators, text objects, and so on.
+
+=== Vim search case-sensitivity
+
+Search in Skrivro's Vim mode is case-insensitive.
+The `@replit/codemirror-vim` plugin hard-codes the behavior, and there's no Skrivro-side or runtime override for it.
+This is an upstream limitation of the Vim plugin.
+
+If you rely on Vim's standard case-sensitivity controls (`set ignorecase`, `set smartcase`, the `\C` / `\c` regex escapes, the `/I` and `/i` search flags), expect them not to take effect in Skrivro.
+
+=== Ctrl+O and the jump list
+
+In standard Vim, kbd:[Ctrl+O] jumps back through the jump list (older cursor positions) and kbd:[Ctrl+I] jumps forward. On Linux and Windows, Skrivro binds kbd:[Ctrl+O] to opening a file (see <<File operations>>) and claims the chord before Vim sees it, so the jump-back isn't available in Vim mode there. On Mac the file picker is kbd:[Cmd+O] instead, so physical kbd:[Ctrl+O] keeps its standard Vim behavior.
+
+== Toggles
+
+Beyond the display-mode and format-toggle shortcuts above, several UI toggles are bound to kbd:[Ctrl+Alt+letter] combinations:
+
+[cols="1,3", options="header"]
+|===
+| Shortcut | Action
+
+| kbd:[Ctrl+Alt+T]
+| Toggle the top bar (the strip with the filename and help button).
+
+| kbd:[Ctrl+Alt+B]
+| Toggle the status bar (the strip at the bottom with mode pill, cursor position, etc.).
+
+| kbd:[Ctrl+Alt+G]
+| Toggle the editor's gutter (line numbers).
+
+| kbd:[Ctrl+Alt+I]
+| Toggle the table of contents on or off, overriding the document's own `:toc:` setting for the session.
+
+| kbd:[Ctrl+Alt+C]
+| Cycle the single-pane width cap: narrow / medium / wide / full. Applies in editor-only and preview-only modes.
+
+| kbd:[Ctrl+Alt+Y]
+| Toggle editor syntax highlighting.
+
+| kbd:[Ctrl+Alt+K]
+| Toggle spellcheck underlines for the session (see <<Spellcheck>>).
+
+| kbd:[Ctrl+Alt+H]
+| Toggle the help overlay (this doc's contents in dialog form).
+
+| kbd:[Ctrl+Alt+V]
+| Toggle Vim mode.
+
+| kbd:[Ctrl+Alt+W]
+| Toggle which pane has focus in split mode (no-op in single-pane modes).
+|===
+
+All toggle states persist across launches via the prefs file (separate from the config file: prefs are UI state, config is per-user customization).
+
+== Status bar
+
+The status bar runs along the bottom of the window.
+Reading left to right:
+
+* *Mode pill* (Vim mode only): colored badge showing NORMAL / INSERT / VISUAL / V-LINE / V-BLOCK / REPLACE / COMMAND.
+* *Dirty indicator*: a colored dot when the buffer has unsaved changes.
+* *Filename*: the current file's basename, or `untitled.adoc` (or `.md` / `.txt` depending on format) for unsaved buffers.
+* *File type*: the active format (AsciiDoc / Markdown / Text).
+* *Spellcheck indicator*: shows `(spellcheck off)` when spellcheck is available but you've toggled it off with kbd:[Ctrl+Alt+K], or a note such as `(Swedish dictionary not found)` when a requested dictionary is not present. Hidden while spellcheck is running normally, and absent entirely when `spellcheck-language = off`.
+* *Cursor position*: line and column. Format is configurable: `Ln 42, Col 85` (verbose, default), `42:85` (compact), or `42,85` (Vim-style ruler). See link:CONFIG.adoc[].
+* *Sync indicator*: a small arrow that flashes when scroll-sync fires.
+* *Word count* (preview-only mode only): total words in the rendered preview.
+
+Status-bar styling has two presets: `canonical` (the default, bright Catppuccin colors from `catppuccin/nvim`'s `lualine` config) and `muted` (subtler palette, LazyVim-inspired).
+Set via `statusbar-style` in `skrivro.conf`. See link:CONFIG.adoc[].
+
+== Closing Skrivro
+
+Skrivro ships with `decorations: false`, so there's no titlebar × button to click.
+Use these instead:
+
+[cols="1,3", options="header"]
+|===
+| Platform | Close shortcuts
+
+| Linux
+| Use your window manager's close shortcut. Most desktop environments respect kbd:[Alt+F4]. Tiling window managers use whatever close binding you've configured.
+
+| Windows
+| kbd:[Alt+F4] to close. kbd:[Win+Down] to minimize, kbd:[Win+Up] to maximize, kbd:[Win+Left] / kbd:[Win+Right] to snap. kbd:[Alt+Space] opens the system menu.
+
+| macOS
+| kbd:[Cmd+Q] to quit (with dirty-buffer confirm). kbd:[Cmd+M] to minimize. kbd:[Cmd+W] to close window. All three route through Skrivro's dirty-buffer protection.
+|===
+
+In all cases, if the buffer is dirty, Skrivro prompts you with a "Discard changes?" confirm dialog before quitting.
+You can also use Vim's `:q` / `:q!` / `:wq` / `:x` from inside the editor.
+
+== Help overlay
+
+kbd:[Ctrl+Alt+H] toggles a help dialog that summarizes every keyboard shortcut and Ex command.
+Crucially, it renders them for the platform you're running on, so it is the most reliable place to look up the exact key for any action: Mac users see the real Apple chords (kbd:[⌘S], kbd:[⌃⌘T]) instead of the Linux/Windows notation this doc uses.
+This doc is the fuller reference, with the explanations, the context, and the config cross-links, but for a fast "what do I press right now" lookup, the overlay wins.

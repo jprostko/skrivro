@@ -1,0 +1,199 @@
+= Theming
+:experimental:
+:toc: left
+:toclevels: 2
+
+Skrivro renders both panes through CSS, so its colors are themeable.
+A theme defines values for 24 named "slots". Each slot describes a *purpose* (e.g. "primary background", "warning admonition color") rather than a specific aesthetic, which means light themes and dark themes plug into the same machinery without code changes.
+
+Seven themes ship with Skrivro out of the box.
+You can write your own. The file format is a flat `key = value` list, no DSL, no compile step.
+Custom themes can override bundled ones of the same name.
+
+== Bundled themes
+
+[cols="2,1,3", options="header"]
+|===
+| Name | Variant | Notes
+
+| `catppuccin-mocha` | dark | Default. Used when the `theme` config key is unset or set to this name. Compiled into the CSS as the `:root` fallback, so it's the only bundled theme that needs no file load at startup.
+| `catppuccin-latte` | light | Companion to Mocha, same Catppuccin family, light palette.
+| `dracula` | dark | Standard Dracula palette.
+| `nord` | dark | Standard Nord palette. Editor uses the lighter shade and preview uses the darker, inverted from Nord's natural pairing to match Skrivro's pane convention.
+| `gruvbox-dark` | dark | Standard Gruvbox dark palette. Same inversion note as Nord.
+| `tokyo-night-moon` | dark | Tokyo Night Moon (the `moon` style from `folke/tokyonight.nvim`, not the `storm` or `night` variants).
+| `tokyo-night-day` | light | Companion to Moon, Tokyo Night's light variant.
+|===
+
+If none of these fit your taste, see <<Authoring a custom theme>> below. Most palettes can be ported in around 15 minutes.
+
+== Switching themes
+
+Set the `theme` key in your `skrivro.conf` to one of the names above:
+
+[source]
+----
+theme = dracula
+----
+
+Skrivro reads the config at launch. There's no hot reload, so you need to restart the app for the change to take effect.
+
+For where `skrivro.conf` lives on each platform, see link:CONFIG.adoc[].
+
+== User theme files
+
+You can drop additional theme files into a `themes/` subdirectory of your config directory.
+Skrivro will load them by name when you reference them in the config.
+
+=== Where to put them
+
+[cols="1,3"]
+|===
+| Linux | `~/.config/com.skrivro.editor/themes/<name>.theme` (or `$XDG_CONFIG_HOME/com.skrivro.editor/themes/<name>.theme`)
+| macOS | `~/Library/Application Support/com.skrivro.editor/themes/<name>.theme`
+| Windows | `%APPDATA%\com.skrivro.editor\themes\<name>.theme`
+|===
+
+The filename (without the `.theme` suffix) is the name you reference from `skrivro.conf`.
+For a file at `~/.config/com.skrivro.editor/themes/everforest.theme`, set `theme = everforest`.
+
+=== Bundled vs. user files
+
+Bundled theme templates in the source tree end with `.theme.default`. The `.default` suffix signals "reference template, not a live config file."
+User theme files use plain `.theme`, the same name with the `.default` dropped to signal "live config."
+
+Examples:
+
+[cols="1,2", options="header"]
+|===
+| File | Role
+
+| `resources/themes/dracula.theme.default` | Bundled template in the source tree. Reference only. The actual Dracula colors are compiled into the binary at build time.
+| `~/.config/com.skrivro.editor/themes/dracula.theme` | User-supplied override. If this file exists, Skrivro loads it INSTEAD of the bundled Dracula. Same name, but the user file wins.
+| `~/.config/com.skrivro.editor/themes/everforest.theme` | User-supplied custom theme. Reference it as `theme = everforest` in `skrivro.conf`.
+|===
+
+This means you can tweak any bundled theme by saving an edited copy at the same name in your config directory. You don't need to rename it.
+
+== Authoring a custom theme
+
+Easiest path: copy the Catppuccin Mocha reference template, which has every slot documented inline with a description of its purpose, then edit values.
+
+1. Open `resources/themes/catppuccin-mocha.theme.default` in the source tree (or the link below if you've installed Skrivro from a binary and don't have the source).
+2. Save a copy at `<app_config_dir>/themes/<your-name>.theme` (per the platform paths above).
+3. Replace each color value with your palette's best match for the *purpose* described in the comment.
+4. Set `theme = <your-name>` in `skrivro.conf`.
+5. Restart Skrivro.
+
+Files use a flat `key = value` syntax, one per line.
+Comments start with `#`.
+Blank lines are ignored.
+Missing slots fall through to the Catppuccin Mocha defaults, so you don't have to define all 24. A partial theme that only overrides backgrounds is valid.
+
+[IMPORTANT]
+====
+*INSERT LINK HERE.* Once the repo is hosted somewhere public, link to the Catppuccin Mocha reference file in-repo so users without source access can read it. Until then, it ships in the source tree at `resources/themes/catppuccin-mocha.theme.default`.
+====
+
+=== Pane luminance convention
+
+Skrivro's convention is: editor lighter, preview darker.
+Some themes (Gruvbox, Nord) have the opposite pairing in their canonical palette. For those, the bundled theme files swap which palette shade fills `--skr-bg` (editor) vs. `--skr-bg-panel` (preview) so that the result still matches the convention.
+
+If you're authoring a theme and you want the original palette's pairing rather than Skrivro's convention, just put the values where you want them.
+There's nothing enforcing the convention. It's just what the bundled themes default to.
+
+=== Light themes
+
+Every slot describes a purpose, not a luminance direction, so light themes plug in without any CSS or code changes.
+A light theme sets `--skr-bg` to a near-white value, `--skr-text` to a near-black value, `--skr-shadow` to a softer alpha (e.g. `rgba(0, 0, 0, 0.1)` instead of `rgba(0, 0, 0, 0.5)`), and the rest follow.
+
+Catppuccin Latte and Tokyo Night Day are the bundled examples. Refer to them for the value conventions.
+
+There is one known cosmetic issue with light themes: a brief dark-then-light flash at startup, because the CSS `:root` defaults are Catppuccin Mocha (dark) and the light theme override doesn't take effect until after the config has loaded.
+This is a sub-second visual glitch, no functional impact.
+
+== The 24 slots
+
+Reference for theme authors: every slot Skrivro reads from a theme file, with the purpose it serves and the Catppuccin Mocha value as a starting point.
+
+The slot names are CSS custom property names with the `--skr-` prefix dropped. For example, the file uses `bg = #1e1e2e` and the CSS sees `--skr-bg: #1e1e2e`.
+
+=== Backgrounds (7)
+
+[cols="1,1,3", options="header"]
+|===
+| Slot | Catppuccin Mocha | Purpose
+
+| `bg` | `#1e1e2e` | Primary background: body, editor pane, scrollbar tracks.
+| `bg-panel` | `#181825` | Chrome surfaces: titlebar, preview pane, dialogs, CodeMirror panels (Ex command line, search bar).
+| `bg-inset` | `#11111b` | Deepest layer: code blocks, AsciiDoc literalblock, render-error background.
+| `bg-backdrop` | `rgba(17, 17, 27, 0.6)` | Dialog backdrop overlay (the dimming behind a confirm dialog). Same color as `bg-inset` at 60% alpha.
+| `bg-stripe` | `rgba(49, 50, 68, 0.3)` | Preview table even-row zebra striping. Set to a translucent surface tint so it works against any backing color.
+| `bg-active-line` | `rgba(49, 50, 68, 0.25)` | CodeMirror active-line highlight. Translucent for the same reason.
+| `shadow` | `rgba(0, 0, 0, 0.5)` | Dialog box-shadow color. Use a softer alpha (`0.1` to `0.2`) for light themes.
+|===
+
+=== Surfaces (2)
+
+[cols="1,1,3", options="header"]
+|===
+| Slot | Catppuccin Mocha | Purpose
+
+| `surface` | `#313244` | Borders, button faces, input backgrounds, inline code spans, admonition table backgrounds.
+| `surface-hover` | `#45475a` | Interactive hover/selection states: button hover, CodeMirror text selection, scrollbar thumb (including its hover state).
+|===
+
+=== Text (4)
+
+[cols="1,1,3", options="header"]
+|===
+| Slot | Catppuccin Mocha | Purpose
+
+| `text` | `#cdd6f4` | Primary text: body copy, *strong* / _emphasis_, dialog text, button labels, CodeMirror foreground.
+| `text-muted` | `#bac2de` | Secondary text: titlebar text, blockquote attribution, image captions, dialog messages, the active gutter line number.
+| `text-dim` | `#a6adc8` | Tertiary text: status bar base color, status bar labels, file type indicator, cursor position readout, "muted" mode pill normal-mode foreground.
+| `text-faint` | `#6c7086` | Dimmest text: inactive gutter line numbers, CodeMirror comment color, CodeMirror punctuation, sync indicator at-rest color.
+|===
+
+=== Accents (11)
+
+[cols="1,1,3", options="header"]
+|===
+| Slot | Catppuccin Mocha | Purpose
+
+| `accent` | `#b4befe` | Primary accent: h1 / h2 headings, focus-visible outlines, help dialog title.
+| `accent-alt` | `#cba6f7` | Secondary accent: h3 / h4 headings, AsciiDoc quoteblock accent, help dialog h3.
+| `accent-minor` | `#f5c2e7` | Tertiary accent: h5 / h6 headings, "muted" visual mode pill.
+| `link` | `#89b4fa` | Hyperlinks, info admonition color, normal mode pill, help button.
+| `emphasis` | `#fab387` | Inline code text, dirty-buffer indicator dot, command mode, warning admonition, soft-column-limit overflow indicator.
+| `warning` | `#f9e2af` | Caution admonition, CodeMirror attribute name highlighting.
+| `error` | `#f38ba8` | Render error message, replace mode pill, important admonition, "Discard" button in confirm dialog.
+| `error-hover` | `#eba0ac` | "Discard" button hover state. Slightly different from `error` because the button hover wants visual feedback distinct from the resting state.
+| `success` | `#a6e3a1` | Tip admonition, insert mode pill.
+| `feedback` | `#94e2d5` | Sync indicator flash (the brief animation when scroll-sync fires).
+| `cursor` | `#f5e0dc` | CodeMirror caret color, Vim block cursor.
+|===
+
+== Special cases and patterns
+
+=== Overriding a bundled theme
+
+If you want to tweak Dracula slightly without giving it a new name, drop a `dracula.theme` file in your config directory's `themes/` subdir.
+Skrivro checks for user files first, so the user file wins for any name collision.
+
+This is also useful for testing palette changes: you can iterate on a `dracula.theme` user file without rebuilding the binary.
+When you're done, either delete the file (revert to the bundled Dracula) or contribute the changes back if you've improved on the bundled version.
+
+=== Private themes (e.g. licensed palettes)
+
+If you've licensed a commercial palette like Dracula Pro that forbids redistribution, the user-theme mechanism is the right venue: the file lives privately on your machine, never enters any repo, and Skrivro loads it the same way as any other theme.
+Just author it under whatever name you like and reference it from your config.
+
+== Limitations
+
+A few intentional gaps worth knowing about:
+
+* *No hot reload.* Theme changes require an app restart.
+* *Syntax highlighting colors are not separate from the slot system.* The 24 slots include the colors that drive code highlighting, so highlighting tracks the theme automatically. There's no way to use one theme's UI colors with a different theme's syntax colors.
+* *No theme picker UI.* Switching themes is a config-file edit. Intentional design choice for a config-file-driven app.

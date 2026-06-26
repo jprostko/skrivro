@@ -891,7 +891,7 @@ Vim.defineEx('width', 'width', (_cm: any, params: VimExParams) => {
 Vim.defineEx('toc', 'toc', (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
-    vimMessage(tr('TOC: %s', isTocHidden() ? 'off' : 'on'));
+    vimMessage(tr('Table of contents: %s', isTocHidden() ? 'off' : 'on'));
     return;
   }
   const a = arg.toLowerCase();

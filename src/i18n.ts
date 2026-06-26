@@ -95,8 +95,7 @@ export const STRINGS_SV: Record<string, string> = {
   // (E37:/E212:/E474:), command-argument tokens
   // (on/off/narrow/medium/wide/full), config keys (spellcheck-language),
   // and the ! modifier. %s placeholders fill positionally from tr() args.
-  // "Format: %s" and "TOC: %s" have no entry — Format is identical in
-  // Swedish and TOC is an acronym.
+  // "Format: %s" has no entry — Format is identical in Swedish.
   'E212: Can\'t open file for writing: %s (%s)': 'E212: Kan inte öppna filen för skrivning: %s (%s)',
   'E212: Can\'t open file for writing (%s)': 'E212: Kan inte öppna filen för skrivning (%s)',
   'E484: Can\'t open file %s (%s)': 'E484: Kan inte öppna filen %s (%s)',
@@ -109,6 +108,7 @@ export const STRINGS_SV: Record<string, string> = {
   'Spellcheck: %s': 'Stavningskontroll: %s',
   'Spellcheck: off (disabled in config)': 'Stavningskontroll: off (inaktiverad i konfigurationen)',
   'Width mode: %s': 'Breddläge: %s',
+  'Table of contents: %s': 'Innehållsförteckning: %s',
   'Spellcheck is disabled in config (spellcheck-language = off)': 'Stavningskontroll är inaktiverad i konfigurationen (spellcheck-language = off)',
   'Spellcheck is off in the editor (turn it on to add or remove words)': 'Stavningskontroll är av i editorn (slå på den för att lägga till eller ta bort ord)',
   'No word under the cursor': 'Inget ord under markören',
@@ -199,8 +199,8 @@ export const STRINGS_SV: Record<string, string> = {
   "Set the width mode explicitly (mirrors Ctrl+Alt+C's cycle)": "Ställ in breddläget uttryckligen (motsvarar <kbd>Ctrl+Alt+C</kbd>:s växling)",
 
   // Ex command descriptions for :toc.
-  'Show whether the TOC visibility override is on or off': 'Visa om åsidosättning av innehållsförteckningens synlighet är på eller av',
-  'Show or hide the TOC (mirrors Ctrl+Alt+I, resets on launch)': 'Visa eller dölj innehållsförteckningen (motsvarar <kbd>Ctrl+Alt+I</kbd>, återställs vid start)',
+  'Show whether the table of contents visibility override is on or off': 'Visa om åsidosättning av innehållsförteckningens synlighet är på eller av',
+  'Show or hide the table of contents (mirrors Ctrl+Alt+I, resets on launch)': 'Visa eller dölj innehållsförteckningen (motsvarar <kbd>Ctrl+Alt+I</kbd>, återställs vid start)',
 
   // Help dialog — placeholder labels inside <kbd><var>...</var></kbd>
   // syntax examples (e.g. ":w <var>filename</var>"). Translated even

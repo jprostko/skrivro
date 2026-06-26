@@ -321,10 +321,8 @@
 # inside your Skrivro config directory (where skrivro.conf lives): sv.dic
 # and sv.aff for Swedish, or en.dic and en.aff in any English variant to
 # take the place of the built-in US English. You can have both pairs in
-# place at once, not just one or the other. Both the Swedish dictionary
-# and the non-US English variants come from the LibreOffice dictionaries
-# project, and CONFIG.adoc in the project repository has the exact
-# download links and supported variants.
+# place at once, not just one or the other. CONFIG.adoc in the project
+# repository has the exact download links and supported variants.
 #
 # Unknown values are rejected with a debug warning and fall through to
 # auto (the default).

@@ -2,12 +2,12 @@
 // CM6 editor setup, AsciiDoc stream highlighter, Catppuccin theme +
 // highlight style, and runtime compartments. Exports:
 //   - editorView (live binding, null until createEditor runs)
-//   - vimCompartment (reconfigured when the user toggles vim mode)
+//   - vimCompartment (reconfigured when the user toggles Vim mode)
 //   - languageCompartment (reconfigured when the buffer's format
 //     changes — holds asciidocLang today, swappable in place)
 //   - getDoc / setDoc (document read/write helpers)
 //   - createEditor(parent, callbacks) — constructs the EditorView
-//   - getCM re-export — used by status bar for reading vim mode state
+//   - getCM re-export — used by status bar for reading Vim mode state
 
 import { EditorState, Compartment, Prec, type Extension } from '@codemirror/state';
 import {
@@ -88,7 +88,7 @@ const catppuccinTheme = EditorView.theme({
   // Vertical (-y) is applied as margin-block on .cm-scroller in
   // styles.css, NOT as padding on .cm-content or .editor-pane.
   // Margin on .cm-scroller (rather than padding on the pane) keeps
-  // CM6's .cm-panels-bottom — the container for vim's Ex command
+  // CM6's .cm-panels-bottom — the container for Vim's Ex command
   // line — anchored to the pane's actual bottom instead of floating
   // above a padded gap. The effect is still geometric clipping:
   // .cm-scroller is inset from .cm-editor's top/bottom by margin-y,
@@ -313,7 +313,7 @@ const asciidocLang = StreamLanguage.define({
 // has its own Compartment — reconfiguring one leaves the others
 // untouched.
 
-// Reconfigured when the user toggles vim mode.
+// Reconfigured when the user toggles Vim mode.
 export const vimCompartment = new Compartment();
 
 // Reconfigured when the current buffer's format changes. Holds the
@@ -364,7 +364,7 @@ const languageFor = (format: Format): Extension => {
 // catppuccinHighlight) extensions elsewhere in the extension list stay
 // wired up but have nothing to color. Other CM6 affordances
 // (highlightActiveLine, search matches, gutter numbers, the focus
-// outline, the vim cursor shape) all live in unrelated extensions and
+// outline, the Vim cursor shape) all live in unrelated extensions and
 // are unaffected — "syntax off" is truly "plain editor with every
 // other affordance intact," not "bare textarea."
 const resolveLanguageExtension = (format: Format): Extension =>
@@ -443,10 +443,10 @@ export interface EditorCallbacks {
 }
 
 const makeExtensions = (callbacks: EditorCallbacks) => [
-  // vim must come before the default keymap so it wins when enabled
+  // Vim must come before the default keymap so it wins when enabled
   vimCompartment.of(prefs.vimMode ? [vim()] : []),
 
-  // Enable CM6 multi-range selections. Required for vim visual-block
+  // Enable CM6 multi-range selections. Required for Vim visual-block
   // mode (Ctrl+Q / Ctrl+V) to extend vertically — the @replit/codemirror-vim
   // plugin represents a V-BLOCK selection as multiple parallel ranges
   // (one per row) and dispatches them via cm6.dispatch({ selection: ... }).
@@ -464,12 +464,12 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   // .cm-selectionBackground DOM elements. Without this extension CM6
   // relies on the browser's native ::selection pseudo-element, which
   // only shows actual browser text selection (from mouse drag), NOT
-  // internal selection state set programmatically. That means vim
+  // internal selection state set programmatically. That means Vim
   // visual mode (which dispatches selection changes via CM6's state)
   // tracks the selection internally but has no visible highlight —
   // pressing v + motions appears to do nothing. drawSelection() fixes
   // that by rendering the internal selection as visible highlights.
-  // It's also what renders the fat vim block cursor.
+  // It's also what renders the fat Vim block cursor.
   drawSelection(),
   highlightActiveLineGutter(),
   highlightActiveLine(),
@@ -506,9 +506,9 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   keymap.of([...defaultKeymap, ...historyKeymap]),
 
   // find/replace — CM's search panel, mounted at the top of the editor.
-  // Opened by Mod-f (Ctrl+F, or Cmd+F on Mac) for non-vim users, or the
-  // `:find` Ex command for vim users. searchKeymap is Prec.low, so in vim
-  // mode vim's own keymap wins (its Ctrl-F keeps paging forward); with vim
+  // Opened by Mod-f (Ctrl+F, or Cmd+F on Mac) for non-Vim users, or the
+  // `:find` Ex command for Vim users. searchKeymap is Prec.low, so in Vim
+  // mode Vim's own keymap wins (its Ctrl-F keeps paging forward); with Vim
   // off, Mod-f opens the panel.
   search({ top: true }),
   EditorState.phrases.of(searchPhrases),
@@ -548,7 +548,7 @@ export const createEditor = (
   return editorView;
 };
 
-// Runtime vim toggle — reconfigure the vim compartment so vim mode
+// Runtime Vim toggle — reconfigure the Vim compartment so Vim mode
 // can be flipped on/off without a full editor rebuild.
 export const setVimMode = (on: boolean) => {
   // Same "null before init" guard as setDoc. toggleVim in ui.ts is

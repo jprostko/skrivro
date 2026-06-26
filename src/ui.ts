@@ -1,9 +1,9 @@
 // ================= UI =================
 // Status bar rendering, help dialog, confirm dialog, pref-backed
-// toggles (titlebar / gutter / status bar / display mode / vim mode),
+// toggles (titlebar / gutter / status bar / display mode / Vim mode),
 // Mac help-label rewriting, user config application. Also owns the
 // host-level listeners that drive status bar state: keyup for mode
-// tracking, focusin/focusout on the vim command panel input for
+// tracking, focusin/focusout on the Vim command panel input for
 // COMMAND mode detection.
 
 import { tr } from './i18n.js';
@@ -39,23 +39,23 @@ const previewPaneEl       = document.querySelector('.preview-pane');
 //
 // Layout:
 //   - Mode pill (left): canonical Catppuccin colors from catppuccin/nvim
-//     (blue/green/mauve/red/peach). Hidden when vim is off.
+//     (blue/green/mauve/red/peach). Hidden when Vim is off.
 //   - Filename (left): dirty indicator + basename
 //   - File type (right): hardcoded 'AsciiDoc' for v1
 //   - Cursor position (right): 'Ln 42, Col 85', 1-indexed, codepoint-aware
 //   - In visual modes, cursor position is replaced with selection info
 
-// COMMAND mode tracking. Flipped true when the vim Ex command panel's
+// COMMAND mode tracking. Flipped true when the Vim Ex command panel's
 // <input> gains focus, false when it loses focus. Updated by the
 // focusin/focusout listeners on host at the bottom of this module.
 let inCommandMode = false;
 
-// Read the current vim mode from @replit/codemirror-vim's state.
+// Read the current Vim mode from @replit/codemirror-vim's state.
 // getCM() returns a CM5-compat wrapper whose .state.vim holds the
-// vim mode flags (insertMode, visualMode, visualLine, visualBlock),
+// Vim mode flags (insertMode, visualMode, visualLine, visualBlock),
 // and whose .state.overwrite distinguishes REPLACE from plain INSERT.
 //
-// Returns null if vim is off (signals "hide the pill"); returns
+// Returns null if Vim is off (signals "hide the pill"); returns
 // 'command' if the Ex command panel is currently focused (tracked
 // via inCommandMode, set by focusin/focusout listeners registered
 // after editor creation).
@@ -200,7 +200,7 @@ export const refreshStatus = () => {
     statusMode.hidden = true;
   }
 
-  // Position slot: either vim visual-mode selection info or cursor
+  // Position slot: either Vim visual-mode selection info or cursor
   // position. Over-limit coloring only applies to the cursor position
   // branch — selection info is a different display mode and the col
   // concept doesn't map onto it.
@@ -392,7 +392,7 @@ helpDlg.addEventListener('close', () => {
   //
   // When restoring to the editor, use editorView.focus() rather than
   // contentDOM.focus() directly. CM6 tracks focus state internally
-  // (the vim plugin consults it before intercepting keydowns); a
+  // (the Vim plugin consults it before intercepting keydowns); a
   // bare DOM focus() leaves that internal state stale, so Vim's
   // handler can see "not focused" and pass `:` through to default
   // text insertion. editorView.focus() updates CM6's state coherently.
@@ -698,14 +698,14 @@ export const isTocHidden = () => tocHidden;
 //
 //   Vim-binding <kbd>s (kbd class="vim"). These represent literal
 //   physical keys that Vim binds inside the editor — we don't capture
-//   them in our keydown handler. So "Ctrl+Q" in a vim kbd really means
+//   them in our keydown handler. So "Ctrl+Q" in a Vim kbd really means
 //   physical Control+Q, not Cmd+Q. Different mapping needed:
 //     Ctrl  → ⌃   (literal Control symbol, the actual key Vim uses)
 //     Alt   → ⌥   (literal Option symbol)
 //     Shift → ⇧
 //   Without this distinction, V-BLOCK's "Ctrl+Q" would render as ⌘Q,
 //   which on Mac is Quit — actively misleading the reader. Mark a kbd
-//   as a vim binding by adding class="vim" in the source HTML.
+//   as a Vim binding by adding class="vim" in the source HTML.
 //
 // Other Mac key symbols (Return ↵, Tab ⇥, Escape ⎋, Backspace ⌫)
 // aren't used in our current help dialog but could be added to this
@@ -778,7 +778,7 @@ export const toggleVim = () => {
   prefs.vimMode = !prefs.vimMode;
   savePrefs();
   setVimMode(prefs.vimMode);
-  // Show / hide the mode pill immediately on vim toggle.
+  // Show / hide the mode pill immediately on Vim toggle.
   refreshStatus();
 };
 
@@ -797,7 +797,7 @@ export const applyDisplayMode = () => {
 //
 // "Has focus" is read via editorView.hasFocus (a live CM6 getter that
 // handles nested focusable elements inside the editor — search panel
-// input, vim Ex input, etc. — all count as "editor has focus"). If
+// input, Vim Ex input, etc. — all count as "editor has focus"). If
 // the editor has focus, move to the preview element (which is
 // programmatically focusable via tabindex="-1" on the div). Otherwise
 // move to the editor; this covers both the "preview is focused" case
@@ -955,7 +955,7 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   // Editor side. --editor-padding-y is consumed by .cm-scroller's
   // margin-block in styles.css. Margin on .cm-scroller (rather than
   // padding on .editor-pane) keeps CM6's .cm-panels-bottom — the
-  // container for vim's Ex bar — anchored to the pane's bottom
+  // container for Vim's Ex bar — anchored to the pane's bottom
   // rather than floating above a padded gap. --editor-padding-x is
   // consumed by .cm-line's padding-inline (in the CM6 theme) because
   // per-line horizontal padding is what keeps clicks near the far-
@@ -1032,7 +1032,7 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
 // ================= Host-level status-bar listeners =================
 //
 // The CM6 updateListener (editor.js, inside makeExtensions) catches doc
-// and selection changes via onSelectionChange, which covers most vim
+// and selection changes via onSelectionChange, which covers most Vim
 // mode transitions — most mode changes also tend to change selection
 // (v → visual starts a selection, Esc from insert → cursor moves back
 // by 1, etc.). But pure-mode transitions like `i` (normal → insert at
@@ -1043,9 +1043,9 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
 // reads a few DOM properties and dispatches no CM state updates.
 host.addEventListener('keyup', refreshStatus);
 
-// COMMAND mode detection. The vim command panel is rendered as a
+// COMMAND mode detection. The Vim command panel is rendered as a
 // CM6 panel containing an <input> element; pressing `:` focuses
-// the input, and completing or cancelling the command blurs it.
+// the input, and completing or canceling the command blurs it.
 // Tracking focus/blur on the input is the simplest signal — no
 // MutationObserver needed. The panel input is the only <input>
 // inside the editor host, so a tag-name check is precise enough.
@@ -1081,7 +1081,7 @@ host.addEventListener('focusout', (e) => {
 // .cm-content is CM6's contenteditable surface — the one place where
 // clicks legitimately move focus; CM6 handles cursor placement there,
 // so we skip our redirect. Input elements (CM6's search panel, the
-// vim Ex input) are also skipped so their own focus semantics work.
+// Vim Ex input) are also skipped so their own focus semantics work.
 //
 // requestAnimationFrame defers the focus call to AFTER the browser's
 // default focus change from the mousedown, which would otherwise
@@ -1166,7 +1166,7 @@ if (wrapEl) {
   //      Losing that path is preferable to losing focus on accidental
   //      margin clicks.
   //
-  // The .cm-panels skip is so clicks on the vim Ex command bar (or
+  // The .cm-panels skip is so clicks on the Vim Ex command bar (or
   // CM6's search panel) don't get their focus stolen by the editor.
   // The existing host mousedown listener above also fires (it's on
   // .editor-pane which is inside .wrap), but the rAF refocus there
@@ -1243,11 +1243,11 @@ statusBar.addEventListener('mousedown', chromeFocusRedirect as EventListener);
 //     editor or force a mode switch, both worse than doing nothing.
 //   - Plain `:` — no modifiers. Ctrl/Alt/Cmd+`:` might be a shortcut
 //     in some layout; don't swallow.
-//   - Skip when contentDOM already has focus (the normal vim path
+//   - Skip when contentDOM already has focus (the normal Vim path
 //     handles it) and when an input/textarea has focus (the CM6
-//     search panel, the vim Ex panel itself, confirm-dialog inputs).
-//   - Skip when vim mode is disabled — `:` has no Ex meaning without
-//     vim, so swallowing it would just lose the keystroke.
+//     search panel, the Vim Ex panel itself, confirm-dialog inputs).
+//   - Skip when Vim mode is disabled — `:` has no Ex meaning without
+//     Vim, so swallowing it would just lose the keystroke.
 //
 // Capture phase beats CM6's keymap (same rationale as the existing
 // window shortcut listener in main.ts).
@@ -1335,8 +1335,8 @@ if (import.meta.env.PROD) {
 // implicit document-wide select-all anyway).
 //
 // Editor focus path is left untouched. When `.cm-content` has focus,
-// CM6's default keymap handles Mod-a → selectAll (non-vim), and the
-// vim plugin handles Ctrl+A → increment-number (vim mode). Both
+// CM6's default keymap handles Mod-a → selectAll (non-Vim), and the
+// Vim plugin handles Ctrl+A → increment-number (Vim mode). Both
 // behaviors are preserved by the early return below.
 window.addEventListener('keydown', (e) => {
   const mod = isMac ? e.metaKey : e.ctrlKey;

@@ -7,12 +7,12 @@
 // navigator.language auto-detect), landing on window.__SKRIVRO_LANG__.
 //
 // NOT translated (stays English everywhere):
-// - Ex commands (:w, :open, :syncpreview, etc.) — input syntax, same
-//   rule real Vim follows (Swedish vim users still type :w, not :skriv)
+// - Ex commands (:w, :open, :syncpreview, etc.) — input syntax; real
+//   Vim doesn't localize command names either
 // - Keyboard shortcut names (Ctrl+S, ⌃⌘T on Mac, etc.) — physical key
 //   identifiers, not translatable text
 // - Filename strings like untitled.adoc — filenames don't localize
-// - App name "Skrivro" — already a Swedish word
+// - App name "Skrivro" — coined from Swedish, nothing to translate
 //
 // To extend to a new language later: add a STRINGS_<LANG> map, update
 // the resolution logic in the inline <script>, extend the Rust-side
@@ -125,8 +125,8 @@ export const STRINGS_SV: Record<string, string> = {
 
   // Help dialog — top-level h2 headings (textContent-matched)
   'Keyboard shortcuts': 'Kortkommandon',
-  'Vim Ex commands (vim mode only)': 'Vim Ex-kommandon <span class="help-note">(endast i vim-läge)</span>',
-  'Vim normal mode (vim mode only)': 'Vim normalläge <span class="help-note">(endast i vim-läge)</span>',
+  'Vim Ex commands (Vim mode only)': 'Vim Ex-kommandon <span class="help-note">(endast i Vim-läge)</span>',
+  'Vim normal mode (Vim mode only)': 'Vim normalläge <span class="help-note">(endast i Vim-läge)</span>',
 
   // Help dialog — h3 section headings. "File" repeats under both
   // Keyboard shortcuts and Vim Ex commands; DOM sweep translates both
@@ -150,10 +150,10 @@ export const STRINGS_SV: Record<string, string> = {
   'Open': 'Öppna',
   'New': 'Ny',
   'Undo the last edit': 'Ångra senaste ändringen',
-  'Redo the last undone edit (vim users use Ctrl+R)': 'Gör om senaste ångrade ändringen (vim-användare använder Ctrl+R)',
+  'Redo the last undone edit (Vim users use Ctrl+R)': 'Gör om senaste ångrade ändringen (Vim-användare använder Ctrl+R)',
   'Toggle titlebar': 'Växla titelrad',
   'Toggle gutter': 'Växla radnummermarginal',
-  'Toggle vim mode': 'Växla vim-läge',
+  'Toggle Vim mode': 'Växla Vim-läge',
   'Split mode (editor + preview)': 'Delat läge (redigerare + förhandsvisning)',
   'Editor only': 'Endast redigerare',
   'Preview only': 'Endast förhandsvisning',
@@ -167,7 +167,7 @@ export const STRINGS_SV: Record<string, string> = {
   'Sync preview to cursor': 'Synka förhandsvisning till markör',
   'Toggle focus between editor and preview': 'Växla fokus mellan redigerare och förhandsvisning',
   // Help dialog — find/replace (Ctrl+F keybind + :find Ex command)
-  'Find and replace (vim users use :find)': 'Sök och ersätt (vim-användare använder :find)',
+  'Find and replace (Vim users use :find)': 'Sök och ersätt (Vim-användare använder :find)',
   'Open find and replace': 'Öppna sök och ersätt',
   // Ex command descriptions for :format. The format names (asciidoc /
   // markdown / text) stay English — they are the literal command
@@ -186,10 +186,10 @@ export const STRINGS_SV: Record<string, string> = {
   'Show whether spellcheck is on or off (offline, set the language with spellcheck-language in skrivro.conf)':
     'Visa om stavningskontroll är på eller av (offline, ställ in språket med spellcheck-language i skrivro.conf)',
   'Turn spellcheck on or off (mirrors Ctrl+Alt+K)': 'Slå på eller av stavningskontroll (motsvarar <kbd>Ctrl+Alt+K</kbd>)',
-  'Add the word under the cursor to your custom dictionary (vim zg)':
-    'Lägg till ordet under markören i din egen ordlista (vim <kbd>zg</kbd>)',
-  'Remove the word under the cursor from your custom dictionary (vim zug)':
-    'Ta bort ordet under markören från din egen ordlista (vim <kbd>zug</kbd>)',
+  'Add the word under the cursor to your custom dictionary (Vim zg)':
+    'Lägg till ordet under markören i din egen ordlista (Vim <kbd>zg</kbd>)',
+  'Remove the word under the cursor from your custom dictionary (Vim zug)':
+    'Ta bort ordet under markören från din egen ordlista (Vim <kbd>zug</kbd>)',
   // Right-click menu items (translated at runtime via tr(), not the DOM sweep).
   'Add to dictionary': 'Lägg till i ordlistan',
   'Remove from dictionary': 'Ta bort från ordlistan',
@@ -274,7 +274,7 @@ export const STRINGS_SV: Record<string, string> = {
 // than renaming the deeply-used Lezer import.
 // Optional %s placeholders are filled positionally from args, so a
 // message with interpolated values stays one translatable key (the
-// vim-panel error/readback channel needs this; static UI uses tr(en)).
+// Vim-panel error/readback channel needs this; static UI uses tr(en)).
 export const tr = (en: string, ...args: unknown[]): string => {
   const s = lang === 'sv' ? (STRINGS_SV[en] ?? en) : en;
   if (args.length === 0) return s;

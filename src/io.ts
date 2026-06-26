@@ -1,6 +1,6 @@
 // ================= I/O =================
 // File I/O, dirty-buffer tracking, title + filename state, autosave
-// draft, session state, the vim Ex command set, and the quit-command
+// draft, session state, the Vim Ex command set, and the quit-command
 // helpers. Owns the current buffer's per-buffer state on a single
 // `currentBuffer: Buffer` object. Other modules read fields directly;
 // mutations use `setDirty(d)` (which also triggers updateTitle) or
@@ -136,7 +136,7 @@ export const setLaunchCwd = (cwd: string) => { launchCwd = cwd; };
 
 // ================= Ex command panel messages =================
 //
-// Surfaces error/info messages to the user via the CM6 vim panel — the
+// Surfaces error/info messages to the user via the CM6 Vim panel — the
 // same bottom bar where the plugin itself shows errors like "Not an
 // editor command :foo" and "Invalid regex". Use this anywhere we would
 // otherwise console.error() silently and leave the user wondering why
@@ -445,7 +445,7 @@ export const openFile = () => {
       const selected = await open({
         multiple: false,
       });
-      if (!selected) return; // user cancelled
+      if (!selected) return; // user canceled
       await loadFileFromPath(selected);
     } catch (e) {
       console.error(e);
@@ -471,7 +471,7 @@ export const saveFileAs = async () => {
     selected = await save({
       defaultPath: currentBuffer.path || currentBuffer.name,
     });
-    if (!selected) return; // user cancelled — silent, the user knows
+    if (!selected) return; // user canceled — silent, the user knows
     await writeTextFile(selected, ensureTrailingNewline(getDoc()));
     currentBuffer.path = selected;
     currentBuffer.name = await basename(selected);
@@ -569,7 +569,7 @@ const resolveArgPath = async (arg: string): Promise<string> => {
 // Returns { bang: boolean, arg: string|null } where arg is the
 // argument text with the leading ! stripped and whitespace trimmed,
 // or null if no argument was given.
-// The vim plugin calls Ex handlers with (cm, params) where params
+// The Vim plugin calls Ex handlers with (cm, params) where params
 // carries argString among other fields. The plugin's types aren't
 // formally exposed, so we use `any` for cm (we never reference it)
 // and a structural type for params. Broader `any` on params would
@@ -587,7 +587,7 @@ const parseExArgs = (params: VimExParams) => {
 
 Vim.defineEx('write', 'w', async (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
-  // Bang has no additional effect in our :w path — vim's :w! forces
+  // Bang has no additional effect in our :w path — Vim's :w! forces
   // write to a readonly file, and Skrivro has no readonly concept.
   if (arg) {
     // :w filename / :w! filename — write the buffer's content to
@@ -616,7 +616,7 @@ Vim.defineEx('write', 'w', async (_cm: any, params: VimExParams) => {
 
 Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
-  // Bang has no additional effect — vim's :saveas! forces overwrite
+  // Bang has no additional effect — Vim's :saveas! forces overwrite
   // of an existing file, and Skrivro's writeTextFile has no such
   // refuse-if-exists check to override.
   if (arg) {
@@ -655,15 +655,15 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
   const { bang, arg } = parseExArgs(params);
   // Refuse to discard a dirty buffer without the force bang. Applies
   // to both :e (reload current file from disk) and :e filename (open
-  // a new one). Match vim's exact wording — users who know the E37
-  // code from vim recognise it instantly.
+  // a new one). Match Vim's exact wording — users who know the E37
+  // code from Vim recognize it instantly.
   if (currentBuffer.dirty && !bang) {
     vimMessage(tr('E37: No write since last change (add ! to override)'));
     return;
   }
   if (arg) {
     // :e filename or :e! filename — open specific file by path.
-    // Same vim-style path resolution as :w filename.
+    // Same Vim-style path resolution as :w filename.
     let sourcePath: string | null = null;
     try {
       sourcePath = await resolveArgPath(arg);
@@ -704,7 +704,7 @@ Vim.defineEx('new', 'new', () => {
 
 // :open / :op — non-standard, shows the native file picker dialog.
 // Vim has no canonical Ex command for "show file browser"; this is
-// our addition so vim-mode users don't have to leave the command line.
+// our addition so Vim-mode users don't have to leave the command line.
 Vim.defineEx('open', 'op', () => {
   openFile();
 });
@@ -719,7 +719,7 @@ Vim.defineEx('syncpreview', 'syncp', () => {
 //
 // :format (no arg) shows the current format.
 // :format <name> sets the format — asciidoc / markdown / text.
-// Unknown values surface an E-style error in the vim panel.
+// Unknown values surface an E-style error in the Vim panel.
 //
 // :asciidoc / :markdown / :text are direct one-shot aliases so the
 // user doesn't have to remember the `:format <name>` form. Each
@@ -810,8 +810,8 @@ Vim.defineEx('spell', 'spell', (_cm: any, params: VimExParams) => {
   }
 });
 
-// `:spellgood` (vim `zg`) adds the word under the cursor to the custom
-// word list so it stops being flagged; `:spellundo` (vim `zug`) removes
+// `:spellgood` (Vim `zg`) adds the word under the cursor to the custom
+// word list so it stops being flagged; `:spellundo` (Vim `zug`) removes
 // it. Mirrors Vim's own spellfile commands. Both are inert with a message
 // when spellcheck is off, whether disabled in the config or toggled off at
 // runtime. No short alias (would shadow real Vim's `:sp` split).
@@ -860,9 +860,9 @@ Vim.defineEx('spellundo', 'spellundo', (_cm: any) => {
   );
 });
 
-// `:find` — opens CodeMirror's find/replace panel. The vim-mode entry
-// point: under vim, Ctrl-F stays page-forward, so vim users open the panel
-// here. Non-vim users press Mod-f (Ctrl+F, or Cmd+F on Mac). The panel
+// `:find` — opens CodeMirror's find/replace panel. The Vim-mode entry
+// point: under Vim, Ctrl-F stays page-forward, so Vim users open the panel
+// here. Non-Vim users press Mod-f (Ctrl+F, or Cmd+F on Mac). The panel
 // handles find, replace, and replace-all.
 Vim.defineEx('find', 'find', () => {
   if (editorView) openSearchPanel(editorView);
@@ -917,7 +917,7 @@ Vim.defineEx('toc', 'toc', (_cm: any, params: VimExParams) => {
 // the next launch starts clean — without it, the autosave draft
 // restoration would bring the "discarded" content back.
 //
-// :wq vs :x semantics match vim faithfully:
+// :wq vs :x semantics match Vim faithfully:
 //   :wq ALWAYS calls saveFile(), so the filesystem mtime is bumped
 //       even on an unchanged buffer (unconditional write).
 //   :x  only calls saveFile() when dirty — on a clean buffer, mtime
@@ -930,9 +930,9 @@ Vim.defineEx('toc', 'toc', (_cm: any, params: VimExParams) => {
 // resolve to "always write and quit" for our purposes.
 //
 // After saveFile() we check `dirty` to detect save failure or a
-// cancelled save-as dialog: on success, saveFile() sets dirty=false;
+// canceled save-as dialog: on success, saveFile() sets dirty=false;
 // on error or cancel, dirty stays true. If dirty is still true we
-// return without closing, so a cancelled save never drops the user
+// return without closing, so a canceled save never drops the user
 // out of the editor unexpectedly.
 
 // getCurrentWindow().close() and .destroy() return Promise<void>. We
@@ -954,14 +954,14 @@ const quitHandler = (_cm: any, params: VimExParams) => {
 
 const writeAndQuit = async () => {
   await saveFile();
-  if (currentBuffer.dirty) return; // save failed or user cancelled save-as dialog
+  if (currentBuffer.dirty) return; // save failed or user canceled save-as dialog
   void getCurrentWindow().close();
 };
 
 const exitIfDirty = async (_cm: any, params: VimExParams) => {
   if (currentBuffer.dirty || parseExArgs(params).bang) {
     await saveFile();
-    if (currentBuffer.dirty) return; // save failed or user cancelled save-as dialog
+    if (currentBuffer.dirty) return; // save failed or user canceled save-as dialog
   }
   void getCurrentWindow().close();
 };
@@ -997,14 +997,14 @@ Vim.defineEx('x', 'x', exitIfDirty);
 // :exit — full form, standalone registration (can't use 'e' as its
 // short form because that would clash with the existing :edit / :e).
 Vim.defineEx('exit', 'exit', exitIfDirty);
-// :xit — another valid vim alias for :exit.
+// :xit — another valid Vim alias for :exit.
 Vim.defineEx('xit', 'xit', exitIfDirty);
 // :xall / :xa — 'xa' is a prefix of 'xall', so one registration
 // gives both forms.
 Vim.defineEx('xall', 'xa', exitIfDirty);
 
-// Normal-mode mapping: gz → :syncpreview<CR>. gz is in vim's `g`
-// namespace for extended commands and is unused in standard vim.
+// Normal-mode mapping: gz → :syncpreview<CR>. gz is in Vim's `g`
+// namespace for extended commands and is unused in standard Vim.
 // Wrapped in try/catch because Vim.map's exact signature in
 // @replit/codemirror-vim isn't documented; if it fails, the Ex
 // command and Ctrl+Alt+L / ⌃⌘L both still work.
@@ -1015,7 +1015,7 @@ try {
 }
 
 // Normal mode: ZZ = :x (save if dirty, quit), ZQ = :q! (discard, quit).
-// Classic vim shortcuts that correspond to the Ex commands defined
+// Classic Vim shortcuts that correspond to the Ex commands defined
 // above. Separate try/catch from the gz mapping so one failure doesn't
 // silently prevent the other from registering.
 try {
@@ -1026,7 +1026,7 @@ try {
 }
 
 // Normal mode: zg / zug add/remove the word under the cursor to/from the
-// custom word list (mirroring vim's own spellfile commands), routed
+// custom word list (mirroring Vim's own spellfile commands), routed
 // through the :spellgood / :spellundo Ex commands. Separate try/catch so
 // a failure here doesn't prevent the others from registering.
 try {
@@ -1038,7 +1038,7 @@ try {
 
 // Note on visual block mode: Ctrl+V is intercepted by the webview's
 // paste handler on Linux (webkit2gtk) and Windows (WebView2) before
-// it reaches CM6's key handler, so Ctrl+V is unreachable as a vim
+// it reaches CM6's key handler, so Ctrl+V is unreachable as a Vim
 // binding on those platforms. The plugin's defaultKeymap binds both
 // Ctrl+V and Ctrl+Q to V-BLOCK as a cross-platform compat measure
 // (Vim itself uses Ctrl+Q on Windows, where Ctrl+V is system paste).
@@ -1060,7 +1060,7 @@ try {
 // Default regex engine to Vim magic-mode translation instead of raw
 // JavaScript RegExp. The plugin ships with pcre=true (shown in the
 // search panel hint as "JavaScript regexp: set pcre"), which lets JS
-// regex syntax pass through untranslated — an odd default for a vim
+// regex syntax pass through untranslated — an odd default for a Vim
 // emulator, since Vim users expect \(foo\|bar\), \<word\>, and other
 // magic-mode syntax to work as written. Flipping pcre off enables
 // the plugin's Vim-to-JS regex translation layer. Try/catch for the

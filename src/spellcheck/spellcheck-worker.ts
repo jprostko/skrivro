@@ -223,7 +223,7 @@ const check = (pieces: CheckPiece[]): MisspelledRange[] => {
       // Skip a letter-run that sits against a digit ("h1", "utf8", "v2")
       // — an identifier, not prose. Adjacency is read from this slice via
       // charAt, which returns '' past either edge, so a word at the slice
-      // boundary sees no neighbour and isn't skipped — a negligible
+      // boundary sees no neighbor and isn't skipped — a negligible
       // difference confined to viewport edges.
       const before = text.charAt(localStart - 1);
       const after = text.charAt(localStart + word.length);

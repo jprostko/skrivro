@@ -34,7 +34,7 @@
   --skr-error-hover:     #eba0ac; /* discard button hover */
   --skr-success:         #a6e3a1; /* tip admonition, insert mode pill */
   --skr-feedback:        #94e2d5; /* sync indicator flash */
-  --skr-cursor:          #f5e0dc; /* caret, vim block cursor */
+  --skr-cursor:          #f5e0dc; /* caret, Vim block cursor */
 
   --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
@@ -53,7 +53,7 @@
      load-bearing on both sides but for different reasons:
        - Editor: -y lives on .cm-scroller's margin-block (which
          insets the scrolled content inside .cm-editor without
-         displacing .cm-panels-bottom, so vim's Ex bar still anchors
+         displacing .cm-panels-bottom, so Vim's Ex bar still anchors
          to the pane's bottom). -x lives on .cm-line's padding-inline
          (per-line, for click targets at the left margin).
        - Preview: -y drives the top/bottom offsets of the inner
@@ -181,7 +181,7 @@ body.no-titlebar .titlebar { display: none; }
    margin-block on .cm-scroller (the scrollable editor surface)
    rather than as padding on the pane. Why the indirection:
    .cm-scroller is one of two flex children inside .cm-editor, the
-   other being .cm-panels-bottom (the container for vim's Ex command
+   other being .cm-panels-bottom (the container for Vim's Ex command
    line, CM6's search bar, etc.). Padding on the pane would inset
    BOTH children, making the Ex bar appear to float above an empty
    gap at the pane's bottom. Margin on the scroller alone keeps
@@ -850,7 +850,7 @@ body.mode-split .preview-scroll::after {
   color: var(--skr-text);
 }
 /* The regex toggle is deliberately hidden: the average user doesn't
-   know what regex means, and vim's own / search still provides regex
+   know what regex means, and Vim's own / search still provides regex
    matching for those who do. The panel code, the regex engine, and the
    regexp-to-regex relabel all stay intact, so deleting this rule
    restores the checkbox. */
@@ -865,7 +865,7 @@ body.mode-preview .editor-pane { display: none; }
 /* Editor-only mode:
    Apply the width constraint at .cm-scroller rather than at
    .editor-pane, so that .cm-panels (which is a sibling of .cm-scroller
-   inside .cm-editor) is NOT constrained by the cap. The vim Ex
+   inside .cm-editor) is NOT constrained by the cap. The Vim Ex
    command panel and search bar should span the full window in
    editor-only mode, matching Vim's convention and the status bar's
    width.
@@ -1290,14 +1290,14 @@ dialog.help-dialog::backdrop {
 }
 body.no-statusbar .statusbar { display: none; }
 
-/* Preview-only mode: hide editor-state status bar slots. The vim
+/* Preview-only mode: hide editor-state status bar slots. The Vim
    mode pill and the Ln/Col cursor readout describe state that only
    makes sense when the editor is visible and receiving input. In
    preview-only mode the editor is `display: none` (see the
-   display-modes section above), so its cursor and vim mode are
+   display-modes section above), so its cursor and Vim mode are
    not user-actionable — showing them just invites muscle-memory
-   attempts at vim commands that go nowhere. Hiding via CSS only:
-   the CM6 instance is still alive in the DOM with its full vim
+   attempts at Vim commands that go nowhere. Hiding via CSS only:
+   the CM6 instance is still alive in the DOM with its full Vim
    state intact, so when the user switches back to editor or split
    the mode pill and cursor readout reappear exactly where they
    left off. No JS state shuffling, no save/restore dance — just
@@ -1317,7 +1317,7 @@ body.mode-editor .statusbar .status-sync-indicator,
 body.mode-preview .statusbar .status-sync-indicator { display: none; }
 
 /* Word count is the inverse of the slots above — hidden in editor/split
-   modes (where Ln/Col and the vim mode pill are the primary right-
+   modes (where Ln/Col and the Vim mode pill are the primary right-
    cluster content), shown in preview-only mode where those slots are
    hidden and the right cluster has room. Keeps the status bar focused
    on cursor-position feedback while editing, and on content-size
@@ -1400,7 +1400,7 @@ body.is-dirty .statusbar .status-filename::before {
 /* Sync indicator — a small rightwards arrow that lives quietly in the
    right-hand status bar cluster and briefly flashes when the user
    triggers the scroll-sync action (Ctrl+Alt+L / ⌃⌘L, :syncpreview, or
-   gz in vim normal mode). Confirms the action happened even when the
+   gz in Vim normal mode). Confirms the action happened even when the
    preview doesn't visibly move — e.g., when the caret line is already
    at the top of the visible block and scrollIntoView is a no-op.
 

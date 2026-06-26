@@ -5,7 +5,7 @@
 // a plain text file (custom-words.txt) in the app config dir alongside
 // skrivro.conf, one word per line, matched case-insensitively. The file
 // itself is the management UI: edit it to bulk add/remove, delete a line
-// to drop a word. Within the editor, vim `zg`/`zug` (and, later, a
+// to drop a word. Within the editor, Vim `zg`/`zug` (and, later, a
 // right-click menu) add/remove the word under the cursor.
 //
 // This module holds the canonical in-memory list and the dedup; the

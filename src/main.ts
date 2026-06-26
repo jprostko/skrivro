@@ -92,14 +92,14 @@ import {
 } from './ui.js';
 
 // ================= Keyboard shortcuts =================
-// Capture phase so we beat CM6's internal keymap + vim bindings.
+// Capture phase so we beat CM6's internal keymap + Vim bindings.
 //
 // Primary modifier (the "this is an app shortcut" key) is platform-strict:
 // on Mac it's metaKey (Cmd); on Linux/Windows it's ctrlKey. This leaves
 // Ctrl+letter on Mac alone so Vim's Ctrl-based bindings (Ctrl+V for
 // V-BLOCK, Ctrl+W for window commands, Ctrl+R for redo, Ctrl+D/U/F/B
 // for scrolling, Ctrl+O/I for jumplist, etc.) flow through to the
-// CM6 vim plugin unimpeded. On Linux/Windows, metaKey is the Super/Win
+// CM6 Vim plugin unimpeded. On Linux/Windows, metaKey is the Super/Win
 // key, which is WM-reserved and virtually never reaches userland, so
 // ignoring it there is a no-op with cleaner semantics.
 //
@@ -157,8 +157,8 @@ window.addEventListener('keydown', (e) => {
     // shortcut that AppKit intercepts before the webview sees it.
     e.preventDefault(); toggleFormat();
   } else if (second && k === 'w') {
-    // Pane-focus toggle (W for Window — matches vim's window-command
-    // mnemonic without colliding with vim's own <C-w> chord, which
+    // Pane-focus toggle (W for Window — matches Vim's window-command
+    // mnemonic without colliding with Vim's own <C-w> chord, which
     // requires no Alt). Only meaningful in split mode; togglePaneFocus
     // no-ops in editor-only and preview-only.
     e.preventDefault(); togglePaneFocus();

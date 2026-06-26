@@ -1,4 +1,4 @@
-// Tests for io.ts's pure helpers. Importing io.ts wires the vim Ex
+// Tests for io.ts's pure helpers. Importing io.ts wires the Vim Ex
 // commands and the file pipeline as a side effect, so its sibling
 // modules and the Tauri APIs are stubbed out — the subjects here are
 // the pure functions, not the wiring.

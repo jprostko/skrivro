@@ -9,7 +9,7 @@
   theming, AsciiDoc include:: resolution, arbitrary-path :w / :e, and
   a true application quit — all of which need native filesystem or
   window access the browser doesn't grant. Everything else (the
-  editor, vim mode, AsciiDoc and GitHub-Flavored Markdown rendering,
+  editor, Vim mode, AsciiDoc and GitHub-Flavored Markdown rendering,
   scroll sync, status bar, and the display / width modes) tracks the
   desktop build.
 
@@ -756,7 +756,7 @@
     color: var(--skr-text);
   }
   /* The regex toggle is deliberately hidden: the average user doesn't
-     know what regex means, and vim's own / search still provides regex
+     know what regex means, and Vim's own / search still provides regex
      matching for those who do. The panel code and the regex engine stay
      intact, so deleting this rule restores the checkbox. */
   .cm-panel.cm-search label:has(input[name='re']) {
@@ -770,7 +770,7 @@
   body.mode-editor .editor-pane { border-right: none; }
   /* Apply the editor-only-mode width cap on .cm-scroller (the
      scrollable text area inside .cm-editor) rather than on
-     .editor-pane. .cm-panels (the vim Ex command bar / search bar)
+     .editor-pane. .cm-panels (the Vim Ex command bar / search bar)
      is a sibling of .cm-scroller inside .cm-editor, so a cap on
      .editor-pane constrains the Ex bar too — leaving it stranded
      in the centered editor column instead of spanning the full
@@ -1153,7 +1153,7 @@
      dialog to advertise Mac-specific alternative bindings (e.g.,
      Ctrl+V for V-BLOCK works on Mac because browser paste is Cmd+V
      there, but doesn't on Linux/Windows where Ctrl+V is intercepted
-     by the browser's paste handler before reaching vim). */
+     by the browser's paste handler before reaching Vim). */
   .mac-only {
     display: none;
   }
@@ -1222,7 +1222,7 @@
   }
 
   /* Status bar slots whose visibility depends on display mode:
-     - The vim mode pill describes editor state — irrelevant when
+     - The Vim mode pill describes editor state — irrelevant when
        the editor is hidden in preview-only mode.
      - The cursor position (Ln/Col) is the editor caret, so it's
        also meaningless in preview-only mode where the editor is
@@ -1342,7 +1342,7 @@
     <div class="preview" id="out" tabindex="-1"></div>
   </main>
 
-  <!-- Status bar: mode pill (vim-only) + filename on the left;
+  <!-- Status bar: mode pill (Vim-only) + filename on the left;
        file type + cursor position on the right. Toggled by
        Ctrl+Alt+B / ⌃⌘B. -->
   <footer class="statusbar" id="statusbar">
@@ -1372,7 +1372,7 @@
     </div>
   </dialog>
 
-  <!-- Help overlay with all keyboard shortcuts and vim Ex commands.
+  <!-- Help overlay with all keyboard shortcuts and Vim Ex commands.
        Toggled by Ctrl+Alt+H / ⌃⌘H or by clicking the "?" button in
        the titlebar. Dismissable via Escape (native <dialog> behavior),
        backdrop click, or the close button. -->
@@ -1406,7 +1406,7 @@
       <div class="help-key"><kbd>Ctrl+Z</kbd></div>
       <div class="help-desc">Undo the last edit</div>
       <div class="help-key"><kbd class="non-mac">Ctrl+Y</kbd> <kbd class="mac-only">Ctrl+Shift+Z</kbd></div>
-      <div class="help-desc">Redo the last undone edit (vim users use Ctrl+R)</div>
+      <div class="help-desc">Redo the last undone edit (Vim users use Ctrl+R)</div>
     </div>
 
     <h3>Display</h3>
@@ -1416,7 +1416,7 @@
       <div class="help-key"><kbd>Ctrl+Alt+G</kbd></div>
       <div class="help-desc">Toggle gutter</div>
       <div class="help-key"><kbd>Ctrl+Alt+V</kbd></div>
-      <div class="help-desc">Toggle vim mode</div>
+      <div class="help-desc">Toggle Vim mode</div>
       <div class="help-key"><kbd>Ctrl+Alt+S</kbd></div>
       <div class="help-desc">Split mode (editor + preview)</div>
       <div class="help-key"><kbd>Ctrl+Alt+E</kbd></div>
@@ -1446,10 +1446,10 @@
       <div class="help-key"><kbd>Ctrl+Alt+W</kbd></div>
       <div class="help-desc">Toggle focus between editor and preview (split mode only)</div>
       <div class="help-key"><kbd>Ctrl+F</kbd></div>
-      <div class="help-desc">Find and replace (vim users use :find)</div>
+      <div class="help-desc">Find and replace (Vim users use :find)</div>
     </div>
 
-    <h2>Vim Ex commands <span class="help-note">(vim mode only)</span></h2>
+    <h2>Vim Ex commands <span class="help-note">(Vim mode only)</span></h2>
 
     <h3>File</h3>
     <div class="help-grid">
@@ -1504,9 +1504,9 @@
       <div class="help-key"><kbd>:spell on</kbd> <kbd>:spell off</kbd></div>
       <div class="help-desc">Turn spellcheck on or off (mirrors <kbd>Ctrl+Alt+K</kbd>)</div>
       <div class="help-key"><kbd>:spellgood</kbd></div>
-      <div class="help-desc">Add the word under the cursor to your custom dictionary (vim <kbd>zg</kbd>)</div>
+      <div class="help-desc">Add the word under the cursor to your custom dictionary (Vim <kbd>zg</kbd>)</div>
       <div class="help-key"><kbd>:spellundo</kbd></div>
-      <div class="help-desc">Remove the word under the cursor from your custom dictionary (vim <kbd>zug</kbd>)</div>
+      <div class="help-desc">Remove the word under the cursor from your custom dictionary (Vim <kbd>zug</kbd>)</div>
     </div>
 
     <h3>Width</h3>
@@ -1525,7 +1525,7 @@
       <div class="help-desc">Show or hide the TOC (mirrors <kbd>Ctrl+Alt+I</kbd>, resets on launch)</div>
     </div>
 
-    <h2>Vim normal mode <span class="help-note">(vim mode only)</span></h2>
+    <h2>Vim normal mode <span class="help-note">(Vim mode only)</span></h2>
 
     <h3>Modes</h3>
     <div class="help-grid">
@@ -1640,7 +1640,7 @@
   let autosaveTimer      = null;
   let editorView         = null;
   let suppressDocEvents  = false; // true during programmatic setDoc calls
-  let inCommandMode      = false; // true while vim's : command panel is focused — flips the mode pill to COMMAND
+  let inCommandMode      = false; // true while Vim's : command panel is focused — flips the mode pill to COMMAND
   let currentFormat      = 'asciidoc'; // active document format: 'asciidoc' | 'markdown' | 'text'. Hardcoded today; the format toggle and Markdown renderer that consume this land in later phases.
   let lastSplitFocus     = 'editor';   // remembered focus when last in split mode: 'editor' | 'preview'. Read by the pane-focus toggle and display-mode switch (later phases) to restore the prior pane on round-trips.
 
@@ -1648,7 +1648,7 @@
   //
   // Layout:
   //   - Mode pill (left): canonical Catppuccin colors from catppuccin/nvim
-  //     (blue/green/mauve/red/peach). Hidden when vim is off.
+  //     (blue/green/mauve/red/peach). Hidden when Vim is off.
   //   - Filename (left): dirty indicator + basename
   //   - File type (right): hardcoded 'AsciiDoc' for v1
   //   - Cursor position (right): 'Ln 42, Col 85', 1-indexed, codepoint-aware
@@ -1657,12 +1657,12 @@
   // Functions are defined here (before the Title / dirty section) so that
   // updateTitle() can call refreshStatus() without TDZ issues.
 
-  // Read the current vim mode from @replit/codemirror-vim's state.
+  // Read the current Vim mode from @replit/codemirror-vim's state.
   // getCM() returns a CM5-compat wrapper whose .state.vim holds the
-  // vim mode flags (insertMode, visualMode, visualLine, visualBlock),
+  // Vim mode flags (insertMode, visualMode, visualLine, visualBlock),
   // and whose .state.overwrite distinguishes REPLACE from plain INSERT.
   //
-  // Returns null if vim is off (signals "hide the pill"); returns
+  // Returns null if Vim is off (signals "hide the pill"); returns
   // 'command' if the Ex command panel is currently focused (tracked
   // via inCommandMode, set by focusin/focusout listeners registered
   // after editor creation).
@@ -2572,7 +2572,7 @@
   // ================= Scroll sync =================
   // Sync-once: snap the preview to the block containing (or nearest
   // preceding) the editor caret's source line. Triggered by Ctrl+Alt+L /
-  // ⌃⌘L, the :syncpreview Ex command, or gz in vim normal mode. NOT a
+  // ⌃⌘L, the :syncpreview Ex command, or gz in Vim normal mode. NOT a
   // continuous sync — both panes stay independently scrollable and we
   // don't touch them unless the user asks.
 
@@ -2847,7 +2847,7 @@
   //
   // When restoring to the editor, use editorView.focus() rather
   // than contentDOM.focus() directly. CM6 tracks focus state
-  // internally (the vim plugin consults it before intercepting
+  // internally (the Vim plugin consults it before intercepting
   // keydowns); a bare DOM focus() leaves that internal state stale,
   // so Vim's handler can see "not focused" and pass `:` through to
   // default text insertion. editorView.focus() updates CM6's state
@@ -2917,7 +2917,7 @@
 
   // ================= Ex command panel messages =================
   //
-  // Surfaces error/info messages to the user via the CM6 vim panel —
+  // Surfaces error/info messages to the user via the CM6 Vim panel —
   // the same bottom bar where the plugin itself shows errors like
   // "Not an editor command :foo" and "Invalid regex". Use this
   // anywhere we would otherwise console.error() silently and leave
@@ -3030,7 +3030,7 @@
             updateTitle();
             render();
           } catch (e) {
-            if (e.name === 'AbortError') return; // user cancelled the picker
+            if (e.name === 'AbortError') return; // user canceled the picker
             if (e instanceof FileTooLargeError) { vimMessage(e.message); return; }
             console.error(e);
             vimMessage(`E484: Can't open file (${errMsg(e)})`);
@@ -3182,7 +3182,7 @@
         persistSnapshot();
         updateTitle();
       } catch (e) {
-        if (e.name === 'AbortError') return; // user cancelled the picker
+        if (e.name === 'AbortError') return; // user canceled the picker
         console.error(e);
         vimMessage(`E212: Can't open file for writing: ${currentName} (${errMsg(e)})`);
       }
@@ -3444,7 +3444,7 @@
   });
 
   // ================= Vim compartment =================
-  // Reconfigured at runtime when the user toggles vim mode.
+  // Reconfigured at runtime when the user toggles Vim mode.
   const vimCompartment = new Compartment();
 
   // Pre-built markdown language extension wrapping the GFM-base
@@ -3481,7 +3481,7 @@
   // catppuccinHighlight) extensions elsewhere in the extension list stay
   // wired up but have nothing to color. Other CM6 affordances
   // (highlightActiveLine, search matches, gutter numbers, the focus
-  // outline, the vim cursor shape) all live in unrelated extensions and
+  // outline, the Vim cursor shape) all live in unrelated extensions and
   // are unaffected — "syntax off" is truly "plain editor with every
   // other affordance intact," not "bare textarea."
   const resolveLanguageExtension = (format) =>
@@ -3543,7 +3543,7 @@
   // case-insensitively and consulted before the engine. Unlike master,
   // which keeps the list in an editable custom-words.txt in the config
   // dir, this build persists it as a localStorage key — there is no file
-  // to bulk-edit, so vim zg/zug (and the right-click menu) are the whole
+  // to bulk-edit, so Vim zg/zug (and the right-click menu) are the whole
   // management surface.
 
   const CUSTOM_WORDS_KEY = 'adoc-editor-custom-words-v1';
@@ -3627,7 +3627,7 @@
         const start = from + m.index;
         // Skip a letter-run that sits against a digit ("h1", "utf8") — an
         // identifier, not prose. charAt returns '' past either edge, so a
-        // word at the slice boundary sees no neighbour and isn't skipped.
+        // word at the slice boundary sees no neighbor and isn't skipped.
         const before = text.charAt(m.index - 1);
         const after = text.charAt(m.index + word.length);
         if (/\d/.test(before) || /\d/.test(after)) continue;
@@ -3939,10 +3939,10 @@
   // ================= Editor extensions =================
 
   const makeExtensions = () => [
-    // vim must come before the default keymap so it wins when enabled
+    // Vim must come before the default keymap so it wins when enabled
     vimCompartment.of(prefs.vimMode ? [vim()] : []),
 
-    // Enable CM6 multi-range selections. Required for vim visual-block
+    // Enable CM6 multi-range selections. Required for Vim visual-block
     // mode (Ctrl+Q / Ctrl+V) to extend vertically — the @replit/codemirror-vim
     // plugin represents a V-BLOCK selection as multiple parallel ranges
     // (one per row) and dispatches them via cm6.dispatch({ selection: ... }).
@@ -3960,12 +3960,12 @@
     // .cm-selectionBackground DOM elements. Without this extension CM6
     // relies on the browser's native ::selection pseudo-element, which
     // only shows actual browser text selection (from mouse drag), NOT
-    // internal selection state set programmatically. That means vim
+    // internal selection state set programmatically. That means Vim
     // visual mode (which dispatches selection changes via CM6's state)
     // tracks the selection internally but has no visible highlight —
     // pressing v + motions appears to do nothing. drawSelection() fixes
     // that by rendering the internal selection as visible highlights.
-    // It's also what renders the fat vim block cursor.
+    // It's also what renders the fat Vim block cursor.
     drawSelection(),
     highlightActiveLineGutter(),
     highlightActiveLine(),
@@ -3995,10 +3995,10 @@
     keymap.of([...defaultKeymap, ...historyKeymap]),
 
     // find/replace — CM's search panel, mounted at the top of the editor.
-    // Opened by Mod-f (Ctrl+F, or Cmd+F on Mac) for non-vim users, or the
-    // `:find` Ex command for vim users. searchKeymap is Prec.low, so in
-    // vim mode vim's own keymap wins (its Ctrl-F keeps paging forward);
-    // with vim off, Mod-f opens the panel. The phrases entries rename two
+    // Opened by Mod-f (Ctrl+F, or Cmd+F on Mac) for non-Vim users, or the
+    // `:find` Ex command for Vim users. searchKeymap is Prec.low, so in
+    // Vim mode Vim's own keymap wins (its Ctrl-F keeps paging forward);
+    // with Vim off, Mod-f opens the panel. The phrases entries rename two
     // of CM's default labels; unlisted keys fall back to CM's defaults.
     search({ top: true }),
     EditorState.phrases.of({ 'by word': 'whole word', 'regexp': 'regex' }),
@@ -4205,10 +4205,10 @@
   //      App shortcuts get Ctrl→⌘ and Alt→⌃ (matching the strict-
   //      modifier handler above: primary modifier becomes Cmd,
   //      secondary becomes Ctrl). Vim-namespace kbds (marked
-  //      class="vim") get Ctrl→⌃ and Alt→⌥ instead — vim's Ctrl
+  //      class="vim") get Ctrl→⌃ and Alt→⌥ instead — Vim's Ctrl
   //      and Alt namespaces are conceptually separate from app
   //      shortcuts; on Mac users press the actual Control / Option
-  //      keys for vim bindings, not Cmd.
+  //      keys for Vim bindings, not Cmd.
   const applyMacModifierLabels = () => {
     if (!isMac) return;
     document.querySelectorAll('.help-dialog .mac-only').forEach((el) => {
@@ -4257,7 +4257,7 @@
     editorView.dispatch({
       effects: vimCompartment.reconfigure(prefs.vimMode ? [vim()] : []),
     });
-    // Show / hide the mode pill immediately on vim toggle.
+    // Show / hide the mode pill immediately on Vim toggle.
     refreshStatus();
   };
 
@@ -4495,7 +4495,7 @@
   //      keyboard navigation — so losing that path is preferable
   //      to randomly losing focus on accidental margin clicks.
   //
-  // The .cm-panels skip is so clicks on the vim Ex command bar (or
+  // The .cm-panels skip is so clicks on the Vim Ex command bar (or
   // CM6's search panel) don't get their focus stolen by the editor:
   // those panels have their own input that needs to keep focus
   // after a click.
@@ -4544,13 +4544,13 @@
   }, { passive: false });
 
   // ================= Keyboard shortcuts =================
-  // Capture phase so we beat CM6's internal keymap + vim bindings.
+  // Capture phase so we beat CM6's internal keymap + Vim bindings.
   //
   // Primary modifier (the "this is an app shortcut" key) is platform-
   // strict: on Mac it's metaKey (Cmd); on Linux/Windows it's ctrlKey.
-  // This leaves Ctrl+letter on Mac alone so vim's Ctrl-based bindings
+  // This leaves Ctrl+letter on Mac alone so Vim's Ctrl-based bindings
   // (Ctrl+R for redo, Ctrl+D/U/F/B for scrolling, Ctrl+O/I for the
-  // jumplist, etc.) flow through to the CM6 vim plugin unimpeded. On
+  // jumplist, etc.) flow through to the CM6 Vim plugin unimpeded. On
   // Linux/Windows, metaKey is the Super/Win key, which is WM-reserved
   // and virtually never reaches userland, so ignoring it there is a
   // no-op with cleaner semantics.
@@ -4563,8 +4563,8 @@
   // as the COMPOSED character even when Cmd is also held — so a
   // literal letter match like `k === 'v'` silently fails. Ctrl
   // doesn't compose, so Ctrl+Cmd+V reports e.key="v" cleanly.
-  // Critically: Ctrl+Cmd+letter is a distinct chord from vim's plain
-  // Ctrl+letter, so vim's namespace stays intact.
+  // Critically: Ctrl+Cmd+letter is a distinct chord from Vim's plain
+  // Ctrl+letter, so Vim's namespace stays intact.
   //
   // Net effect: exactly one app-shortcut chord per platform.
   //   Mac:           ⌘letter (primary), ⌃⌘letter (secondary)
@@ -4669,7 +4669,7 @@
   Vim.defineEx('write', 'w', (cm, params) => {
     // :w filename is not supported in standalone (no filesystem path access).
     // :w and :w! both save to current file; any filename argument is
-    // silently ignored. Bang itself has no additional effect — vim's
+    // silently ignored. Bang itself has no additional effect — Vim's
     // :w! forces write to a readonly file, and Skrivro has no readonly
     // concept.
     const { arg } = parseExArgs(params);
@@ -4704,7 +4704,7 @@
 
   // :open / :op — non-standard, shows the native file picker dialog.
   // Vim has no canonical Ex command for "show file browser"; this is
-  // our addition so vim-mode users don't have to leave the command line.
+  // our addition so Vim-mode users don't have to leave the command line.
   Vim.defineEx('open', 'op', () => {
     openFile();
   });
@@ -4715,8 +4715,8 @@
     syncPreviewToCaret();
   });
 
-  // Normal-mode mapping: gz → :syncpreview<CR>. gz is in vim's `g`
-  // namespace for extended commands and is unused in standard vim.
+  // Normal-mode mapping: gz → :syncpreview<CR>. gz is in Vim's `g`
+  // namespace for extended commands and is unused in standard Vim.
   // Wrapped in try/catch because Vim.map's exact signature in
   // @replit/codemirror-vim isn't documented; if it fails, the Ex
   // command and Ctrl+Alt+L / ⌃⌘L both still work.
@@ -4727,7 +4727,7 @@
   }
 
   // Normal mode: zg / zug add/remove the word under the cursor to/from
-  // the custom word list (mirroring vim's own spellfile commands), routed
+  // the custom word list (mirroring Vim's own spellfile commands), routed
   // through the :spellgood / :spellundo Ex commands. Separate try/catch
   // so a failure here doesn't prevent the others from registering.
   try {
@@ -4739,20 +4739,20 @@
 
   // ================= Quit-family Ex commands =================
   //
-  // Implemented as graceful no-ops that emit a vim message
+  // Implemented as graceful no-ops that emit a Vim message
   // explaining why the window doesn't actually close. Per the
   // HTML spec (and uniformly enforced by every modern browser),
   // window.close() succeeds only on a window that was opened by
   // a script (window.open) — the standalone "user opened
   // skrivro.html themselves" case is always blocked. Rather than
-  // have :q produce "Not an editor command :q" and confuse vim
-  // users, we acknowledge the commands so they exist in vim's
+  // have :q produce "Not an editor command :q" and confuse Vim
+  // users, we acknowledge the commands so they exist in Vim's
   // command vocabulary and tell the user what to do.
   //
   // E37 still fires on dirty :q / :qa / :qall (without bang) for
-  // semantic parity with vim — even though we can't actually
+  // semantic parity with Vim — even though we can't actually
   // close, the dirty warning is useful info before the user
-  // manually closes the tab. Real vim's `:q` on dirty errors out
+  // manually closes the tab. Real Vim's `:q` on dirty errors out
   // with E37; `:q!` skips the check. Preserving that distinction
   // is more useful than collapsing every variant to a single
   // "quit blocked" message.
@@ -4809,7 +4809,7 @@
     closeBlocked();
   });
 
-  // :exit — vim's own command name (alias for :x); separate
+  // :exit — Vim's own command name (alias for :x); separate
   // registration even though the body is identical.
   Vim.defineEx('exit', 'exi', () => {
     if (dirty) saveFile();
@@ -4828,7 +4828,7 @@
 
   // :format (no arg) shows the current format.
   // :format <name> sets the format — asciidoc / markdown / text.
-  // Unknown values surface an E-style error in the vim panel.
+  // Unknown values surface an E-style error in the Vim panel.
   //
   // :asciidoc / :markdown / :text are direct one-shot aliases so the
   // user doesn't have to remember the `:format <name>` form. Each
@@ -4904,8 +4904,8 @@
     }
   });
 
-  // `:spellgood` (vim `zg`) adds the word under the cursor to the custom
-  // word list so it stops being flagged; `:spellundo` (vim `zug`) removes
+  // `:spellgood` (Vim `zg`) adds the word under the cursor to the custom
+  // word list so it stops being flagged; `:spellundo` (Vim `zug`) removes
   // it. Mirrors Vim's own spellfile commands. Both are inert with a
   // message when spellcheck is toggled off. No short alias (would shadow
   // real Vim's `:sp` split).
@@ -4943,9 +4943,9 @@
     vimMessage(removed ? `Removed "${word}" from custom words` : `"${word}" is not a custom word`);
   });
 
-  // `:find` — opens CodeMirror's find/replace panel. The vim-mode entry
-  // point: under vim, Ctrl-F stays page-forward, so vim users open the
-  // panel here. Non-vim users press Mod-f (Ctrl+F, or Cmd+F on Mac).
+  // `:find` — opens CodeMirror's find/replace panel. The Vim-mode entry
+  // point: under Vim, Ctrl-F stays page-forward, so Vim users open the
+  // panel here. Non-Vim users press Mod-f (Ctrl+F, or Cmd+F on Mac).
   // The panel handles find, replace, and replace-all.
   Vim.defineEx('find', 'find', () => {
     openSearchPanel(editorView);
@@ -4990,14 +4990,14 @@
 
   // Note on visual block mode: on Linux/Windows, Ctrl+V is
   // intercepted by the browser's paste handler before it reaches
-  // CM6's key handler, so Ctrl+V is unreachable as a vim binding
+  // CM6's key handler, so Ctrl+V is unreachable as a Vim binding
   // there. The plugin already ships Ctrl+Q as a native default
   // binding for V-BLOCK entry (see @replit/codemirror-vim's
   // defaultKeymap — it's the same workaround Vim itself uses on
   // Windows, where Ctrl+V is also the system paste shortcut), so
   // no remapping is needed on our side: users press Ctrl+Q to
   // enter V-BLOCK. On Mac, browser paste is Cmd+V, so plain
-  // Ctrl+V isn't intercepted and vim's native Ctrl+V binding works
+  // Ctrl+V isn't intercepted and Vim's native Ctrl+V binding works
   // for V-BLOCK there too. The help overlay's V-BLOCK entry uses
   // the .mac-only class to advertise the Mac-only Ctrl+V binding
   // alongside the always-available Ctrl+Q.
@@ -5005,7 +5005,7 @@
   // Default regex engine to Vim magic-mode translation instead of raw
   // JavaScript RegExp. The plugin ships with pcre=true (shown in the
   // search panel hint as "JavaScript regexp: set pcre"), which lets JS
-  // regex syntax pass through untranslated — an odd default for a vim
+  // regex syntax pass through untranslated — an odd default for a Vim
   // emulator, since Vim users expect \(foo\|bar\), \<word\>, and other
   // magic-mode syntax to work as written. Flipping pcre off enables
   // the plugin's Vim-to-JS regex translation layer. Try/catch for the
@@ -5062,7 +5062,7 @@
   // Status bar event hooks.
   //
   // The CM6 updateListener (above, inside makeExtensions) catches doc
-  // and selection changes, which covers most vim mode transitions —
+  // and selection changes, which covers most Vim mode transitions —
   // most mode changes also tend to change selection (v → visual starts
   // a selection, Esc from insert → cursor moves back by 1, etc.). But
   // pure-mode transitions like `i` (normal → insert at the current
@@ -5073,9 +5073,9 @@
   // just reads a few DOM properties and dispatches no CM state updates.
   host.addEventListener('keyup', refreshStatus);
 
-  // COMMAND mode detection. The vim command panel is rendered as a
+  // COMMAND mode detection. The Vim command panel is rendered as a
   // CM6 panel containing an <input> element; pressing `:` focuses
-  // the input, and completing or cancelling the command blurs it.
+  // the input, and completing or canceling the command blurs it.
   // Tracking focus/blur on the input is the simplest signal — no
   // MutationObserver needed. The panel input is the only <input>
   // inside the editor host, so a tag-name check is precise enough.

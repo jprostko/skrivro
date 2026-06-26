@@ -1,8 +1,11 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vite-plus";
 
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
+  staged: {
+    "src/**/*.ts": "vp lint --type-aware -c .oxlintrc.json"
+  },
   root: "src",
   clearScreen: false,
   server: {

@@ -9,7 +9,7 @@
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import type {
   MisspelledRange, ResultResponse, SpellRequest,
 } from './spellcheck-worker.js';

@@ -1,4 +1,4 @@
-/// <reference types="vite/client" />
+/// <reference types="vite-plus/client" />
 
 // Custom globals set by Tauri's initialization_script at document-start
 // (before any HTML parsing), read by the inline FOUC-prevention scripts

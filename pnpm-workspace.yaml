@@ -1,5 +1,30 @@
 # Supply-chain hardening.
-minimumReleaseAge: 4320   # hold new releases 3 days (value is in minutes)
-blockExoticSubdeps: true  # transitive deps must resolve from the registry
-strictDepBuilds: true     # fail install on unreviewed dependency build scripts
+minimumReleaseAge: 4320 # hold new releases 3 days (value is in minutes)
+blockExoticSubdeps: true # transitive deps must resolve from the registry
+strictDepBuilds: true # fail install on unreviewed dependency build scripts
 trustPolicy: no-downgrade # reject a version with weaker trust evidence than an earlier release
+catalog:
+  vite: npm:@voidzero-dev/vite-plus-core@latest
+  vitest: 4.1.9
+  vite-plus: latest
+overrides:
+  vite: 'catalog:'
+  vitest: 'catalog:'
+peerDependencyRules:
+  allowAny:
+    - vite
+    - vitest
+  allowedVersions:
+    vite: '*'
+    vitest: '*'
+minimumReleaseAgeExclude:
+  - vite-plus
+  - '@voidzero-dev/*'
+  - oxlint
+  - '@oxlint/*'
+  - oxlint-tsgolint
+  - '@oxlint-tsgolint/*'
+  - oxfmt
+  - '@oxfmt/*'
+  - vitest
+  - '@vitest/*'

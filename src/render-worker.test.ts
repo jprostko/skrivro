@@ -4,7 +4,7 @@
 // pair lines to elements by index. The worker registers its message
 // handler at import time; happy-dom supplies the addEventListener
 // global it expects.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import {
   ad, computeMarkdownLineMap, extractAsciidoctorBlockLines, md,
 } from './render-worker.js';

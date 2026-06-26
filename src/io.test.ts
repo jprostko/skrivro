@@ -2,7 +2,7 @@
 // commands and the file pipeline as a side effect, so its sibling
 // modules and the Tauri APIs are stubbed out — the subjects here are
 // the pure functions, not the wiring.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn(), save: vi.fn() }));
 vi.mock('@tauri-apps/plugin-fs', () => ({

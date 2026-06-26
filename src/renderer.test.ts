@@ -4,7 +4,7 @@
 // markdown pairing. The Tauri file APIs are stubbed — readTextFile
 // reads from an in-memory file map, and the path helpers get minimal
 // POSIX implementations.
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 vi.mock('@tauri-apps/plugin-fs', () => ({ readTextFile: vi.fn() }));
 vi.mock('@tauri-apps/api/path', () => ({

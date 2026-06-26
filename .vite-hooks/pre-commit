@@ -15,4 +15,4 @@
 set -e
 
 npm run typecheck
-npx lint-staged
+vp staged

@@ -1520,9 +1520,9 @@
     <h3>Table of contents</h3>
     <div class="help-grid">
       <div class="help-key"><kbd>:toc</kbd></div>
-      <div class="help-desc">Show whether the TOC visibility override is on or off</div>
+      <div class="help-desc">Show whether the table of contents visibility override is on or off</div>
       <div class="help-key"><kbd>:toc on</kbd> <kbd>:toc off</kbd></div>
-      <div class="help-desc">Show or hide the TOC (mirrors <kbd>Ctrl+Alt+I</kbd>, resets on launch)</div>
+      <div class="help-desc">Show or hide the table of contents (mirrors <kbd>Ctrl+Alt+I</kbd>, resets on launch)</div>
     </div>
 
     <h2>Vim normal mode <span class="help-note">(Vim mode only)</span></h2>
@@ -4975,7 +4975,7 @@
   Vim.defineEx('toc', 'toc', (cm, params) => {
     const { arg } = parseExArgs(params);
     if (!arg) {
-      vimMessage(`TOC: ${tocHidden ? 'off' : 'on'}`);
+      vimMessage(`Table of contents: ${tocHidden ? 'off' : 'on'}`);
       return;
     }
     const a = arg.toLowerCase();

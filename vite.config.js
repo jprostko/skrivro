@@ -3,8 +3,31 @@ import { defineConfig } from "vite-plus";
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
-  staged: {
-    "src/**/*.ts": "vp lint --type-aware -c .oxlintrc.json"
+  lint: {
+    plugins: ["typescript"],
+    categories: { correctness: "error" },
+    env: { builtin: true, browser: true },
+    rules: {
+      "typescript/no-explicit-any": "off",
+      "typescript/no-unsafe-assignment": "off",
+      "typescript/no-unsafe-call": "off",
+      "typescript/no-unsafe-member-access": "off",
+      "typescript/no-unsafe-argument": "off",
+      "typescript/no-unsafe-return": "off",
+      "typescript/no-misused-spread": "off",
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }],
+      "typescript/no-floating-promises": "error",
+      "typescript/no-misused-promises": ["error", { checksVoidReturn: { arguments: false } }],
+      "typescript/await-thenable": "error",
+      "typescript/require-await": "error",
+      "typescript/restrict-plus-operands": "error",
+      "typescript/restrict-template-expressions": "error",
+    },
+    options: {
+      typeAware: true,
+      typeCheck: true,
+    },
   },
   root: "src",
   clearScreen: false,

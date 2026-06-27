@@ -94,9 +94,6 @@ importers:
       oxlint-tsgolint:
         specifier: ^0.23.0
         version: 0.23.0
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@latest
         version: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@25.9.2)(typescript@6.0.3)(yaml@2.9.0)'
@@ -2252,7 +2249,8 @@ snapshots:
 
   totalist@3.0.1: {}
 
-  typescript@6.0.3: {}
+  typescript@6.0.3:
+    optional: true
 
   uc.micro@2.1.0: {}
 

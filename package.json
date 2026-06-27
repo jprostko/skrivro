@@ -9,8 +9,7 @@
     "dev": "vp dev",
     "build": "vp build",
     "tauri": "tauri",
-    "typecheck": "tsc --noEmit",
-    "lint": "vp lint --type-aware -c .oxlintrc.json src/",
+    "check": "vp check --no-fmt",
     "test": "vp test run",
     "test:watch": "vp test",
     "prepare": "vp config"
@@ -45,7 +44,6 @@
     "happy-dom": "^20.10.2",
     "oxlint": "^1.71.0",
     "oxlint-tsgolint": "^0.23.0",
-    "typescript": "^6.0.3",
     "vite": "^8.0.13",
     "vite-plus": "^0.2.1",
     "vitest": "^4.1.8"

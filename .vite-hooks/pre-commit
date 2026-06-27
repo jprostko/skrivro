@@ -1,18 +1,10 @@
-# Pre-commit hook — runs typecheck on the whole project and oxlint
-# on staged TypeScript files. Blocks the commit if either fails.
+# Pre-commit hook — runs the project quality gate (lint and type
+# check, via vp check) and blocks the commit if it fails.
 #
-# CWD when the hook runs is the git repo root, which is also where
-# package.json / tsconfig / .oxlintrc.json / node_modules live after
-# the 2026-04-24 flatten that moved the former tauri/ subtree up
-# one level.
+# CWD is the git repo root, where package.json, tsconfig, and
+# node_modules live.
 #
-# typecheck runs on the whole project (tsc needs cross-file type
-# inference; there's no meaningful "lint just this file" mode for it).
-# lint-staged runs oxlint on just the staged TypeScript files.
-#
-# set -e so any failing step aborts; exit status propagates to git
-# which refuses the commit.
+# set -e so a failing step aborts and git refuses the commit.
 set -e
 
-npm run typecheck
-vp staged
+npm run check

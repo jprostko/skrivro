@@ -7,12 +7,12 @@
 // for titlebar/gutter/displayMode/statusBar state on the very first
 // frame — FOUC prevention for the UI chrome.
 
-const PREFS_KEY = 'adoc-editor-prefs-v1';
+const PREFS_KEY = "adoc-editor-prefs-v1";
 
 const defaultPrefs = {
   titlebarHidden: false,
   vimMode: false,
-  displayMode: 'split',
+  displayMode: "split",
   gutterHidden: true,
   statusBarHidden: false,
   syntaxHighlighting: true,
@@ -22,7 +22,7 @@ const defaultPrefs = {
   // toggle then silences/restores them, and that choice persists here.
   // Inert when the config has spellcheck off (nothing to show regardless).
   spellcheck: true,
-  widthMode: 'medium',
+  widthMode: "medium",
 };
 
 const loadPrefs = () => {
@@ -34,7 +34,9 @@ const loadPrefs = () => {
 };
 
 export const savePrefs = () => {
-  try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch {}
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  } catch {}
 };
 
 export const prefs = loadPrefs();

@@ -6,27 +6,43 @@
 // mutations use `setDirty(d)` (which also triggers updateTitle) or
 // direct property assignment for path / name.
 
-import { open, save } from '@tauri-apps/plugin-dialog';
-import { readTextFile, writeTextFile, stat } from '@tauri-apps/plugin-fs';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { basename, dirname, resolve, isAbsolute } from '@tauri-apps/api/path';
-import { invoke } from '@tauri-apps/api/core';
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { readTextFile, writeTextFile, stat } from "@tauri-apps/plugin-fs";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { basename, dirname, resolve, isAbsolute } from "@tauri-apps/api/path";
+import { invoke } from "@tauri-apps/api/core";
 
-import { Vim, getCM, getDoc, setDoc, editorView, setEditorLanguage, spellcheckConfigured } from './editor.js';
-import { openSearchPanel } from '@codemirror/search';
-import { addCustomWord, removeCustomWord } from './spellcheck/custom-words.js';
-import { render, syncPreviewToCaret, requestPreviewScrollToTop } from './preview.js';
-import { clearAllRendererCaches } from './renderer.js';
-import { userConfig } from './config.js';
-import { prefs } from './prefs.js';
-import { tr } from './i18n.js';
-import { refreshStatus, applySyntaxHighlighting, applySpellcheck, setWidthMode, WIDTH_MODES, applyTocVisibility, isTocHidden } from './ui.js';
+import {
+  Vim,
+  getCM,
+  getDoc,
+  setDoc,
+  editorView,
+  setEditorLanguage,
+  spellcheckConfigured,
+} from "./editor.js";
+import { openSearchPanel } from "@codemirror/search";
+import { addCustomWord, removeCustomWord } from "./spellcheck/custom-words.js";
+import { render, syncPreviewToCaret, requestPreviewScrollToTop } from "./preview.js";
+import { clearAllRendererCaches } from "./renderer.js";
+import { userConfig } from "./config.js";
+import { prefs } from "./prefs.js";
+import { tr } from "./i18n.js";
+import {
+  refreshStatus,
+  applySyntaxHighlighting,
+  applySpellcheck,
+  setWidthMode,
+  WIDTH_MODES,
+  applyTocVisibility,
+  isTocHidden,
+} from "./ui.js";
 
 // ================= Constants =================
 
-const LS_KEY       = 'adoc-editor-draft-v1';
-export const DEFAULT_NAME = 'untitled.adoc';
-export const DEFAULT_DOC  = '';
+const LS_KEY = "adoc-editor-draft-v1";
+export const DEFAULT_NAME = "untitled.adoc";
+export const DEFAULT_DOC = "";
 
 // Hard upper bound on the size of a file Skrivro will open, in bytes
 // (3 MiB). A file above this is refused before any read — see
@@ -50,14 +66,14 @@ const MAX_FILE_BYTES = 3 * 1024 * 1024;
 // returning null is impossible at runtime. The `!` tells TS strict
 // null checks to trust us rather than requiring defensive null
 // branches at each use site.
-const nameEl           = document.getElementById('name')!;
+const nameEl = document.getElementById("name")!;
 // confirmDlg additionally casts to HTMLDialogElement so showModal() /
 // close() type-check (those methods are on HTMLDialogElement, not
 // HTMLElement). The cast subsumes the non-null assertion.
-const confirmDlg       = document.getElementById('confirmDialog') as HTMLDialogElement;
-const confirmMsgEl     = document.getElementById('confirmMessage')!;
-const confirmOkBtn     = document.getElementById('confirmOkBtn')!;
-const confirmCancelBtn = document.getElementById('confirmCancelBtn')!;
+const confirmDlg = document.getElementById("confirmDialog") as HTMLDialogElement;
+const confirmMsgEl = document.getElementById("confirmMessage")!;
+const confirmOkBtn = document.getElementById("confirmOkBtn")!;
+const confirmCancelBtn = document.getElementById("confirmCancelBtn")!;
 
 // ================= Current buffer state =================
 //
@@ -78,7 +94,7 @@ const confirmCancelBtn = document.getElementById('confirmCancelBtn')!;
 // Markup format associated with the current buffer. Drives which
 // Renderer implementation handles render + scroll-sync and which
 // CM6 language extension is active in the editor.
-export type Format = 'asciidoc' | 'markdown' | 'text';
+export type Format = "asciidoc" | "markdown" | "text";
 
 export interface Buffer {
   path: string | null;
@@ -91,7 +107,7 @@ export const currentBuffer: Buffer = {
   path: null,
   name: DEFAULT_NAME,
   dirty: false,
-  format: 'asciidoc',
+  format: "asciidoc",
 };
 
 // Detect the markup format for a given path based on its file
@@ -117,22 +133,24 @@ export const detectFormat = (path: string | null): Format => {
     // check for any value that slipped through or was mutated
     // after parse.
     const configured = userConfig.defaultFormat;
-    if (configured === 'asciidoc' || configured === 'markdown' || configured === 'text') {
+    if (configured === "asciidoc" || configured === "markdown" || configured === "text") {
       return configured;
     }
-    return 'asciidoc';
+    return "asciidoc";
   }
   const lower = path.toLowerCase();
-  if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'markdown';
-  if (lower.endsWith('.adoc') || lower.endsWith('.asciidoc')) return 'asciidoc';
-  return 'text';
+  if (lower.endsWith(".md") || lower.endsWith(".markdown")) return "markdown";
+  if (lower.endsWith(".adoc") || lower.endsWith(".asciidoc")) return "asciidoc";
+  return "text";
 };
 
 // Shell CWD captured at launch time, used as a fallback for relative
 // :w / :e arguments when no file is currently open. Set by main.ts
 // via setLaunchCwd after invoke('get_launch_info').
-export let launchCwd: string = '';
-export const setLaunchCwd = (cwd: string) => { launchCwd = cwd; };
+export let launchCwd: string = "";
+export const setLaunchCwd = (cwd: string) => {
+  launchCwd = cwd;
+};
 
 // ================= Ex command panel messages =================
 //
@@ -161,9 +179,9 @@ export const vimMessage = (text: string) => {
   if (!editorView) return;
   const cm = getCM(editorView);
   if (!cm) return;
-  const div = document.createElement('div');
-  div.className = 'cm-vim-message';
-  div.style.whiteSpace = 'pre';
+  const div = document.createElement("div");
+  div.className = "cm-vim-message";
+  div.style.whiteSpace = "pre";
   div.textContent = text;
   cm.openNotification(div, { bottom: true, duration: 5000 });
 };
@@ -188,19 +206,21 @@ export const vimMessage = (text: string) => {
 const TAURI_FS_PREFIX = /^failed to [^:]+: .+? with error: /;
 const errMsg = (e: unknown): string => {
   const raw = e instanceof Error ? e.message : String(e);
-  return raw.replace(TAURI_FS_PREFIX, '');
+  return raw.replace(TAURI_FS_PREFIX, "");
 };
 
 // ================= Title / dirty =================
 
 export const updateTitle = () => {
   nameEl.textContent = currentBuffer.name;
-  document.body.classList.toggle('is-dirty', currentBuffer.dirty);
-  const title = `${currentBuffer.dirty ? '● ' : ''}${currentBuffer.name} — Skrivro`;
+  document.body.classList.toggle("is-dirty", currentBuffer.dirty);
+  const title = `${currentBuffer.dirty ? "● " : ""}${currentBuffer.name} — Skrivro`;
   document.title = title;
   // Tauri 2 does not auto-sync document.title to the native window
   // title, unlike browsers. We have to set it explicitly.
-  getCurrentWindow().setTitle(title).catch((e) => console.error('setTitle failed:', e));
+  getCurrentWindow()
+    .setTitle(title)
+    .catch((e) => console.error("setTitle failed:", e));
   // Status bar mirrors filename + dirty indicator; refresh on any title update.
   refreshStatus();
 };
@@ -253,12 +273,15 @@ export const scheduleAutosave = () => {
     // without going through clearDraft.
     if (!currentBuffer.dirty) return;
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify({
-        content: getDoc(),
-        name:    currentBuffer.name,
-        path:    currentBuffer.path,
-        ts:      Date.now(),
-      }));
+      localStorage.setItem(
+        LS_KEY,
+        JSON.stringify({
+          content: getDoc(),
+          name: currentBuffer.name,
+          path: currentBuffer.path,
+          ts: Date.now(),
+        }),
+      );
     } catch {}
   }, 500);
 };
@@ -271,7 +294,9 @@ export const clearDraft = () => {
   // pending timer at t=500ms resurrects the draft).
   if (autosaveTimer !== null) clearTimeout(autosaveTimer);
   autosaveTimer = null;
-  try { localStorage.removeItem(LS_KEY); } catch {}
+  try {
+    localStorage.removeItem(LS_KEY);
+  } catch {}
 };
 
 // Persist the "current file" state for the restore-session feature.
@@ -281,11 +306,11 @@ export const clearDraft = () => {
 // `path` is the absolute file path, or null for an untitled buffer.
 export const writeSessionState = async (path: string | null) => {
   try {
-    await invoke('set_session_state', {
-      state: { version: 1, lastFilePath: path }
+    await invoke("set_session_state", {
+      state: { version: 1, lastFilePath: path },
     });
   } catch (e) {
-    console.error('Failed to persist session state:', e);
+    console.error("Failed to persist session state:", e);
   }
 };
 
@@ -296,7 +321,7 @@ export const resolveInitialDoc = () => {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (typeof d.content === 'string' && d.content.length > 0) {
+      if (typeof d.content === "string" && d.content.length > 0) {
         currentBuffer.name = d.name || DEFAULT_NAME;
         if (d.path) currentBuffer.path = d.path;
         currentBuffer.format = detectFormat(currentBuffer.path);
@@ -315,13 +340,13 @@ export const resolveInitialDoc = () => {
 // after null check).
 type ConfirmCallback = () => void;
 let pendingConfirmOk: ConfirmCallback | null = null;
-confirmOkBtn.addEventListener('click', () => {
+confirmOkBtn.addEventListener("click", () => {
   const cb = pendingConfirmOk;
   pendingConfirmOk = null;
   confirmDlg.close();
   if (cb) cb();
 });
-confirmCancelBtn.addEventListener('click', () => {
+confirmCancelBtn.addEventListener("click", () => {
   pendingConfirmOk = null;
   confirmDlg.close();
 });
@@ -334,15 +359,18 @@ export const askConfirm = (message: string, onOk: ConfirmCallback) => {
 };
 
 export const confirmDiscard = (onOk: ConfirmCallback) => {
-  if (!currentBuffer.dirty) { onOk(); return; }
-  askConfirm(tr('You have unsaved changes. Discard them?'), onOk);
+  if (!currentBuffer.dirty) {
+    onOk();
+    return;
+  }
+  askConfirm(tr("You have unsaved changes. Discard them?"), onOk);
 };
 
 // ================= File ops =================
 
 // POSIX convention: text files end in a newline. Applied at every
 // write-to-disk site (not to autosave draft or render input).
-const ensureTrailingNewline = (text: string) => text.endsWith('\n') ? text : text + '\n';
+const ensureTrailingNewline = (text: string) => (text.endsWith("\n") ? text : text + "\n");
 
 // ================= File-size guard =================
 //
@@ -359,8 +387,8 @@ const ensureTrailingNewline = (text: string) => text.endsWith('\n') ? text : tex
 const formatBytes = (bytes: number): string => {
   const MIB = 1024 * 1024;
   const GIB = MIB * 1024;
-  const [value, unit] = bytes >= GIB ? [bytes / GIB, 'GiB'] : [bytes / MIB, 'MiB'];
-  return `${value.toFixed(1).replace(/\.0$/, '')} ${unit}`;
+  const [value, unit] = bytes >= GIB ? [bytes / GIB, "GiB"] : [bytes / MIB, "MiB"];
+  return `${value.toFixed(1).replace(/\.0$/, "")} ${unit}`;
 };
 
 // Thrown by readDocumentText when a file exceeds MAX_FILE_BYTES. The
@@ -371,8 +399,15 @@ const formatBytes = (bytes: number): string => {
 // failure (missing file, permission denied) and message it correctly.
 export class FileTooLargeError extends Error {
   constructor(name: string, size: number) {
-    super(tr('%s is too large to open (%s, limit %s)', name, formatBytes(size), formatBytes(MAX_FILE_BYTES)));
-    this.name = 'FileTooLargeError';
+    super(
+      tr(
+        "%s is too large to open (%s, limit %s)",
+        name,
+        formatBytes(size),
+        formatBytes(MAX_FILE_BYTES),
+      ),
+    );
+    this.name = "FileTooLargeError";
   }
 }
 
@@ -434,7 +469,7 @@ export const loadFileFromPath = async (path: string) => {
     if (e instanceof FileTooLargeError) {
       vimMessage(e.message);
     } else {
-      console.error('Failed to load file:', path, e);
+      console.error("Failed to load file:", path, e);
     }
   }
 };
@@ -461,7 +496,7 @@ export const saveFile = async () => {
     clearDraft();
   } catch (e) {
     console.error(e);
-    vimMessage(tr('E212: Can\'t open file for writing: %s (%s)', currentBuffer.path, errMsg(e)));
+    vimMessage(tr("E212: Can't open file for writing: %s (%s)", currentBuffer.path, errMsg(e)));
   }
 };
 
@@ -486,15 +521,17 @@ export const saveFileAs = async () => {
     // the target path even if the write threw after the dialog
     // resolved. If the dialog itself threw, selected is still null
     // and we fall back to a generic message.
-    vimMessage(selected
-      ? tr('E212: Can\'t open file for writing: %s (%s)', selected, errMsg(e))
-      : tr('E212: Can\'t open file for writing (%s)', errMsg(e)));
+    vimMessage(
+      selected
+        ? tr("E212: Can't open file for writing: %s (%s)", selected, errMsg(e))
+        : tr("E212: Can't open file for writing (%s)", errMsg(e)),
+    );
   }
 };
 
 export const newFile = () => {
   confirmDiscard(() => {
-    setDoc('');
+    setDoc("");
     currentBuffer.path = null;
     currentBuffer.name = DEFAULT_NAME;
     setBufferFormat(detectFormat(null));
@@ -528,9 +565,11 @@ export const reloadFile = async () => {
     // A file can grow past the limit between open and reload — :e is
     // exactly the "the file on disk changed" operation — so the
     // oversize case is live here, not only at first open.
-    vimMessage(e instanceof FileTooLargeError
-      ? e.message
-      : tr('E484: Can\'t open file %s (%s)', currentBuffer.path, errMsg(e)));
+    vimMessage(
+      e instanceof FileTooLargeError
+        ? e.message
+        : tr("E484: Can't open file %s (%s)", currentBuffer.path, errMsg(e)),
+    );
   }
 };
 
@@ -579,13 +618,13 @@ interface VimExParams {
   argString?: string;
 }
 const parseExArgs = (params: VimExParams) => {
-  let s = ((params && params.argString) || '').trim();
-  const bang = s.startsWith('!');
+  let s = ((params && params.argString) || "").trim();
+  const bang = s.startsWith("!");
   if (bang) s = s.slice(1).trim();
   return { bang, arg: s || null };
 };
 
-Vim.defineEx('write', 'w', async (_cm: any, params: VimExParams) => {
+Vim.defineEx("write", "w", async (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   // Bang has no additional effect in our :w path — Vim's :w! forces
   // write to a readonly file, and Skrivro has no readonly concept.
@@ -603,9 +642,11 @@ Vim.defineEx('write', 'w', async (_cm: any, params: VimExParams) => {
       await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
     } catch (e) {
       console.error(e);
-      vimMessage(targetPath
-        ? tr('E212: Can\'t open file for writing: %s (%s)', targetPath, errMsg(e))
-        : tr('E212: Can\'t open file for writing (%s)', errMsg(e)));
+      vimMessage(
+        targetPath
+          ? tr("E212: Can't open file for writing: %s (%s)", targetPath, errMsg(e))
+          : tr("E212: Can't open file for writing (%s)", errMsg(e)),
+      );
     }
   } else {
     // :w or :w! — save to current file. Error reporting happens inside
@@ -614,7 +655,7 @@ Vim.defineEx('write', 'w', async (_cm: any, params: VimExParams) => {
   }
 });
 
-Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
+Vim.defineEx("saveas", "sav", async (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   // Bang has no additional effect — Vim's :saveas! forces overwrite
   // of an existing file, and Skrivro's writeTextFile has no such
@@ -638,9 +679,11 @@ Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
       updateTitle();
     } catch (e) {
       console.error(e);
-      vimMessage(targetPath
-        ? tr('E212: Can\'t open file for writing: %s (%s)', targetPath, errMsg(e))
-        : tr('E212: Can\'t open file for writing (%s)', errMsg(e)));
+      vimMessage(
+        targetPath
+          ? tr("E212: Can't open file for writing: %s (%s)", targetPath, errMsg(e))
+          : tr("E212: Can't open file for writing (%s)", errMsg(e)),
+      );
     }
   } else {
     // :saveas (no args) — non-standard: show the save dialog. Real Vim
@@ -651,14 +694,14 @@ Vim.defineEx('saveas', 'sav', async (_cm: any, params: VimExParams) => {
   }
 });
 
-Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
+Vim.defineEx("edit", "e", async (_cm: any, params: VimExParams) => {
   const { bang, arg } = parseExArgs(params);
   // Refuse to discard a dirty buffer without the force bang. Applies
   // to both :e (reload current file from disk) and :e filename (open
   // a new one). Match Vim's exact wording — users who know the E37
   // code from Vim recognize it instantly.
   if (currentBuffer.dirty && !bang) {
-    vimMessage(tr('E37: No write since last change (add ! to override)'));
+    vimMessage(tr("E37: No write since last change (add ! to override)"));
     return;
   }
   if (arg) {
@@ -681,11 +724,13 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
       void render();
     } catch (e) {
       console.error(e);
-      vimMessage(e instanceof FileTooLargeError
-        ? e.message
-        : (sourcePath
-            ? tr('E484: Can\'t open file %s (%s)', sourcePath, errMsg(e))
-            : tr('E484: Can\'t open file (%s)', errMsg(e))));
+      vimMessage(
+        e instanceof FileTooLargeError
+          ? e.message
+          : sourcePath
+            ? tr("E484: Can't open file %s (%s)", sourcePath, errMsg(e))
+            : tr("E484: Can't open file (%s)", errMsg(e)),
+      );
     }
   } else {
     // :e or :e! — reload current file from disk. Error reporting
@@ -694,24 +739,24 @@ Vim.defineEx('edit', 'e', async (_cm: any, params: VimExParams) => {
   }
 });
 
-Vim.defineEx('enew', 'ene', () => {
+Vim.defineEx("enew", "ene", () => {
   newFile();
 });
 
-Vim.defineEx('new', 'new', () => {
+Vim.defineEx("new", "new", () => {
   newFile();
 });
 
 // :open / :op — non-standard, shows the native file picker dialog.
 // Vim has no canonical Ex command for "show file browser"; this is
 // our addition so Vim-mode users don't have to leave the command line.
-Vim.defineEx('open', 'op', () => {
+Vim.defineEx("open", "op", () => {
   openFile();
 });
 
 // :syncpreview / :syncp — snap the preview to the block containing
 // the editor caret's source line. Same action as Ctrl+Alt+L / ⌃⌘L.
-Vim.defineEx('syncpreview', 'syncp', () => {
+Vim.defineEx("syncpreview", "syncp", () => {
   syncPreviewToCaret();
 });
 
@@ -730,7 +775,7 @@ Vim.defineEx('syncpreview', 'syncp', () => {
 // validation path.
 const parseFormat = (s: string): Format | null => {
   const lower = s.toLowerCase();
-  if (lower === 'asciidoc' || lower === 'markdown' || lower === 'text') {
+  if (lower === "asciidoc" || lower === "markdown" || lower === "text") {
     return lower;
   }
   return null;
@@ -742,15 +787,15 @@ const parseFormat = (s: string): Format | null => {
 // (ui.ts already imports from io.ts). The set is three entries —
 // keeping it in sync manually is trivial.
 const FORMAT_DISPLAY_NAME: Record<Format, string> = {
-  asciidoc: 'AsciiDoc',
-  markdown: 'Markdown',
-  text: 'Text',
+  asciidoc: "AsciiDoc",
+  markdown: "Markdown",
+  text: "Text",
 };
 
-Vim.defineEx('format', 'format', (_cm: any, params: VimExParams) => {
+Vim.defineEx("format", "format", (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
-    vimMessage(tr('Format: %s', FORMAT_DISPLAY_NAME[currentBuffer.format]));
+    vimMessage(tr("Format: %s", FORMAT_DISPLAY_NAME[currentBuffer.format]));
     return;
   }
   const fmt = parseFormat(arg);
@@ -761,25 +806,31 @@ Vim.defineEx('format', 'format', (_cm: any, params: VimExParams) => {
   setBufferFormat(fmt);
 });
 
-Vim.defineEx('asciidoc', 'asciidoc', () => { setBufferFormat('asciidoc'); });
-Vim.defineEx('markdown', 'markdown', () => { setBufferFormat('markdown'); });
-Vim.defineEx('text', 'text', () => { setBufferFormat('text'); });
+Vim.defineEx("asciidoc", "asciidoc", () => {
+  setBufferFormat("asciidoc");
+});
+Vim.defineEx("markdown", "markdown", () => {
+  setBufferFormat("markdown");
+});
+Vim.defineEx("text", "text", () => {
+  setBufferFormat("text");
+});
 
 // `:syntax on` / `:syntax off` — matches real Vim's command of the
 // same name (Vim also accepts `enable`/`disable`, but on/off are the
 // canonical forms most users type and the only two we need). Bare
 // `:syntax` reports current state. Invalid argument emits an E474
 // error, same shape as `:format`.
-Vim.defineEx('syntax', 'syn', (_cm: any, params: VimExParams) => {
+Vim.defineEx("syntax", "syn", (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
-    vimMessage(tr('Syntax highlighting: %s', prefs.syntaxHighlighting ? 'on' : 'off'));
+    vimMessage(tr("Syntax highlighting: %s", prefs.syntaxHighlighting ? "on" : "off"));
     return;
   }
   const a = arg.toLowerCase();
-  if (a === 'on') {
+  if (a === "on") {
     applySyntaxHighlighting(true);
-  } else if (a === 'off') {
+  } else if (a === "off") {
     applySyntaxHighlighting(false);
   } else {
     vimMessage(tr('E474: Invalid argument "%s" (expected on or off)', arg));
@@ -792,18 +843,20 @@ Vim.defineEx('syntax', 'syn', (_cm: any, params: VimExParams) => {
 // applySpellcheck, which is inert with a message when the config has
 // spellcheck off. Registered with no short alias on purpose — a
 // 2-letter `:sp` would shadow real Vim's split-window command.
-Vim.defineEx('spell', 'spell', (_cm: any, params: VimExParams) => {
+Vim.defineEx("spell", "spell", (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
-    vimMessage(spellcheckConfigured()
-      ? tr('Spellcheck: %s', prefs.spellcheck ? 'on' : 'off')
-      : tr('Spellcheck: off (disabled in config)'));
+    vimMessage(
+      spellcheckConfigured()
+        ? tr("Spellcheck: %s", prefs.spellcheck ? "on" : "off")
+        : tr("Spellcheck: off (disabled in config)"),
+    );
     return;
   }
   const a = arg.toLowerCase();
-  if (a === 'on') {
+  if (a === "on") {
     applySpellcheck(true);
-  } else if (a === 'off') {
+  } else if (a === "off") {
     applySpellcheck(false);
   } else {
     vimMessage(tr('E474: Invalid argument "%s" (expected on or off)', arg));
@@ -822,41 +875,45 @@ const wordUnderCursor = (): string | null => {
   return range ? state.sliceDoc(range.from, range.to) : null;
 };
 
-Vim.defineEx('spellgood', 'spellgood', (_cm: any) => {
+Vim.defineEx("spellgood", "spellgood", (_cm: any) => {
   if (!spellcheckConfigured()) {
-    vimMessage(tr('Spellcheck is disabled in config (spellcheck-language = off)'));
+    vimMessage(tr("Spellcheck is disabled in config (spellcheck-language = off)"));
     return;
   }
   if (!prefs.spellcheck) {
-    vimMessage(tr('Spellcheck is off in the editor (turn it on to add or remove words)'));
+    vimMessage(tr("Spellcheck is off in the editor (turn it on to add or remove words)"));
     return;
   }
   const word = wordUnderCursor();
   if (!word) {
-    vimMessage(tr('No word under the cursor'));
+    vimMessage(tr("No word under the cursor"));
     return;
   }
   void addCustomWord(word).then((added) =>
-    vimMessage(added ? tr('Added "%s" to custom words', word) : tr('"%s" is already a custom word', word)),
+    vimMessage(
+      added ? tr('Added "%s" to custom words', word) : tr('"%s" is already a custom word', word),
+    ),
   );
 });
 
-Vim.defineEx('spellundo', 'spellundo', (_cm: any) => {
+Vim.defineEx("spellundo", "spellundo", (_cm: any) => {
   if (!spellcheckConfigured()) {
-    vimMessage(tr('Spellcheck is disabled in config (spellcheck-language = off)'));
+    vimMessage(tr("Spellcheck is disabled in config (spellcheck-language = off)"));
     return;
   }
   if (!prefs.spellcheck) {
-    vimMessage(tr('Spellcheck is off in the editor (turn it on to add or remove words)'));
+    vimMessage(tr("Spellcheck is off in the editor (turn it on to add or remove words)"));
     return;
   }
   const word = wordUnderCursor();
   if (!word) {
-    vimMessage(tr('No word under the cursor'));
+    vimMessage(tr("No word under the cursor"));
     return;
   }
   void removeCustomWord(word).then((removed) =>
-    vimMessage(removed ? tr('Removed "%s" from custom words', word) : tr('"%s" is not a custom word', word)),
+    vimMessage(
+      removed ? tr('Removed "%s" from custom words', word) : tr('"%s" is not a custom word', word),
+    ),
   );
 });
 
@@ -864,17 +921,17 @@ Vim.defineEx('spellundo', 'spellundo', (_cm: any) => {
 // point: under Vim, Ctrl-F stays page-forward, so Vim users open the panel
 // here. Non-Vim users press Mod-f (Ctrl+F, or Cmd+F on Mac). The panel
 // handles find, replace, and replace-all.
-Vim.defineEx('find', 'find', () => {
+Vim.defineEx("find", "find", () => {
   if (editorView) openSearchPanel(editorView);
 });
 
 // `:width` — sets or reports the single-pane width mode. Bare
 // `:width` reports current; `:width narrow|medium|wide|full` sets.
 // Same E474 error shape as `:syntax` for invalid arguments.
-Vim.defineEx('width', 'width', (_cm: any, params: VimExParams) => {
+Vim.defineEx("width", "width", (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
-    vimMessage(tr('Width mode: %s', prefs.widthMode));
+    vimMessage(tr("Width mode: %s", prefs.widthMode));
     return;
   }
   const a = arg.toLowerCase();
@@ -888,16 +945,16 @@ Vim.defineEx('width', 'width', (_cm: any, params: VimExParams) => {
 // `:toc` — sets or reports the TOC visibility override. Bare
 // `:toc` reports current; `:toc on|off` sets. Mirrors :syntax's
 // shape. Visibility is session-scoped (resets on launch).
-Vim.defineEx('toc', 'toc', (_cm: any, params: VimExParams) => {
+Vim.defineEx("toc", "toc", (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
-    vimMessage(tr('Table of contents: %s', isTocHidden() ? 'off' : 'on'));
+    vimMessage(tr("Table of contents: %s", isTocHidden() ? "off" : "on"));
     return;
   }
   const a = arg.toLowerCase();
-  if (a === 'on') {
+  if (a === "on") {
     applyTocVisibility(true);
-  } else if (a === 'off') {
+  } else if (a === "off") {
     applyTocVisibility(false);
   } else {
     vimMessage(tr('E474: Invalid argument "%s" (expected on or off)', arg));
@@ -976,32 +1033,32 @@ const exitIfDirty = async (_cm: any, params: VimExParams) => {
 // that have no shorter alias).
 
 // :q / :quit  (plus :q! / :quit! bang variant for force-quit)
-Vim.defineEx('quit', 'q', quitHandler);
+Vim.defineEx("quit", "q", quitHandler);
 // :quitall — full form, registered as a standalone command since
 // 'qa' is not a prefix of 'quitall'.
-Vim.defineEx('quitall', 'quitall', quitHandler);
+Vim.defineEx("quitall", "quitall", quitHandler);
 // :qall / :qa — registered together because 'qa' IS a prefix of
 // 'qall'. This is the registration that covers the common 2-letter
 // muscle memory (:qa) and the 4-letter form (:qall).
-Vim.defineEx('qall', 'qa', quitHandler);
+Vim.defineEx("qall", "qa", quitHandler);
 
 // :wq (plus :wq! bang, which is a no-op — see note above)
-Vim.defineEx('wq', 'wq', writeAndQuit);
+Vim.defineEx("wq", "wq", writeAndQuit);
 // :wqall / :wqa — 'wqa' is a prefix of 'wqall', so one registration
 // gives both forms.
-Vim.defineEx('wqall', 'wqa', writeAndQuit);
+Vim.defineEx("wqall", "wqa", writeAndQuit);
 
 // :x  — short form, registered as its own command because 'x' is
 // not a prefix of 'exit'. Accepts the :x! bang to force save.
-Vim.defineEx('x', 'x', exitIfDirty);
+Vim.defineEx("x", "x", exitIfDirty);
 // :exit — full form, standalone registration (can't use 'e' as its
 // short form because that would clash with the existing :edit / :e).
-Vim.defineEx('exit', 'exit', exitIfDirty);
+Vim.defineEx("exit", "exit", exitIfDirty);
 // :xit — another valid Vim alias for :exit.
-Vim.defineEx('xit', 'xit', exitIfDirty);
+Vim.defineEx("xit", "xit", exitIfDirty);
 // :xall / :xa — 'xa' is a prefix of 'xall', so one registration
 // gives both forms.
-Vim.defineEx('xall', 'xa', exitIfDirty);
+Vim.defineEx("xall", "xa", exitIfDirty);
 
 // Normal-mode mapping: gz → :syncpreview<CR>. gz is in Vim's `g`
 // namespace for extended commands and is unused in standard Vim.
@@ -1009,9 +1066,9 @@ Vim.defineEx('xall', 'xa', exitIfDirty);
 // @replit/codemirror-vim isn't documented; if it fails, the Ex
 // command and Ctrl+Alt+L / ⌃⌘L both still work.
 try {
-  Vim.map('gz', ':syncpreview<CR>', 'normal');
+  Vim.map("gz", ":syncpreview<CR>", "normal");
 } catch (e) {
-  console.error('Vim.map gz failed:', e);
+  console.error("Vim.map gz failed:", e);
 }
 
 // Normal mode: ZZ = :x (save if dirty, quit), ZQ = :q! (discard, quit).
@@ -1019,10 +1076,10 @@ try {
 // above. Separate try/catch from the gz mapping so one failure doesn't
 // silently prevent the other from registering.
 try {
-  Vim.map('ZZ', ':x<CR>', 'normal');
-  Vim.map('ZQ', ':q!<CR>', 'normal');
+  Vim.map("ZZ", ":x<CR>", "normal");
+  Vim.map("ZQ", ":q!<CR>", "normal");
 } catch (e) {
-  console.error('Vim.map ZZ/ZQ failed:', e);
+  console.error("Vim.map ZZ/ZQ failed:", e);
 }
 
 // Normal mode: zg / zug add/remove the word under the cursor to/from the
@@ -1030,10 +1087,10 @@ try {
 // through the :spellgood / :spellundo Ex commands. Separate try/catch so
 // a failure here doesn't prevent the others from registering.
 try {
-  Vim.map('zg', ':spellgood<CR>', 'normal');
-  Vim.map('zug', ':spellundo<CR>', 'normal');
+  Vim.map("zg", ":spellgood<CR>", "normal");
+  Vim.map("zug", ":spellundo<CR>", "normal");
 } catch (e) {
-  console.error('Vim.map zg/zug failed:', e);
+  console.error("Vim.map zg/zug failed:", e);
 }
 
 // Note on visual block mode: Ctrl+V is intercepted by the webview's
@@ -1067,7 +1124,7 @@ try {
 // same reason as Vim.map above: Vim.setOption's exact API in
 // @replit/codemirror-vim isn't documented.
 try {
-  Vim.setOption('pcre', false);
+  Vim.setOption("pcre", false);
 } catch (e) {
-  console.error('Vim.setOption pcre failed:', e);
+  console.error("Vim.setOption pcre failed:", e);
 }

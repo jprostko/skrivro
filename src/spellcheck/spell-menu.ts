@@ -9,11 +9,11 @@
 // can be lifted into a generic primitive if a second right-click menu
 // ever appears. (Suggestions land in this same menu in a later step.)
 
-import { EditorView } from '@codemirror/view';
-import type { Extension } from '@codemirror/state';
-import { tr } from '../i18n.js';
-import { spellRangeAt, requestSuggestions } from './index.js';
-import { addCustomWord, removeCustomWord, hasCustomWord } from './custom-words.js';
+import { EditorView } from "@codemirror/view";
+import type { Extension } from "@codemirror/state";
+import { tr } from "../i18n.js";
+import { spellRangeAt, requestSuggestions } from "./index.js";
+import { addCustomWord, removeCustomWord, hasCustomWord } from "./custom-words.js";
 
 // Max spelling suggestions shown in the menu. Capped at 4: across 50 common
 // typos the intended correction landed in the top 3 for 96% of them (ranks 4
@@ -53,9 +53,9 @@ const showMenu = (
   closeMenu();
   const inList = hasCustomWord(word);
 
-  const menu = document.createElement('div');
-  menu.className = 'spell-menu';
-  menu.setAttribute('role', 'menu');
+  const menu = document.createElement("div");
+  menu.className = "spell-menu";
+  menu.setAttribute("role", "menu");
 
   // Spelling suggestions: clickable items above a separator. Clicking one
   // replaces the misspelled word's range with it in a single transaction
@@ -64,11 +64,11 @@ const showMenu = (
   // (range is set), never for the Remove case.
   if (suggestions.length && range) {
     for (const suggestion of suggestions) {
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.className = 'spell-menu-item';
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "spell-menu-item";
       row.textContent = suggestion;
-      row.addEventListener('click', () => {
+      row.addEventListener("click", () => {
         view.dispatch({
           changes: { from: range.from, to: range.to, insert: suggestion },
           selection: { anchor: range.from + suggestion.length },
@@ -78,16 +78,16 @@ const showMenu = (
       });
       menu.appendChild(row);
     }
-    const separator = document.createElement('div');
-    separator.className = 'spell-menu-separator';
+    const separator = document.createElement("div");
+    separator.className = "spell-menu-separator";
     menu.appendChild(separator);
   }
 
-  const item = document.createElement('button');
-  item.type = 'button';
-  item.className = 'spell-menu-item';
-  item.textContent = inList ? tr('Remove from dictionary') : tr('Add to dictionary');
-  item.addEventListener('click', () => {
+  const item = document.createElement("button");
+  item.type = "button";
+  item.className = "spell-menu-item";
+  item.textContent = inList ? tr("Remove from dictionary") : tr("Add to dictionary");
+  item.addEventListener("click", () => {
     void (inList ? removeCustomWord(word) : addCustomWord(word));
     closeMenu();
     view.focus();
@@ -103,7 +103,7 @@ const showMenu = (
     if (!menu.contains(e.target as Node)) closeMenu();
   };
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       closeMenu();
       view.focus();
     }
@@ -112,20 +112,20 @@ const showMenu = (
   // Defer the outside-pointer listener so the opening right-click's own
   // mousedown doesn't immediately close the menu.
   const armPointer = window.setTimeout(
-    () => document.addEventListener('mousedown', onPointer, true),
+    () => document.addEventListener("mousedown", onPointer, true),
     0,
   );
-  document.addEventListener('keydown', onKey, true);
-  window.addEventListener('scroll', onDismiss, true);
-  window.addEventListener('blur', onDismiss);
-  window.addEventListener('resize', onDismiss);
+  document.addEventListener("keydown", onKey, true);
+  window.addEventListener("scroll", onDismiss, true);
+  window.addEventListener("blur", onDismiss);
+  window.addEventListener("resize", onDismiss);
   teardown = () => {
     window.clearTimeout(armPointer);
-    document.removeEventListener('mousedown', onPointer, true);
-    document.removeEventListener('keydown', onKey, true);
-    window.removeEventListener('scroll', onDismiss, true);
-    window.removeEventListener('blur', onDismiss);
-    window.removeEventListener('resize', onDismiss);
+    document.removeEventListener("mousedown", onPointer, true);
+    document.removeEventListener("keydown", onKey, true);
+    window.removeEventListener("scroll", onDismiss, true);
+    window.removeEventListener("blur", onDismiss);
+    window.removeEventListener("resize", onDismiss);
   };
 };
 
@@ -147,8 +147,7 @@ export const spellMenuExtension: Extension = EditorView.domEventHandlers({
     // the half-open lookup misses) still resolves. The raw range carries
     // the worker's exact word boundaries, so the word is never cut short
     // (matters for accented / å-ä-ö words).
-    const range =
-      spellRangeAt(view, pos) ?? (pos > 0 ? spellRangeAt(view, pos - 1) : null);
+    const range = spellRangeAt(view, pos) ?? (pos > 0 ? spellRangeAt(view, pos - 1) : null);
     if (range) {
       // A misspelled word: offer "Add", with spelling suggestions above it.
       // Suggestions come from the worker (async), so suppress the native

@@ -6,22 +6,22 @@
 // DOMPurify, etc.) lives in renderer.ts — preview.ts only knows about
 // the Renderer interface.
 
-import { open as shellOpen } from '@tauri-apps/plugin-shell';
-import { convertFileSrc } from '@tauri-apps/api/core';
-import { dirname, resolve } from '@tauri-apps/api/path';
+import { open as shellOpen } from "@tauri-apps/plugin-shell";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { dirname, resolve } from "@tauri-apps/api/path";
 
-import { userConfig } from './config.js';
-import { perfLog } from './perf.js';
-import { getDoc, editorView } from './editor.js';
-import { tr } from './i18n.js';
-import { currentBuffer } from './io.js';
-import { getRenderer, type BlockMapEntry } from './renderer.js';
-import { updateWordCount, setLastTocPosition } from './ui.js';
+import { userConfig } from "./config.js";
+import { perfLog } from "./perf.js";
+import { getDoc, editorView } from "./editor.js";
+import { tr } from "./i18n.js";
+import { currentBuffer } from "./io.js";
+import { getRenderer, type BlockMapEntry } from "./renderer.js";
+import { updateWordCount, setLastTocPosition } from "./ui.js";
 
 // DOM refs owned by preview.ts. Non-null assertions (`!`) because
 // both IDs are in our HTML and the module runs after body parse.
-const out = document.getElementById('out')!;
-const statusSyncIndicator = document.getElementById('statusSyncIndicator')!;
+const out = document.getElementById("out")!;
+const statusSyncIndicator = document.getElementById("statusSyncIndicator")!;
 
 // Escape HTML metacharacters for safe interpolation into an HTML
 // string (the render-error fallback below injects into innerHTML).
@@ -31,9 +31,8 @@ const statusSyncIndicator = document.getElementById('statusSyncIndicator')!;
 // mode. `?? c` fallback is defensive; the regex only matches the
 // three characters we have mappings for, so the fallback is
 // unreachable at runtime.
-const ESCAPE_MAP: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
-const escapeHtml = (s: string) =>
-  s.replace(/[&<>]/g, (c: string) => ESCAPE_MAP[c] ?? c);
+const ESCAPE_MAP: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
+const escapeHtml = (s: string) => s.replace(/[&<>]/g, (c: string) => ESCAPE_MAP[c] ?? c);
 
 // Replace a blocked-by-the-image-gate <img> with an inline <span>
 // placeholder. The visible text shows the alt text (or the URL when
@@ -58,14 +57,13 @@ const escapeHtml = (s: string) =>
 // title text is honored as a line break by WebKit-family browsers'
 // native tooltips.
 const replaceImgWithPlaceholder = (img: Element, src: string): void => {
-  const span = document.createElement('span');
-  span.className = 'image-placeholder';
-  const label = img.getAttribute('alt') || src;
-  span.textContent =
-    `[${tr('image blocked')}: ${label} (${tr('see')} allow-external-images)]`;
+  const span = document.createElement("span");
+  span.className = "image-placeholder";
+  const label = img.getAttribute("alt") || src;
+  span.textContent = `[${tr("image blocked")}: ${label} (${tr("see")} allow-external-images)]`;
   span.title =
-    `${tr('External image blocked')}: ${src}\n` +
-    tr('To render, set allow-external-images = true in skrivro.conf and restart.');
+    `${tr("External image blocked")}: ${src}\n` +
+    tr("To render, set allow-external-images = true in skrivro.conf and restart.");
   img.replaceWith(span);
 };
 
@@ -199,15 +197,15 @@ const renderOnce = async () => {
     // specific renderer implementation.
     const allowExternalImages = userConfig.allowExternalImages !== false;
     const baseDir = currentBuffer.path ? await dirname(currentBuffer.path) : null;
-    const wrapper = document.createElement('div');
+    const wrapper = document.createElement("div");
     // append() moves the fragment's already-parsed, already-sanitized
     // nodes into the wrapper — no HTML string re-parse. The renderer
     // handed back a DocumentFragment, not a string; appending it
     // empties the fragment and leaves the nodes as wrapper's children.
     wrapper.append(result.fragment);
     const r2 = performance.now(); // [perf]
-    for (const img of wrapper.querySelectorAll('img')) {
-      const src = img.getAttribute('src');
+    for (const img of wrapper.querySelectorAll("img")) {
+      const src = img.getAttribute("src");
       if (!src) continue;
       // RFC 3986 scheme: starts with a letter, followed by letters /
       // digits / + / - / ., then a colon. Capture group lets us
@@ -215,8 +213,8 @@ const renderOnce = async () => {
       const schemeMatch = /^([a-z][a-z0-9+.-]*):/i.exec(src);
       const scheme = schemeMatch?.[1]?.toLowerCase();
       if (scheme) {
-        if (scheme === 'data' || scheme === 'asset') continue;
-        if (scheme === 'https' && allowExternalImages) continue;
+        if (scheme === "data" || scheme === "asset") continue;
+        if (scheme === "https" && allowExternalImages) continue;
         // Block: HTTP (always), HTTPS when not allowed, and any
         // other scheme. Replace with a placeholder span showing the
         // alt text (or the URL if no alt was supplied) and put the
@@ -233,7 +231,7 @@ const renderOnce = async () => {
       if (!baseDir) continue;
       try {
         const absPath = await resolve(baseDir, src);
-        img.setAttribute('src', convertFileSrc(absPath));
+        img.setAttribute("src", convertFileSrc(absPath));
         // Leading-slash paths in markdown source are ambiguous: they
         // can be real filesystem-absolute paths (e.g.,
         // /usr/share/icons/foo.png, which Tauri's asset protocol can
@@ -251,18 +249,22 @@ const renderOnce = async () => {
         // fallback fires at most once per image — if the second
         // attempt also fails the browser shows its native broken-
         // image icon, no infinite retry loop.
-        if (src.startsWith('/')) {
-          img.addEventListener('error', async () => {
-            try {
-              const altPath = await resolve(baseDir, src.slice(1));
-              img.setAttribute('src', convertFileSrc(altPath));
-            } catch (e) {
-              console.warn('Image fallback resolve failed:', src, e);
-            }
-          }, { once: true });
+        if (src.startsWith("/")) {
+          img.addEventListener(
+            "error",
+            async () => {
+              try {
+                const altPath = await resolve(baseDir, src.slice(1));
+                img.setAttribute("src", convertFileSrc(altPath));
+              } catch (e) {
+                console.warn("Image fallback resolve failed:", src, e);
+              }
+            },
+            { once: true },
+          );
         }
       } catch (e) {
-        console.warn('Failed to resolve image path:', src, e);
+        console.warn("Failed to resolve image path:", src, e);
       }
     }
     // Buffer-staleness check. If a different file was opened or the
@@ -297,14 +299,15 @@ const renderOnce = async () => {
     // re-rendering.
     setLastTocPosition(result.tocPosition);
     const r3 = performance.now(); // [perf]
-    perfLog(`preview render: total ${(r3 - r0).toFixed(0)}ms (renderer ${(r1 - r0).toFixed(0)}, append ${(r2 - r1).toFixed(0)}, attach+rest ${(r3 - r2).toFixed(0)})`);
+    perfLog(
+      `preview render: total ${(r3 - r0).toFixed(0)}ms (renderer ${(r1 - r0).toFixed(0)}, append ${(r2 - r1).toFixed(0)}, attach+rest ${(r3 - r2).toFixed(0)})`,
+    );
   } catch (e) {
-    console.error('render failed:', e);
+    console.error("render failed:", e);
     // Catch variable is `unknown` under strict mode. Narrow to Error
     // to pull a message, else coerce to string as a last resort.
     const msg = e instanceof Error ? e.message : String(e);
-    out.innerHTML =
-      `<pre class="render-error">Render error: ${escapeHtml(msg)}</pre>`;
+    out.innerHTML = `<pre class="render-error">Render error: ${escapeHtml(msg)}</pre>`;
     // Error state has no renderable block map; clear both the cache
     // and the builder so sync attempts after an error are no-ops
     // instead of trying to build from stale (or nonexistent) state.
@@ -405,9 +408,9 @@ export const scheduleRender = () => {
 // JS" — ugly but stable across every browser we target.
 const flashSync = () => {
   if (!statusSyncIndicator) return;
-  statusSyncIndicator.classList.remove('flashing');
+  statusSyncIndicator.classList.remove("flashing");
   void statusSyncIndicator.offsetWidth;
-  statusSyncIndicator.classList.add('flashing');
+  statusSyncIndicator.classList.add("flashing");
 };
 
 // Binary search for the greatest block with line <= caretLine, then
@@ -446,7 +449,9 @@ export const syncPreviewToCaret = () => {
   const pos = editorView.state.selection.main.head;
   const editorCaretLine = editorView.state.doc.lineAt(pos).number;
   const caretLine = translateEditorLine(editorCaretLine);
-  let lo = 0, hi = blockMap.length - 1, found = 0;
+  let lo = 0,
+    hi = blockMap.length - 1,
+    found = 0;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
     // blockMap[mid] and blockMap[found] both safe: mid = (lo+hi)>>1
@@ -461,7 +466,7 @@ export const syncPreviewToCaret = () => {
     }
   }
   const target = blockMap[found]!.el;
-  if (target) target.scrollIntoView({ block: 'start' });
+  if (target) target.scrollIntoView({ block: "start" });
 };
 
 // ================= External link handling =================
@@ -485,19 +490,18 @@ export const syncPreviewToCaret = () => {
 // src-tauri/capabilities/default.json — scoped to ^https?:// so that
 // the shell plugin will only hand off web URLs to the OS, not e.g.
 // file:// URLs that could be used to open arbitrary local files.
-out.addEventListener('click', (e) => {
+out.addEventListener("click", (e) => {
   // e.target is typed as EventTarget, which doesn't have closest().
   // Narrow to Element to get closest() — and to guard against the
   // runtime case where the target is something exotic (a Document or
   // Window, say) that isn't in the DOM tree.
   if (!(e.target instanceof Element)) return;
-  const a = e.target.closest('a');
+  const a = e.target.closest("a");
   if (!a) return;
-  const href = a.getAttribute('href');
+  const href = a.getAttribute("href");
   if (!href) return;
   if (/^https?:\/\//i.test(href)) {
     e.preventDefault();
-    shellOpen(href).catch((err) =>
-      console.error('Failed to open external URL:', href, err));
+    shellOpen(href).catch((err) => console.error("Failed to open external URL:", href, err));
   }
 });

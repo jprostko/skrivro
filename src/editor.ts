@@ -9,28 +9,35 @@
 //   - createEditor(parent, callbacks) — constructs the EditorView
 //   - getCM re-export — used by status bar for reading Vim mode state
 
-import { EditorState, Compartment, Prec, type Extension } from '@codemirror/state';
+import { EditorState, Compartment, Prec, type Extension } from "@codemirror/state";
 import {
-  EditorView, keymap,
-  lineNumbers, highlightActiveLine, highlightActiveLineGutter,
+  EditorView,
+  keymap,
+  lineNumbers,
+  highlightActiveLine,
+  highlightActiveLineGutter,
   drawSelection,
-} from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { search, searchKeymap } from '@codemirror/search';
+} from "@codemirror/view";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { search, searchKeymap } from "@codemirror/search";
 import {
-  indentOnInput, bracketMatching, syntaxHighlighting,
-  HighlightStyle, defaultHighlightStyle, StreamLanguage,
-} from '@codemirror/language';
-import { tags as t } from '@lezer/highlight';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { vim, Vim, getCM } from '@replit/codemirror-vim';
+  indentOnInput,
+  bracketMatching,
+  syntaxHighlighting,
+  HighlightStyle,
+  defaultHighlightStyle,
+  StreamLanguage,
+} from "@codemirror/language";
+import { tags as t } from "@lezer/highlight";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { vim, Vim, getCM } from "@replit/codemirror-vim";
 
-import { prefs } from './prefs.js';
-import { currentBuffer, type Format } from './io.js';
-import { userConfig } from './config.js';
-import { spellcheckExtension } from './spellcheck/index.js';
-import { spellMenuExtension } from './spellcheck/spell-menu.js';
-import { searchPhrases } from './i18n.js';
+import { prefs } from "./prefs.js";
+import { currentBuffer, type Format } from "./io.js";
+import { userConfig } from "./config.js";
+import { spellcheckExtension } from "./spellcheck/index.js";
+import { spellMenuExtension } from "./spellcheck/spell-menu.js";
+import { searchPhrases } from "./i18n.js";
 
 // Re-exports used by other modules (io for Vim.defineEx, ui for getCM).
 export { Vim, getCM };
@@ -47,7 +54,7 @@ export let editorView: EditorView | null = null;
 // setDoc, cleared in its finally.
 let suppressDocEvents = false;
 
-export const getDoc = () => editorView ? editorView.state.doc.toString() : '';
+export const getDoc = () => (editorView ? editorView.state.doc.toString() : "");
 
 export const setDoc = (text: string) => {
   // Guard against being called before the editor exists. In practice
@@ -69,158 +76,162 @@ export const setDoc = (text: string) => {
 
 // ================= Catppuccin Mocha editor theme =================
 
-const catppuccinTheme = EditorView.theme({
-  '&': {
-    color: 'var(--skr-text)',
-    backgroundColor: 'var(--skr-bg)',
-    height: '100%',
-    fontSize: 'var(--edit-font-size)',
+const catppuccinTheme = EditorView.theme(
+  {
+    "&": {
+      color: "var(--skr-text)",
+      backgroundColor: "var(--skr-bg)",
+      height: "100%",
+      fontSize: "var(--edit-font-size)",
+    },
+    ".cm-scroller": {
+      fontFamily: "var(--font-mono)",
+      lineHeight: "1.6",
+      scrollbarColor: "var(--skr-surface-hover) var(--skr-bg)",
+      scrollbarWidth: "thin",
+    },
+    // CM6 editor padding is split across two layers, both outside
+    // .cm-content:
+    //
+    // Vertical (-y) is applied as margin-block on .cm-scroller in
+    // styles.css, NOT as padding on .cm-content or .editor-pane.
+    // Margin on .cm-scroller (rather than padding on the pane) keeps
+    // CM6's .cm-panels-bottom — the container for Vim's Ex command
+    // line — anchored to the pane's actual bottom instead of floating
+    // above a padded gap. The effect is still geometric clipping:
+    // .cm-scroller is inset from .cm-editor's top/bottom by margin-y,
+    // so scrolled content cannot reach the pane's edges. An overlay-
+    // bar alternative is unfixable on WebKitGTK at fractional DPI;
+    // geometric clipping renders cleanly at any DPI.
+    //
+    // Horizontal (-x) is on .cm-line (per-line, below), NOT on the pane.
+    // Per-line horizontal padding is what makes clicks near the far-left
+    // of a line still land ON the line instead of in a dead zone. If we
+    // moved -x to the pane, that click-target behavior would regress.
+    // The -x padding also doesn't contribute to any scroll-padding
+    // concern because the editor doesn't scroll horizontally.
+    //
+    // .cm-content itself intentionally has no padding — everything it
+    // used to carry is now on the surrounding layers.
+    ".cm-content": {
+      caretColor: "var(--skr-cursor)",
+      paddingInline: "0",
+    },
+    ".cm-line": {
+      paddingBlock: "0",
+      paddingInline: "var(--editor-padding-x)",
+    },
+    ".cm-cursor, .cm-dropCursor": {
+      borderLeftColor: "var(--skr-cursor)",
+      borderLeftWidth: "2px",
+    },
+    "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":
+      {
+        backgroundColor: "var(--skr-surface-hover)",
+      },
+    ".cm-gutters": {
+      backgroundColor: "var(--skr-bg)",
+      color: "var(--skr-text-faint)",
+      border: "none",
+    },
+    ".cm-gutterElement": {
+      padding: "0 0.5rem 0 1rem",
+      minWidth: "2.5rem",
+    },
+    ".cm-activeLine": { backgroundColor: "var(--skr-bg-active-line)" },
+    ".cm-activeLineGutter": {
+      backgroundColor: "transparent",
+      color: "var(--skr-text-muted)",
+    },
+    ".cm-scroller::-webkit-scrollbar": { width: "10px", height: "10px" },
+    ".cm-scroller::-webkit-scrollbar-track": { background: "var(--skr-bg)" },
+    ".cm-scroller::-webkit-scrollbar-thumb": {
+      background: "var(--skr-surface-hover)",
+      borderRadius: "5px",
+      border: "2px solid var(--skr-bg)",
+    },
+    ".cm-scroller::-webkit-scrollbar-thumb:hover": { background: "var(--skr-surface-hover)" },
+    // Vim block cursor
+    ".cm-fat-cursor": {
+      background: "var(--skr-cursor)",
+      outline: "none",
+      border: "none",
+    },
+    "&:not(.cm-focused) .cm-fat-cursor": {
+      background: "transparent",
+      outline: "solid 1px var(--skr-cursor)",
+    },
+    // Vim Ex command / search panel at the bottom of the editor.
+    // Without these, CM6's built-in dark base theme provides a neutral
+    // gray strip and the <input> falls back to the UA's black-on-white
+    // field defaults (UA input styling does not inherit from the parent).
+    ".cm-panels": {
+      backgroundColor: "var(--skr-bg-panel)",
+      color: "var(--skr-text)",
+    },
+    ".cm-panels.cm-panels-bottom": {
+      borderTop: "1px solid var(--skr-surface)",
+    },
+    // CM6 (or @replit/codemirror-vim's .cm-vim-panel class) sets 10px
+    // of horizontal padding on .cm-panel. The right side shows as a
+    // dark sliver in :open and similar Ex-command panels because
+    // nothing lives there — the PCRE-hint slot is a separate flex
+    // sibling that only exists in search mode. Zero the right padding
+    // so the input reaches the panel edge; 10px on the left stays so
+    // the : prefix has breathing room.
+    ".cm-panel": {
+      paddingRight: "0",
+    },
+    ".cm-panel input, .cm-textfield": {
+      backgroundColor: "var(--skr-surface)",
+      color: "var(--skr-text)",
+      border: "none",
+      outline: "none",
+      fontFamily: "var(--font-mono)",
+      padding: "2px 6px",
+    },
+    // Checkbox labels (match case, regexp, by word) in the find/replace
+    // panel. @codemirror/search's base theme sizes them with a selector a
+    // plain stylesheet rule can't outrank, so the size comes from this theme
+    // rule, which mounts at higher precedence than the base theme. The value
+    // is the shared --search-font-size from styles.css.
+    ".cm-panel.cm-search label": {
+      fontSize: "var(--search-font-size)",
+    },
+    // Hide the "(JavaScript regexp: set pcre)" / "(Vim regexp: set nopcre)"
+    // hint that @replit/codemirror-vim renders next to the search input.
+    // makePrompt() in vim.js builds it as a <span style="color:#888"> that
+    // sits as the second flex child of the outer panel div (the first child
+    // is the prefix + input span). Adjacent sibling combinator matches only
+    // when a second span exists — Ex command panels have only one span
+    // child (desc is undefined), so those are untouched. The hint is
+    // informational but repetitive; since we already default pcre to false
+    // at init, users rarely need to toggle, and the label is clutter in
+    // an otherwise clean command bar.
+    ".cm-panel span + span": {
+      display: "none",
+    },
   },
-  '.cm-scroller': {
-    fontFamily: 'var(--font-mono)',
-    lineHeight: '1.6',
-    scrollbarColor: 'var(--skr-surface-hover) var(--skr-bg)',
-    scrollbarWidth: 'thin',
-  },
-  // CM6 editor padding is split across two layers, both outside
-  // .cm-content:
-  //
-  // Vertical (-y) is applied as margin-block on .cm-scroller in
-  // styles.css, NOT as padding on .cm-content or .editor-pane.
-  // Margin on .cm-scroller (rather than padding on the pane) keeps
-  // CM6's .cm-panels-bottom — the container for Vim's Ex command
-  // line — anchored to the pane's actual bottom instead of floating
-  // above a padded gap. The effect is still geometric clipping:
-  // .cm-scroller is inset from .cm-editor's top/bottom by margin-y,
-  // so scrolled content cannot reach the pane's edges. An overlay-
-  // bar alternative is unfixable on WebKitGTK at fractional DPI;
-  // geometric clipping renders cleanly at any DPI.
-  //
-  // Horizontal (-x) is on .cm-line (per-line, below), NOT on the pane.
-  // Per-line horizontal padding is what makes clicks near the far-left
-  // of a line still land ON the line instead of in a dead zone. If we
-  // moved -x to the pane, that click-target behavior would regress.
-  // The -x padding also doesn't contribute to any scroll-padding
-  // concern because the editor doesn't scroll horizontally.
-  //
-  // .cm-content itself intentionally has no padding — everything it
-  // used to carry is now on the surrounding layers.
-  '.cm-content': {
-    caretColor: 'var(--skr-cursor)',
-    paddingInline: '0',
-  },
-  '.cm-line': {
-    paddingBlock: '0',
-    paddingInline: 'var(--editor-padding-x)',
-  },
-  '.cm-cursor, .cm-dropCursor': {
-    borderLeftColor: 'var(--skr-cursor)',
-    borderLeftWidth: '2px',
-  },
-  '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-    backgroundColor: 'var(--skr-surface-hover)',
-  },
-  '.cm-gutters': {
-    backgroundColor: 'var(--skr-bg)',
-    color: 'var(--skr-text-faint)',
-    border: 'none',
-  },
-  '.cm-gutterElement': {
-    padding: '0 0.5rem 0 1rem',
-    minWidth: '2.5rem',
-  },
-  '.cm-activeLine': { backgroundColor: 'var(--skr-bg-active-line)' },
-  '.cm-activeLineGutter': {
-    backgroundColor: 'transparent',
-    color: 'var(--skr-text-muted)',
-  },
-  '.cm-scroller::-webkit-scrollbar': { width: '10px', height: '10px' },
-  '.cm-scroller::-webkit-scrollbar-track': { background: 'var(--skr-bg)' },
-  '.cm-scroller::-webkit-scrollbar-thumb': {
-    background: 'var(--skr-surface-hover)',
-    borderRadius: '5px',
-    border: '2px solid var(--skr-bg)',
-  },
-  '.cm-scroller::-webkit-scrollbar-thumb:hover': { background: 'var(--skr-surface-hover)' },
-  // Vim block cursor
-  '.cm-fat-cursor': {
-    background: 'var(--skr-cursor)',
-    outline: 'none',
-    border: 'none',
-  },
-  '&:not(.cm-focused) .cm-fat-cursor': {
-    background: 'transparent',
-    outline: 'solid 1px var(--skr-cursor)',
-  },
-  // Vim Ex command / search panel at the bottom of the editor.
-  // Without these, CM6's built-in dark base theme provides a neutral
-  // gray strip and the <input> falls back to the UA's black-on-white
-  // field defaults (UA input styling does not inherit from the parent).
-  '.cm-panels': {
-    backgroundColor: 'var(--skr-bg-panel)',
-    color: 'var(--skr-text)',
-  },
-  '.cm-panels.cm-panels-bottom': {
-    borderTop: '1px solid var(--skr-surface)',
-  },
-  // CM6 (or @replit/codemirror-vim's .cm-vim-panel class) sets 10px
-  // of horizontal padding on .cm-panel. The right side shows as a
-  // dark sliver in :open and similar Ex-command panels because
-  // nothing lives there — the PCRE-hint slot is a separate flex
-  // sibling that only exists in search mode. Zero the right padding
-  // so the input reaches the panel edge; 10px on the left stays so
-  // the : prefix has breathing room.
-  '.cm-panel': {
-    paddingRight: '0',
-  },
-  '.cm-panel input, .cm-textfield': {
-    backgroundColor: 'var(--skr-surface)',
-    color: 'var(--skr-text)',
-    border: 'none',
-    outline: 'none',
-    fontFamily: 'var(--font-mono)',
-    padding: '2px 6px',
-  },
-  // Checkbox labels (match case, regexp, by word) in the find/replace
-  // panel. @codemirror/search's base theme sizes them with a selector a
-  // plain stylesheet rule can't outrank, so the size comes from this theme
-  // rule, which mounts at higher precedence than the base theme. The value
-  // is the shared --search-font-size from styles.css.
-  '.cm-panel.cm-search label': {
-    fontSize: 'var(--search-font-size)',
-  },
-  // Hide the "(JavaScript regexp: set pcre)" / "(Vim regexp: set nopcre)"
-  // hint that @replit/codemirror-vim renders next to the search input.
-  // makePrompt() in vim.js builds it as a <span style="color:#888"> that
-  // sits as the second flex child of the outer panel div (the first child
-  // is the prefix + input span). Adjacent sibling combinator matches only
-  // when a second span exists — Ex command panels have only one span
-  // child (desc is undefined), so those are untouched. The hint is
-  // informational but repetitive; since we already default pcre to false
-  // at init, users rarely need to toggle, and the label is clutter in
-  // an otherwise clean command bar.
-  '.cm-panel span + span': {
-    display: 'none',
-  },
-}, { dark: true });
+  { dark: true },
+);
 
 // ================= Catppuccin highlight style =================
 
 const catppuccinHighlight = HighlightStyle.define([
-  { tag: t.heading1, color: 'var(--skr-accent)', fontWeight: 'bold', fontSize: '1.5em' },
-  { tag: t.heading2, color: 'var(--skr-accent)', fontWeight: 'bold', fontSize: '1.3em' },
-  { tag: t.heading3, color: 'var(--skr-accent-alt)',    fontWeight: 'bold', fontSize: '1.15em' },
-  { tag: t.heading4, color: 'var(--skr-accent-alt)',    fontWeight: 'bold' },
-  { tag: t.heading5, color: 'var(--skr-accent-minor)',     fontWeight: 'bold' },
-  { tag: t.heading6, color: 'var(--skr-accent-minor)',     fontWeight: 'bold' },
-  { tag: t.strong,        color: 'var(--skr-text)',    fontWeight: 'bold' },
-  { tag: t.emphasis,      color: 'var(--skr-text)',    fontStyle: 'italic' },
-  { tag: t.link,          color: 'var(--skr-link)',    textDecoration: 'underline' },
-  { tag: t.monospace,     color: 'var(--skr-emphasis)' },
-  { tag: t.comment,       color: 'var(--skr-text-faint)', fontStyle: 'italic' },
-  { tag: t.list,          color: 'var(--skr-emphasis)' },
-  { tag: t.attributeName, color: 'var(--skr-warning)' },
-  { tag: t.punctuation,   color: 'var(--skr-text-faint)' },
+  { tag: t.heading1, color: "var(--skr-accent)", fontWeight: "bold", fontSize: "1.5em" },
+  { tag: t.heading2, color: "var(--skr-accent)", fontWeight: "bold", fontSize: "1.3em" },
+  { tag: t.heading3, color: "var(--skr-accent-alt)", fontWeight: "bold", fontSize: "1.15em" },
+  { tag: t.heading4, color: "var(--skr-accent-alt)", fontWeight: "bold" },
+  { tag: t.heading5, color: "var(--skr-accent-minor)", fontWeight: "bold" },
+  { tag: t.heading6, color: "var(--skr-accent-minor)", fontWeight: "bold" },
+  { tag: t.strong, color: "var(--skr-text)", fontWeight: "bold" },
+  { tag: t.emphasis, color: "var(--skr-text)", fontStyle: "italic" },
+  { tag: t.link, color: "var(--skr-link)", textDecoration: "underline" },
+  { tag: t.monospace, color: "var(--skr-emphasis)" },
+  { tag: t.comment, color: "var(--skr-text-faint)", fontStyle: "italic" },
+  { tag: t.list, color: "var(--skr-emphasis)" },
+  { tag: t.attributeName, color: "var(--skr-warning)" },
+  { tag: t.punctuation, color: "var(--skr-text-faint)" },
 ]);
 
 // ================= Minimal AsciiDoc stream highlighter =================
@@ -228,7 +239,7 @@ const catppuccinHighlight = HighlightStyle.define([
 // headings, attributes, comments, lists, block titles, listing blocks,
 // and inline emphasis/code/links.
 const asciidocLang = StreamLanguage.define({
-  name: 'asciidoc',
+  name: "asciidoc",
   startState: () => ({ listing: false }),
   token(stream, state) {
     // Inside a ---- listing block, the whole line is monospace
@@ -236,74 +247,74 @@ const asciidocLang = StreamLanguage.define({
     if (state.listing) {
       if (stream.sol() && stream.match(/-{4,}\s*$/)) {
         state.listing = false;
-        return 'punctuation';
+        return "punctuation";
       }
       stream.skipToEnd();
-      return 'monospace';
+      return "monospace";
     }
 
     if (stream.sol()) {
       // Open listing block
       if (stream.match(/-{4,}\s*$/)) {
         state.listing = true;
-        return 'punctuation';
+        return "punctuation";
       }
       // Line comment
-      if (stream.match(/\/\/.*$/)) return 'comment';
+      if (stream.match(/\/\/.*$/)) return "comment";
       // Heading: 1..6 leading '=' followed by space + content.
       // CM6's stream.match returns `true | RegExpMatchArray`
       // depending on overload — we need the RegExpMatchArray form
       // to access h[1] (the `={1,6}` capture group), so narrow with
       // `typeof h !== 'boolean'` before indexing.
       const h = stream.match(/(={1,6})\s+/);
-      if (h && typeof h !== 'boolean') {
+      if (h && typeof h !== "boolean") {
         stream.skipToEnd();
         // `h[1]!` — noUncheckedIndexedAccess types capture groups as
         // `string | undefined`, but the regex has one required capture
         // group so the match array always has at least 2 elements.
-        return 'heading' + h[1]!.length;
+        return "heading" + h[1]!.length;
       }
       // Document / block attribute entry: :name: value
       if (stream.match(/:[\w-]+:/)) {
         stream.skipToEnd();
-        return 'attributeName';
+        return "attributeName";
       }
       // Block title: .Some title
       if (stream.match(/\.[A-Za-z].*$/)) {
-        return 'emphasis';
+        return "emphasis";
       }
       // Unordered list markers: *, **, ***, -
-      if (stream.match(/[*-]+\s+/)) return 'list';
+      if (stream.match(/[*-]+\s+/)) return "list";
       // Ordered list markers: ., .., ...
-      if (stream.match(/\.{1,5}\s+/)) return 'list';
+      if (stream.match(/\.{1,5}\s+/)) return "list";
       // Horizontal rule: '''
-      if (stream.match(/'{3,}\s*$/)) return 'punctuation';
+      if (stream.match(/'{3,}\s*$/)) return "punctuation";
     }
 
     // Inline tokens
-    if (stream.match(/`[^`\n]+`/))              return 'monospace';
-    if (stream.match(/\*[^*\s][^*\n]*\*/))      return 'strong';
-    if (stream.match(/_[^_\s][^_\n]*_/))        return 'emphasis';
-    if (stream.match(/https?:\/\/\S+/))         return 'link';
+    if (stream.match(/`[^`\n]+`/)) return "monospace";
+    if (stream.match(/\*[^*\s][^*\n]*\*/)) return "strong";
+    if (stream.match(/_[^_\s][^_\n]*_/)) return "emphasis";
+    if (stream.match(/https?:\/\/\S+/)) return "link";
 
     stream.next();
     return null;
   },
   tokenTable: {
-    heading1:      t.heading1,
-    heading2:      t.heading2,
-    heading3:      t.heading3,
-    heading4:      t.heading4,
-    heading5:      t.heading5,
-    heading6:      t.heading6,
-    monospace:     t.monospace,
-    strong:        t.strong,
-    emphasis:      t.emphasis,
-    link:          t.link,
-    list:          t.list,
+    heading1: t.heading1,
+    heading2: t.heading2,
+    heading3: t.heading3,
+    heading4: t.heading4,
+    heading5: t.heading5,
+    heading6: t.heading6,
+    monospace: t.monospace,
+    strong: t.strong,
+    emphasis: t.emphasis,
+    link: t.link,
+    list: t.list,
     attributeName: t.attributeName,
-    comment:       t.comment,
-    punctuation:   t.punctuation,
+    comment: t.comment,
+    punctuation: t.punctuation,
   },
 });
 
@@ -339,9 +350,7 @@ export const spellcheckCompartment = new Compartment();
 // next line and Backspace to delete one markup level at a time.
 // Neither belongs in this editor: input should never be modified
 // except by what the user typed.
-const markdownLang: Extension = [
-  markdown({ base: markdownLanguage, addKeymap: false }),
-];
+const markdownLang: Extension = [markdown({ base: markdownLanguage, addKeymap: false })];
 
 // Map a buffer format to the CM6 language extension that should be
 // active in its compartment slot. Text mode uses an empty array —
@@ -350,9 +359,12 @@ const markdownLang: Extension = [
 // flags any missing case if a new format is added.
 const languageFor = (format: Format): Extension => {
   switch (format) {
-    case 'asciidoc': return asciidocLang;
-    case 'markdown': return markdownLang;
-    case 'text':     return [];
+    case "asciidoc":
+      return asciidocLang;
+    case "markdown":
+      return markdownLang;
+    case "text":
+      return [];
   }
 };
 
@@ -393,9 +405,7 @@ export const setEditorLanguage = (format: Format) => {
 export const setSyntaxHighlighting = (enabled: boolean) => {
   if (!editorView) return;
   editorView.dispatch({
-    effects: languageCompartment.reconfigure(
-      enabled ? languageFor(currentBuffer.format) : []
-    ),
+    effects: languageCompartment.reconfigure(enabled ? languageFor(currentBuffer.format) : []),
   });
 };
 
@@ -404,8 +414,7 @@ export const setSyntaxHighlighting = (enabled: boolean) => {
 // explicit 'off' disables it. When this is false (explicit 'off') the
 // feature is hard-off: no dictionary loads and the runtime toggle is
 // inert (ui.ts shows a "disabled in config" message instead of flipping).
-export const spellcheckConfigured = (): boolean =>
-  userConfig.spellcheckLanguage !== 'off';
+export const spellcheckConfigured = (): boolean => userConfig.spellcheckLanguage !== "off";
 
 // Initial spellcheck-compartment contents: the decoration plugin when
 // config enables it AND the runtime pref is on, else empty. The plugin
@@ -413,9 +422,7 @@ export const spellcheckConfigured = (): boolean =>
 // nothing until initSpellcheck (called from main.ts) resolves and
 // dispatches spellcheckRecompute.
 const resolveSpellcheckExtension = (): Extension =>
-  spellcheckConfigured() && prefs.spellcheck
-    ? [spellcheckExtension, spellMenuExtension]
-    : [];
+  spellcheckConfigured() && prefs.spellcheck ? [spellcheckExtension, spellMenuExtension] : [];
 
 // Runtime spellcheck toggle — reconfigure the compartment to hold the
 // decoration plugin or an empty list. Symmetric with setSyntaxHighlighting:

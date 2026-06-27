@@ -1,15 +1,14 @@
 {
   "name": "skrivro",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "license": "0BSD",
   "type": "module",
-  "packageManager": "pnpm@11.5.2+sha512.71c631e382066efc25625d5cf029075de07b61b37f6e27350fbd84b1bda5864c8c1967adc280776b45c30a715c0359a3be08fef42d5bb09e2b99029979692916",
   "scripts": {
     "dev": "vp dev",
     "build": "vp build",
     "tauri": "tauri",
-    "check": "vp check --no-fmt",
+    "check": "vp check",
     "test": "vp test run",
     "test:watch": "vp test",
     "prepare": "vp config"
@@ -47,5 +46,6 @@
     "vite": "^8.0.13",
     "vite-plus": "^0.2.1",
     "vitest": "^4.1.8"
-  }
+  },
+  "packageManager": "pnpm@11.5.2+sha512.71c631e382066efc25625d5cf029075de07b61b37f6e27350fbd84b1bda5864c8c1967adc280776b45c30a715c0359a3be08fef42d5bb09e2b99029979692916"
 }

@@ -1,31 +1,30 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<title>untitled.adoc — Skrivro</title>
-
-</head>
-<body>
-  <!-- Inline (non-module) script runs synchronously during parse, before
+  <head>
+    <meta charset="utf-8" />
+    <title>untitled.adoc — Skrivro</title>
+  </head>
+  <body>
+    <!-- Inline (non-module) script runs synchronously during parse, before
        the first paint. Reads prefs from localStorage and sets body classes
        immediately so the titlebar / gutter / display-mode state is correct
        on the very first frame — no FOUC. The module script's applyTitlebar
        / applyGutter / applyDisplayMode calls still run later, but they're
        no-ops because the classes are already correct. -->
-  <script>
-    (function() {
-      try {
-        var p = JSON.parse(localStorage.getItem('adoc-editor-prefs-v1'));
-        if (!p) return;
-        var cl = document.body.classList;
-        if (p.titlebarHidden) cl.add('no-titlebar');
-        if (p.gutterHidden)   cl.add('no-gutter');
-        if (p.statusBarHidden) cl.add('no-statusbar');
-        if (p.displayMode && p.displayMode !== 'split') cl.add('mode-' + p.displayMode);
-      } catch(e) {}
-    })();
-  </script>
-  <!-- Theme FOUC prevention: reads window.__SKRIVRO_INITIAL_THEME__, which
+    <script>
+      (function () {
+        try {
+          var p = JSON.parse(localStorage.getItem("adoc-editor-prefs-v1"));
+          if (!p) return;
+          var cl = document.body.classList;
+          if (p.titlebarHidden) cl.add("no-titlebar");
+          if (p.gutterHidden) cl.add("no-gutter");
+          if (p.statusBarHidden) cl.add("no-statusbar");
+          if (p.displayMode && p.displayMode !== "split") cl.add("mode-" + p.displayMode);
+        } catch (e) {}
+      })();
+    </script>
+    <!-- Theme FOUC prevention: reads window.__SKRIVRO_INITIAL_THEME__, which
        Tauri's initialization_script set at document-start (before any HTML
        parsing) with the user-selected theme's color values. Applies those
        as :root inline CSS overrides. Inline styles win over stylesheet
@@ -33,35 +32,43 @@
        overridden on first paint — no visible transition from Catppuccin
        Mocha defaults to the user's theme.
        See lib.rs::compute_initial_theme_state for the Rust-side half. -->
-  <script>
-    (function() {
-      var theme = window.__SKRIVRO_INITIAL_THEME__;
-      if (!theme) return;
-      var s = document.documentElement.style;
-      for (var k in theme) {
-        var v = theme[k];
-        if (v == null) continue;
-        var kebab = k.replace(/[A-Z]/g, function(m) { return '-' + m.toLowerCase(); });
-        s.setProperty('--skr-' + kebab, v);
-      }
-    })();
-  </script>
-  <!-- data-tauri-drag-region makes the titlebar a mouse-drag handle for
+    <script>
+      (function () {
+        var theme = window.__SKRIVRO_INITIAL_THEME__;
+        if (!theme) return;
+        var s = document.documentElement.style;
+        for (var k in theme) {
+          var v = theme[k];
+          if (v == null) continue;
+          var kebab = k.replace(/[A-Z]/g, function (m) {
+            return "-" + m.toLowerCase();
+          });
+          s.setProperty("--skr-" + kebab, v);
+        }
+      })();
+    </script>
+    <!-- data-tauri-drag-region makes the titlebar a mouse-drag handle for
        moving the window, needed on decorationless Mac builds where there's
        otherwise no app-level way to drag. The help button inside remains
        clickable — Tauri's drag-region handling excludes interactive
        elements (buttons, inputs, etc.) from triggering drag. Users who
        hide the titlebar via Ctrl+Alt+T / ⌃⌘T lose the drag region along
        with it; that's an accepted tradeoff of the "minimal UI" toggle. -->
-  <header class="titlebar" data-tauri-drag-region>
-    <div data-tauri-drag-region><span class="name" id="name">untitled.adoc</span></div>
-    <button type="button" id="helpBtn" class="help-button"
-            aria-label="Show keyboard shortcuts and commands help (Ctrl+Alt+H)">?</button>
-  </header>
+    <header class="titlebar" data-tauri-drag-region>
+      <div data-tauri-drag-region><span class="name" id="name">untitled.adoc</span></div>
+      <button
+        type="button"
+        id="helpBtn"
+        class="help-button"
+        aria-label="Show keyboard shortcuts and commands help (Ctrl+Alt+H)"
+      >
+        ?
+      </button>
+    </header>
 
-  <main class="wrap">
-    <div id="src-host" class="editor-pane"></div>
-    <!-- The preview is two elements: an outer .preview-pane that owns
+    <main class="wrap">
+      <div id="src-host" class="editor-pane"></div>
+      <!-- The preview is two elements: an outer .preview-pane that owns
          the visible background and visually-padded frame, plus an
          inner .preview-scroll that's the actual scroll container. The
          outer has `overflow: hidden`; the inner is absolutely
@@ -86,48 +93,50 @@
          against the same element handle. The :focus-within selector
          on .preview-pane still fires when its inner descendant is
          focused, which lights up the active-pane outline. -->
-    <div class="preview-pane">
-      <div class="preview-scroll" id="out" tabindex="-1"></div>
-    </div>
-  </main>
+      <div class="preview-pane">
+        <div class="preview-scroll" id="out" tabindex="-1"></div>
+      </div>
+    </main>
 
-  <!-- Status bar: mode pill (Vim-only) + filename on the left;
+    <!-- Status bar: mode pill (Vim-only) + filename on the left;
        file type + cursor position on the right. Toggled by
        Ctrl+Alt+B / ⌃⌘B. -->
-  <!-- data-tauri-drag-region: second drag handle for the window, so users
+    <!-- data-tauri-drag-region: second drag handle for the window, so users
        who hide the titlebar via Ctrl+Alt+T / ⌃⌘T still have a way to
        drag. All status bar slots are non-interactive (mode pill,
        filename, filetype, position, word count, sync indicator — all
        display-only spans with no click handlers), so nothing gets
        swallowed by the drag behavior. -->
-  <footer class="statusbar" id="statusbar" data-tauri-drag-region>
-    <div class="status-left" data-tauri-drag-region>
-      <span class="status-mode-pill" id="statusMode" data-vim-mode="normal" hidden>NORMAL</span>
-      <span class="status-filename" id="statusFilename">untitled.adoc</span>
-    </div>
-    <div class="status-right" data-tauri-drag-region>
-      <span class="status-sync-indicator" id="statusSyncIndicator" aria-hidden="true">→</span>
-      <span class="status-filetype" id="statusFiletype">AsciiDoc</span>
-      <span class="status-spellcheck" id="statusSpellcheck" hidden></span>
-      <span class="status-position" id="statusPosition">Ln 1, Col 1</span>
-      <span class="status-word-count" id="statusWordCount">0 words</span>
-    </div>
-  </footer>
+    <footer class="statusbar" id="statusbar" data-tauri-drag-region>
+      <div class="status-left" data-tauri-drag-region>
+        <span class="status-mode-pill" id="statusMode" data-vim-mode="normal" hidden>NORMAL</span>
+        <span class="status-filename" id="statusFilename">untitled.adoc</span>
+      </div>
+      <div class="status-right" data-tauri-drag-region>
+        <span class="status-sync-indicator" id="statusSyncIndicator" aria-hidden="true">→</span>
+        <span class="status-filetype" id="statusFiletype">AsciiDoc</span>
+        <span class="status-spellcheck" id="statusSpellcheck" hidden></span>
+        <span class="status-position" id="statusPosition">Ln 1, Col 1</span>
+        <span class="status-word-count" id="statusWordCount">0 words</span>
+      </div>
+    </footer>
 
-  <!-- Custom confirmation dialog -->
-  <dialog id="confirmDialog" class="confirm-dialog">
-    <p class="confirm-message" id="confirmMessage"></p>
-    <div class="confirm-actions">
-      <button type="button" id="confirmCancelBtn" class="confirm-btn">Cancel</button>
-      <button type="button" id="confirmOkBtn" class="confirm-btn confirm-btn-primary">Discard</button>
-    </div>
-  </dialog>
+    <!-- Custom confirmation dialog -->
+    <dialog id="confirmDialog" class="confirm-dialog">
+      <p class="confirm-message" id="confirmMessage"></p>
+      <div class="confirm-actions">
+        <button type="button" id="confirmCancelBtn" class="confirm-btn">Cancel</button>
+        <button type="button" id="confirmOkBtn" class="confirm-btn confirm-btn-primary">
+          Discard
+        </button>
+      </div>
+    </dialog>
 
-  <!-- Help overlay with all keyboard shortcuts and Vim Ex commands.
+    <!-- Help overlay with all keyboard shortcuts and Vim Ex commands.
        Toggled by Ctrl+Alt+H / ⌃⌘H or by clicking the "?" button in the
        titlebar. Dismissable via Escape (native <dialog> behavior),
        backdrop click, or the close button. -->
-  <!-- kbd authoring convention: app-shortcut kbds are written in the
+    <!-- kbd authoring convention: app-shortcut kbds are written in the
        Linux/Windows form. On Mac, applyMacModifierLabels (ui.ts) rewrites
        them at init to Apple symbol form (Ctrl→⌘, Alt→⌃, Shift→⇧, Command
        last), so authored Ctrl+Shift+Z renders as ⇧⌘Z. kbds marked
@@ -135,209 +144,247 @@
        elements show only on Mac; class="non-mac" elements are removed on
        Mac (used where the Linux/Windows chord is not the Mac chord, like
        redo's Ctrl+Y vs ⇧⌘Z). -->
-  <dialog id="helpDialog" class="help-dialog">
-    <button type="button" class="help-close" id="helpCloseBtn" aria-label="Close help">×</button>
+    <dialog id="helpDialog" class="help-dialog">
+      <button type="button" class="help-close" id="helpCloseBtn" aria-label="Close help">×</button>
 
-    <h2>Keyboard shortcuts</h2>
+      <h2>Keyboard shortcuts</h2>
 
-    <h3>File</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>Ctrl+S</kbd></div>
-      <div class="help-desc">Save</div>
-      <div class="help-key"><kbd>Ctrl+Shift+S</kbd></div>
-      <div class="help-desc">Save as</div>
-      <div class="help-key"><kbd>Ctrl+O</kbd></div>
-      <div class="help-desc">Open</div>
-      <div class="help-key"><kbd>Ctrl+N</kbd></div>
-      <div class="help-desc">New</div>
-    </div>
+      <h3>File</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>Ctrl+S</kbd></div>
+        <div class="help-desc">Save</div>
+        <div class="help-key"><kbd>Ctrl+Shift+S</kbd></div>
+        <div class="help-desc">Save as</div>
+        <div class="help-key"><kbd>Ctrl+O</kbd></div>
+        <div class="help-desc">Open</div>
+        <div class="help-key"><kbd>Ctrl+N</kbd></div>
+        <div class="help-desc">New</div>
+      </div>
 
-    <h3>Editing</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>Ctrl+Z</kbd></div>
-      <div class="help-desc">Undo the last edit</div>
-      <div class="help-key"><kbd class="non-mac">Ctrl+Y</kbd> <kbd class="mac-only">Ctrl+Shift+Z</kbd></div>
-      <div class="help-desc">Redo the last undone edit (Vim users use Ctrl+R)</div>
-    </div>
+      <h3>Editing</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>Ctrl+Z</kbd></div>
+        <div class="help-desc">Undo the last edit</div>
+        <div class="help-key">
+          <kbd class="non-mac">Ctrl+Y</kbd> <kbd class="mac-only">Ctrl+Shift+Z</kbd>
+        </div>
+        <div class="help-desc">Redo the last undone edit (Vim users use Ctrl+R)</div>
+      </div>
 
-    <h3>Display</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>Ctrl+Alt+T</kbd></div>
-      <div class="help-desc">Toggle titlebar</div>
-      <div class="help-key"><kbd>Ctrl+Alt+G</kbd></div>
-      <div class="help-desc">Toggle gutter</div>
-      <div class="help-key"><kbd>Ctrl+Alt+V</kbd></div>
-      <div class="help-desc">Toggle Vim mode</div>
-      <div class="help-key"><kbd>Ctrl+Alt+S</kbd></div>
-      <div class="help-desc">Split mode (editor + preview)</div>
-      <div class="help-key"><kbd>Ctrl+Alt+E</kbd></div>
-      <div class="help-desc">Editor only</div>
-      <div class="help-key"><kbd>Ctrl+Alt+P</kbd></div>
-      <div class="help-desc">Preview only</div>
-      <div class="help-key"><kbd>Ctrl+Alt+H</kbd></div>
-      <div class="help-desc">Toggle this help</div>
-      <div class="help-key"><kbd>Ctrl+Alt+B</kbd></div>
-      <div class="help-desc">Toggle status bar</div>
-      <div class="help-key"><kbd>Ctrl+Alt+R</kbd></div>
-      <div class="help-desc">Cycle format (AsciiDoc / Markdown / Text)</div>
-      <div class="help-key"><kbd>Ctrl+Alt+Y</kbd></div>
-      <div class="help-desc">Toggle syntax highlighting</div>
-      <div class="help-key"><kbd>Ctrl+Alt+K</kbd></div>
-      <div class="help-desc">Toggle spellcheck</div>
-      <div class="help-key"><kbd>Ctrl+Alt+C</kbd></div>
-      <div class="help-desc">Cycle single-pane width (narrow / medium / wide / full)</div>
-      <div class="help-key"><kbd>Ctrl+Alt+I</kbd></div>
-      <div class="help-desc">Toggle table of contents visibility (resets on launch)</div>
-    </div>
+      <h3>Display</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>Ctrl+Alt+T</kbd></div>
+        <div class="help-desc">Toggle titlebar</div>
+        <div class="help-key"><kbd>Ctrl+Alt+G</kbd></div>
+        <div class="help-desc">Toggle gutter</div>
+        <div class="help-key"><kbd>Ctrl+Alt+V</kbd></div>
+        <div class="help-desc">Toggle Vim mode</div>
+        <div class="help-key"><kbd>Ctrl+Alt+S</kbd></div>
+        <div class="help-desc">Split mode (editor + preview)</div>
+        <div class="help-key"><kbd>Ctrl+Alt+E</kbd></div>
+        <div class="help-desc">Editor only</div>
+        <div class="help-key"><kbd>Ctrl+Alt+P</kbd></div>
+        <div class="help-desc">Preview only</div>
+        <div class="help-key"><kbd>Ctrl+Alt+H</kbd></div>
+        <div class="help-desc">Toggle this help</div>
+        <div class="help-key"><kbd>Ctrl+Alt+B</kbd></div>
+        <div class="help-desc">Toggle status bar</div>
+        <div class="help-key"><kbd>Ctrl+Alt+R</kbd></div>
+        <div class="help-desc">Cycle format (AsciiDoc / Markdown / Text)</div>
+        <div class="help-key"><kbd>Ctrl+Alt+Y</kbd></div>
+        <div class="help-desc">Toggle syntax highlighting</div>
+        <div class="help-key"><kbd>Ctrl+Alt+K</kbd></div>
+        <div class="help-desc">Toggle spellcheck</div>
+        <div class="help-key"><kbd>Ctrl+Alt+C</kbd></div>
+        <div class="help-desc">Cycle single-pane width (narrow / medium / wide / full)</div>
+        <div class="help-key"><kbd>Ctrl+Alt+I</kbd></div>
+        <div class="help-desc">Toggle table of contents visibility (resets on launch)</div>
+      </div>
 
-    <h3>Navigation</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>Ctrl+Alt+L</kbd></div>
-      <div class="help-desc">Sync preview to cursor</div>
-      <div class="help-key"><kbd>Ctrl+Alt+W</kbd></div>
-      <div class="help-desc">Toggle focus between editor and preview</div>
-      <div class="help-key"><kbd>Ctrl+F</kbd></div>
-      <div class="help-desc">Find and replace (Vim users use :find)</div>
-    </div>
+      <h3>Navigation</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>Ctrl+Alt+L</kbd></div>
+        <div class="help-desc">Sync preview to cursor</div>
+        <div class="help-key"><kbd>Ctrl+Alt+W</kbd></div>
+        <div class="help-desc">Toggle focus between editor and preview</div>
+        <div class="help-key"><kbd>Ctrl+F</kbd></div>
+        <div class="help-desc">Find and replace (Vim users use :find)</div>
+      </div>
 
-    <h2>Vim Ex commands <span class="help-note">(Vim mode only)</span></h2>
+      <h2>Vim Ex commands <span class="help-note">(Vim mode only)</span></h2>
 
-    <h3>File</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>:w</kbd> <kbd>:write</kbd></div>
-      <div class="help-desc">Save current file</div>
-      <div class="help-key"><kbd>:w <var>filename</var></kbd></div>
-      <div class="help-desc">Write buffer contents to a path (current buffer association unchanged)</div>
-      <div class="help-key"><kbd>:sav</kbd> <kbd>:saveas <var>filename</var></kbd></div>
-      <div class="help-desc">Save as + rename the buffer</div>
-      <div class="help-key"><kbd>:e</kbd> <kbd>:edit</kbd></div>
-      <div class="help-desc">Reload current file from disk</div>
-      <div class="help-key"><kbd>:e <var>filename</var></kbd></div>
-      <div class="help-desc">Open a different file (refuses if dirty)</div>
-      <div class="help-key"><kbd>:e!</kbd> <kbd>:e! <var>filename</var></kbd></div>
-      <div class="help-desc">Force reload or open, discarding dirty buffer</div>
-      <div class="help-key"><kbd>:new</kbd> <kbd>:enew</kbd></div>
-      <div class="help-desc">New empty buffer</div>
-      <div class="help-key"><kbd>:open</kbd> <kbd>:op</kbd></div>
-      <div class="help-desc">Show the file picker dialog</div>
-    </div>
+      <h3>File</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>:w</kbd> <kbd>:write</kbd></div>
+        <div class="help-desc">Save current file</div>
+        <div class="help-key">
+          <kbd>:w <var>filename</var></kbd>
+        </div>
+        <div class="help-desc">
+          Write buffer contents to a path (current buffer association unchanged)
+        </div>
+        <div class="help-key">
+          <kbd>:sav</kbd> <kbd>:saveas <var>filename</var></kbd>
+        </div>
+        <div class="help-desc">Save as + rename the buffer</div>
+        <div class="help-key"><kbd>:e</kbd> <kbd>:edit</kbd></div>
+        <div class="help-desc">Reload current file from disk</div>
+        <div class="help-key">
+          <kbd>:e <var>filename</var></kbd>
+        </div>
+        <div class="help-desc">Open a different file (refuses if dirty)</div>
+        <div class="help-key">
+          <kbd>:e!</kbd> <kbd>:e! <var>filename</var></kbd>
+        </div>
+        <div class="help-desc">Force reload or open, discarding dirty buffer</div>
+        <div class="help-key"><kbd>:new</kbd> <kbd>:enew</kbd></div>
+        <div class="help-desc">New empty buffer</div>
+        <div class="help-key"><kbd>:open</kbd> <kbd>:op</kbd></div>
+        <div class="help-desc">Show the file picker dialog</div>
+      </div>
 
-    <h3>Quit</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>:q</kbd> <kbd>:quit</kbd></div>
-      <div class="help-desc">Quit (confirm if dirty)</div>
-      <div class="help-key"><kbd>:q!</kbd> <kbd>:quit!</kbd></div>
-      <div class="help-desc">Force quit, discard changes without prompting</div>
-      <div class="help-key"><kbd>:wq</kbd></div>
-      <div class="help-desc">Save and quit (always writes, updates mtime)</div>
-      <div class="help-key"><kbd>:x</kbd> <kbd>:exit</kbd> <kbd>:xit</kbd></div>
-      <div class="help-desc">Save only if dirty, then quit (mtime untouched on clean buffer)</div>
-      <div class="help-key"><kbd>:x!</kbd></div>
-      <div class="help-desc">Force save even if clean, then quit</div>
-      <div class="help-key"><kbd>:qa</kbd> <kbd>:qall</kbd></div>
-      <div class="help-desc">Quit all (single-window alias for :q)</div>
-      <div class="help-key"><kbd>:qa!</kbd> <kbd>:qall!</kbd></div>
-      <div class="help-desc">Force quit all</div>
-      <div class="help-key"><kbd>:wqa</kbd> <kbd>:wqall</kbd></div>
-      <div class="help-desc">Save all, quit all</div>
-      <div class="help-key"><kbd>:xa</kbd> <kbd>:xall</kbd></div>
-      <div class="help-desc">Save if dirty (all), quit all</div>
-    </div>
+      <h3>Quit</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>:q</kbd> <kbd>:quit</kbd></div>
+        <div class="help-desc">Quit (confirm if dirty)</div>
+        <div class="help-key"><kbd>:q!</kbd> <kbd>:quit!</kbd></div>
+        <div class="help-desc">Force quit, discard changes without prompting</div>
+        <div class="help-key"><kbd>:wq</kbd></div>
+        <div class="help-desc">Save and quit (always writes, updates mtime)</div>
+        <div class="help-key"><kbd>:x</kbd> <kbd>:exit</kbd> <kbd>:xit</kbd></div>
+        <div class="help-desc">Save only if dirty, then quit (mtime untouched on clean buffer)</div>
+        <div class="help-key"><kbd>:x!</kbd></div>
+        <div class="help-desc">Force save even if clean, then quit</div>
+        <div class="help-key"><kbd>:qa</kbd> <kbd>:qall</kbd></div>
+        <div class="help-desc">Quit all (single-window alias for :q)</div>
+        <div class="help-key"><kbd>:qa!</kbd> <kbd>:qall!</kbd></div>
+        <div class="help-desc">Force quit all</div>
+        <div class="help-key"><kbd>:wqa</kbd> <kbd>:wqall</kbd></div>
+        <div class="help-desc">Save all, quit all</div>
+        <div class="help-key"><kbd>:xa</kbd> <kbd>:xall</kbd></div>
+        <div class="help-desc">Save if dirty (all), quit all</div>
+      </div>
 
-    <h3>Preview</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>:syncpreview</kbd> <kbd>:syncp</kbd></div>
-      <div class="help-desc">Snap preview to the block containing the caret line</div>
-    </div>
+      <h3>Preview</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>:syncpreview</kbd> <kbd>:syncp</kbd></div>
+        <div class="help-desc">Snap preview to the block containing the caret line</div>
+      </div>
 
-    <h3>Find</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>:find</kbd></div>
-      <div class="help-desc">Open find and replace</div>
-    </div>
+      <h3>Find</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>:find</kbd></div>
+        <div class="help-desc">Open find and replace</div>
+      </div>
 
-    <h3>Format</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>:format</kbd></div>
-      <div class="help-desc">Show the current format</div>
-      <div class="help-key"><kbd>:format <var>name</var></kbd></div>
-      <div class="help-desc">Set format: asciidoc / markdown / text</div>
-      <div class="help-key"><kbd>:asciidoc</kbd> <kbd>:markdown</kbd> <kbd>:text</kbd></div>
-      <div class="help-desc">Direct shortcuts for each format</div>
-    </div>
+      <h3>Format</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>:format</kbd></div>
+        <div class="help-desc">Show the current format</div>
+        <div class="help-key">
+          <kbd>:format <var>name</var></kbd>
+        </div>
+        <div class="help-desc">Set format: asciidoc / markdown / text</div>
+        <div class="help-key"><kbd>:asciidoc</kbd> <kbd>:markdown</kbd> <kbd>:text</kbd></div>
+        <div class="help-desc">Direct shortcuts for each format</div>
+      </div>
 
-    <h3>Syntax</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>:syntax</kbd> <kbd>:syn</kbd></div>
-      <div class="help-desc">Show whether editor syntax highlighting is on or off</div>
-      <div class="help-key"><kbd>:syntax on</kbd> <kbd>:syntax off</kbd></div>
-      <div class="help-desc">Turn editor syntax highlighting on or off (mirrors <kbd>Ctrl+Alt+Y</kbd>)</div>
-    </div>
+      <h3>Syntax</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>:syntax</kbd> <kbd>:syn</kbd></div>
+        <div class="help-desc">Show whether editor syntax highlighting is on or off</div>
+        <div class="help-key"><kbd>:syntax on</kbd> <kbd>:syntax off</kbd></div>
+        <div class="help-desc">
+          Turn editor syntax highlighting on or off (mirrors <kbd>Ctrl+Alt+Y</kbd>)
+        </div>
+      </div>
 
-    <h3>Spelling</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>:spell</kbd></div>
-      <div class="help-desc">Show whether spellcheck is on or off (offline, set the language with <kbd>spellcheck-language</kbd> in <kbd>skrivro.conf</kbd>)</div>
-      <div class="help-key"><kbd>:spell on</kbd> <kbd>:spell off</kbd></div>
-      <div class="help-desc">Turn spellcheck on or off (mirrors <kbd>Ctrl+Alt+K</kbd>)</div>
-      <div class="help-key"><kbd>:spellgood</kbd></div>
-      <div class="help-desc">Add the word under the cursor to your custom dictionary (Vim <kbd>zg</kbd>)</div>
-      <div class="help-key"><kbd>:spellundo</kbd></div>
-      <div class="help-desc">Remove the word under the cursor from your custom dictionary (Vim <kbd>zug</kbd>)</div>
-    </div>
+      <h3>Spelling</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>:spell</kbd></div>
+        <div class="help-desc">
+          Show whether spellcheck is on or off (offline, set the language with
+          <kbd>spellcheck-language</kbd> in <kbd>skrivro.conf</kbd>)
+        </div>
+        <div class="help-key"><kbd>:spell on</kbd> <kbd>:spell off</kbd></div>
+        <div class="help-desc">Turn spellcheck on or off (mirrors <kbd>Ctrl+Alt+K</kbd>)</div>
+        <div class="help-key"><kbd>:spellgood</kbd></div>
+        <div class="help-desc">
+          Add the word under the cursor to your custom dictionary (Vim <kbd>zg</kbd>)
+        </div>
+        <div class="help-key"><kbd>:spellundo</kbd></div>
+        <div class="help-desc">
+          Remove the word under the cursor from your custom dictionary (Vim <kbd>zug</kbd>)
+        </div>
+      </div>
 
-    <h3>Width</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>:width</kbd></div>
-      <div class="help-desc">Show the current single-pane width mode</div>
-      <div class="help-key"><kbd>:width narrow</kbd> <kbd>:width medium</kbd> <kbd>:width wide</kbd> <kbd>:width full</kbd></div>
-      <div class="help-desc">Set the width mode explicitly (mirrors <kbd>Ctrl+Alt+C</kbd>'s cycle)</div>
-    </div>
+      <h3>Width</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>:width</kbd></div>
+        <div class="help-desc">Show the current single-pane width mode</div>
+        <div class="help-key">
+          <kbd>:width narrow</kbd> <kbd>:width medium</kbd> <kbd>:width wide</kbd>
+          <kbd>:width full</kbd>
+        </div>
+        <div class="help-desc">
+          Set the width mode explicitly (mirrors <kbd>Ctrl+Alt+C</kbd>'s cycle)
+        </div>
+      </div>
 
-    <h3>Table of contents</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>:toc</kbd></div>
-      <div class="help-desc">Show whether the table of contents visibility override is on or off</div>
-      <div class="help-key"><kbd>:toc on</kbd> <kbd>:toc off</kbd></div>
-      <div class="help-desc">Show or hide the table of contents (mirrors <kbd>Ctrl+Alt+I</kbd>, resets on launch)</div>
-    </div>
+      <h3>Table of contents</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>:toc</kbd></div>
+        <div class="help-desc">
+          Show whether the table of contents visibility override is on or off
+        </div>
+        <div class="help-key"><kbd>:toc on</kbd> <kbd>:toc off</kbd></div>
+        <div class="help-desc">
+          Show or hide the table of contents (mirrors <kbd>Ctrl+Alt+I</kbd>, resets on launch)
+        </div>
+      </div>
 
-    <h2>Vim normal mode <span class="help-note">(Vim mode only)</span></h2>
+      <h2>Vim normal mode <span class="help-note">(Vim mode only)</span></h2>
 
-    <h3>Modes</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>i</kbd> <kbd>a</kbd></div>
-      <div class="help-desc">Insert mode (before / after cursor)</div>
-      <div class="help-key"><kbd>v</kbd></div>
-      <div class="help-desc">Visual mode (character-wise)</div>
-      <div class="help-key"><kbd>V</kbd></div>
-      <div class="help-desc">Visual line mode</div>
-      <div class="help-key"><kbd class="vim mac-only">Ctrl+V</kbd> <kbd class="vim">Ctrl+Q</kbd></div>
-      <div class="help-desc">Visual block mode</div>
-      <div class="help-key"><kbd>R</kbd></div>
-      <div class="help-desc">Replace mode</div>
-      <div class="help-key"><kbd>:</kbd></div>
-      <div class="help-desc">Ex command line</div>
-      <div class="help-key"><kbd>Esc</kbd></div>
-      <div class="help-desc">Return to normal mode</div>
-    </div>
+      <h3>Modes</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>i</kbd> <kbd>a</kbd></div>
+        <div class="help-desc">Insert mode (before / after cursor)</div>
+        <div class="help-key"><kbd>v</kbd></div>
+        <div class="help-desc">Visual mode (character-wise)</div>
+        <div class="help-key"><kbd>V</kbd></div>
+        <div class="help-desc">Visual line mode</div>
+        <div class="help-key">
+          <kbd class="vim mac-only">Ctrl+V</kbd> <kbd class="vim">Ctrl+Q</kbd>
+        </div>
+        <div class="help-desc">Visual block mode</div>
+        <div class="help-key"><kbd>R</kbd></div>
+        <div class="help-desc">Replace mode</div>
+        <div class="help-key"><kbd>:</kbd></div>
+        <div class="help-desc">Ex command line</div>
+        <div class="help-key"><kbd>Esc</kbd></div>
+        <div class="help-desc">Return to normal mode</div>
+      </div>
 
-    <h3>Commands</h3>
-    <div class="help-grid">
-      <div class="help-key"><kbd>gz</kbd></div>
-      <div class="help-desc">Snap preview to cursor (same as :syncpreview)</div>
-      <div class="help-key"><kbd>ZZ</kbd></div>
-      <div class="help-desc">Save if dirty, quit (same as :x)</div>
-      <div class="help-key"><kbd>ZQ</kbd></div>
-      <div class="help-desc">Force quit, discard changes (same as :q!)</div>
-      <div class="help-key"><kbd>zg</kbd></div>
-      <div class="help-desc">Add the word under the cursor to your custom dictionary (same as :spellgood)</div>
-      <div class="help-key"><kbd>zug</kbd></div>
-      <div class="help-desc">Remove the word under the cursor from your custom dictionary (same as :spellundo)</div>
-    </div>
-  </dialog>
+      <h3>Commands</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>gz</kbd></div>
+        <div class="help-desc">Snap preview to cursor (same as :syncpreview)</div>
+        <div class="help-key"><kbd>ZZ</kbd></div>
+        <div class="help-desc">Save if dirty, quit (same as :x)</div>
+        <div class="help-key"><kbd>ZQ</kbd></div>
+        <div class="help-desc">Force quit, discard changes (same as :q!)</div>
+        <div class="help-key"><kbd>zg</kbd></div>
+        <div class="help-desc">
+          Add the word under the cursor to your custom dictionary (same as :spellgood)
+        </div>
+        <div class="help-key"><kbd>zug</kbd></div>
+        <div class="help-desc">
+          Remove the word under the cursor from your custom dictionary (same as :spellundo)
+        </div>
+      </div>
+    </dialog>
 
-  <!-- Language resolution + static-text translation. Runs at end of
+    <!-- Language resolution + static-text translation. Runs at end of
        body (after all static elements are in the DOM) but before the
        module script, synchronously, blocking first paint. This is the
        language equivalent of the theme-FOUC-prevention script in head.
@@ -352,21 +399,20 @@
        turns to Rad" experience. Module-side translation handles the
        rest (mode pill on transition, help dialog on init, confirm
        dialog on show). -->
-  <script>
-    (function() {
-      var override = window.__SKRIVRO_LANG_OVERRIDE__;
-      var auto = /^sv/i.test(navigator.language || '');
-      var lang = (override === 'en' || override === 'sv') ? override
-                                                          : (auto ? 'sv' : 'en');
-      window.__SKRIVRO_LANG__ = lang;
-      if (lang !== 'sv') return;
-      var pos = document.getElementById('statusPosition');
-      if (pos) pos.textContent = 'Rad 1, Kol 1';
-      var wc = document.getElementById('statusWordCount');
-      if (wc) wc.textContent = '0 ord';
-    })();
-  </script>
+    <script>
+      (function () {
+        var override = window.__SKRIVRO_LANG_OVERRIDE__;
+        var auto = /^sv/i.test(navigator.language || "");
+        var lang = override === "en" || override === "sv" ? override : auto ? "sv" : "en";
+        window.__SKRIVRO_LANG__ = lang;
+        if (lang !== "sv") return;
+        var pos = document.getElementById("statusPosition");
+        if (pos) pos.textContent = "Rad 1, Kol 1";
+        var wc = document.getElementById("statusWordCount");
+        if (wc) wc.textContent = "0 ord";
+      })();
+    </script>
 
-  <script type="module" src="./main.ts"></script>
-</body>
+    <script type="module" src="./main.ts"></script>
+  </body>
 </html>

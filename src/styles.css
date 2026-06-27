@@ -5,39 +5,42 @@
      palette's best match for the PURPOSE described in the comment. */
 
   /* Backgrounds */
-  --skr-bg:              #1e1e2e; /* primary — body, editor, scrollbar tracks */
-  --skr-bg-panel:        #181825; /* chrome — titlebar, preview, dialogs, CM6 panels */
-  --skr-bg-inset:        #11111b; /* deepest — code blocks, literalblock, error bg */
-  --skr-bg-backdrop:     rgba(17, 17, 27, 0.6); /* dialog overlay */
-  --skr-bg-stripe:       rgba(49, 50, 68, 0.3); /* preview table zebra rows */
-  --skr-bg-active-line:  rgba(49, 50, 68, 0.25); /* CM6 active line highlight */
-  --skr-shadow:          rgba(0, 0, 0, 0.5); /* dialog box-shadow */
+  --skr-bg: #1e1e2e; /* primary — body, editor, scrollbar tracks */
+  --skr-bg-panel: #181825; /* chrome — titlebar, preview, dialogs, CM6 panels */
+  --skr-bg-inset: #11111b; /* deepest — code blocks, literalblock, error bg */
+  --skr-bg-backdrop: rgba(17, 17, 27, 0.6); /* dialog overlay */
+  --skr-bg-stripe: rgba(49, 50, 68, 0.3); /* preview table zebra rows */
+  --skr-bg-active-line: rgba(49, 50, 68, 0.25); /* CM6 active line highlight */
+  --skr-shadow: rgba(0, 0, 0, 0.5); /* dialog box-shadow */
 
   /* Surfaces */
-  --skr-surface:         #313244; /* borders, buttons, inputs, code spans */
-  --skr-surface-hover:   #45475a; /* hover, selection, scrollbar thumb */
+  --skr-surface: #313244; /* borders, buttons, inputs, code spans */
+  --skr-surface-hover: #45475a; /* hover, selection, scrollbar thumb */
 
   /* Text */
-  --skr-text:            #cdd6f4; /* primary */
-  --skr-text-muted:      #bac2de; /* secondary — titlebar, captions, active gutter */
-  --skr-text-dim:        #a6adc8; /* tertiary — statusbar, labels */
-  --skr-text-faint:      #6c7086; /* dimmest — line numbers, comments, sync at-rest */
+  --skr-text: #cdd6f4; /* primary */
+  --skr-text-muted: #bac2de; /* secondary — titlebar, captions, active gutter */
+  --skr-text-dim: #a6adc8; /* tertiary — statusbar, labels */
+  --skr-text-faint: #6c7086; /* dimmest — line numbers, comments, sync at-rest */
 
   /* Accents */
-  --skr-accent:          #b4befe; /* h1/h2 headings, focus rings, help title */
-  --skr-accent-alt:      #cba6f7; /* h3/h4 headings, quote accent */
-  --skr-accent-minor:    #f5c2e7; /* h5/h6 headings, muted visual mode */
-  --skr-link:            #89b4fa; /* links, info admonition, normal mode pill */
-  --skr-emphasis:        #fab387; /* inline code, dirty indicator, command mode */
-  --skr-warning:         #f9e2af; /* caution admonition, attributes */
-  --skr-error:           #f38ba8; /* errors, replace mode, discard button */
-  --skr-error-hover:     #eba0ac; /* discard button hover */
-  --skr-success:         #a6e3a1; /* tip admonition, insert mode pill */
-  --skr-feedback:        #94e2d5; /* sync indicator flash */
-  --skr-cursor:          #f5e0dc; /* caret, Vim block cursor */
+  --skr-accent: #b4befe; /* h1/h2 headings, focus rings, help title */
+  --skr-accent-alt: #cba6f7; /* h3/h4 headings, quote accent */
+  --skr-accent-minor: #f5c2e7; /* h5/h6 headings, muted visual mode */
+  --skr-link: #89b4fa; /* links, info admonition, normal mode pill */
+  --skr-emphasis: #fab387; /* inline code, dirty indicator, command mode */
+  --skr-warning: #f9e2af; /* caution admonition, attributes */
+  --skr-error: #f38ba8; /* errors, replace mode, discard button */
+  --skr-error-hover: #eba0ac; /* discard button hover */
+  --skr-success: #a6e3a1; /* tip admonition, insert mode pill */
+  --skr-feedback: #94e2d5; /* sync indicator flash */
+  --skr-cursor: #f5e0dc; /* caret, Vim block cursor */
 
-  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono:
+    ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, monospace;
 
   /* Config-file-overridable tokens — consumed by the CM6 theme in
      src/editor.ts and by the pane / scroll-container rules
@@ -108,7 +111,8 @@
   --toc-sidebar-width: 15em;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   height: 100%;
   background: var(--skr-bg);
@@ -117,7 +121,10 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-body { display: flex; flex-direction: column; }
+body {
+  display: flex;
+  flex-direction: column;
+}
 
 /* ---------- Titlebar ---------- */
 .titlebar {
@@ -133,9 +140,11 @@ body { display: flex; flex-direction: column; }
   user-select: none;
   flex-shrink: 0;
 }
-.titlebar .name { font-weight: 500; }
+.titlebar .name {
+  font-weight: 500;
+}
 body.is-dirty .titlebar .name::before {
-  content: '● ';
+  content: "● ";
   color: var(--skr-emphasis);
 }
 .titlebar .help-button {
@@ -162,7 +171,9 @@ body.is-dirty .titlebar .name::before {
   outline: 2px solid var(--skr-accent);
   outline-offset: 2px;
 }
-body.no-titlebar .titlebar { display: none; }
+body.no-titlebar .titlebar {
+  display: none;
+}
 
 /* ---------- Split panes ---------- */
 .wrap {
@@ -170,7 +181,8 @@ body.no-titlebar .titlebar { display: none; }
   flex: 1;
   min-height: 0;
 }
-.editor-pane, .preview-pane {
+.editor-pane,
+.preview-pane {
   flex: 1;
   min-width: 0;
   height: 100%;
@@ -207,11 +219,21 @@ body.no-titlebar .titlebar { display: none; }
      containing block for the pseudo's inset:0 positioning. */
   position: relative;
 }
-.editor-pane .cm-editor { height: 100%; }
-.editor-pane .cm-editor.cm-focused { outline: none; }
-.editor-pane .cm-scroller { margin-block: var(--editor-padding-y); }
-.editor-pane:has(.cm-panels-bottom) .cm-scroller { margin-bottom: 0; }
-.editor-pane:has(.cm-panels-top)    .cm-scroller { margin-top:    0; }
+.editor-pane .cm-editor {
+  height: 100%;
+}
+.editor-pane .cm-editor.cm-focused {
+  outline: none;
+}
+.editor-pane .cm-scroller {
+  margin-block: var(--editor-padding-y);
+}
+.editor-pane:has(.cm-panels-bottom) .cm-scroller {
+  margin-bottom: 0;
+}
+.editor-pane:has(.cm-panels-top) .cm-scroller {
+  margin-top: 0;
+}
 
 /* Preview pane. Two-element structure: outer .preview-pane clips its
    content (overflow:hidden), inner .preview-scroll is the actual
@@ -250,7 +272,9 @@ body.no-titlebar .titlebar { display: none; }
      signal. */
   outline: none;
 }
-.preview-scroll:focus { outline: none; }
+.preview-scroll:focus {
+  outline: none;
+}
 
 /* Active-pane indicator — split mode only. The 1px column at the
    boundary between the panes (which is .editor-pane's `border-right`,
@@ -302,7 +326,7 @@ body.mode-split .editor-pane:focus-within {
   border-right-color: var(--skr-accent);
 }
 body.mode-split .editor-pane:focus-within::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -318,7 +342,9 @@ body.mode-split .preview-pane:focus-within {
     inset 0 -1px 0 0 var(--skr-accent),
     -1px 0 0 0 var(--skr-accent);
 }
-.preview-scroll > :first-child { margin-top: 0; }
+.preview-scroll > :first-child {
+  margin-top: 0;
+}
 /* "Scroll past end" spacer — without this, the preview's scrollable
    range stops where the rendered content ends, which means the last
    ~viewport-worth of content can't be brought to the top of the
@@ -338,31 +364,65 @@ body.mode-split .preview-pane:focus-within {
    space below the last line. In editor-only mode the preview-pane
    is `display: none`, so the spacer is moot either way. */
 body.mode-split .preview-scroll::after {
-  content: '';
+  content: "";
   display: block;
   height: calc(100vh - 4em);
 }
 
 /* ---------- Preview — generic HTML ---------- */
-.preview-pane h1, .preview-pane h2, .preview-pane h3,
-.preview-pane h4, .preview-pane h5, .preview-pane h6 {
+.preview-pane h1,
+.preview-pane h2,
+.preview-pane h3,
+.preview-pane h4,
+.preview-pane h5,
+.preview-pane h6 {
   color: var(--skr-accent);
   font-weight: 600;
   line-height: 1.25;
   margin-top: 1.6em;
   margin-bottom: 0.6em;
 }
-.preview-pane h1 { font-size: 1.9rem; border-bottom: 1px solid var(--skr-surface); padding-bottom: 0.3em; }
-.preview-pane h2 { font-size: 1.5rem; border-bottom: 1px solid var(--skr-surface); padding-bottom: 0.25em; }
-.preview-pane h3 { font-size: 1.25rem; color: var(--skr-accent-alt); }
-.preview-pane h4 { font-size: 1.1rem;  color: var(--skr-accent-alt); }
-.preview-pane h5, .preview-pane h6 { font-size: 1rem; color: var(--skr-accent-minor); }
+.preview-pane h1 {
+  font-size: 1.9rem;
+  border-bottom: 1px solid var(--skr-surface);
+  padding-bottom: 0.3em;
+}
+.preview-pane h2 {
+  font-size: 1.5rem;
+  border-bottom: 1px solid var(--skr-surface);
+  padding-bottom: 0.25em;
+}
+.preview-pane h3 {
+  font-size: 1.25rem;
+  color: var(--skr-accent-alt);
+}
+.preview-pane h4 {
+  font-size: 1.1rem;
+  color: var(--skr-accent-alt);
+}
+.preview-pane h5,
+.preview-pane h6 {
+  font-size: 1rem;
+  color: var(--skr-accent-minor);
+}
 
-.preview-pane p { margin: 0.8em 0; }
-.preview-pane a { color: var(--skr-link); text-decoration: none; }
-.preview-pane a:hover { text-decoration: underline; }
-.preview-pane strong { color: var(--skr-text); font-weight: 700; }
-.preview-pane em { color: var(--skr-text); }
+.preview-pane p {
+  margin: 0.8em 0;
+}
+.preview-pane a {
+  color: var(--skr-link);
+  text-decoration: none;
+}
+.preview-pane a:hover {
+  text-decoration: underline;
+}
+.preview-pane strong {
+  color: var(--skr-text);
+  font-weight: 700;
+}
+.preview-pane em {
+  color: var(--skr-text);
+}
 
 .preview-pane code {
   font-family: var(--font-mono);
@@ -424,8 +484,14 @@ body.mode-split .preview-scroll::after {
   height: auto;
 }
 
-.preview-pane ul, .preview-pane ol { padding-left: 1.5em; margin: 0.8em 0; }
-.preview-pane li { margin: 0.25em 0; }
+.preview-pane ul,
+.preview-pane ol {
+  padding-left: 1.5em;
+  margin: 0.8em 0;
+}
+.preview-pane li {
+  margin: 0.25em 0;
+}
 
 /* GFM task lists. The Markdown render worker tags each task-list item
    with a `task-list-item` class — the same class GitHub's renderer
@@ -466,7 +532,8 @@ body.mode-split .preview-scroll::after {
   margin: 1em 0;
   width: 100%;
 }
-.preview-pane th, .preview-pane td {
+.preview-pane th,
+.preview-pane td {
   border: 1px solid var(--skr-surface);
   padding: 0.5em 0.8em;
   text-align: left;
@@ -475,7 +542,9 @@ body.mode-split .preview-scroll::after {
   background: var(--skr-surface);
   color: var(--skr-accent);
 }
-.preview-pane tr:nth-child(even) td { background: var(--skr-bg-stripe); }
+.preview-pane tr:nth-child(even) td {
+  background: var(--skr-bg-stripe);
+}
 
 /* ---------- Preview — AsciiDoctor block classes ---------- */
 .preview-pane .listingblock pre,
@@ -514,7 +583,9 @@ body.mode-split .preview-scroll::after {
    GFM alerts (in the .markdown-alert rules below) DO keep their
    stripe because GitHub's rendering does; the two formats follow
    their respective upstream conventions. */
-.preview-pane .admonitionblock { margin: 1em 0; }
+.preview-pane .admonitionblock {
+  margin: 1em 0;
+}
 /* Convert Asciidoctor's <table>-based admonition layout to flexbox.
    Table-cell vertical-align/baseline behavior diverges across browsers
    for replaced elements (esp. inline SVGs of mixed sizes), and trying
@@ -547,7 +618,7 @@ body.mode-split .preview-scroll::after {
      `left: 5em` positions it at the icon column's right edge
      (matches td.icon's flex basis). Full table height via top/
      bottom: 0. */
-  content: '';
+  content: "";
   position: absolute;
   left: 5em;
   top: 0;
@@ -592,9 +663,13 @@ body.mode-split .preview-scroll::after {
    Selectors cover both a bare <p> and Asciidoctor's `<div
    class="paragraph"><p>` wrapper pattern. */
 .preview-pane .admonitionblock > table td.content > :first-child,
-.preview-pane .admonitionblock > table td.content > :first-child > p { margin-top: 0; }
+.preview-pane .admonitionblock > table td.content > :first-child > p {
+  margin-top: 0;
+}
 .preview-pane .admonitionblock > table td.content > :last-child,
-.preview-pane .admonitionblock > table td.content > :last-child > p { margin-bottom: 0; }
+.preview-pane .admonitionblock > table td.content > :last-child > p {
+  margin-bottom: 0;
+}
 /* SVG sits as a flex item centered by the icon cell's flex container
    (above). `display: block` strips inline baseline behavior so the
    SVG's bounding box is what gets centered, not its baseline. */
@@ -604,11 +679,21 @@ body.mode-split .preview-scroll::after {
   height: 2.5em;
   fill: currentColor;
 }
-.preview-pane .admonitionblock.note      > table td.icon { color: var(--skr-link); }
-.preview-pane .admonitionblock.tip       > table td.icon { color: var(--skr-success); }
-.preview-pane .admonitionblock.important > table td.icon { color: var(--skr-error); }
-.preview-pane .admonitionblock.warning   > table td.icon { color: var(--skr-emphasis); }
-.preview-pane .admonitionblock.caution   > table td.icon { color: var(--skr-warning); }
+.preview-pane .admonitionblock.note > table td.icon {
+  color: var(--skr-link);
+}
+.preview-pane .admonitionblock.tip > table td.icon {
+  color: var(--skr-success);
+}
+.preview-pane .admonitionblock.important > table td.icon {
+  color: var(--skr-error);
+}
+.preview-pane .admonitionblock.warning > table td.icon {
+  color: var(--skr-emphasis);
+}
+.preview-pane .admonitionblock.caution > table td.icon {
+  color: var(--skr-warning);
+}
 
 /* GFM alerts — GitHub's extended blockquote syntax (> [!NOTE], etc.)
    that our markedRenderer's gfmAlert extension parses into
@@ -666,19 +751,43 @@ body.mode-split .preview-scroll::after {
 /* Drop the default top/bottom margins on the first/last children
    so the title and trailing paragraph sit flush with the colored
    frame, matching how .admonitionblock presents its content. */
-.preview-pane .markdown-alert > :first-child { margin-top: 0; }
-.preview-pane .markdown-alert > :last-child  { margin-bottom: 0; }
+.preview-pane .markdown-alert > :first-child {
+  margin-top: 0;
+}
+.preview-pane .markdown-alert > :last-child {
+  margin-bottom: 0;
+}
 
-.preview-pane .markdown-alert-note      { border-left-color: var(--skr-link); }
-.preview-pane .markdown-alert-note      > .markdown-alert-title { color: var(--skr-link); }
-.preview-pane .markdown-alert-tip       { border-left-color: var(--skr-success); }
-.preview-pane .markdown-alert-tip       > .markdown-alert-title { color: var(--skr-success); }
-.preview-pane .markdown-alert-important { border-left-color: var(--skr-accent-alt); }
-.preview-pane .markdown-alert-important > .markdown-alert-title { color: var(--skr-accent-alt); }
-.preview-pane .markdown-alert-warning   { border-left-color: var(--skr-warning); }
-.preview-pane .markdown-alert-warning   > .markdown-alert-title { color: var(--skr-warning); }
-.preview-pane .markdown-alert-caution   { border-left-color: var(--skr-error); }
-.preview-pane .markdown-alert-caution   > .markdown-alert-title { color: var(--skr-error); }
+.preview-pane .markdown-alert-note {
+  border-left-color: var(--skr-link);
+}
+.preview-pane .markdown-alert-note > .markdown-alert-title {
+  color: var(--skr-link);
+}
+.preview-pane .markdown-alert-tip {
+  border-left-color: var(--skr-success);
+}
+.preview-pane .markdown-alert-tip > .markdown-alert-title {
+  color: var(--skr-success);
+}
+.preview-pane .markdown-alert-important {
+  border-left-color: var(--skr-accent-alt);
+}
+.preview-pane .markdown-alert-important > .markdown-alert-title {
+  color: var(--skr-accent-alt);
+}
+.preview-pane .markdown-alert-warning {
+  border-left-color: var(--skr-warning);
+}
+.preview-pane .markdown-alert-warning > .markdown-alert-title {
+  color: var(--skr-warning);
+}
+.preview-pane .markdown-alert-caution {
+  border-left-color: var(--skr-error);
+}
+.preview-pane .markdown-alert-caution > .markdown-alert-title {
+  color: var(--skr-error);
+}
 .preview-pane .title {
   color: var(--skr-text-dim);
   font-style: italic;
@@ -692,14 +801,21 @@ body.mode-split .preview-scroll::after {
 }
 
 /* ---------- Preview scrollbars (webkit) ---------- */
-.preview-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
-.preview-scroll::-webkit-scrollbar-track { background: var(--skr-bg); }
+.preview-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.preview-scroll::-webkit-scrollbar-track {
+  background: var(--skr-bg);
+}
 .preview-scroll::-webkit-scrollbar-thumb {
   background: var(--skr-surface-hover);
   border-radius: 5px;
   border: 2px solid var(--skr-bg);
 }
-.preview-scroll::-webkit-scrollbar-thumb:hover { background: var(--skr-surface-hover); }
+.preview-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--skr-surface-hover);
+}
 
 .render-error {
   color: var(--skr-error);
@@ -745,7 +861,9 @@ body.mode-split .preview-scroll::after {
 
 /* Disable programming ligatures in monospace contexts.
    JetBrains Mono, Fira Code, etc. enable them by default. */
-.cm-content, .preview-pane code, .preview-pane pre {
+.cm-content,
+.preview-pane code,
+.preview-pane pre {
   font-variant-ligatures: none;
 }
 
@@ -843,10 +961,10 @@ body.mode-split .preview-scroll::after {
 .cm-panel.cm-search label {
   color: var(--skr-text-muted);
 }
-.cm-panel.cm-search [name='close'] {
+.cm-panel.cm-search [name="close"] {
   color: var(--skr-text-muted);
 }
-.cm-panel.cm-search [name='close']:hover {
+.cm-panel.cm-search [name="close"]:hover {
   color: var(--skr-text);
 }
 /* The regex toggle is deliberately hidden: the average user doesn't
@@ -854,13 +972,17 @@ body.mode-split .preview-scroll::after {
    matching for those who do. The panel code, the regex engine, and the
    regexp-to-regex relabel all stay intact, so deleting this rule
    restores the checkbox. */
-.cm-panel.cm-search label:has(input[name='re']) {
+.cm-panel.cm-search label:has(input[name="re"]) {
   display: none;
 }
 
 /* ---------- Display modes: split / editor-only / preview-only ---------- */
-body.mode-editor .preview-pane      { display: none; }
-body.mode-preview .editor-pane { display: none; }
+body.mode-editor .preview-pane {
+  display: none;
+}
+body.mode-preview .editor-pane {
+  display: none;
+}
 
 /* Editor-only mode:
    Apply the width constraint at .cm-scroller rather than at
@@ -1051,7 +1173,9 @@ body.mode-preview .preview-pane.has-sidebar-toc {
 }
 
 /* ---------- Gutter (line numbers) toggle ---------- */
-body.no-gutter .cm-gutters { display: none; }
+body.no-gutter .cm-gutters {
+  display: none;
+}
 
 /* ---------- Vim Ex command panel notifications ---------- */
 /* @replit/codemirror-vim hardcodes `color: red` inline on its own
@@ -1173,14 +1297,21 @@ dialog.help-dialog {
   scrollbar-color: var(--skr-surface-hover) var(--skr-bg-panel);
   scrollbar-width: thin;
 }
-dialog.help-dialog::-webkit-scrollbar { width: 10px; height: 10px; }
-dialog.help-dialog::-webkit-scrollbar-track { background: var(--skr-bg-panel); }
+dialog.help-dialog::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+dialog.help-dialog::-webkit-scrollbar-track {
+  background: var(--skr-bg-panel);
+}
 dialog.help-dialog::-webkit-scrollbar-thumb {
   background: var(--skr-surface-hover);
   border-radius: 5px;
   border: 2px solid var(--skr-bg-panel);
 }
-dialog.help-dialog::-webkit-scrollbar-thumb:hover { background: var(--skr-surface-hover); }
+dialog.help-dialog::-webkit-scrollbar-thumb:hover {
+  background: var(--skr-surface-hover);
+}
 dialog.help-dialog::backdrop {
   background: var(--skr-bg-backdrop);
   backdrop-filter: blur(2px);
@@ -1288,7 +1419,9 @@ dialog.help-dialog::backdrop {
   flex-shrink: 0;
   min-height: 1.5rem;
 }
-body.no-statusbar .statusbar { display: none; }
+body.no-statusbar .statusbar {
+  display: none;
+}
 
 /* Preview-only mode: hide editor-state status bar slots. The Vim
    mode pill and the Ln/Col cursor readout describe state that only
@@ -1303,7 +1436,9 @@ body.no-statusbar .statusbar { display: none; }
    left off. No JS state shuffling, no save/restore dance — just
    visibility toggling. */
 body.mode-preview .statusbar .status-mode-pill,
-body.mode-preview .statusbar .status-position { display: none; }
+body.mode-preview .statusbar .status-position {
+  display: none;
+}
 
 /* Sync indicator: visible only in split mode. The arrow signals
    the scroll-sync action (Ctrl+Alt+L / ⌃⌘L / :syncpreview / gz) that
@@ -1314,7 +1449,9 @@ body.mode-preview .statusbar .status-position { display: none; }
    Base color and flash animation live further down with the
    other sync-indicator styles. */
 body.mode-editor .statusbar .status-sync-indicator,
-body.mode-preview .statusbar .status-sync-indicator { display: none; }
+body.mode-preview .statusbar .status-sync-indicator {
+  display: none;
+}
 
 /* Word count is the inverse of the slots above — hidden in editor/split
    modes (where Ln/Col and the Vim mode pill are the primary right-
@@ -1322,8 +1459,12 @@ body.mode-preview .statusbar .status-sync-indicator { display: none; }
    hidden and the right cluster has room. Keeps the status bar focused
    on cursor-position feedback while editing, and on content-size
    feedback while reading/reviewing. */
-.statusbar .status-word-count { display: none; }
-body.mode-preview .statusbar .status-word-count { display: inline-block; }
+.statusbar .status-word-count {
+  display: none;
+}
+body.mode-preview .statusbar .status-word-count {
+  display: inline-block;
+}
 
 .statusbar .status-left,
 .statusbar .status-right {
@@ -1332,8 +1473,13 @@ body.mode-preview .statusbar .status-word-count { display: inline-block; }
   gap: 0.75rem;
   min-width: 0;
 }
-.statusbar .status-left  { flex: 1; min-width: 0; }
-.statusbar .status-right { flex-shrink: 0; }
+.statusbar .status-left {
+  flex: 1;
+  min-width: 0;
+}
+.statusbar .status-right {
+  flex-shrink: 0;
+}
 
 .statusbar .status-mode-pill {
   display: inline-block;
@@ -1343,12 +1489,29 @@ body.mode-preview .statusbar .status-word-count { display: inline-block; }
   letter-spacing: 0.04em;
   flex-shrink: 0;
 }
-.statusbar .status-mode-pill[hidden] { display: none; }
-.statusbar .status-mode-pill[data-vim-mode="normal"]  { background: var(--skr-link);   color: var(--skr-bg-panel); }
-.statusbar .status-mode-pill[data-vim-mode="insert"]  { background: var(--skr-success);  color: var(--skr-bg); }
-.statusbar .status-mode-pill[data-vim-mode="visual"]  { background: var(--skr-accent-alt);  color: var(--skr-bg); }
-.statusbar .status-mode-pill[data-vim-mode="replace"] { background: var(--skr-error);    color: var(--skr-bg); }
-.statusbar .status-mode-pill[data-vim-mode="command"] { background: var(--skr-emphasis);  color: var(--skr-bg); }
+.statusbar .status-mode-pill[hidden] {
+  display: none;
+}
+.statusbar .status-mode-pill[data-vim-mode="normal"] {
+  background: var(--skr-link);
+  color: var(--skr-bg-panel);
+}
+.statusbar .status-mode-pill[data-vim-mode="insert"] {
+  background: var(--skr-success);
+  color: var(--skr-bg);
+}
+.statusbar .status-mode-pill[data-vim-mode="visual"] {
+  background: var(--skr-accent-alt);
+  color: var(--skr-bg);
+}
+.statusbar .status-mode-pill[data-vim-mode="replace"] {
+  background: var(--skr-error);
+  color: var(--skr-bg);
+}
+.statusbar .status-mode-pill[data-vim-mode="command"] {
+  background: var(--skr-emphasis);
+  color: var(--skr-bg);
+}
 
 /* Muted mode-pill style — LazyVim-inspired override. Toggled via the
    `statusbar-style = muted` key in skrivro.conf, which the frontend's
@@ -1377,7 +1540,7 @@ body.mode-pill-muted .statusbar .status-mode-pill[data-vim-mode="visual"] {
   min-width: 0;
 }
 body.is-dirty .statusbar .status-filename::before {
-  content: '● ';
+  content: "● ";
   color: var(--skr-emphasis);
 }
 
@@ -1395,7 +1558,9 @@ body.is-dirty .statusbar .status-filename::before {
   color: var(--skr-text-muted);
   white-space: nowrap;
 }
-.statusbar .status-spellcheck[hidden] { display: none; }
+.statusbar .status-spellcheck[hidden] {
+  display: none;
+}
 
 /* Sync indicator — a small rightwards arrow that lives quietly in the
    right-hand status bar cluster and briefly flashes when the user
@@ -1424,8 +1589,12 @@ body.is-dirty .statusbar .status-filename::before {
   pointer-events: none;
 }
 @keyframes sync-flash {
-  0%   { color: var(--skr-feedback); }
-  100% { color: var(--skr-text-faint); }
+  0% {
+    color: var(--skr-feedback);
+  }
+  100% {
+    color: var(--skr-text-faint);
+  }
 }
 .statusbar .status-sync-indicator.flashing {
   animation: sync-flash 500ms ease-out;

@@ -23,21 +23,21 @@ import {
   EditorView,
   type DecorationSet,
   type ViewUpdate,
-} from '@codemirror/view';
+} from "@codemirror/view";
 import {
   RangeSetBuilder,
   StateEffect,
   StateField,
   type EditorState,
   type Extension,
-} from '@codemirror/state';
-import { invoke } from '@tauri-apps/api/core';
+} from "@codemirror/state";
+import { invoke } from "@tauri-apps/api/core";
 import type {
   SpellResponse,
   MisspelledRange,
   DictPayload,
   InitRequest,
-} from './spellcheck-worker.js';
+} from "./spellcheck-worker.js";
 
 // ===== Worker singleton =====
 
@@ -64,19 +64,19 @@ const suggestResolvers = new Map<number, (suggestions: string[]) => void>();
 // `?url` assets the worker fetches, so they no longer bloat this chunk).
 const getWorker = (): Worker => {
   if (worker) return worker;
-  const w = new Worker(new URL('./spellcheck-worker.ts', import.meta.url), {
-    type: 'module',
+  const w = new Worker(new URL("./spellcheck-worker.ts", import.meta.url), {
+    type: "module",
   });
-  w.addEventListener('message', (e: MessageEvent<SpellResponse>) => {
+  w.addEventListener("message", (e: MessageEvent<SpellResponse>) => {
     const msg = e.data;
-    if (msg.type === 'ready') {
+    if (msg.type === "ready") {
       workerReady = true;
       const resolvers = readyResolvers;
       readyResolvers = [];
       resolvers.forEach((resolve) => resolve());
-    } else if (msg.type === 'result') {
+    } else if (msg.type === "result") {
       applyResult?.(msg.reqId, msg.ranges);
-    } else if (msg.type === 'suggestions') {
+    } else if (msg.type === "suggestions") {
       const resolve = suggestResolvers.get(msg.reqId);
       if (resolve) {
         suggestResolvers.delete(msg.reqId);
@@ -84,8 +84,8 @@ const getWorker = (): Worker => {
       }
     }
   });
-  w.addEventListener('error', (e: ErrorEvent) => {
-    console.error('spellcheck worker error:', e.message);
+  w.addEventListener("error", (e: ErrorEvent) => {
+    console.error("spellcheck worker error:", e.message);
   });
   worker = w;
   return w;
@@ -94,7 +94,7 @@ const getWorker = (): Worker => {
 // The resolved dictionary sources the worker should build. English is always
 // available ('bundled' en-US or a user override); Swedish is a user-supplied
 // payload or absent.
-export type EnSource = 'bundled' | DictPayload | null;
+export type EnSource = "bundled" | DictPayload | null;
 export interface ResolvedDicts {
   en: EnSource;
   sv: DictPayload | null;
@@ -110,7 +110,7 @@ export const initSpellcheck = (dicts: ResolvedDicts): Promise<void> => {
   const w = getWorker();
   workerReady = false;
   const ready = new Promise<void>((resolve) => readyResolvers.push(resolve));
-  const init: InitRequest = { type: 'init', en: dicts.en, sv: dicts.sv };
+  const init: InitRequest = { type: "init", en: dicts.en, sv: dicts.sv };
   w.postMessage(init);
   return ready;
 };
@@ -119,12 +119,12 @@ export const initSpellcheck = (dicts: ResolvedDicts): Promise<void> => {
 // resolveSpellcheck and read by ui.ts. 'normal' = the configured language(s)
 // loaded; the others flag a missing user-supplied Swedish dictionary.
 export type SpellcheckStatus =
-  | 'normal'
-  | 'sv-missing-off' // explicit 'sv', no dict: spellcheck off
-  | 'sv-missing-en-only' // 'both', no sv dict: English only
-  | 'sv-missing-using-en'; // auto, Swedish locale, no sv dict: English fallback
+  | "normal"
+  | "sv-missing-off" // explicit 'sv', no dict: spellcheck off
+  | "sv-missing-en-only" // 'both', no sv dict: English only
+  | "sv-missing-using-en"; // auto, Swedish locale, no sv dict: English fallback
 
-let spellcheckStatus: SpellcheckStatus = 'normal';
+let spellcheckStatus: SpellcheckStatus = "normal";
 export const getSpellcheckStatus = (): SpellcheckStatus => spellcheckStatus;
 
 // Read a user-supplied Hunspell pair from
@@ -133,9 +133,9 @@ export const getSpellcheckStatus = (): SpellcheckStatus => spellcheckStatus;
 // non-UTF-8 dictionary the Rust side couldn't decode).
 const readUserDictionary = async (lang: string): Promise<DictPayload | null> => {
   try {
-    return (await invoke<DictPayload | null>('read_user_dictionary', { lang })) ?? null;
+    return (await invoke<DictPayload | null>("read_user_dictionary", { lang })) ?? null;
   } catch (e) {
-    console.error('[spellcheck] read user dictionary failed:', e);
+    console.error("[spellcheck] read user dictionary failed:", e);
     return null;
   }
 };
@@ -152,43 +152,40 @@ const readUserDictionary = async (lang: string): Promise<DictPayload | null> => 
 // available (bundled en-US, or a user en.* override). Swedish has no
 // bundled fallback, so a missing sv.* turns spellcheck off (explicit
 // 'sv') or drops to English ('both', or locale-detected 'auto').
-export const resolveSpellcheck = async (
-  cfg: string | undefined,
-): Promise<ResolvedDicts | null> => {
-  if (cfg === 'off') {
-    spellcheckStatus = 'normal';
+export const resolveSpellcheck = async (cfg: string | undefined): Promise<ResolvedDicts | null> => {
+  if (cfg === "off") {
+    spellcheckStatus = "normal";
     return null;
   }
 
-  const swedishLocale = /^sv/i.test(navigator.language || '');
-  const fromAuto = cfg == null || cfg === 'auto';
-  const wantEn = cfg === 'en' || cfg === 'both' || (fromAuto && !swedishLocale);
-  const wantSv = cfg === 'sv' || cfg === 'both' || (fromAuto && swedishLocale);
+  const swedishLocale = /^sv/i.test(navigator.language || "");
+  const fromAuto = cfg == null || cfg === "auto";
+  const wantEn = cfg === "en" || cfg === "both" || (fromAuto && !swedishLocale);
+  const wantSv = cfg === "sv" || cfg === "both" || (fromAuto && swedishLocale);
 
   // Bundled-or-override English, resolved on demand (a user en.* wins).
-  const enSource = async (): Promise<EnSource> =>
-    (await readUserDictionary('en')) ?? 'bundled';
+  const enSource = async (): Promise<EnSource> => (await readUserDictionary("en")) ?? "bundled";
 
   if (wantSv) {
-    const sv = await readUserDictionary('sv');
+    const sv = await readUserDictionary("sv");
     if (sv) {
       // Swedish loaded. English rides along only for explicit 'both'.
-      spellcheckStatus = 'normal';
+      spellcheckStatus = "normal";
       return { en: wantEn ? await enSource() : null, sv };
     }
     // Swedish requested but its file is absent.
-    if (cfg === 'sv') {
+    if (cfg === "sv") {
       // Explicit Swedish only: off. Don't check Swedish text against English.
-      spellcheckStatus = 'sv-missing-off';
+      spellcheckStatus = "sv-missing-off";
       return { en: null, sv: null };
     }
     // 'both' or auto-Swedish: fall back to English.
-    spellcheckStatus = fromAuto ? 'sv-missing-using-en' : 'sv-missing-en-only';
+    spellcheckStatus = fromAuto ? "sv-missing-using-en" : "sv-missing-en-only";
     return { en: await enSource(), sv: null };
   }
 
   // English only (explicit 'en', or auto in a non-Swedish locale).
-  spellcheckStatus = 'normal';
+  spellcheckStatus = "normal";
   return { en: await enSource(), sv: null };
 };
 
@@ -202,7 +199,7 @@ export const spellcheckRecompute = StateEffect.define<null>();
 // add/remove. No-op when the worker hasn't been created (spellcheck off).
 export const setPersonalWords = (words: string[]): void => {
   if (!worker) return;
-  worker.postMessage({ type: 'setPersonal', words });
+  worker.postMessage({ type: "setPersonal", words });
   activeView?.dispatch({ effects: spellcheckRecompute.of(null) });
 };
 
@@ -215,7 +212,7 @@ export const requestSuggestions = (word: string): Promise<string[]> => {
   const reqId = ++suggestReqId;
   return new Promise((resolve) => {
     suggestResolvers.set(reqId, resolve);
-    w.postMessage({ type: 'suggest', reqId, word });
+    w.postMessage({ type: "suggest", reqId, word });
   });
 };
 
@@ -226,7 +223,7 @@ const setSpellRanges = StateEffect.define<MisspelledRange[]>();
 // One mark decoration, reused for every misspelling. The squiggle itself
 // is pure CSS (.cm-spell-error in styles.css), so it survives
 // CodeMirror's DOM re-renders.
-const misspelledMark = Decoration.mark({ class: 'cm-spell-error' });
+const misspelledMark = Decoration.mark({ class: "cm-spell-error" });
 
 const buildDeco = (ranges: MisspelledRange[], docLen: number): DecorationSet => {
   const builder = new RangeSetBuilder<Decoration>();
@@ -352,9 +349,7 @@ const spellcheckPlugin = ViewPlugin.fromClass(
       if (
         update.docChanged ||
         update.viewportChanged ||
-        update.transactions.some((tr) =>
-          tr.effects.some((e) => e.is(spellcheckRecompute)),
-        )
+        update.transactions.some((tr) => tr.effects.some((e) => e.is(spellcheckRecompute)))
       ) {
         this.request();
       }
@@ -368,7 +363,7 @@ const spellcheckPlugin = ViewPlugin.fromClass(
         text: state.doc.sliceString(from, to),
       }));
       this.reqId += 1;
-      worker.postMessage({ type: 'check', reqId: this.reqId, pieces });
+      worker.postMessage({ type: "check", reqId: this.reqId, pieces });
     }
 
     destroy() {
@@ -386,8 +381,4 @@ const spellcheckPlugin = ViewPlugin.fromClass(
 // all — the squiggles vanish and spellcheckPlugin's destroy() unhooks from
 // the worker (which stays alive, dictionaries intact, for the next
 // toggle-on).
-export const spellcheckExtension: Extension = [
-  spellDecoField,
-  spellcheckPlugin,
-  caretSkipDisplay,
-];
+export const spellcheckExtension: Extension = [spellDecoField, spellcheckPlugin, caretSkipDisplay];

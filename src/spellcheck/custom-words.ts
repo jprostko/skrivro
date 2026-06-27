@@ -14,8 +14,8 @@
 // read_custom_words / write_custom_words commands, which resolve the
 // config dir and create it on first write (mirroring set_session_state).
 
-import { invoke } from '@tauri-apps/api/core';
-import { setPersonalWords } from './index.js';
+import { invoke } from "@tauri-apps/api/core";
+import { setPersonalWords } from "./index.js";
 
 // lowercased key → original-case word. The map dedupes case-insensitively
 // (so "Frodo" and "frodo" can't both be present) while the file preserves
@@ -26,8 +26,7 @@ const list = (): string[] => [...customWords.values()];
 
 /** Case-insensitive membership — the right-click menu uses this to choose
  *  between "Add to dictionary" and "Remove from dictionary". */
-export const hasCustomWord = (word: string): boolean =>
-  customWords.has(word.trim().toLowerCase());
+export const hasCustomWord = (word: string): boolean => customWords.has(word.trim().toLowerCase());
 
 // Read the file into the in-memory map. The Rust command resolves the
 // path and returns [] when the file is absent, so a missing file is just
@@ -35,14 +34,14 @@ export const hasCustomWord = (word: string): boolean =>
 // once the worker is ready (see main.ts).
 export const loadCustomWords = async (): Promise<void> => {
   try {
-    const words = await invoke<string[]>('read_custom_words');
+    const words = await invoke<string[]>("read_custom_words");
     customWords.clear();
     for (const w of words) {
       const t = w.trim();
       if (t) customWords.set(t.toLowerCase(), t);
     }
   } catch (e) {
-    console.error('[custom-words] read failed:', e);
+    console.error("[custom-words] read failed:", e);
   }
 };
 
@@ -54,9 +53,9 @@ export const syncCustomWordsToWorker = (): void => setPersonalWords(list());
 const persist = async (): Promise<void> => {
   setPersonalWords(list());
   try {
-    await invoke('write_custom_words', { words: list() });
+    await invoke("write_custom_words", { words: list() });
   } catch (e) {
-    console.error('[custom-words] write failed:', e);
+    console.error("[custom-words] write failed:", e);
   }
 };
 

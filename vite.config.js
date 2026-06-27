@@ -3,6 +3,12 @@ import { defineConfig } from "vite-plus";
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
+  staged: {
+    "*": "vp check --fix",
+  },
+  fmt: {
+    ignorePatterns: ["src-tauri/about.hbs"],
+  },
   lint: {
     plugins: ["typescript"],
     categories: { correctness: "error" },
@@ -16,7 +22,10 @@ export default defineConfig({
       "typescript/no-unsafe-return": "off",
       "typescript/no-misused-spread": "off",
       "no-empty": ["error", { allowEmptyCatch: true }],
-      "no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }],
+      "no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
       "typescript/no-floating-promises": "error",
       "typescript/no-misused-promises": ["error", { checksVoidReturn: { arguments: false } }],
       "typescript/await-thenable": "error",

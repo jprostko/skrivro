@@ -10,18 +10,15 @@
 // the dispatch — "given this buffer, which Renderer do I use?" —
 // gets added at the point where the buffer's format field is read.
 
-import DOMPurify from 'dompurify';
+import DOMPurify from "dompurify";
 
-import { readTextFile } from '@tauri-apps/plugin-fs';
-import { basename, dirname, resolve } from '@tauri-apps/api/path';
+import { readTextFile } from "@tauri-apps/plugin-fs";
+import { basename, dirname, resolve } from "@tauri-apps/api/path";
 
-import { userConfig } from './config.js';
-import { perfLog } from './perf.js';
-import type { Format } from './io.js';
-import type {
-  WorkerRenderRequest,
-  WorkerRenderResponse,
-} from './render-worker.js';
+import { userConfig } from "./config.js";
+import { perfLog } from "./perf.js";
+import type { Format } from "./io.js";
+import type { WorkerRenderRequest, WorkerRenderResponse } from "./render-worker.js";
 
 // ================= Public interface =================
 
@@ -115,8 +112,8 @@ let includeCache = new Map<string, string>();
 export const parseIncludeAttrs = (raw: string): Record<string, string> => {
   const attrs: Record<string, string> = {};
   if (!raw) return attrs;
-  for (const part of raw.split(',')) {
-    const eq = part.indexOf('=');
+  for (const part of raw.split(",")) {
+    const eq = part.indexOf("=");
     if (eq === -1) continue;
     const key = part.slice(0, eq).trim();
     const val = part.slice(eq + 1).trim();
@@ -133,24 +130,24 @@ export const applyIncludeAttrs = (content: string, attrs: Record<string, string>
   // lines=N..M or lines=N..M;X..Y — keep specified 1-indexed ranges.
   // Open-ended ranges like `lines=5..` mean "from line 5 to end".
   if (attrs.lines) {
-    const lines = content.split('\n');
+    const lines = content.split("\n");
     const kept = [];
-    for (const range of attrs.lines.split(';')) {
-      const dotdot = range.indexOf('..');
+    for (const range of attrs.lines.split(";")) {
+      const dotdot = range.indexOf("..");
       let from, to;
       if (dotdot === -1) {
         from = to = parseInt(range, 10);
       } else {
         from = parseInt(range.slice(0, dotdot), 10);
         const toStr = range.slice(dotdot + 2);
-        to = toStr === '' ? lines.length : parseInt(toStr, 10);
+        to = toStr === "" ? lines.length : parseInt(toStr, 10);
       }
       if (Number.isNaN(from) || Number.isNaN(to)) continue;
       for (let i = from; i <= to && i <= lines.length; i++) {
         if (i >= 1) kept.push(lines[i - 1]);
       }
     }
-    content = kept.join('\n');
+    content = kept.join("\n");
   }
   // tag=name or tags=n1;n2 — keep only lines inside matching tag
   // regions, marked by `// tag::NAME[]` and `// end::NAME[]` comment
@@ -164,11 +161,11 @@ export const applyIncludeAttrs = (content: string, attrs: Record<string, string>
         if (n) wanted.add(n);
       }
     }
-    const lines = content.split('\n');
+    const lines = content.split("\n");
     const kept = [];
     const active = new Set();
     const startRe = /\/\/\s*tag::([a-zA-Z0-9_.-]+)\[\]/;
-    const endRe   = /\/\/\s*end::([a-zA-Z0-9_.-]+)\[\]/;
+    const endRe = /\/\/\s*end::([a-zA-Z0-9_.-]+)\[\]/;
     for (const line of lines) {
       const sm = line.match(startRe);
       const em = line.match(endRe);
@@ -180,14 +177,14 @@ export const applyIncludeAttrs = (content: string, attrs: Record<string, string>
         kept.push(line);
       }
     }
-    content = kept.join('\n');
+    content = kept.join("\n");
   }
   // indent=N — normalize leading indent to exactly N spaces. Finds
   // the minimum indent across non-blank lines, strips it, then
   // prefixes N spaces. Blank lines are left untouched.
   if (attrs.indent !== undefined) {
     const target = parseInt(attrs.indent, 10) || 0;
-    const lines = content.split('\n');
+    const lines = content.split("\n");
     let minIndent = Infinity;
     for (const line of lines) {
       if (line.trim().length === 0) continue;
@@ -197,10 +194,8 @@ export const applyIncludeAttrs = (content: string, attrs: Record<string, string>
       if (m) minIndent = Math.min(minIndent, m[1]!.length);
     }
     if (!isFinite(minIndent)) minIndent = 0;
-    const pad = ' '.repeat(target);
-    content = lines.map(l =>
-      l.trim().length === 0 ? l : pad + l.slice(minIndent)
-    ).join('\n');
+    const pad = " ".repeat(target);
+    content = lines.map((l) => (l.trim().length === 0 ? l : pad + l.slice(minIndent))).join("\n");
   }
   return content;
 };
@@ -246,9 +241,19 @@ const expandOneInclude = async (
     if (attrs.leveloffset) {
       const lo = attrs.leveloffset;
       let sign, invSign, mag;
-      if (lo.startsWith('+')) { sign = '+'; invSign = '-'; mag = lo.slice(1); }
-      else if (lo.startsWith('-')) { sign = '-'; invSign = '+'; mag = lo.slice(1); }
-      else { sign = '+'; invSign = '-'; mag = lo; }
+      if (lo.startsWith("+")) {
+        sign = "+";
+        invSign = "-";
+        mag = lo.slice(1);
+      } else if (lo.startsWith("-")) {
+        sign = "-";
+        invSign = "+";
+        mag = lo.slice(1);
+      } else {
+        sign = "+";
+        invSign = "-";
+        mag = lo;
+      }
       content = `\n:leveloffset: ${sign}${mag}\n\n${content}\n\n:leveloffset: ${invSign}${mag}\n`;
     }
     return content;
@@ -271,7 +276,7 @@ const expandRecursively = async (
   cycle: Set<string>,
 ): Promise<string> => {
   const includeRe = /^include::([^[\n]+)\[([^\]]*)\]\s*$/;
-  const lines = source.split('\n');
+  const lines = source.split("\n");
   const out = [];
   for (const line of lines) {
     const m = line.match(includeRe);
@@ -285,7 +290,7 @@ const expandRecursively = async (
       out.push(line);
     }
   }
-  return out.join('\n');
+  return out.join("\n");
 };
 
 // Top-level include preprocessing. Walks the editor's root source
@@ -311,8 +316,8 @@ export const preprocessSource = async (
   // representation of "the source ends with a newline." Drop it so
   // we don't emit a spurious blank line at the very end of the
   // flattened output.
-  let rootLines = rootSource.split('\n');
-  if (rootSource.endsWith('\n') && rootLines.length > 0 && rootLines[rootLines.length - 1] === '') {
+  let rootLines = rootSource.split("\n");
+  if (rootSource.endsWith("\n") && rootLines.length > 0 && rootLines[rootLines.length - 1] === "") {
     rootLines = rootLines.slice(0, -1);
   }
 
@@ -333,12 +338,12 @@ export const preprocessSource = async (
         // Normalize to always end with exactly one newline so the
         // next root line starts on a fresh flat line, and line
         // counting stays consistent.
-        if (!expanded.endsWith('\n')) expanded += '\n';
+        if (!expanded.endsWith("\n")) expanded += "\n";
         parts.push(expanded);
         // With the trailing '\n' guarantee, the number of flat
         // lines in the expansion is (newlines) — each '\n'
         // terminates exactly one line.
-        flatLine += (expanded.split('\n').length - 1);
+        flatLine += expanded.split("\n").length - 1;
       }
       // Empty expansion: consume the root include line but don't
       // advance flatLine. The next root line's lineMap entry points
@@ -347,7 +352,7 @@ export const preprocessSource = async (
     } else {
       lineMap[i] = flatLine;
       parts.push(line);
-      parts.push('\n');
+      parts.push("\n");
       flatLine++;
     }
   }
@@ -355,8 +360,8 @@ export const preprocessSource = async (
   // Rejoin and restore trailing-newline state of the root source.
   // If the root didn't end with '\n', strip the one we appended to
   // the last line.
-  let flat = parts.join('');
-  if (!rootSource.endsWith('\n') && flat.endsWith('\n')) {
+  let flat = parts.join("");
+  if (!rootSource.endsWith("\n") && flat.endsWith("\n")) {
     flat = flat.slice(0, -1);
   }
   return { source: flat, lineMap };
@@ -373,12 +378,26 @@ export const preprocessSource = async (
 // block contexts. Order in the selector doesn't matter — querySelectorAll
 // returns matches in document order regardless.
 const DOM_BLOCK_SELECTOR = [
-  '.paragraph', '.listingblock', '.literalblock', '.exampleblock',
-  '.sidebarblock', '.admonitionblock', '.quoteblock', '.verseblock',
-  '.imageblock', '.ulist', '.olist', '.dlist',
-  '.sect1', '.sect2', '.sect3', '.sect4', '.sect5',
-  '.openblock', 'table.tableblock',
-].join(', ');
+  ".paragraph",
+  ".listingblock",
+  ".literalblock",
+  ".exampleblock",
+  ".sidebarblock",
+  ".admonitionblock",
+  ".quoteblock",
+  ".verseblock",
+  ".imageblock",
+  ".ulist",
+  ".olist",
+  ".dlist",
+  ".sect1",
+  ".sect2",
+  ".sect3",
+  ".sect4",
+  ".sect5",
+  ".openblock",
+  "table.tableblock",
+].join(", ");
 
 // Pair the worker's AsciiDoc block-line list against the rendered
 // DOM. blockLines[i] is the source line of the i-th mappable block in
@@ -401,7 +420,7 @@ export const pairAsciidoctorBlockMap = (
     map.sort((a, b) => a.line - b.line);
     return map;
   } catch (e) {
-    console.error('pairAsciidoctorBlockMap failed:', e);
+    console.error("pairAsciidoctorBlockMap failed:", e);
     return [];
   }
 };
@@ -458,7 +477,7 @@ export const pairMarkdownBlockMap = (
 // from the enclosing td via CSS's per-type color rules (see
 // styles.css), matching how Octicons work for GFM alerts.
 
-type AdmonitionType = 'note' | 'tip' | 'important' | 'warning' | 'caution';
+type AdmonitionType = "note" | "tip" | "important" | "warning" | "caution";
 
 const ADMONITION_ICON_SVGS: Record<AdmonitionType, string> = {
   // info-circle (fa \f05a), horiz-adv-x 1536, offset (1792−1536)/2 = 128
@@ -466,19 +485,22 @@ const ADMONITION_ICON_SVGS: Record<AdmonitionType, string> = {
   // lightbulb-o (fa \f0eb), horiz-adv-x 1024, offset (1792−1024)/2 = 384
   tip: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1792" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 384 1536)" d="M736 960q0 -13 -9.5 -22.5t-22.5 -9.5t-22.5 9.5t-9.5 22.5q0 46 -54 71t-106 25q-13 0 -22.5 9.5t-9.5 22.5t9.5 22.5t22.5 9.5q50 0 99.5 -16t87 -54t37.5 -90zM896 960q0 72 -34.5 134t-90 101.5t-123 62t-136.5 22.5t-136.5 -22.5t-123 -62t-90 -101.5t-34.5 -134q0 -101 68 -180q10 -11 30.5 -33t30.5 -33q128 -153 141 -298h228q13 145 141 298q10 11 30.5 33t30.5 33q68 79 68 180zM1024 960q0 -155 -103 -268q-45 -49 -74.5 -87t-59.5 -95.5t-34 -107.5q47 -28 47 -82q0 -37 -25 -64q25 -27 25 -64q0 -52 -45 -81q13 -23 13 -47q0 -46 -31.5 -71t-77.5 -25q-20 -44 -60 -70t-87 -26t-87 26t-60 70q-46 0 -77.5 25t-31.5 71q0 24 13 47q-45 29 -45 81q0 37 25 64q-25 27 -25 64q0 54 47 82q-4 50 -34 107.5t-59.5 95.5t-74.5 87q-103 113 -103 268q0 99 44.5 184.5t117 142t164 89t186.5 32.5t186.5 -32.5t164 -89t117 -142t44.5 -184.5z"/></svg>',
   // exclamation-circle (fa \f06a), horiz-adv-x 1536, offset 128
-  important: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1792" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 128 1536)" d="M768 1408q209 0 385.5 -103t279.5 -279.5t103 -385.5t-103 -385.5t-279.5 -279.5t-385.5 -103t-385.5 103t-279.5 279.5t-103 385.5t103 385.5t279.5 279.5t385.5 103zM896 161v190q0 14 -9 23.5t-22 9.5h-192q-13 0 -23 -10t-10 -23v-190q0 -13 10 -23t23 -10h192q13 0 22 9.5t9 23.5zM894 505l18 621q0 12 -10 18q-10 8 -24 8h-220q-14 0 -24 -8q-10 -6 -10 -18l17 -621q0 -10 10 -17.5t24 -7.5h185q14 0 23.5 7.5t10.5 17.5z"/></svg>',
+  important:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1792" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 128 1536)" d="M768 1408q209 0 385.5 -103t279.5 -279.5t103 -385.5t-103 -385.5t-279.5 -279.5t-385.5 -103t-385.5 103t-279.5 279.5t-103 385.5t103 385.5t279.5 279.5t385.5 103zM896 161v190q0 14 -9 23.5t-22 9.5h-192q-13 0 -23 -10t-10 -23v-190q0 -13 10 -23t23 -10h192q13 0 22 9.5t9 23.5zM894 505l18 621q0 12 -10 18q-10 8 -24 8h-220q-14 0 -24 -8q-10 -6 -10 -18l17 -621q0 -10 10 -17.5t24 -7.5h185q14 0 23.5 7.5t10.5 17.5z"/></svg>',
   // exclamation-triangle (fa \f071). Glyph bbox extends to the top of
   // the viewBox (y=0) and slightly past both horizontal edges, so its
   // ink visibly overflows a tight viewBox. Expanded viewBox centers
   // the bbox (cx=896, cy=832) in a 2048×2048 frame — 128 units
   // horizontal padding, 192 units vertical — to give consistent
   // breathing room matching the other admonition icons.
-  warning: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-128 -192 2048 2048" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 0 1536)" d="M1024 161v190q0 14 -9.5 23.5t-22.5 9.5h-192q-13 0 -22.5 -9.5t-9.5 -23.5v-190q0 -14 9.5 -23.5t22.5 -9.5h192q13 0 22.5 9.5t9.5 23.5zM1022 535l18 459q0 12 -10 19q-13 11 -24 11h-220q-11 0 -24 -11q-10 -7 -10 -21l17 -457q0 -10 10 -16.5t24 -6.5h185q14 0 23.5 6.5t10.5 16.5zM1008 1469l768 -1408q35 -63 -2 -126q-17 -29 -46.5 -46t-63.5 -17h-1536q-34 0 -63.5 17t-46.5 46q-37 63 -2 126l768 1408q17 31 47 49t65 18t65 -18t47 -49z"/></svg>',
+  warning:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-128 -192 2048 2048" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 0 1536)" d="M1024 161v190q0 14 -9.5 23.5t-22.5 9.5h-192q-13 0 -22.5 -9.5t-9.5 -23.5v-190q0 -14 9.5 -23.5t22.5 -9.5h192q13 0 22.5 9.5t9.5 23.5zM1022 535l18 459q0 12 -10 19q-13 11 -24 11h-220q-11 0 -24 -11q-10 -7 -10 -21l17 -457q0 -10 10 -16.5t24 -6.5h185q14 0 23.5 6.5t10.5 16.5zM1008 1469l768 -1408q35 -63 -2 -126q-17 -29 -46.5 -46t-63.5 -17h-1536q-34 0 -63.5 17t-46.5 46q-37 63 -2 126l768 1408q17 31 47 49t65 18t65 -18t47 -49z"/></svg>',
   // fire (fa \f06d). Glyph bbox fills the viewBox floor-to-ceiling
   // (y=0 to y=1792 in the 1792-tall viewBox). Expanded viewBox adds
   // 128 units padding on all sides (bbox already horizontally
   // centered) so ink has consistent margin inside the rendered SVG.
-  caution: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-128 -128 2048 2048" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 192 1536)" d="M1408 -160v-64q0 -13 -9.5 -22.5t-22.5 -9.5h-1344q-13 0 -22.5 9.5t-9.5 22.5v64q0 13 9.5 22.5t22.5 9.5h1344q13 0 22.5 -9.5t9.5 -22.5zM1152 896q0 -78 -24.5 -144t-64 -112.5t-87.5 -88t-96 -77.5t-87.5 -72t-64 -81.5t-24.5 -96.5q0 -96 67 -224l-4 1l1 -1q-90 41 -160 83t-138.5 100t-113.5 122.5t-72.5 150.5t-27.5 184q0 78 24.5 144t64 112.5t87.5 88t96 77.5t87.5 72t64 81.5t24.5 96.5q0 94 -66 224l3 -1l-1 1q90 -41 160 -83t138.5 -100t113.5 -122.5t72.5 -150.5t27.5 -184z"/></svg>',
+  caution:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-128 -128 2048 2048" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 192 1536)" d="M1408 -160v-64q0 -13 -9.5 -22.5t-22.5 -9.5h-1344q-13 0 -22.5 9.5t-9.5 22.5v64q0 13 9.5 22.5t22.5 9.5h1344q13 0 22.5 -9.5t9.5 -22.5zM1152 896q0 -78 -24.5 -144t-64 -112.5t-87.5 -88t-96 -77.5t-87.5 -72t-64 -81.5t-24.5 -96.5q0 -96 67 -224l-4 1l1 -1q-90 41 -160 83t-138.5 100t-113.5 122.5t-72.5 150.5t-27.5 184q0 78 24.5 144t64 112.5t87.5 88t96 77.5t87.5 72t64 81.5t24.5 96.5q0 94 -66 224l3 -1l-1 1q90 -41 160 -83t138.5 -100t113.5 -122.5t72.5 -150.5t27.5 -184z"/></svg>',
 };
 
 // Replace Asciidoctor's font-icon admonition markers (<i class="fa
@@ -506,7 +528,7 @@ export const replaceAdmonitionIcons = (parsed: Document): void => {
     // Parse the SVG as an HTML fragment so we get a proper Element
     // we can swap in place of the <i>. Using a template element
     // rather than another DOMParser call for a cheaper round-trip.
-    const template = parsed.createElement('template');
+    const template = parsed.createElement("template");
     template.innerHTML = ADMONITION_ICON_SVGS[type];
     const svg = template.content.firstElementChild;
     if (svg) el.replaceWith(svg);
@@ -535,10 +557,7 @@ let workerSeq = 0;
 // In-flight worker requests: id → the promise's resolve callback. The
 // worker processes messages in receive order and echoes the id, so
 // the message handler resolves the matching entry and deletes it.
-const pendingRenders = new Map<
-  number,
-  (response: WorkerRenderResponse) => void
->();
+const pendingRenders = new Map<number, (response: WorkerRenderResponse) => void>();
 
 // Lazily construct the worker and wire its listeners.
 //
@@ -553,11 +572,8 @@ const pendingRenders = new Map<
 // dropped — the next render lazily builds a fresh one.
 const getWorker = (): Worker => {
   if (renderWorker) return renderWorker;
-  const worker = new Worker(
-    new URL('./render-worker.ts', import.meta.url),
-    { type: 'module' },
-  );
-  worker.addEventListener('message', (e: MessageEvent<WorkerRenderResponse>) => {
+  const worker = new Worker(new URL("./render-worker.ts", import.meta.url), { type: "module" });
+  worker.addEventListener("message", (e: MessageEvent<WorkerRenderResponse>) => {
     const response = e.data;
     const settle = pendingRenders.get(response.id);
     if (settle) {
@@ -565,12 +581,12 @@ const getWorker = (): Worker => {
       settle(response);
     }
   });
-  worker.addEventListener('error', (e: ErrorEvent) => {
-    console.error('render worker error:', e.message);
+  worker.addEventListener("error", (e: ErrorEvent) => {
+    console.error("render worker error:", e.message);
     const failure: WorkerRenderResponse = {
       id: -1,
       ok: false,
-      error: e.message || 'render worker crashed',
+      error: e.message || "render worker crashed",
     };
     for (const settle of pendingRenders.values()) settle(failure);
     pendingRenders.clear();
@@ -584,9 +600,7 @@ const getWorker = (): Worker => {
 // The returned promise always resolves (never rejects) — worker-side
 // failures come back as a WorkerRenderFailure, so callers branch on
 // `response.ok` rather than wrapping this in try/catch.
-const runInWorker = (
-  req: Omit<WorkerRenderRequest, 'id'>,
-): Promise<WorkerRenderResponse> => {
+const runInWorker = (req: Omit<WorkerRenderRequest, "id">): Promise<WorkerRenderResponse> => {
   const id = ++workerSeq;
   const worker = getWorker();
   return new Promise<WorkerRenderResponse>((resolve) => {
@@ -611,7 +625,7 @@ export const asciidoctorRenderer: Renderer = {
     // can be spread on below without TS narrowing it to the initial
     // literal shape. Asciidoctor attribute values span strings,
     // numbers, and booleans, so unknown is the right width.
-    let attributes: Record<string, unknown> = { showtitle: true, icons: 'font' };
+    let attributes: Record<string, unknown> = { showtitle: true, icons: "font" };
 
     if (context.path) {
       const baseDir = await dirname(context.path);
@@ -641,7 +655,7 @@ export const asciidoctorRenderer: Renderer = {
       // path makes the ifeval pattern work as the document author
       // intended.
       const name = await basename(context.path);
-      const docname = name.replace(/\.[^.]+$/, '');
+      const docname = name.replace(/\.[^.]+$/, "");
       attributes = {
         ...attributes,
         docname,
@@ -669,9 +683,9 @@ export const asciidoctorRenderer: Renderer = {
     // egress so nothing can phone home) and the DOMPurify pass below
     // (strips scripts / event handlers before the HTML hits the DOM).
     const res = await runInWorker({
-      kind: 'asciidoc',
+      kind: "asciidoc",
       source,
-      safe: userConfig.asciidocSafeMode || 'unsafe',
+      safe: userConfig.asciidocSafeMode || "unsafe",
       attributes,
     });
     const t2 = performance.now(); // [perf]
@@ -686,11 +700,13 @@ export const asciidoctorRenderer: Renderer = {
     // the main thread, not in the worker. DOMPurify keeps <svg>/<path>
     // elements by default (verified with the Octicons used in GFM
     // alerts), so the injected icon markup survives sanitization.
-    const parsed = new DOMParser().parseFromString(res.html, 'text/html');
+    const parsed = new DOMParser().parseFromString(res.html, "text/html");
     replaceAdmonitionIcons(parsed);
     const fragment = DOMPurify.sanitize(parsed.body, { RETURN_DOM_FRAGMENT: true });
     const t3 = performance.now(); // [perf]
-    perfLog(`adoc render: total ${(t3 - t0).toFixed(0)}ms (preprocess ${(t1 - t0).toFixed(0)}, worker ${(t2 - t1).toFixed(0)}, post ${(t3 - t2).toFixed(0)})`);
+    perfLog(
+      `adoc render: total ${(t3 - t0).toFixed(0)}ms (preprocess ${(t1 - t0).toFixed(0)}, worker ${(t2 - t1).toFixed(0)}, post ${(t3 - t2).toFixed(0)})`,
+    );
 
     // Capture the per-render state in closures. The caller invokes
     // buildBlockMap after injecting the fragment into a container;
@@ -703,8 +719,7 @@ export const asciidoctorRenderer: Renderer = {
     const blockLines = res.blockLines;
     return {
       fragment,
-      buildBlockMap: (rootElement: Element) =>
-        pairAsciidoctorBlockMap(blockLines, rootElement),
+      buildBlockMap: (rootElement: Element) => pairAsciidoctorBlockMap(blockLines, rootElement),
       translateEditorLine: (editorLine: number) =>
         capturedLineMap ? (capturedLineMap[editorLine - 1] ?? editorLine) : editorLine,
       tocPosition: res.tocPosition,
@@ -727,7 +742,7 @@ export const asciidoctorRenderer: Renderer = {
 export const markdownRenderer: Renderer = {
   async render(source: string, _context: RenderContext): Promise<RenderResult> {
     const m0 = performance.now(); // [perf]
-    const res = await runInWorker({ kind: 'markdown', source });
+    const res = await runInWorker({ kind: "markdown", source });
     const m1 = performance.now(); // [perf]
     if (!res.ok) throw new Error(res.error);
 
@@ -738,7 +753,9 @@ export const markdownRenderer: Renderer = {
     // the caller's side.
     const fragment = DOMPurify.sanitize(res.html, { RETURN_DOM_FRAGMENT: true });
     const m2 = performance.now(); // [perf]
-    perfLog(`md render: total ${(m2 - m0).toFixed(0)}ms (worker ${(m1 - m0).toFixed(0)}, sanitize ${(m2 - m1).toFixed(0)})`);
+    perfLog(
+      `md render: total ${(m2 - m0).toFixed(0)}ms (worker ${(m1 - m0).toFixed(0)}, sanitize ${(m2 - m1).toFixed(0)})`,
+    );
 
     const blockLines = res.blockLines;
     return {
@@ -746,8 +763,7 @@ export const markdownRenderer: Renderer = {
       // Pair the worker's per-token line list against the rendered
       // top-level children by index (the 1:1 token-to-element
       // invariant; see pairMarkdownBlockMap).
-      buildBlockMap: (rootElement: Element) =>
-        pairMarkdownBlockMap(blockLines, rootElement),
+      buildBlockMap: (rootElement: Element) => pairMarkdownBlockMap(blockLines, rootElement),
       // Markdown rendering does no source transformation (unlike
       // AsciiDoc's include expansion), so editor and output line
       // coordinates coincide — identity translation is correct.
@@ -776,9 +792,8 @@ export const markdownRenderer: Renderer = {
 // another module. Record<string, string> typing satisfies strict
 // mode's noUncheckedIndexedAccess; the `?? c` fallback is defensive
 // and unreachable given the regex class.
-const TEXT_ESCAPE_MAP: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
-const escapeForPre = (s: string): string =>
-  s.replace(/[&<>]/g, (c) => TEXT_ESCAPE_MAP[c] ?? c);
+const TEXT_ESCAPE_MAP: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
+const escapeForPre = (s: string): string => s.replace(/[&<>]/g, (c) => TEXT_ESCAPE_MAP[c] ?? c);
 
 export const textRenderer: Renderer = {
   // Not declared async for the same reason as markdownRenderer — no
@@ -824,9 +839,12 @@ export const textRenderer: Renderer = {
 // flag any missing case if Format gains a new member.
 export const getRenderer = (format: Format): Renderer => {
   switch (format) {
-    case 'markdown': return markdownRenderer;
-    case 'text':     return textRenderer;
-    case 'asciidoc': return asciidoctorRenderer;
+    case "markdown":
+      return markdownRenderer;
+    case "text":
+      return textRenderer;
+    case "asciidoc":
+      return asciidoctorRenderer;
   }
 };
 
@@ -836,11 +854,7 @@ export const getRenderer = (format: Format): Renderer => {
 // across buffers. Only asciidoctorRenderer has a cache worth
 // clearing today; markdown and text no-op. Calling the set lets
 // io.ts stay agnostic about which renderer holds cacheable state.
-const ALL_RENDERERS: readonly Renderer[] = [
-  asciidoctorRenderer,
-  markdownRenderer,
-  textRenderer,
-];
+const ALL_RENDERERS: readonly Renderer[] = [asciidoctorRenderer, markdownRenderer, textRenderer];
 
 export const clearAllRendererCaches = (): void => {
   for (const r of ALL_RENDERERS) r.clearCache();

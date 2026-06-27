@@ -19,28 +19,29 @@
 // config parser to accept the new language code, done. If the map
 // grows past ~100-200 entries or multiple languages accumulate, this
 // should graduate to a proper i18n setup. For now it's tractable.
-export const lang = window.__SKRIVRO_LANG__ || 'en';
+export const lang = window.__SKRIVRO_LANG__ || "en";
 
 // Relabels for @codemirror/search's find/replace panel, applied via
 // EditorState.phrases. English just renames "by word" to "whole word"
 // and "regexp" to "regex". Swedish localizes the whole panel. Keys are
 // CM's own phrase strings, so anything not listed falls back to CM's
 // default.
-export const searchPhrases: Record<string, string> = lang === 'sv'
-  ? {
-      'Find': 'Sök',
-      'Replace': 'Ersätt',
-      'next': 'nästa',
-      'previous': 'föregående',
-      'all': 'alla',
-      'match case': 'skiftläge',
-      'regexp': 'regex',
-      'by word': 'helord',
-      'replace': 'ersätt',
-      'replace all': 'ersätt alla',
-      'close': 'stäng',
-    }
-  : { 'by word': 'whole word', 'regexp': 'regex' };
+export const searchPhrases: Record<string, string> =
+  lang === "sv"
+    ? {
+        Find: "Sök",
+        Replace: "Ersätt",
+        next: "nästa",
+        previous: "föregående",
+        all: "alla",
+        "match case": "skiftläge",
+        regexp: "regex",
+        "by word": "helord",
+        replace: "ersätt",
+        "replace all": "ersätt alla",
+        close: "stäng",
+      }
+    : { "by word": "whole word", regexp: "regex" };
 
 // Mac detection for keyboard conventions. On Mac, the app's shortcut
 // modifier is Cmd (metaKey), not Ctrl — matching every native Mac app.
@@ -62,33 +63,33 @@ export const STRINGS_SV: Record<string, string> = {
   // Status bar — mode pill labels. NORMAL and V-BLOCK stay unchanged
   // (NORMAL is the same word in Swedish; BLOCK is the same in Swedish
   // as well — the abbreviated "V-" prefix is language-neutral).
-  'INSERT': 'INFOGA',
-  'REPLACE': 'ERSÄTT',
-  'COMMAND': 'KOMMANDO',
-  'VISUAL': 'VISUELL',
-  'V-LINE': 'V-RAD',
+  INSERT: "INFOGA",
+  REPLACE: "ERSÄTT",
+  COMMAND: "KOMMANDO",
+  VISUAL: "VISUELL",
+  "V-LINE": "V-RAD",
 
   // Status bar — cursor position prefixes and content-count labels
-  'Ln': 'Rad',
-  'Col': 'Kol',
-  'word': 'ord',
-  'words': 'ord',
-  'line': 'rad',
-  'lines': 'rader',
-  'char': 'tecken',
-  'chars': 'tecken',  // neuter noun — same plural form as singular
+  Ln: "Rad",
+  Col: "Kol",
+  word: "ord",
+  words: "ord",
+  line: "rad",
+  lines: "rader",
+  char: "tecken",
+  chars: "tecken", // neuter noun — same plural form as singular
 
   // Status bar — spellcheck-off indicator (on in config, toggled off at
   // runtime). Parens added at the call site.
-  'spellcheck off': 'stavningskontroll av',
+  "spellcheck off": "stavningskontroll av",
 
   // Status bar — user-supplied-dictionary states. Swedish (and any non
   // en-US English) is loaded from <config>/dictionaries/; these show when
   // a requested Swedish dictionary file is absent. Parens added at the
   // call site.
-  'Swedish dictionary not found': 'svensk ordlista saknas',
-  'Swedish dictionary not found, English only': 'svensk ordlista saknas, endast engelska',
-  'Swedish dictionary not found, using English': 'svensk ordlista saknas, använder engelska',
+  "Swedish dictionary not found": "svensk ordlista saknas",
+  "Swedish dictionary not found, English only": "svensk ordlista saknas, endast engelska",
+  "Swedish dictionary not found, using English": "svensk ordlista saknas, använder engelska",
 
   // Vim-panel / Ex-command channel — error messages and readbacks. By
   // design these stay English (the Vim way): E-code prefixes
@@ -96,111 +97,128 @@ export const STRINGS_SV: Record<string, string> = {
   // (on/off/narrow/medium/wide/full), config keys (spellcheck-language),
   // and the ! modifier. %s placeholders fill positionally from tr() args.
   // "Format: %s" has no entry — Format is identical in Swedish.
-  'E212: Can\'t open file for writing: %s (%s)': 'E212: Kan inte öppna filen för skrivning: %s (%s)',
-  'E212: Can\'t open file for writing (%s)': 'E212: Kan inte öppna filen för skrivning (%s)',
-  'E484: Can\'t open file %s (%s)': 'E484: Kan inte öppna filen %s (%s)',
-  'E484: Can\'t open file (%s)': 'E484: Kan inte öppna filen (%s)',
-  'E37: No write since last change (add ! to override)': 'E37: Ingen skrivning sedan senaste ändring (lägg till ! för att tvinga)',
-  'E474: Invalid format "%s" (expected asciidoc, markdown, or text)': 'E474: Ogiltigt format "%s" (förväntade asciidoc, markdown eller text)',
-  'E474: Invalid argument "%s" (expected on or off)': 'E474: Ogiltigt argument "%s" (förväntade on eller off)',
-  'E474: Invalid argument "%s" (expected narrow, medium, wide, or full)': 'E474: Ogiltigt argument "%s" (förväntade narrow, medium, wide eller full)',
-  'Syntax highlighting: %s': 'Syntaxmarkering: %s',
-  'Spellcheck: %s': 'Stavningskontroll: %s',
-  'Spellcheck: off (disabled in config)': 'Stavningskontroll: off (inaktiverad i konfigurationen)',
-  'Width mode: %s': 'Breddläge: %s',
-  'Table of contents: %s': 'Innehållsförteckning: %s',
-  'Spellcheck is disabled in config (spellcheck-language = off)': 'Stavningskontroll är inaktiverad i konfigurationen (spellcheck-language = off)',
-  'Spellcheck is off in the editor (turn it on to add or remove words)': 'Stavningskontroll är av i editorn (slå på den för att lägga till eller ta bort ord)',
-  'No word under the cursor': 'Inget ord under markören',
+  "E212: Can't open file for writing: %s (%s)": "E212: Kan inte öppna filen för skrivning: %s (%s)",
+  "E212: Can't open file for writing (%s)": "E212: Kan inte öppna filen för skrivning (%s)",
+  "E484: Can't open file %s (%s)": "E484: Kan inte öppna filen %s (%s)",
+  "E484: Can't open file (%s)": "E484: Kan inte öppna filen (%s)",
+  "E37: No write since last change (add ! to override)":
+    "E37: Ingen skrivning sedan senaste ändring (lägg till ! för att tvinga)",
+  'E474: Invalid format "%s" (expected asciidoc, markdown, or text)':
+    'E474: Ogiltigt format "%s" (förväntade asciidoc, markdown eller text)',
+  'E474: Invalid argument "%s" (expected on or off)':
+    'E474: Ogiltigt argument "%s" (förväntade on eller off)',
+  'E474: Invalid argument "%s" (expected narrow, medium, wide, or full)':
+    'E474: Ogiltigt argument "%s" (förväntade narrow, medium, wide eller full)',
+  "Syntax highlighting: %s": "Syntaxmarkering: %s",
+  "Spellcheck: %s": "Stavningskontroll: %s",
+  "Spellcheck: off (disabled in config)": "Stavningskontroll: off (inaktiverad i konfigurationen)",
+  "Width mode: %s": "Breddläge: %s",
+  "Table of contents: %s": "Innehållsförteckning: %s",
+  "Spellcheck is disabled in config (spellcheck-language = off)":
+    "Stavningskontroll är inaktiverad i konfigurationen (spellcheck-language = off)",
+  "Spellcheck is off in the editor (turn it on to add or remove words)":
+    "Stavningskontroll är av i editorn (slå på den för att lägga till eller ta bort ord)",
+  "No word under the cursor": "Inget ord under markören",
   'Added "%s" to custom words': 'La till "%s" i egna ord',
   '"%s" is already a custom word': '"%s" är redan ett eget ord',
   'Removed "%s" from custom words': 'Tog bort "%s" från egna ord',
   '"%s" is not a custom word': '"%s" är inte ett eget ord',
-  '%s is too large to open (%s, limit %s)': '%s är för stor för att öppna (%s, gräns %s)',
+  "%s is too large to open (%s, limit %s)": "%s är för stor för att öppna (%s, gräns %s)",
 
   // Confirm dialog — message and button labels
-  'You have unsaved changes. Discard them?': 'Du har osparade ändringar. Kasta dem?',
-  'Discard': 'Kasta',
-  'Cancel': 'Avbryt',
+  "You have unsaved changes. Discard them?": "Du har osparade ändringar. Kasta dem?",
+  Discard: "Kasta",
+  Cancel: "Avbryt",
 
   // Help dialog — top-level h2 headings (textContent-matched)
-  'Keyboard shortcuts': 'Kortkommandon',
-  'Vim Ex commands (Vim mode only)': 'Vim Ex-kommandon <span class="help-note">(endast i Vim-läge)</span>',
-  'Vim normal mode (Vim mode only)': 'Vim normalläge <span class="help-note">(endast i Vim-läge)</span>',
+  "Keyboard shortcuts": "Kortkommandon",
+  "Vim Ex commands (Vim mode only)":
+    'Vim Ex-kommandon <span class="help-note">(endast i Vim-läge)</span>',
+  "Vim normal mode (Vim mode only)":
+    'Vim normalläge <span class="help-note">(endast i Vim-läge)</span>',
 
   // Help dialog — h3 section headings. "File" repeats under both
   // Keyboard shortcuts and Vim Ex commands; DOM sweep translates both
   // occurrences since it matches by textContent.
-  'File': 'Fil',
-  'Display': 'Visning',
-  'Navigation': 'Navigering',
-  'Quit': 'Avsluta',
-  'Preview': 'Förhandsvisning',
-  'Modes': 'Lägen',
-  'Commands': 'Kommandon',
-  'Width': 'Bredd',
-  'Table of contents': 'Innehållsförteckning',
-  'Spelling': 'Stavning',
-  'Find': 'Sök',
-  'Editing': 'Redigering',
+  File: "Fil",
+  Display: "Visning",
+  Navigation: "Navigering",
+  Quit: "Avsluta",
+  Preview: "Förhandsvisning",
+  Modes: "Lägen",
+  Commands: "Kommandon",
+  Width: "Bredd",
+  "Table of contents": "Innehållsförteckning",
+  Spelling: "Stavning",
+  Find: "Sök",
+  Editing: "Redigering",
 
   // Help dialog — keyboard shortcut descriptions
-  'Save': 'Spara',
-  'Save as': 'Spara som',
-  'Open': 'Öppna',
-  'New': 'Ny',
-  'Undo the last edit': 'Ångra senaste ändringen',
-  'Redo the last undone edit (Vim users use Ctrl+R)': 'Gör om senaste ångrade ändringen (Vim-användare använder Ctrl+R)',
-  'Toggle titlebar': 'Växla titelrad',
-  'Toggle gutter': 'Växla radnummermarginal',
-  'Toggle Vim mode': 'Växla Vim-läge',
-  'Split mode (editor + preview)': 'Delat läge (redigerare + förhandsvisning)',
-  'Editor only': 'Endast redigerare',
-  'Preview only': 'Endast förhandsvisning',
-  'Toggle this help': 'Växla denna hjälp',
-  'Toggle status bar': 'Växla statusfält',
-  'Cycle format (AsciiDoc / Markdown / Text)': 'Växla format (AsciiDoc / Markdown / Text)',
-  'Toggle syntax highlighting': 'Växla syntaxmarkering',
-  'Toggle spellcheck': 'Växla stavningskontroll',
-  'Cycle single-pane width (narrow / medium / wide / full)': 'Växla bredd för enskild panel (smal / medium / bred / full)',
-  'Toggle table of contents visibility (resets on launch)': 'Växla synlighet för innehållsförteckning (återställs vid start)',
-  'Sync preview to cursor': 'Synka förhandsvisning till markör',
-  'Toggle focus between editor and preview': 'Växla fokus mellan redigerare och förhandsvisning',
+  Save: "Spara",
+  "Save as": "Spara som",
+  Open: "Öppna",
+  New: "Ny",
+  "Undo the last edit": "Ångra senaste ändringen",
+  "Redo the last undone edit (Vim users use Ctrl+R)":
+    "Gör om senaste ångrade ändringen (Vim-användare använder Ctrl+R)",
+  "Toggle titlebar": "Växla titelrad",
+  "Toggle gutter": "Växla radnummermarginal",
+  "Toggle Vim mode": "Växla Vim-läge",
+  "Split mode (editor + preview)": "Delat läge (redigerare + förhandsvisning)",
+  "Editor only": "Endast redigerare",
+  "Preview only": "Endast förhandsvisning",
+  "Toggle this help": "Växla denna hjälp",
+  "Toggle status bar": "Växla statusfält",
+  "Cycle format (AsciiDoc / Markdown / Text)": "Växla format (AsciiDoc / Markdown / Text)",
+  "Toggle syntax highlighting": "Växla syntaxmarkering",
+  "Toggle spellcheck": "Växla stavningskontroll",
+  "Cycle single-pane width (narrow / medium / wide / full)":
+    "Växla bredd för enskild panel (smal / medium / bred / full)",
+  "Toggle table of contents visibility (resets on launch)":
+    "Växla synlighet för innehållsförteckning (återställs vid start)",
+  "Sync preview to cursor": "Synka förhandsvisning till markör",
+  "Toggle focus between editor and preview": "Växla fokus mellan redigerare och förhandsvisning",
   // Help dialog — find/replace (Ctrl+F keybind + :find Ex command)
-  'Find and replace (Vim users use :find)': 'Sök och ersätt (Vim-användare använder :find)',
-  'Open find and replace': 'Öppna sök och ersätt',
+  "Find and replace (Vim users use :find)": "Sök och ersätt (Vim-användare använder :find)",
+  "Open find and replace": "Öppna sök och ersätt",
   // Ex command descriptions for :format. The format names (asciidoc /
   // markdown / text) stay English — they are the literal command
   // arguments the user types.
-  'Show the current format': 'Visa aktuellt format',
-  'Set format: asciidoc / markdown / text': 'Ställ in format: asciidoc / markdown / text',
-  'Direct shortcuts for each format': 'Direkta genvägar för varje format',
+  "Show the current format": "Visa aktuellt format",
+  "Set format: asciidoc / markdown / text": "Ställ in format: asciidoc / markdown / text",
+  "Direct shortcuts for each format": "Direkta genvägar för varje format",
   // Ex command description for :syntax. The surrounding
   // <kbd>Ctrl+Alt+Y</kbd> is literal and untranslated.
-  'Show whether editor syntax highlighting is on or off': 'Visa om syntaxmarkering i redigeraren är på eller av',
-  'Turn editor syntax highlighting on or off (mirrors Ctrl+Alt+Y)': 'Slå på eller av syntaxmarkering i redigeraren (motsvarar <kbd>Ctrl+Alt+Y</kbd>)',
+  "Show whether editor syntax highlighting is on or off":
+    "Visa om syntaxmarkering i redigeraren är på eller av",
+  "Turn editor syntax highlighting on or off (mirrors Ctrl+Alt+Y)":
+    "Slå på eller av syntaxmarkering i redigeraren (motsvarar <kbd>Ctrl+Alt+Y</kbd>)",
 
   // Ex command descriptions for :spell. The literal config-key name
   // (spellcheck-language) and the filename (skrivro.conf) stay English
   // — same convention as the allow-external-images entry below.
-  'Show whether spellcheck is on or off (offline, set the language with spellcheck-language in skrivro.conf)':
-    'Visa om stavningskontroll är på eller av (offline, ställ in språket med spellcheck-language i skrivro.conf)',
-  'Turn spellcheck on or off (mirrors Ctrl+Alt+K)': 'Slå på eller av stavningskontroll (motsvarar <kbd>Ctrl+Alt+K</kbd>)',
-  'Add the word under the cursor to your custom dictionary (Vim zg)':
-    'Lägg till ordet under markören i din egen ordlista (Vim <kbd>zg</kbd>)',
-  'Remove the word under the cursor from your custom dictionary (Vim zug)':
-    'Ta bort ordet under markören från din egen ordlista (Vim <kbd>zug</kbd>)',
+  "Show whether spellcheck is on or off (offline, set the language with spellcheck-language in skrivro.conf)":
+    "Visa om stavningskontroll är på eller av (offline, ställ in språket med spellcheck-language i skrivro.conf)",
+  "Turn spellcheck on or off (mirrors Ctrl+Alt+K)":
+    "Slå på eller av stavningskontroll (motsvarar <kbd>Ctrl+Alt+K</kbd>)",
+  "Add the word under the cursor to your custom dictionary (Vim zg)":
+    "Lägg till ordet under markören i din egen ordlista (Vim <kbd>zg</kbd>)",
+  "Remove the word under the cursor from your custom dictionary (Vim zug)":
+    "Ta bort ordet under markören från din egen ordlista (Vim <kbd>zug</kbd>)",
   // Right-click menu items (translated at runtime via tr(), not the DOM sweep).
-  'Add to dictionary': 'Lägg till i ordlistan',
-  'Remove from dictionary': 'Ta bort från ordlistan',
+  "Add to dictionary": "Lägg till i ordlistan",
+  "Remove from dictionary": "Ta bort från ordlistan",
 
   // Ex command descriptions for :width.
-  'Show the current single-pane width mode': 'Visa aktuellt breddläge för enskild panel',
-  "Set the width mode explicitly (mirrors Ctrl+Alt+C's cycle)": "Ställ in breddläget uttryckligen (motsvarar <kbd>Ctrl+Alt+C</kbd>:s växling)",
+  "Show the current single-pane width mode": "Visa aktuellt breddläge för enskild panel",
+  "Set the width mode explicitly (mirrors Ctrl+Alt+C's cycle)":
+    "Ställ in breddläget uttryckligen (motsvarar <kbd>Ctrl+Alt+C</kbd>:s växling)",
 
   // Ex command descriptions for :toc.
-  'Show whether the table of contents visibility override is on or off': 'Visa om åsidosättning av innehållsförteckningens synlighet är på eller av',
-  'Show or hide the table of contents (mirrors Ctrl+Alt+I, resets on launch)': 'Visa eller dölj innehållsförteckningen (motsvarar <kbd>Ctrl+Alt+I</kbd>, återställs vid start)',
+  "Show whether the table of contents visibility override is on or off":
+    "Visa om åsidosättning av innehållsförteckningens synlighet är på eller av",
+  "Show or hide the table of contents (mirrors Ctrl+Alt+I, resets on launch)":
+    "Visa eller dölj innehållsförteckningen (motsvarar <kbd>Ctrl+Alt+I</kbd>, återställs vid start)",
 
   // Help dialog — placeholder labels inside <kbd><var>...</var></kbd>
   // syntax examples (e.g. ":w <var>filename</var>"). Translated even
@@ -208,59 +226,65 @@ export const STRINGS_SV: Record<string, string> = {
   // placeholder names a user-supplied value rather than being part
   // of the command syntax. Distinct from actual filename strings
   // (e.g. untitled.adoc), which don't localize per the rules above.
-  'filename': 'filnamn',
-  'name': 'namn',
+  filename: "filnamn",
+  name: "namn",
 
   // Help dialog — Vim Ex command descriptions
-  'Save current file': 'Spara aktuell fil',
-  'Write buffer contents to a path (current buffer association unchanged)': 'Skriv buffertinnehåll till en sökväg (aktuell buffertassociation oförändrad)',
-  'Save as + rename the buffer': 'Spara som + byt namn på bufferten',
-  'Reload current file from disk': 'Ladda om aktuell fil från disken',
-  'Open a different file (refuses if dirty)': 'Öppna en annan fil (vägrar om osparad)',
-  'Force reload or open, discarding dirty buffer': 'Tvinga omladdning eller öppning, kasta osparad buffert',
-  'New empty buffer': 'Ny tom buffert',
-  'Show the file picker dialog': 'Visa fildialogen',
+  "Save current file": "Spara aktuell fil",
+  "Write buffer contents to a path (current buffer association unchanged)":
+    "Skriv buffertinnehåll till en sökväg (aktuell buffertassociation oförändrad)",
+  "Save as + rename the buffer": "Spara som + byt namn på bufferten",
+  "Reload current file from disk": "Ladda om aktuell fil från disken",
+  "Open a different file (refuses if dirty)": "Öppna en annan fil (vägrar om osparad)",
+  "Force reload or open, discarding dirty buffer":
+    "Tvinga omladdning eller öppning, kasta osparad buffert",
+  "New empty buffer": "Ny tom buffert",
+  "Show the file picker dialog": "Visa fildialogen",
 
   // Help dialog — Vim Quit command descriptions
-  'Quit (confirm if dirty)': 'Avsluta (bekräfta om osparad)',
-  'Force quit, discard changes without prompting': 'Tvinga avsluta, kasta ändringar utan att fråga',
-  'Save and quit (always writes, updates mtime)': 'Spara och avsluta (skriver alltid, uppdaterar mtime)',
-  'Save only if dirty, then quit (mtime untouched on clean buffer)': 'Spara endast om osparad, sedan avsluta (mtime orörd för ren buffert)',
-  'Force save even if clean, then quit': 'Tvinga spara även om ren, sedan avsluta',
-  'Quit all (single-window alias for :q)': 'Avsluta alla (alias för :q för enstaka fönster)',
-  'Force quit all': 'Tvinga avsluta alla',
-  'Save all, quit all': 'Spara alla, avsluta alla',
-  'Save if dirty (all), quit all': 'Spara om osparad (alla), avsluta alla',
+  "Quit (confirm if dirty)": "Avsluta (bekräfta om osparad)",
+  "Force quit, discard changes without prompting": "Tvinga avsluta, kasta ändringar utan att fråga",
+  "Save and quit (always writes, updates mtime)":
+    "Spara och avsluta (skriver alltid, uppdaterar mtime)",
+  "Save only if dirty, then quit (mtime untouched on clean buffer)":
+    "Spara endast om osparad, sedan avsluta (mtime orörd för ren buffert)",
+  "Force save even if clean, then quit": "Tvinga spara även om ren, sedan avsluta",
+  "Quit all (single-window alias for :q)": "Avsluta alla (alias för :q för enstaka fönster)",
+  "Force quit all": "Tvinga avsluta alla",
+  "Save all, quit all": "Spara alla, avsluta alla",
+  "Save if dirty (all), quit all": "Spara om osparad (alla), avsluta alla",
 
   // Help dialog — Vim Preview command descriptions
-  'Snap preview to the block containing the caret line': 'Snäpp förhandsvisning till blocket som innehåller markörraden',
+  "Snap preview to the block containing the caret line":
+    "Snäpp förhandsvisning till blocket som innehåller markörraden",
 
   // Help dialog — Vim normal mode / Modes
-  'Insert mode (before / after cursor)': 'Infogningsläge (före / efter markör)',
-  'Visual mode (character-wise)': 'Visuellt läge (teckenvis)',
-  'Visual line mode': 'Visuellt radläge',
-  'Visual block mode': 'Visuellt blockläge',
-  'Replace mode': 'Ersättningsläge',
-  'Ex command line': 'Ex-kommandorad',
-  'Return to normal mode': 'Återgå till normalläge',
+  "Insert mode (before / after cursor)": "Infogningsläge (före / efter markör)",
+  "Visual mode (character-wise)": "Visuellt läge (teckenvis)",
+  "Visual line mode": "Visuellt radläge",
+  "Visual block mode": "Visuellt blockläge",
+  "Replace mode": "Ersättningsläge",
+  "Ex command line": "Ex-kommandorad",
+  "Return to normal mode": "Återgå till normalläge",
 
   // Help dialog — Vim normal mode Commands
-  'Snap preview to cursor (same as :syncpreview)': 'Snäpp förhandsvisning till markör (samma som :syncpreview)',
-  'Save if dirty, quit (same as :x)': 'Spara om osparad, avsluta (samma som :x)',
-  'Force quit, discard changes (same as :q!)': 'Tvinga avsluta, kasta ändringar (samma som :q!)',
-  'Add the word under the cursor to your custom dictionary (same as :spellgood)':
-    'Lägg till ordet under markören i din egen ordlista (samma som :spellgood)',
-  'Remove the word under the cursor from your custom dictionary (same as :spellundo)':
-    'Ta bort ordet under markören från din egen ordlista (samma som :spellundo)',
+  "Snap preview to cursor (same as :syncpreview)":
+    "Snäpp förhandsvisning till markör (samma som :syncpreview)",
+  "Save if dirty, quit (same as :x)": "Spara om osparad, avsluta (samma som :x)",
+  "Force quit, discard changes (same as :q!)": "Tvinga avsluta, kasta ändringar (samma som :q!)",
+  "Add the word under the cursor to your custom dictionary (same as :spellgood)":
+    "Lägg till ordet under markören i din egen ordlista (samma som :spellgood)",
+  "Remove the word under the cursor from your custom dictionary (same as :spellundo)":
+    "Ta bort ordet under markören från din egen ordlista (samma som :spellundo)",
 
   // Preview pane — external-image gate placeholder. The literal
   // `allow-external-images` config-key name stays English in both
   // languages (input syntax).
-  'image blocked': 'bild blockerad',
-  'see': 'se',
-  'External image blocked': 'Extern bild blockerad',
-  'To render, set allow-external-images = true in skrivro.conf and restart.':
-    'För att visa, ställ in allow-external-images = true i skrivro.conf och starta om.',
+  "image blocked": "bild blockerad",
+  see: "se",
+  "External image blocked": "Extern bild blockerad",
+  "To render, set allow-external-images = true in skrivro.conf and restart.":
+    "För att visa, ställ in allow-external-images = true i skrivro.conf och starta om.",
 };
 
 // Translation helper. Returns the Swedish string if current language
@@ -276,7 +300,7 @@ export const STRINGS_SV: Record<string, string> = {
 // message with interpolated values stays one translatable key (the
 // Vim-panel error/readback channel needs this; static UI uses tr(en)).
 export const tr = (en: string, ...args: unknown[]): string => {
-  const s = lang === 'sv' ? (STRINGS_SV[en] ?? en) : en;
+  const s = lang === "sv" ? (STRINGS_SV[en] ?? en) : en;
   if (args.length === 0) return s;
   let i = 0;
   return s.replace(/%s/g, () => String(args[i++]));
@@ -294,18 +318,18 @@ export const tr = (en: string, ...args: unknown[]): string => {
 // translation values are author-controlled so there's no XSS concern
 // from the innerHTML write.
 export const translateStaticText = () => {
-  if (lang !== 'sv') return;
+  if (lang !== "sv") return;
   const selectors = [
-    '.help-dialog h2',
-    '.help-dialog h3',
-    '.help-dialog .help-desc',
+    ".help-dialog h2",
+    ".help-dialog h3",
+    ".help-dialog .help-desc",
     // <var> placeholders inside .help-key kbd examples (e.g. the
     // "filename" in ":w <var>filename</var>"). Surrounding kbd
     // contents stay English (Ex commands and key names don't
     // translate) but the placeholder label is a user-facing word.
-    '.help-dialog .help-key var',
-    '#confirmCancelBtn',
-    '#confirmOkBtn',
+    ".help-dialog .help-key var",
+    "#confirmCancelBtn",
+    "#confirmOkBtn",
   ];
   selectors.forEach((sel) => {
     document.querySelectorAll(sel).forEach((el) => {

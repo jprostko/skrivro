@@ -32,7 +32,7 @@
 // rather than CSS load order. Since neither approach fixes the dev
 // flash and both produce identical release output, we reverted to
 // the JS import as the idiomatic Vite pattern.
-import './styles.css';
+import "./styles.css";
 
 // Font Awesome 4.7.0, bundled locally. Required for Asciidoctor's
 // :icons: font output — Asciidoctor's HTML converter hardcodes FA4-
@@ -53,43 +53,74 @@ import './styles.css';
 // license. The OFL has a Reserved Font Name clause for "Font
 // Awesome" — we bundle unmodified so that clause doesn't affect
 // us. Bundle cost: ~240 KB (CSS ~75 KB, woff2 font ~165 KB).
-import 'font-awesome/css/font-awesome.min.css';
+import "font-awesome/css/font-awesome.min.css";
 
-import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { basename } from '@tauri-apps/api/path';
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { basename } from "@tauri-apps/api/path";
 
-import { isMac, tr, translateStaticText } from './i18n.js';
+import { isMac, tr, translateStaticText } from "./i18n.js";
 import {
-  userConfig, setUserConfig,
-  type LaunchInfo, type SessionState, type SkrivroConfig,
-} from './config.js';
-import { createEditor, editorView } from './editor.js';
-import { initSpellcheck, resolveSpellcheck, spellcheckRecompute } from './spellcheck/index.js';
-import { loadCustomWords, syncCustomWordsToWorker } from './spellcheck/custom-words.js';
-import { prefs } from './prefs.js';
-import { render, scheduleRender, syncPreviewToCaret } from './preview.js';
+  userConfig,
+  setUserConfig,
+  type LaunchInfo,
+  type SessionState,
+  type SkrivroConfig,
+} from "./config.js";
+import { createEditor, editorView } from "./editor.js";
+import { initSpellcheck, resolveSpellcheck, spellcheckRecompute } from "./spellcheck/index.js";
+import { loadCustomWords, syncCustomWordsToWorker } from "./spellcheck/custom-words.js";
+import { prefs } from "./prefs.js";
+import { render, scheduleRender, syncPreviewToCaret } from "./preview.js";
 import {
-  setDirty, scheduleAutosave, openFile, saveFile, saveFileAs, newFile,
-  loadFileFromPath, confirmDiscard, askConfirm,
-  writeSessionState, resolveInitialDoc,
-  setLaunchCwd, currentBuffer, detectFormat,
-  updateTitle, vimMessage, readDocumentText, FileTooLargeError,
+  setDirty,
+  scheduleAutosave,
+  openFile,
+  saveFile,
+  saveFileAs,
+  newFile,
+  loadFileFromPath,
+  confirmDiscard,
+  askConfirm,
+  writeSessionState,
+  resolveInitialDoc,
+  setLaunchCwd,
+  currentBuffer,
+  detectFormat,
+  updateTitle,
+  vimMessage,
+  readDocumentText,
+  FileTooLargeError,
   DEFAULT_DOC,
-} from './io.js';
+} from "./io.js";
 // ui.js has top-level side effects (help dialog listeners, host-level
 // keyup / focusin / focusout, attaches to #src-host). Importing it is
 // what registers those listeners. The exported functions are used
 // below in the keyboard shortcut handler and the init sequence.
-import { installMenu } from './menu.js';
+import { installMenu } from "./menu.js";
 import {
-  applyTitlebar, applyGutter, applyStatusBar, applyDisplayMode,
-  applyMacModifierLabels, applyUserConfig, applyWidthMode,
-  toggleTitlebar, toggleGutter, toggleStatusBar, toggleVim, toggleHelp,
-  toggleFormat, togglePaneFocus, toggleSyntaxHighlighting, toggleSpellcheck,
-  cycleWidthMode, toggleTocVisibility, setDisplayMode, refreshStatus,
-} from './ui.js';
+  applyTitlebar,
+  applyGutter,
+  applyStatusBar,
+  applyDisplayMode,
+  applyMacModifierLabels,
+  applyUserConfig,
+  applyWidthMode,
+  toggleTitlebar,
+  toggleGutter,
+  toggleStatusBar,
+  toggleVim,
+  toggleHelp,
+  toggleFormat,
+  togglePaneFocus,
+  toggleSyntaxHighlighting,
+  toggleSpellcheck,
+  cycleWidthMode,
+  toggleTocVisibility,
+  setDisplayMode,
+  refreshStatus,
+} from "./ui.js";
 
 // ================= Keyboard shortcuts =================
 // Capture phase so we beat CM6's internal keymap + Vim bindings.
@@ -124,88 +155,111 @@ import {
 // Net effect: exactly one app-shortcut chord per platform.
 //   Mac:           Cmd+letter (primary), Ctrl+Cmd+letter (secondary)
 //   Linux/Windows: Ctrl+letter (primary), Ctrl+Alt+letter (secondary)
-window.addEventListener('keydown', (e) => {
-  const mod = isMac ? e.metaKey : e.ctrlKey;
-  if (!mod) return;
-  const second = isMac ? e.ctrlKey : e.altKey;
-  const k = (e.key || '').toLowerCase();
+window.addEventListener(
+  "keydown",
+  (e) => {
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    if (!mod) return;
+    const second = isMac ? e.ctrlKey : e.altKey;
+    const k = (e.key || "").toLowerCase();
 
-  // Secondary-modifier shortcuts first — so Ctrl+Alt+S / Ctrl+Cmd+S (split)
-  // doesn't match plain Ctrl+S / Cmd+S (save).
-  if (second && k === 'v') {
-    e.preventDefault(); toggleVim();
-  } else if (second && k === 'g') {
-    e.preventDefault(); toggleGutter();
-  } else if (second && k === 's') {
-    e.preventDefault(); setDisplayMode('split');
-  } else if (second && k === 'e') {
-    e.preventDefault(); setDisplayMode('editor');
-  } else if (second && k === 'p') {
-    e.preventDefault(); setDisplayMode('preview');
-  } else if (second && k === 't') {
-    e.preventDefault(); toggleTitlebar();
-  } else if (second && k === 'b') {
-    e.preventDefault(); toggleStatusBar();
-  } else if (second && k === 'l') {
-    e.preventDefault(); syncPreviewToCaret();
-  } else if (second && k === 'h') {
-    e.preventDefault(); toggleHelp();
-  } else if (second && k === 'r') {
-    // Format toggle (R for Representation — cycles the active buffer
-    // format: AsciiDoc → Markdown → Text → AsciiDoc). F would be the
-    // obvious letter but Ctrl+Cmd+F on Mac is the Fullscreen menu
-    // shortcut that AppKit intercepts before the webview sees it.
-    e.preventDefault(); toggleFormat();
-  } else if (second && k === 'w') {
-    // Pane-focus toggle (W for Window — matches Vim's window-command
-    // mnemonic without colliding with Vim's own <C-w> chord, which
-    // requires no Alt). Only meaningful in split mode; togglePaneFocus
-    // no-ops in editor-only and preview-only.
-    e.preventDefault(); togglePaneFocus();
-  } else if (second && k === 'y') {
-    // Syntax highlighting toggle. Y is a weak mnemonic (S would be
-    // better but Ctrl+S / Ctrl+Shift+S are already in the save family
-    // and adding Ctrl+Alt+S would overload the letter), but the
-    // secondary-modifier namespace is crowded enough that "works and
-    // doesn't conflict" wins over "readable mnemonic."
-    e.preventDefault(); toggleSyntaxHighlighting();
-  } else if (second && k === 'c') {
-    // Width-mode cycle (narrow → medium → wide → full → narrow).
-    // C for Column / Cap. The secondary modifier (Alt on Linux/
-    // Windows, Ctrl on Mac) keeps the chord distinct from plain
-    // Ctrl+C / ⌘C copy.
-    e.preventDefault(); cycleWidthMode();
-  } else if (second && k === 'i') {
-    // I for Index — alternate term for table of contents.
-    // Toggles TOC visibility (shown ↔ hidden). Session-scoped
-    // override; resets to "shown" on every launch.
-    e.preventDefault(); toggleTocVisibility();
-  } else if (second && k === 'k') {
-    // Spellcheck toggle (K for checK). Silences / restores the
-    // misspelling squiggles. No-op with a message when spellcheck is
-    // disabled in the config (spellcheck-language = off).
-    e.preventDefault(); toggleSpellcheck();
-  }
-  // Primary-only shortcuts. Save/Open/New use the primary modifier alone
-  // because those are universal cross-platform conventions (Ctrl+S /
-  // Cmd+S for save, Ctrl+O / Cmd+O for open, Ctrl+N / Cmd+N for new).
-  // Standalone used Ctrl+Alt+O / Ctrl+Alt+N to avoid colliding with the
-  // browser's own open-file and new-window shortcuts; Tauri has no such
-  // collision, so we move them onto the conventional keys.
-  // `void` prefix on each async-returning call: fire-and-forget is
-  // the intent (the keydown handler doesn't await anything), and the
-  // prefix makes that explicit for both readers and the no-floating-
-  // promises lint rule.
-  else if (k === 's' && e.shiftKey) {
-    e.preventDefault(); void saveFileAs();
-  } else if (k === 's') {
-    e.preventDefault(); void saveFile();
-  } else if (k === 'o') {
-    e.preventDefault(); openFile();
-  } else if (k === 'n') {
-    e.preventDefault(); newFile();
-  }
-}, { capture: true });
+    // Secondary-modifier shortcuts first — so Ctrl+Alt+S / Ctrl+Cmd+S (split)
+    // doesn't match plain Ctrl+S / Cmd+S (save).
+    if (second && k === "v") {
+      e.preventDefault();
+      toggleVim();
+    } else if (second && k === "g") {
+      e.preventDefault();
+      toggleGutter();
+    } else if (second && k === "s") {
+      e.preventDefault();
+      setDisplayMode("split");
+    } else if (second && k === "e") {
+      e.preventDefault();
+      setDisplayMode("editor");
+    } else if (second && k === "p") {
+      e.preventDefault();
+      setDisplayMode("preview");
+    } else if (second && k === "t") {
+      e.preventDefault();
+      toggleTitlebar();
+    } else if (second && k === "b") {
+      e.preventDefault();
+      toggleStatusBar();
+    } else if (second && k === "l") {
+      e.preventDefault();
+      syncPreviewToCaret();
+    } else if (second && k === "h") {
+      e.preventDefault();
+      toggleHelp();
+    } else if (second && k === "r") {
+      // Format toggle (R for Representation — cycles the active buffer
+      // format: AsciiDoc → Markdown → Text → AsciiDoc). F would be the
+      // obvious letter but Ctrl+Cmd+F on Mac is the Fullscreen menu
+      // shortcut that AppKit intercepts before the webview sees it.
+      e.preventDefault();
+      toggleFormat();
+    } else if (second && k === "w") {
+      // Pane-focus toggle (W for Window — matches Vim's window-command
+      // mnemonic without colliding with Vim's own <C-w> chord, which
+      // requires no Alt). Only meaningful in split mode; togglePaneFocus
+      // no-ops in editor-only and preview-only.
+      e.preventDefault();
+      togglePaneFocus();
+    } else if (second && k === "y") {
+      // Syntax highlighting toggle. Y is a weak mnemonic (S would be
+      // better but Ctrl+S / Ctrl+Shift+S are already in the save family
+      // and adding Ctrl+Alt+S would overload the letter), but the
+      // secondary-modifier namespace is crowded enough that "works and
+      // doesn't conflict" wins over "readable mnemonic."
+      e.preventDefault();
+      toggleSyntaxHighlighting();
+    } else if (second && k === "c") {
+      // Width-mode cycle (narrow → medium → wide → full → narrow).
+      // C for Column / Cap. The secondary modifier (Alt on Linux/
+      // Windows, Ctrl on Mac) keeps the chord distinct from plain
+      // Ctrl+C / ⌘C copy.
+      e.preventDefault();
+      cycleWidthMode();
+    } else if (second && k === "i") {
+      // I for Index — alternate term for table of contents.
+      // Toggles TOC visibility (shown ↔ hidden). Session-scoped
+      // override; resets to "shown" on every launch.
+      e.preventDefault();
+      toggleTocVisibility();
+    } else if (second && k === "k") {
+      // Spellcheck toggle (K for checK). Silences / restores the
+      // misspelling squiggles. No-op with a message when spellcheck is
+      // disabled in the config (spellcheck-language = off).
+      e.preventDefault();
+      toggleSpellcheck();
+    }
+    // Primary-only shortcuts. Save/Open/New use the primary modifier alone
+    // because those are universal cross-platform conventions (Ctrl+S /
+    // Cmd+S for save, Ctrl+O / Cmd+O for open, Ctrl+N / Cmd+N for new).
+    // Standalone used Ctrl+Alt+O / Ctrl+Alt+N to avoid colliding with the
+    // browser's own open-file and new-window shortcuts; Tauri has no such
+    // collision, so we move them onto the conventional keys.
+    // `void` prefix on each async-returning call: fire-and-forget is
+    // the intent (the keydown handler doesn't await anything), and the
+    // prefix makes that explicit for both readers and the no-floating-
+    // promises lint rule.
+    else if (k === "s" && e.shiftKey) {
+      e.preventDefault();
+      void saveFileAs();
+    } else if (k === "s") {
+      e.preventDefault();
+      void saveFile();
+    } else if (k === "o") {
+      e.preventDefault();
+      openFile();
+    } else if (k === "n") {
+      e.preventDefault();
+      newFile();
+    }
+  },
+  { capture: true },
+);
 
 // ================= Close handler =================
 // Replaces the web version's beforeunload. When onCloseRequested is
@@ -230,7 +284,7 @@ void appWindow.onCloseRequested((event) => {
     return;
   }
   event.preventDefault();
-  askConfirm(tr('You have unsaved changes. Discard them?'), () => {
+  askConfirm(tr("You have unsaved changes. Discard them?"), () => {
     // "Discard" means actually discard. clearDraft is called by the
     // quitForce path in io.ts; for the close-X variant we inline it
     // by importing from io. Keep the action minimal: the window
@@ -254,7 +308,7 @@ void appWindow.onCloseRequested((event) => {
 // toast or dialog, but for now the silent-on-invalid behavior
 // matches how openFile handles readTextFile errors.
 void appWindow.onDragDropEvent((event) => {
-  if (event.payload.type !== 'drop') return;
+  if (event.payload.type !== "drop") return;
   const paths = event.payload.paths;
   if (!paths || paths.length === 0) return;
   // paths[0] is `string | undefined` under noUncheckedIndexedAccess,
@@ -281,9 +335,9 @@ void appWindow.onDragDropEvent((event) => {
 // "open another file while Skrivro is running" is now routed to
 // the existing window via tauri-plugin-single-instance which also
 // emits this same skrivro:open-file event.
-void listen('skrivro:open-file', (event) => {
+void listen("skrivro:open-file", (event) => {
   const path = event.payload;
-  if (typeof path !== 'string' || !path) return;
+  if (typeof path !== "string" || !path) return;
   confirmDiscard(() => loadFileFromPath(path));
 });
 
@@ -312,13 +366,13 @@ applyMacModifierLabels();
 
 // Query Rust for launch-time info (CLI argument, shell CWD). If a file
 // path was passed on the command line, that wins over the autosave draft.
-let launchInfo: LaunchInfo = { initial_file: null, cwd: '' };
+let launchInfo: LaunchInfo = { initial_file: null, cwd: "" };
 try {
-  launchInfo = await invoke<LaunchInfo>('get_launch_info');
+  launchInfo = await invoke<LaunchInfo>("get_launch_info");
 } catch (e) {
-  console.error('Failed to get launch info:', e);
+  console.error("Failed to get launch info:", e);
 }
-setLaunchCwd(launchInfo.cwd || '');
+setLaunchCwd(launchInfo.cwd || "");
 
 // Query Rust for user config file overrides. Missing / malformed /
 // unreadable file is not an error — the Rust side silently returns a
@@ -330,9 +384,9 @@ setLaunchCwd(launchInfo.cwd || '');
 // --editor-padding at construction time. Setting them afterwards
 // would require a dispatched reconfigure.
 try {
-  setUserConfig(await invoke<SkrivroConfig>('get_config'));
+  setUserConfig(await invoke<SkrivroConfig>("get_config"));
 } catch (e) {
-  console.error('Failed to get user config:', e);
+  console.error("Failed to get user config:", e);
   setUserConfig({});
 }
 applyUserConfig(userConfig);
@@ -352,7 +406,7 @@ applyUserConfig(userConfig);
 // them — the list should never accumulate across launches.
 let pendingOpen: string | null = null;
 try {
-  const pending = await invoke<string[]>('take_pending_opens');
+  const pending = await invoke<string[]>("take_pending_opens");
   if (pending && pending.length > 0) {
     // `pending[0] ?? null` converts the `string | undefined` that
     // noUncheckedIndexedAccess yields into the `string | null` shape
@@ -364,7 +418,7 @@ try {
     // ignore the rest — Skrivro is single-document.
   }
 } catch (e) {
-  console.error('Failed to take pending opens:', e);
+  console.error("Failed to take pending opens:", e);
 }
 
 let initialDoc = DEFAULT_DOC;
@@ -387,7 +441,7 @@ if (launchInfo.initial_file) {
     // left off. Fire-and-forget — failure doesn't block launch.
     void writeSessionState(launchInfo.initial_file);
   } catch (e) {
-    console.error('Failed to load file from CLI argument:', e);
+    console.error("Failed to load file from CLI argument:", e);
     if (e instanceof FileTooLargeError) startupMessage = e.message;
     // Fall back to draft / default (skip session restore — a CLI arg
     // that failed to load is a different failure mode than a normal
@@ -408,7 +462,7 @@ if (launchInfo.initial_file) {
     currentBuffer.format = detectFormat(pendingOpen);
     void writeSessionState(pendingOpen);
   } catch (e) {
-    console.error('Failed to load file from OS open event:', pendingOpen, e);
+    console.error("Failed to load file from OS open event:", pendingOpen, e);
     if (e instanceof FileTooLargeError) startupMessage = e.message;
     const r = resolveInitialDoc();
     initialDoc = r.doc;
@@ -423,7 +477,7 @@ if (launchInfo.initial_file) {
     hasDraft = true;
   } else if (userConfig.restoreSession !== false) {
     try {
-      const state = await invoke<SessionState>('get_session_state');
+      const state = await invoke<SessionState>("get_session_state");
       if (state && state.lastFilePath) {
         try {
           initialDoc = await readDocumentText(state.lastFilePath);
@@ -440,17 +494,13 @@ if (launchInfo.initial_file) {
           //
           // An oversize file is the exception — that is explainable
           // (unlike a vanished file), so it does get a message.
-          console.error(
-            'Session restore: failed to read',
-            state.lastFilePath,
-            e
-          );
+          console.error("Session restore: failed to read", state.lastFilePath, e);
           if (e instanceof FileTooLargeError) startupMessage = e.message;
           initialDoc = DEFAULT_DOC;
         }
       }
     } catch (e) {
-      console.error('Session restore: failed to read state:', e);
+      console.error("Session restore: failed to read state:", e);
     }
   }
 }
@@ -467,7 +517,7 @@ if (!currentBuffer.path) {
   currentBuffer.format = detectFormat(null);
 }
 
-const host = document.getElementById('src-host')!;
+const host = document.getElementById("src-host")!;
 createEditor(host, initialDoc, {
   onDocChange: () => {
     setDirty(true);
@@ -499,7 +549,7 @@ if (startupMessage) vimMessage(startupMessage);
 // setDisplayMode already handles this correctly for user-triggered
 // mode switches; this block covers the fresh-launch case where the
 // mode comes from session prefs rather than a setDisplayMode call.
-if (prefs.displayMode === 'preview') {
+if (prefs.displayMode === "preview") {
   editorView!.contentDOM.blur();
 } else {
   editorView!.focus();

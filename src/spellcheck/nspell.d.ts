@@ -1,6 +1,6 @@
 // Ambient type declaration for `nspell` (the package ships no types).
 // Only the surface Skrivro uses is declared; extend as needed.
-declare module 'nspell' {
+declare module "nspell" {
   export interface NSpell {
     /** True if the word is spelled correctly. */
     correct(word: string): boolean;

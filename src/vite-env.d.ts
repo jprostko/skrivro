@@ -8,13 +8,13 @@ declare global {
   interface Window {
     // Set by index.html's end-of-body inline <script> after resolving
     // override vs. navigator.language. Read by i18n.ts.
-    __SKRIVRO_LANG__?: 'en' | 'sv';
+    __SKRIVRO_LANG__?: "en" | "sv";
 
     // Set by Rust via initialization_script when the user has an
     // explicit `language = en | sv` in their skrivro.conf. Read by
     // the end-of-body inline <script> to override navigator.language
     // auto-detect.
-    __SKRIVRO_LANG_OVERRIDE__?: 'en' | 'sv';
+    __SKRIVRO_LANG_OVERRIDE__?: "en" | "sv";
 
     // Set by Rust via initialization_script with the user-selected
     // theme's color values. Keys are camelCase theme slot names (e.g.

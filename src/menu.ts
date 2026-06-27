@@ -40,23 +40,20 @@
 // so without the wrapper the menu item would silently discard unsaved
 // changes.
 
-import {
-  Menu,
-  MenuItem,
-  PredefinedMenuItem,
-  Submenu,
-} from '@tauri-apps/api/menu';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { invoke } from '@tauri-apps/api/core';
+import { Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 
+import { openFile, saveFile, saveFileAs, newFile, reloadFile, confirmDiscard } from "./io.js";
 import {
-  openFile, saveFile, saveFileAs, newFile, reloadFile, confirmDiscard,
-} from './io.js';
-import {
-  toggleVim, toggleTitlebar, toggleGutter, toggleStatusBar,
-  setDisplayMode, toggleHelp,
-} from './ui.js';
-import { syncPreviewToCaret } from './preview.js';
+  toggleVim,
+  toggleTitlebar,
+  toggleGutter,
+  toggleStatusBar,
+  setDisplayMode,
+  toggleHelp,
+} from "./ui.js";
+import { syncPreviewToCaret } from "./preview.js";
 
 // Convenience: the Window > Close, File > Close Window, and App > Quit items
 // all do the same thing — close this single window, which routes through
@@ -69,22 +66,22 @@ const closeAction = () => {
 export const installMenu = async () => {
   // --- App menu (Skrivro) ---
   const appMenu = await Submenu.new({
-    text: 'Skrivro',
+    text: "Skrivro",
     items: [
       // About item takes an AboutMetadata object (or null for defaults
       // from tauri.conf.json). null is fine — productName "Skrivro" is
       // already in our Tauri config and Tauri reads from there.
       await PredefinedMenuItem.new({ item: { About: null } }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
-      await PredefinedMenuItem.new({ item: 'Services' }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
-      await PredefinedMenuItem.new({ item: 'Hide' }),
-      await PredefinedMenuItem.new({ item: 'HideOthers' }),
-      await PredefinedMenuItem.new({ item: 'ShowAll' }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await PredefinedMenuItem.new({ item: "Services" }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await PredefinedMenuItem.new({ item: "Hide" }),
+      await PredefinedMenuItem.new({ item: "HideOthers" }),
+      await PredefinedMenuItem.new({ item: "ShowAll" }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
       await MenuItem.new({
-        text: 'Quit Skrivro',
-        accelerator: 'Cmd+Q',
+        text: "Quit Skrivro",
+        accelerator: "Cmd+Q",
         action: closeAction,
       }),
     ],
@@ -97,46 +94,52 @@ export const installMenu = async () => {
   // main.ts's keydown listener call — no logic duplication, just a second
   // entry point.
   const fileMenu = await Submenu.new({
-    text: 'File',
+    text: "File",
     items: [
       await MenuItem.new({
-        text: 'New',
-        accelerator: 'Cmd+N',
+        text: "New",
+        accelerator: "Cmd+N",
         action: newFile,
       }),
       await MenuItem.new({
-        text: 'Open…',
-        accelerator: 'Cmd+O',
+        text: "Open…",
+        accelerator: "Cmd+O",
         action: openFile,
       }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
       await MenuItem.new({
-        text: 'Save',
-        accelerator: 'Cmd+S',
-        action: () => { void saveFile(); },
+        text: "Save",
+        accelerator: "Cmd+S",
+        action: () => {
+          void saveFile();
+        },
       }),
       await MenuItem.new({
-        text: 'Save As…',
-        accelerator: 'Cmd+Shift+S',
-        action: () => { void saveFileAs(); },
+        text: "Save As…",
+        accelerator: "Cmd+Shift+S",
+        action: () => {
+          void saveFileAs();
+        },
       }),
       await MenuItem.new({
         // No keyboard shortcut: Cmd+E is taken by View > Editor Only, and
         // there's no other obvious pick. Vim users can still type :e
         // (or :e! to force-discard a dirty buffer) for the same action.
-        text: 'Reload from Disk',
+        text: "Reload from Disk",
         action: () => {
           // Wrap with confirmDiscard so a dirty buffer prompts via our
           // GUI confirm dialog. reloadFile itself doesn't check dirty;
           // without this wrapper, the menu item would silently discard
           // unsaved changes.
-          confirmDiscard(() => { void reloadFile(); });
+          confirmDiscard(() => {
+            void reloadFile();
+          });
         },
       }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
       await MenuItem.new({
-        text: 'Close Window',
-        accelerator: 'Cmd+W',
+        text: "Close Window",
+        accelerator: "Cmd+W",
         action: closeAction,
       }),
     ],
@@ -147,15 +150,15 @@ export const installMenu = async () => {
   // Dictation / Emoji & Symbols below these — we don't (and can't) add
   // those.
   const editMenu = await Submenu.new({
-    text: 'Edit',
+    text: "Edit",
     items: [
-      await PredefinedMenuItem.new({ item: 'Undo' }),
-      await PredefinedMenuItem.new({ item: 'Redo' }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
-      await PredefinedMenuItem.new({ item: 'Cut' }),
-      await PredefinedMenuItem.new({ item: 'Copy' }),
-      await PredefinedMenuItem.new({ item: 'Paste' }),
-      await PredefinedMenuItem.new({ item: 'SelectAll' }),
+      await PredefinedMenuItem.new({ item: "Undo" }),
+      await PredefinedMenuItem.new({ item: "Redo" }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await PredefinedMenuItem.new({ item: "Cut" }),
+      await PredefinedMenuItem.new({ item: "Copy" }),
+      await PredefinedMenuItem.new({ item: "Paste" }),
+      await PredefinedMenuItem.new({ item: "SelectAll" }),
     ],
   });
 
@@ -167,52 +170,58 @@ export const installMenu = async () => {
   // AppKit's Fn+F → Fullscreen-menu-item registration in ways our
   // workarounds couldn't fix cleanly.
   const viewMenu = await Submenu.new({
-    text: 'View',
+    text: "View",
     items: [
       await MenuItem.new({
-        text: 'Toggle Vim Mode',
-        accelerator: 'Cmd+Ctrl+V',
+        text: "Toggle Vim Mode",
+        accelerator: "Cmd+Ctrl+V",
         action: toggleVim,
       }),
       await MenuItem.new({
-        text: 'Toggle Titlebar',
-        accelerator: 'Cmd+Ctrl+T',
+        text: "Toggle Titlebar",
+        accelerator: "Cmd+Ctrl+T",
         action: toggleTitlebar,
       }),
       await MenuItem.new({
-        text: 'Toggle Gutter',
-        accelerator: 'Cmd+Ctrl+G',
+        text: "Toggle Gutter",
+        accelerator: "Cmd+Ctrl+G",
         action: toggleGutter,
       }),
       await MenuItem.new({
-        text: 'Toggle Status Bar',
-        accelerator: 'Cmd+Ctrl+B',
+        text: "Toggle Status Bar",
+        accelerator: "Cmd+Ctrl+B",
         action: toggleStatusBar,
       }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
       await MenuItem.new({
-        text: 'Editor Only',
-        accelerator: 'Cmd+Ctrl+E',
-        action: () => { setDisplayMode('editor'); },
+        text: "Editor Only",
+        accelerator: "Cmd+Ctrl+E",
+        action: () => {
+          setDisplayMode("editor");
+        },
       }),
       await MenuItem.new({
-        text: 'Split',
-        accelerator: 'Cmd+Ctrl+S',
-        action: () => { setDisplayMode('split'); },
+        text: "Split",
+        accelerator: "Cmd+Ctrl+S",
+        action: () => {
+          setDisplayMode("split");
+        },
       }),
       await MenuItem.new({
-        text: 'Preview Only',
-        accelerator: 'Cmd+Ctrl+P',
-        action: () => { setDisplayMode('preview'); },
+        text: "Preview Only",
+        accelerator: "Cmd+Ctrl+P",
+        action: () => {
+          setDisplayMode("preview");
+        },
       }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
       await MenuItem.new({
-        text: 'Sync Preview to Cursor',
-        accelerator: 'Cmd+Ctrl+L',
+        text: "Sync Preview to Cursor",
+        accelerator: "Cmd+Ctrl+L",
         action: syncPreviewToCaret,
       }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
-      await PredefinedMenuItem.new({ item: 'Fullscreen' }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await PredefinedMenuItem.new({ item: "Fullscreen" }),
     ],
   });
 
@@ -250,15 +259,15 @@ export const installMenu = async () => {
     // the same turn. Constant value:
     // pub const WINDOW_SUBMENU_ID: &str = "__tauri_window_menu__";
     // (tauri-2.10.3/src/menu/menu.rs:19).
-    id: '__tauri_window_menu__',
-    text: 'Window',
+    id: "__tauri_window_menu__",
+    text: "Window",
     items: [
-      await PredefinedMenuItem.new({ item: 'Minimize' }),
-      await PredefinedMenuItem.new({ item: 'Maximize' }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
+      await PredefinedMenuItem.new({ item: "Minimize" }),
+      await PredefinedMenuItem.new({ item: "Maximize" }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
       await MenuItem.new({
-        text: 'Close Window',
-        accelerator: 'Cmd+W',
+        text: "Close Window",
+        accelerator: "Cmd+W",
         action: closeAction,
       }),
     ],
@@ -273,12 +282,12 @@ export const installMenu = async () => {
     // Sibling of the Window menu id above — Tauri's init_app_menu
     // helper also handles set_as_help_menu_for_nsapp for this id.
     // HELP_SUBMENU_ID = "__tauri_help_menu__" (tauri-2.10.3/src/menu/menu.rs:21).
-    id: '__tauri_help_menu__',
-    text: 'Help',
+    id: "__tauri_help_menu__",
+    text: "Help",
     items: [
       await MenuItem.new({
-        text: 'Show Keyboard Shortcuts',
-        accelerator: 'Cmd+Ctrl+H',
+        text: "Show Keyboard Shortcuts",
+        accelerator: "Cmd+Ctrl+H",
         action: toggleHelp,
       }),
     ],
@@ -292,7 +301,7 @@ export const installMenu = async () => {
   // Re-apply collectionBehavior flags in case the invisible helper
   // NSWindow was created lazily (after hide_macos_chrome's setup-time
   // pass). See the Rust side for details.
-  await invoke('apply_collection_behavior');
+  await invoke("apply_collection_behavior");
 
   // No manual setWindowsMenu/setMainMenu calls needed. With the
   // Window and Help submenus carrying Tauri's canonical

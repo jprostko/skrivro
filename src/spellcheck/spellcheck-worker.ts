@@ -22,7 +22,7 @@
 // bundled asset ships inside the app and `fetch` reads it through the app's
 // own asset protocol, and user files never leave the machine.
 
-import nspell from 'nspell';
+import nspell from "nspell";
 
 type NSpell = ReturnType<typeof nspell>;
 
@@ -35,10 +35,10 @@ export interface DictPayload {
 }
 
 export interface InitRequest {
-  type: 'init';
+  type: "init";
   // English source: 'bundled' loads the built-in en-US asset, a payload is
   // a user-supplied override (en_GB, en_AU, ...), null = English not active.
-  en: 'bundled' | DictPayload | null;
+  en: "bundled" | DictPayload | null;
   // Swedish source: a user-supplied payload, or null when Swedish isn't
   // active. There is no bundled Swedish fallback.
   sv: DictPayload | null;
@@ -51,34 +51,30 @@ export interface CheckPiece {
 }
 
 export interface CheckRequest {
-  type: 'check';
+  type: "check";
   /** Monotonic id; the main thread applies only the most recent result. */
   reqId: number;
   pieces: CheckPiece[];
 }
 
 export interface SetPersonalRequest {
-  type: 'setPersonal';
+  type: "setPersonal";
   /** The full custom-word list; replaces the worker's set wholesale. */
   words: string[];
 }
 
 /** Ask for spelling suggestions for one misspelled word. */
 export interface SuggestRequest {
-  type: 'suggest';
+  type: "suggest";
   /** Pairs the reply to this request. */
   reqId: number;
   word: string;
 }
 
-export type SpellRequest =
-  | InitRequest
-  | CheckRequest
-  | SetPersonalRequest
-  | SuggestRequest;
+export type SpellRequest = InitRequest | CheckRequest | SetPersonalRequest | SuggestRequest;
 
 export interface ReadyResponse {
-  type: 'ready';
+  type: "ready";
 }
 
 export interface MisspelledRange {
@@ -87,14 +83,14 @@ export interface MisspelledRange {
 }
 
 export interface ResultResponse {
-  type: 'result';
+  type: "result";
   reqId: number;
   ranges: MisspelledRange[];
 }
 
 /** Ranked spelling suggestions for a `suggest` request (best first). */
 export interface SuggestionsResponse {
-  type: 'suggestions';
+  type: "suggestions";
   reqId: number;
   suggestions: string[];
 }
@@ -127,8 +123,8 @@ const fetchText = (url: string): Promise<string> => fetch(url).then((r) => r.tex
 // dictionary that ships in the binary; everything else is user-supplied.
 const loadEnBundled = async (): Promise<NSpell> => {
   const [affUrl, dicUrl] = await Promise.all([
-    import('./dict/en-US.aff?url').then((m) => m.default),
-    import('./dict/en-US.dic?url').then((m) => m.default),
+    import("./dict/en-US.aff?url").then((m) => m.default),
+    import("./dict/en-US.dic?url").then((m) => m.default),
   ]);
   const [aff, dic] = await Promise.all([fetchText(affUrl), fetchText(dicUrl)]);
   return nspell(aff, dic);
@@ -164,9 +160,9 @@ const SV_COMPOUND_DIRECTIVE =
 
 export const stripCompounding = (aff: string): string =>
   aff
-    .split('\n')
+    .split("\n")
     .filter((line) => !SV_COMPOUND_DIRECTIVE.test(line))
-    .join('\n');
+    .join("\n");
 
 // User-supplied Swedish. Always routed through stripCompounding: whether
 // it's the DSSO dictionary we point users at or another sv variant, nspell's
@@ -177,7 +173,7 @@ const initSpellcheck = async (req: InitRequest): Promise<void> => {
   wordCache.clear();
   // English first so its suggestions rank ahead of Swedish for `both`.
   const tasks: Array<Promise<NSpell>> = [];
-  if (req.en === 'bundled') tasks.push(loadEnBundled());
+  if (req.en === "bundled") tasks.push(loadEnBundled());
   else if (req.en) tasks.push(Promise.resolve(buildEn(req.en)));
   if (req.sv) tasks.push(Promise.resolve(buildSv(req.sv)));
   spellers = await Promise.all(tasks);
@@ -195,8 +191,7 @@ const isMisspelled = (word: string): boolean => {
   const cached = wordCache.get(word);
   if (cached !== undefined) return !cached;
   // Correct if it's a custom word, or ANY loaded speller accepts it.
-  const ok =
-    personalWords.has(word.toLowerCase()) || spellers.some((s) => s.correct(word));
+  const ok = personalWords.has(word.toLowerCase()) || spellers.some((s) => s.correct(word));
   wordCache.set(word, ok);
   return !ok;
 };
@@ -256,31 +251,31 @@ const suggestFor = (word: string): string[] => {
   return out;
 };
 
-self.addEventListener('message', (e: MessageEvent<SpellRequest>) => {
+self.addEventListener("message", (e: MessageEvent<SpellRequest>) => {
   const msg = e.data;
-  if (msg.type === 'init') {
+  if (msg.type === "init") {
     // Build the dictionaries, then announce readiness. A `check` that
     // somehow arrives first finds `spellers` empty and returns [].
     void initSpellcheck(msg).then(() => {
-      const ready: ReadyResponse = { type: 'ready' };
+      const ready: ReadyResponse = { type: "ready" };
       self.postMessage(ready);
     });
-  } else if (msg.type === 'check') {
+  } else if (msg.type === "check") {
     const result: ResultResponse = {
-      type: 'result',
+      type: "result",
       reqId: msg.reqId,
       ranges: check(msg.pieces),
     };
     self.postMessage(result);
-  } else if (msg.type === 'setPersonal') {
+  } else if (msg.type === "setPersonal") {
     // Replace the custom-word set (lowercased for case-insensitive
     // matching) and clear the memo so previously-cached words get
     // re-judged against the new set on the next check.
     personalWords = new Set(msg.words.map((w) => w.toLowerCase()));
     wordCache.clear();
-  } else if (msg.type === 'suggest') {
+  } else if (msg.type === "suggest") {
     const result: SuggestionsResponse = {
-      type: 'suggestions',
+      type: "suggestions",
       reqId: msg.reqId,
       suggestions: suggestFor(msg.word),
     };

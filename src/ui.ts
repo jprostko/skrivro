@@ -6,13 +6,21 @@
 // tracking, focusin/focusout on the Vim command panel input for
 // COMMAND mode detection.
 
-import { tr } from './i18n.js';
-import { prefs, savePrefs } from './prefs.js';
-import { isMac } from './i18n.js';
-import { Vim, editorView, setVimMode, setSyntaxHighlighting, setSpellcheck, spellcheckConfigured, getCM } from './editor.js';
-import { getSpellcheckStatus } from './spellcheck/index.js';
-import { currentBuffer, setBufferFormat, vimMessage, type Format } from './io.js';
-import { userConfig, type SkrivroConfig } from './config.js';
+import { tr } from "./i18n.js";
+import { prefs, savePrefs } from "./prefs.js";
+import { isMac } from "./i18n.js";
+import {
+  Vim,
+  editorView,
+  setVimMode,
+  setSyntaxHighlighting,
+  setSpellcheck,
+  spellcheckConfigured,
+  getCM,
+} from "./editor.js";
+import { getSpellcheckStatus } from "./spellcheck/index.js";
+import { currentBuffer, setBufferFormat, vimMessage, type Format } from "./io.js";
+import { userConfig, type SkrivroConfig } from "./config.js";
 
 // ================= DOM refs =================
 
@@ -21,19 +29,19 @@ import { userConfig, type SkrivroConfig } from './config.js';
 // returning null is impossible at runtime. helpDlg additionally
 // casts to HTMLDialogElement (the cast subsumes the non-null
 // assertion) so its showModal / close / open accesses type-check.
-const out                 = document.getElementById('out')!;
-const host                = document.getElementById('src-host')!;
-const statusBar           = document.getElementById('statusbar')!;
-const statusMode          = document.getElementById('statusMode')!;
-const statusFilename      = document.getElementById('statusFilename')!;
-const statusFiletype      = document.getElementById('statusFiletype')!;
-const statusPosition      = document.getElementById('statusPosition')!;
-const statusWordCount     = document.getElementById('statusWordCount')!;
-const statusSpellcheck    = document.getElementById('statusSpellcheck')!;
-const helpDlg             = document.getElementById('helpDialog') as HTMLDialogElement;
-const helpBtn             = document.getElementById('helpBtn')!;
-const helpCloseBtn        = document.getElementById('helpCloseBtn')!;
-const previewPaneEl       = document.querySelector('.preview-pane');
+const out = document.getElementById("out")!;
+const host = document.getElementById("src-host")!;
+const statusBar = document.getElementById("statusbar")!;
+const statusMode = document.getElementById("statusMode")!;
+const statusFilename = document.getElementById("statusFilename")!;
+const statusFiletype = document.getElementById("statusFiletype")!;
+const statusPosition = document.getElementById("statusPosition")!;
+const statusWordCount = document.getElementById("statusWordCount")!;
+const statusSpellcheck = document.getElementById("statusSpellcheck")!;
+const helpDlg = document.getElementById("helpDialog") as HTMLDialogElement;
+const helpBtn = document.getElementById("helpBtn")!;
+const helpCloseBtn = document.getElementById("helpCloseBtn")!;
+const previewPaneEl = document.querySelector(".preview-pane");
 
 // ================= Status bar =================
 //
@@ -70,19 +78,19 @@ let inCommandMode = false;
 // and sets the keyMap to 'vim-replace'.
 const readVimMode = () => {
   if (!prefs.vimMode) return null;
-  if (inCommandMode) return 'command';
-  if (!editorView) return 'normal';
+  if (inCommandMode) return "command";
+  if (!editorView) return "normal";
   try {
     const cm = getCM(editorView);
-    if (!cm || !cm.state) return 'normal';
+    if (!cm || !cm.state) return "normal";
     const vs = cm.state.vim;
-    if (!vs) return 'normal';
-    if (vs.insertMode && cm.state.overwrite) return 'replace';
-    if (vs.insertMode) return 'insert';
-    if (vs.visualMode) return 'visual';
-    return 'normal';
+    if (!vs) return "normal";
+    if (vs.insertMode && cm.state.overwrite) return "replace";
+    if (vs.insertMode) return "insert";
+    if (vs.visualMode) return "visual";
+    return "normal";
   } catch {
-    return 'normal';
+    return "normal";
   }
 };
 
@@ -90,29 +98,33 @@ const readVimMode = () => {
 // All three share the same pill color (mauve per canonical Catppuccin);
 // only the label text differs — VISUAL, V-LINE, V-BLOCK.
 const readVisualVariant = () => {
-  if (!editorView) return 'char';
+  if (!editorView) return "char";
   try {
     const cm = getCM(editorView);
     const vs = cm && cm.state && cm.state.vim;
-    if (!vs || !vs.visualMode) return 'char';
-    if (vs.visualBlock) return 'block';
-    if (vs.visualLine) return 'line';
-    return 'char';
+    if (!vs || !vs.visualMode) return "char";
+    if (vs.visualBlock) return "block";
+    if (vs.visualLine) return "line";
+    return "char";
   } catch {
-    return 'char';
+    return "char";
   }
 };
 
 const formatModeLabel = (mode: string | null, variant: string | null) => {
   switch (mode) {
-    case 'insert':  return tr('INSERT');
-    case 'replace': return tr('REPLACE');
-    case 'command': return tr('COMMAND');
-    case 'visual':
-      if (variant === 'line')  return tr('V-LINE');
-      if (variant === 'block') return tr('V-BLOCK');  // V-BLOCK same in Swedish
-      return tr('VISUAL');
-    default: return tr('NORMAL');  // NORMAL same in Swedish
+    case "insert":
+      return tr("INSERT");
+    case "replace":
+      return tr("REPLACE");
+    case "command":
+      return tr("COMMAND");
+    case "visual":
+      if (variant === "line") return tr("V-LINE");
+      if (variant === "block") return tr("V-BLOCK"); // V-BLOCK same in Swedish
+      return tr("VISUAL");
+    default:
+      return tr("NORMAL"); // NORMAL same in Swedish
   }
 };
 
@@ -135,17 +147,23 @@ const formatModeLabel = (mode: string | null, variant: string | null) => {
 // the pre-editor fallback case where there's no cursor yet — the
 // caller treats null as "never over-limit."
 const formatCursorPosition = () => {
-  if (!editorView) return { text: `${tr('Ln')} 1, ${tr('Col')} 1`, col: null };
+  if (!editorView) return { text: `${tr("Ln")} 1, ${tr("Col")} 1`, col: null };
   const head = editorView.state.selection.main.head;
   const line = editorView.state.doc.lineAt(head);
   const textBeforeCursor = line.text.slice(0, head - line.from);
   const col = [...textBeforeCursor].length + 1;
   let text;
   switch (userConfig.cursorPositionFormat) {
-    case 'compact': text = `${line.number}:${col}`; break;
-    case 'ruler':   text = `${line.number},${col}`; break;
-    case 'verbose':
-    default:        text = `${tr('Ln')} ${line.number}, ${tr('Col')} ${col}`; break;
+    case "compact":
+      text = `${line.number}:${col}`;
+      break;
+    case "ruler":
+      text = `${line.number},${col}`;
+      break;
+    case "verbose":
+    default:
+      text = `${tr("Ln")} ${line.number}, ${tr("Col")} ${col}`;
+      break;
   }
   return { text, col };
 };
@@ -155,17 +173,17 @@ const formatCursorPosition = () => {
 //   multi-line char / V-LINE:    '3 lines, 240 chars'
 //   V-BLOCK:                     '3 × 5' (rows × cols)
 const formatSelectionInfo = (variant: string | null) => {
-  if (!editorView) return '';
+  if (!editorView) return "";
   const state = editorView.state;
   const sel = state.selection.main;
   const doc = state.doc;
   const from = Math.min(sel.anchor, sel.head);
-  const to   = Math.max(sel.anchor, sel.head);
+  const to = Math.max(sel.anchor, sel.head);
   const fromLine = doc.lineAt(from).number;
-  const toLine   = doc.lineAt(to).number;
+  const toLine = doc.lineAt(to).number;
   const lines = toLine - fromLine + 1;
 
-  if (variant === 'block') {
+  if (variant === "block") {
     // V-BLOCK: CM6 represents the rectangular selection as multiple
     // parallel ranges (one per row). Row count = range count. Column
     // width = max codepoint-delta across ranges.
@@ -175,21 +193,21 @@ const formatSelectionInfo = (variant: string | null) => {
     for (const r of ranges) {
       const rLine = doc.lineAt(r.from);
       const rFromCol = [...rLine.text.slice(0, r.from - rLine.from)].length;
-      const rToCol   = [...rLine.text.slice(0, r.to   - rLine.from)].length;
+      const rToCol = [...rLine.text.slice(0, r.to - rLine.from)].length;
       cols = Math.max(cols, Math.abs(rToCol - rFromCol));
     }
     return `${rows} × ${cols || 1}`;
   }
 
   const chars = [...doc.sliceString(from, to)].length;
-  if (lines > 1) return `${lines} ${tr('lines')}, ${chars} ${tr('chars')}`;
-  return `${chars} ${tr('chars')}`;
+  if (lines > 1) return `${lines} ${tr("lines")}, ${chars} ${tr("chars")}`;
+  return `${chars} ${tr("chars")}`;
 };
 
 export const refreshStatus = () => {
   if (!statusBar) return;
   const mode = readVimMode();
-  const variant = mode === 'visual' ? readVisualVariant() : null;
+  const variant = mode === "visual" ? readVisualVariant() : null;
 
   // Mode pill
   if (mode) {
@@ -205,7 +223,7 @@ export const refreshStatus = () => {
   // branch — selection info is a different display mode and the col
   // concept doesn't map onto it.
   let overLimit = false;
-  if (mode === 'visual') {
+  if (mode === "visual") {
     statusPosition.textContent = formatSelectionInfo(variant);
   } else {
     const { text, col } = formatCursorPosition();
@@ -227,11 +245,12 @@ export const refreshStatus = () => {
     // position ≥ 1, so the over-limit class would be applied
     // constantly. typeof is the unambiguous fix: only a real number
     // enables the threshold check.
-    overLimit = col !== null
-      && typeof userConfig.softColumnLimit === 'number'
-      && col > userConfig.softColumnLimit;
+    overLimit =
+      col !== null &&
+      typeof userConfig.softColumnLimit === "number" &&
+      col > userConfig.softColumnLimit;
   }
-  statusPosition.classList.toggle('over-limit', overLimit);
+  statusPosition.classList.toggle("over-limit", overLimit);
 
   statusFilename.textContent = currentBuffer.name;
   statusFiletype.textContent = FORMAT_LABELS[currentBuffer.format];
@@ -241,42 +260,42 @@ export const refreshStatus = () => {
   // (Swedish is user-supplied — see resolveSpellcheck). A normal, working
   // spellcheck shows nothing (the squiggles are the feedback), and config-off
   // has nothing to indicate. The label is wrapped in parens here.
-  let spellNote = '';
+  let spellNote = "";
   if (spellcheckConfigured()) {
     if (!prefs.spellcheck) {
-      spellNote = tr('spellcheck off');
+      spellNote = tr("spellcheck off");
     } else {
       switch (getSpellcheckStatus()) {
-        case 'sv-missing-off':
-          spellNote = tr('Swedish dictionary not found');
+        case "sv-missing-off":
+          spellNote = tr("Swedish dictionary not found");
           break;
-        case 'sv-missing-en-only':
-          spellNote = tr('Swedish dictionary not found, English only');
+        case "sv-missing-en-only":
+          spellNote = tr("Swedish dictionary not found, English only");
           break;
-        case 'sv-missing-using-en':
-          spellNote = tr('Swedish dictionary not found, using English');
+        case "sv-missing-using-en":
+          spellNote = tr("Swedish dictionary not found, using English");
           break;
       }
     }
   }
   statusSpellcheck.hidden = !spellNote;
-  statusSpellcheck.textContent = spellNote ? `(${spellNote})` : '';
+  statusSpellcheck.textContent = spellNote ? `(${spellNote})` : "";
 };
 
 // Human-readable display name for the filetype slot in the status bar.
 // Paralleled by FORMAT_DISPLAY_NAME in io.ts (used by the :format
 // readback); kept in sync by convention since the set is three entries.
 const FORMAT_LABELS: Record<Format, string> = {
-  asciidoc: 'AsciiDoc',
-  markdown: 'Markdown',
-  text: 'Text',
+  asciidoc: "AsciiDoc",
+  markdown: "Markdown",
+  text: "Text",
 };
 
 // Cycle through formats in a fixed order: asciidoc → markdown → text
 // → asciidoc. Bound to Ctrl+Alt+R / Ctrl+Cmd+R. The mutation work
 // (compartment reconfigure, status refresh, re-render) is centralized
 // in setBufferFormat — this just picks the next value and delegates.
-const FORMAT_CYCLE: readonly Format[] = ['asciidoc', 'markdown', 'text'];
+const FORMAT_CYCLE: readonly Format[] = ["asciidoc", "markdown", "text"];
 export const toggleFormat = () => {
   const idx = FORMAT_CYCLE.indexOf(currentBuffer.format);
   // indexOf returns -1 for unknown values. Treat that as "snap back
@@ -308,9 +327,12 @@ export const toggleFormat = () => {
 // explicitly — "1 words" reads as broken.
 export const updateWordCount = () => {
   if (!statusWordCount) return;
-  const text = out.textContent || '';
-  const count = text.trim().split(/\s+/).filter(w => w.length > 0).length;
-  const label = count === 1 ? tr('word') : tr('words');
+  const text = out.textContent || "";
+  const count = text
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0).length;
+  const label = count === 1 ? tr("word") : tr("words");
   statusWordCount.textContent = `${count.toLocaleString()} ${label}`;
 };
 
@@ -343,7 +365,7 @@ export const updateWordCount = () => {
 // preHelpFocus is cleared on hideHelp so a subsequent open via
 // keyboard doesn't inherit a stale value from a prior mouse click.
 let preHelpFocus: HTMLElement | null = null;
-helpBtn.addEventListener('mousedown', () => {
+helpBtn.addEventListener("mousedown", () => {
   const active = document.activeElement;
   if (active instanceof HTMLElement && active !== helpBtn) {
     preHelpFocus = active;
@@ -352,9 +374,7 @@ helpBtn.addEventListener('mousedown', () => {
 export const showHelp = () => {
   if (helpDlg.open) return;
   if (preHelpFocus === null) {
-    preHelpFocus = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
+    preHelpFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   }
   helpDlg.showModal();
   helpCloseBtn.focus();
@@ -368,7 +388,7 @@ export const hideHelp = () => {
 // click handlers (close button, backdrop click) — Escape triggers
 // the native close path, which fires the close event but doesn't
 // invoke hideHelp. Attaching here handles ALL close paths uniformly.
-helpDlg.addEventListener('close', () => {
+helpDlg.addEventListener("close", () => {
   const restore = preHelpFocus;
   preHelpFocus = null;
 
@@ -377,7 +397,7 @@ helpDlg.addEventListener('close', () => {
   // pre-showModal active element, or a focusable-ancestor walk from
   // the dialog), which would re-enable keystrokes into the hidden
   // editor and regress the read-only preview behavior. Force-blur.
-  if (prefs.displayMode === 'preview') {
+  if (prefs.displayMode === "preview") {
     if (editorView) editorView.contentDOM.blur();
     return;
   }
@@ -408,8 +428,8 @@ export const toggleHelp = () => {
   if (helpDlg.open) hideHelp();
   else showHelp();
 };
-helpBtn.addEventListener('click', showHelp);
-helpCloseBtn.addEventListener('click', hideHelp);
+helpBtn.addEventListener("click", showHelp);
+helpCloseBtn.addEventListener("click", hideHelp);
 // Dismiss the help dialog when the user clicks on its backdrop —
 // the ::backdrop pseudo-element rendered outside the dialog's box.
 //
@@ -438,21 +458,20 @@ helpCloseBtn.addEventListener('click', hideHelp);
 const isHelpBackdropAt = (e: MouseEvent): boolean => {
   if (e.target !== helpDlg) return false;
   const r = helpDlg.getBoundingClientRect();
-  return e.clientX < r.left || e.clientX >= r.right
-      || e.clientY < r.top  || e.clientY >= r.bottom;
+  return e.clientX < r.left || e.clientX >= r.right || e.clientY < r.top || e.clientY >= r.bottom;
 };
 let helpMouseDownOnBackdrop = false;
-helpDlg.addEventListener('mousedown', (e) => {
+helpDlg.addEventListener("mousedown", (e) => {
   helpMouseDownOnBackdrop = isHelpBackdropAt(e);
 });
-helpDlg.addEventListener('click', (e) => {
+helpDlg.addEventListener("click", (e) => {
   if (helpMouseDownOnBackdrop && isHelpBackdropAt(e)) hideHelp();
 });
 
 // ================= Toggles =================
 
 export const applyTitlebar = () => {
-  document.body.classList.toggle('no-titlebar', prefs.titlebarHidden);
+  document.body.classList.toggle("no-titlebar", prefs.titlebarHidden);
 };
 export const toggleTitlebar = () => {
   prefs.titlebarHidden = !prefs.titlebarHidden;
@@ -460,7 +479,7 @@ export const toggleTitlebar = () => {
   applyTitlebar();
 };
 export const applyGutter = () => {
-  document.body.classList.toggle('no-gutter', prefs.gutterHidden);
+  document.body.classList.toggle("no-gutter", prefs.gutterHidden);
 };
 export const toggleGutter = () => {
   prefs.gutterHidden = !prefs.gutterHidden;
@@ -468,7 +487,7 @@ export const toggleGutter = () => {
   applyGutter();
 };
 export const applyStatusBar = () => {
-  document.body.classList.toggle('no-statusbar', prefs.statusBarHidden);
+  document.body.classList.toggle("no-statusbar", prefs.statusBarHidden);
 };
 export const toggleStatusBar = () => {
   prefs.statusBarHidden = !prefs.statusBarHidden;
@@ -498,7 +517,7 @@ export const applySyntaxHighlighting = (enabled: boolean) => {
 // config has spellcheck off. The toggle is inert in that state (no
 // dictionary is loaded), so it tells the user where to enable it
 // rather than appearing to do nothing.
-const SPELLCHECK_OFF_MSG = 'Spellcheck is disabled in config (spellcheck-language = off)';
+const SPELLCHECK_OFF_MSG = "Spellcheck is disabled in config (spellcheck-language = off)";
 
 // Flip editor spellcheck on/off and persist. Same shape as the syntax-
 // highlighting toggle, plus a config gate: when spellcheck-language is
@@ -548,13 +567,16 @@ export const applySpellcheck = (enabled: boolean) => {
 //   who prefer maximum screen utilization. The 100% safety net
 //   in the rules still applies but is moot since 100vw ≥ 100%
 //   of the parent in single-pane modes.
-export const WIDTH_MODES = ['narrow', 'medium', 'wide', 'full'];
+export const WIDTH_MODES = ["narrow", "medium", "wide", "full"];
 // The `& { medium: string }` types the medium entry as a known
 // property so applyWidthMode's `|| WIDTH_CAPS.medium` fallback
 // resolves to string, not string | undefined (a bare Record index
 // is optional under noUncheckedIndexedAccess).
 const WIDTH_CAPS: Record<string, string> & { medium: string } = {
-  narrow: '65ch', medium: '90ch', wide: '125ch', full: '100vw',
+  narrow: "65ch",
+  medium: "90ch",
+  wide: "125ch",
+  full: "100vw",
 };
 
 // Sidebar TOC width per width mode, mapping Asciidoctor's spec
@@ -564,7 +586,10 @@ const WIDTH_CAPS: Record<string, string> & { medium: string } = {
 // included for completeness and to keep the lookup total.
 // (`& { medium: string }` — same reason as WIDTH_CAPS above.)
 const TOC_SIDEBAR_WIDTHS: Record<string, string> & { medium: string } = {
-  narrow: '15em', medium: '15em', wide: '15em', full: '20em',
+  narrow: "15em",
+  medium: "15em",
+  wide: "15em",
+  full: "20em",
 };
 
 // Push the active mode's cap into the --width-cap CSS variable
@@ -577,8 +602,8 @@ const TOC_SIDEBAR_WIDTHS: Record<string, string> & { medium: string } = {
 export const applyWidthMode = () => {
   const cap = WIDTH_CAPS[prefs.widthMode] || WIDTH_CAPS.medium;
   const tocSidebar = TOC_SIDEBAR_WIDTHS[prefs.widthMode] || TOC_SIDEBAR_WIDTHS.medium;
-  document.documentElement.style.setProperty('--width-cap', cap);
-  document.documentElement.style.setProperty('--toc-sidebar-width', tocSidebar);
+  document.documentElement.style.setProperty("--width-cap", cap);
+  document.documentElement.style.setProperty("--toc-sidebar-width", tocSidebar);
   evaluateTocLayout();
 };
 
@@ -596,7 +621,7 @@ export const setWidthMode = (mode: string) => {
 export const cycleWidthMode = () => {
   const i = WIDTH_MODES.indexOf(prefs.widthMode);
   const next = WIDTH_MODES[(i + 1) % WIDTH_MODES.length];
-  setWidthMode(next === undefined ? 'medium' : next);
+  setWidthMode(next === undefined ? "medium" : next);
 };
 
 // ================= Sidebar TOC layout =================
@@ -642,16 +667,16 @@ export const setLastTocPosition = (pos: string | null) => {
 
 export const evaluateTocLayout = () => {
   if (!previewPaneEl) return;
-  previewPaneEl.classList.remove('has-sidebar-toc', 'toc-left', 'toc-right', 'toc-hidden');
+  previewPaneEl.classList.remove("has-sidebar-toc", "toc-left", "toc-right", "toc-hidden");
   if (tocHidden) {
-    previewPaneEl.classList.add('toc-hidden');
+    previewPaneEl.classList.add("toc-hidden");
     return;
   }
-  if (lastTocPosition !== 'left' && lastTocPosition !== 'right') return;
-  if (prefs.displayMode !== 'preview') return;
-  if (prefs.widthMode === 'narrow') return;
-  previewPaneEl.classList.add('has-sidebar-toc');
-  previewPaneEl.classList.add(lastTocPosition === 'left' ? 'toc-left' : 'toc-right');
+  if (lastTocPosition !== "left" && lastTocPosition !== "right") return;
+  if (prefs.displayMode !== "preview") return;
+  if (prefs.widthMode === "narrow") return;
+  previewPaneEl.classList.add("has-sidebar-toc");
+  previewPaneEl.classList.add(lastTocPosition === "left" ? "toc-left" : "toc-right");
 };
 
 // Flip the TOC visibility override and re-evaluate the layout.
@@ -733,26 +758,26 @@ export const isTocHidden = () => tocHidden;
 // or by extending this function's selector.
 export const applyMacModifierLabels = () => {
   if (!isMac) return;
-  document.querySelectorAll('.help-dialog .mac-only').forEach((el) => {
-    el.classList.remove('mac-only');
+  document.querySelectorAll(".help-dialog .mac-only").forEach((el) => {
+    el.classList.remove("mac-only");
   });
-  document.querySelectorAll('.help-dialog .non-mac').forEach((el) => {
+  document.querySelectorAll(".help-dialog .non-mac").forEach((el) => {
     el.remove();
   });
   // Apple's canonical modifier order, with Command last.
-  const order = '⌃⌥⇧⌘';
-  document.querySelectorAll('.help-dialog kbd').forEach((kbd) => {
-    const isVim = kbd.classList.contains('vim');
+  const order = "⌃⌥⇧⌘";
+  document.querySelectorAll(".help-dialog kbd").forEach((kbd) => {
+    const isVim = kbd.classList.contains("vim");
     // App shortcuts are authored as Ctrl+Alt+key (Linux/Windows form).
     // On Mac the same chord is Cmd+Control (Cmd primary, Control
     // secondary), so the authored Ctrl maps to ⌘ and the authored Alt
     // to ⌃. Vim kbds are physical keys: Ctrl stays ⌃, Alt stays ⌥.
     const toSymbol: Record<string, string> = isVim
-      ? { Ctrl: '⌃', Alt: '⌥', Shift: '⇧' }
-      : { Ctrl: '⌘', Alt: '⌃', Shift: '⇧' };
+      ? { Ctrl: "⌃", Alt: "⌥", Shift: "⇧" }
+      : { Ctrl: "⌘", Alt: "⌃", Shift: "⇧" };
     const mods: string[] = [];
     const keys: string[] = [];
-    for (const part of (kbd.textContent ?? '').split('+')) {
+    for (const part of (kbd.textContent ?? "").split("+")) {
       const symbol = toSymbol[part];
       if (symbol) mods.push(symbol);
       else keys.push(part);
@@ -762,15 +787,15 @@ export const applyMacModifierLabels = () => {
     // its inner markup — the <var> placeholders. Leave it untouched.
     if (mods.length === 0) return;
     mods.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-    kbd.textContent = mods.join('') + keys.join('');
+    kbd.textContent = mods.join("") + keys.join("");
   });
   // The titlebar "?" button names the same help shortcut in its accessible
   // name. That's a plain-text attribute, so it can't carry <kbd> and the
   // loop above doesn't reach it. Rewrite the keybind to the Mac form here
   // so screen readers announce the right chord (Ctrl+Alt+H -> Ctrl+Cmd+H).
-  const helpLabel = helpBtn.getAttribute('aria-label');
+  const helpLabel = helpBtn.getAttribute("aria-label");
   if (helpLabel) {
-    helpBtn.setAttribute('aria-label', helpLabel.replace('Ctrl+Alt+H', 'Ctrl+Cmd+H'));
+    helpBtn.setAttribute("aria-label", helpLabel.replace("Ctrl+Alt+H", "Ctrl+Cmd+H"));
   }
 };
 
@@ -782,7 +807,7 @@ export const toggleVim = () => {
   refreshStatus();
 };
 
-export const DISPLAY_MODES = ['split', 'editor', 'preview'];
+export const DISPLAY_MODES = ["split", "editor", "preview"];
 export const applyDisplayMode = () => {
   const cl = document.body.classList;
   for (const m of DISPLAY_MODES) cl.remove(`mode-${m}`);
@@ -805,7 +830,7 @@ export const applyDisplayMode = () => {
 // chrome element), both of which should land the user back in the
 // editor.
 export const togglePaneFocus = () => {
-  if (prefs.displayMode !== 'split') return;
+  if (prefs.displayMode !== "split") return;
   if (!editorView) return;
   if (editorView.hasFocus) {
     out.focus();
@@ -829,7 +854,7 @@ export const togglePaneFocus = () => {
 // → split (rare: requires saved displayMode = preview-only and no
 // prior in-session split activity), we land on editor, which is still
 // a reasonable default.
-let lastSplitFocus: 'editor' | 'preview' = 'editor';
+let lastSplitFocus: "editor" | "preview" = "editor";
 
 export const setDisplayMode = (mode: string) => {
   if (!DISPLAY_MODES.includes(mode)) return;
@@ -842,11 +867,11 @@ export const setDisplayMode = (mode: string) => {
   // the help button, status bar, or body), keep the previous
   // lastSplitFocus unchanged — overwriting with "nothing" would lose
   // the last real value and we'd fall back to the default on return.
-  if (prevMode === 'split' && mode !== 'split' && editorView) {
+  if (prevMode === "split" && mode !== "split" && editorView) {
     if (editorView.hasFocus) {
-      lastSplitFocus = 'editor';
+      lastSplitFocus = "editor";
     } else if (document.activeElement === out) {
-      lastSplitFocus = 'preview';
+      lastSplitFocus = "preview";
     }
   }
   prefs.displayMode = mode;
@@ -880,13 +905,13 @@ export const setDisplayMode = (mode: string) => {
   //     the "attention shift" rationale.
   //   - 'split' from 'split': no-op. Same-mode calls (shouldn't occur
   //     in practice) don't clobber the user's current in-split focus.
-  if (mode === 'preview') {
+  if (mode === "preview") {
     editorView.contentDOM.blur();
     out.focus();
-  } else if (mode === 'editor') {
+  } else if (mode === "editor") {
     editorView.focus();
-  } else if (mode === 'split' && prevMode !== 'split') {
-    if (lastSplitFocus === 'preview') {
+  } else if (mode === "split" && prevMode !== "split") {
+    if (lastSplitFocus === "preview") {
       out.focus();
     } else {
       editorView.focus();
@@ -931,22 +956,22 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   // getComputedStyle — it's defined in styles.css, not as a JS
   // constant, so we can't inline the default here.
   if (cfg.editFont) {
-    const current = getComputedStyle(root).getPropertyValue('--font-mono').trim();
-    root.style.setProperty('--font-mono', `${cfg.editFont}, ${current}`);
+    const current = getComputedStyle(root).getPropertyValue("--font-mono").trim();
+    root.style.setProperty("--font-mono", `${cfg.editFont}, ${current}`);
   }
   if (cfg.previewFont) {
-    const current = getComputedStyle(root).getPropertyValue('--font-sans').trim();
-    root.style.setProperty('--font-sans', `${cfg.previewFont}, ${current}`);
+    const current = getComputedStyle(root).getPropertyValue("--font-sans").trim();
+    root.style.setProperty("--font-sans", `${cfg.previewFont}, ${current}`);
   }
 
   // Font size overrides: direct CSS variable assignment propagates
   // automatically to the CM6 theme (fontSize: 'var(--edit-font-size)')
   // and the .preview-scroll CSS rule (font-size: var(--preview-font-size)).
   if (cfg.editFontSize) {
-    root.style.setProperty('--edit-font-size', cfg.editFontSize);
+    root.style.setProperty("--edit-font-size", cfg.editFontSize);
   }
   if (cfg.previewFontSize) {
-    root.style.setProperty('--preview-font-size', cfg.previewFontSize);
+    root.style.setProperty("--preview-font-size", cfg.previewFontSize);
   }
 
   // Padding overrides (editor and preview, x and y axes). Four
@@ -974,16 +999,16 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   // here has unit suffixes and is ready to substitute directly
   // into CSS.
   if (cfg.editorPaddingX) {
-    root.style.setProperty('--editor-padding-x', cfg.editorPaddingX);
+    root.style.setProperty("--editor-padding-x", cfg.editorPaddingX);
   }
   if (cfg.editorPaddingY) {
-    root.style.setProperty('--editor-padding-y', cfg.editorPaddingY);
+    root.style.setProperty("--editor-padding-y", cfg.editorPaddingY);
   }
   if (cfg.previewPaddingX) {
-    root.style.setProperty('--preview-padding-x', cfg.previewPaddingX);
+    root.style.setProperty("--preview-padding-x", cfg.previewPaddingX);
   }
   if (cfg.previewPaddingY) {
-    root.style.setProperty('--preview-padding-y', cfg.previewPaddingY);
+    root.style.setProperty("--preview-padding-y", cfg.previewPaddingY);
   }
 
   // Status bar mode pill style: canonical (default, bright Catppuccin
@@ -993,12 +1018,12 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   // body class that CSS conditionally overrides the canonical pill
   // colors when set. Unknown values fall through to canonical with
   // a warning.
-  if (cfg.statusbarStyle === 'muted') {
-    document.body.classList.add('mode-pill-muted');
-  } else if (cfg.statusbarStyle && cfg.statusbarStyle !== 'canonical') {
+  if (cfg.statusbarStyle === "muted") {
+    document.body.classList.add("mode-pill-muted");
+  } else if (cfg.statusbarStyle && cfg.statusbarStyle !== "canonical") {
     console.warn(
       `[skrivro config] statusbar-style '${cfg.statusbarStyle}' not ` +
-      `recognized (expected 'canonical' or 'muted'), using canonical`
+        `recognized (expected 'canonical' or 'muted'), using canonical`,
     );
   }
 
@@ -1018,7 +1043,7 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
     for (const [key, value] of Object.entries(cfg.themeColors)) {
       if (value != null) {
         // Convert camelCase to kebab-case: bgPanel → bg-panel
-        const kebab = key.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
+        const kebab = key.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
         root.style.setProperty(`--skr-${kebab}`, value);
       }
     }
@@ -1041,7 +1066,7 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
 // them: every mode transition goes through a keypress, so reading mode
 // state on every keyup is sufficient. Cheap because refreshStatus just
 // reads a few DOM properties and dispatches no CM state updates.
-host.addEventListener('keyup', refreshStatus);
+host.addEventListener("keyup", refreshStatus);
 
 // COMMAND mode detection. The Vim command panel is rendered as a
 // CM6 panel containing an <input> element; pressing `:` focuses
@@ -1055,13 +1080,13 @@ host.addEventListener('keyup', refreshStatus);
 // e.target as HTMLInputElement inside the guard block, and no cast
 // is needed to access input-specific methods/properties later if we
 // ever add any.
-host.addEventListener('focusin', (e) => {
+host.addEventListener("focusin", (e) => {
   if (e.target instanceof HTMLInputElement) {
     inCommandMode = true;
     refreshStatus();
   }
 });
-host.addEventListener('focusout', (e) => {
+host.addEventListener("focusout", (e) => {
   if (e.target instanceof HTMLInputElement) {
     inCommandMode = false;
     refreshStatus();
@@ -1086,9 +1111,9 @@ host.addEventListener('focusout', (e) => {
 // requestAnimationFrame defers the focus call to AFTER the browser's
 // default focus change from the mousedown, which would otherwise
 // override an immediate .focus() and move focus to <body> anyway.
-host.addEventListener('mousedown', (e) => {
+host.addEventListener("mousedown", (e) => {
   if (!(e.target instanceof Element)) return;
-  if (e.target.closest('.cm-content')) return;
+  if (e.target.closest(".cm-content")) return;
   if (e.target instanceof HTMLInputElement) return;
   requestAnimationFrame(() => {
     if (editorView) editorView.contentDOM.focus();
@@ -1111,27 +1136,31 @@ host.addEventListener('mousedown', (e) => {
 // `body.mode-preview` scoping) don't apply there — each pane fills
 // its half of .wrap with no margin gap to worry about.
 
-const wrapEl = document.querySelector('.wrap');
+const wrapEl = document.querySelector(".wrap");
 if (wrapEl) {
   // Wheel forwarder: scroll the inner scroller via scrollBy when the
   // wheel event lands outside it. passive: false because we
   // preventDefault.
-  wrapEl.addEventListener('wheel', (e: Event) => {
-    const we = e as WheelEvent;
-    let scroller: Element | null;
-    if (prefs.displayMode === 'editor') {
-      scroller = editorView ? editorView.scrollDOM : null;
-    } else if (prefs.displayMode === 'preview') {
-      scroller = out;
-    } else {
-      return; // split — each pane handles its own wheel
-    }
-    if (!scroller) return;
-    if (!(we.target instanceof Node)) return;
-    if (scroller.contains(we.target)) return; // landed on inner scroller
-    we.preventDefault();
-    scroller.scrollBy({ top: we.deltaY, left: we.deltaX });
-  }, { passive: false });
+  wrapEl.addEventListener(
+    "wheel",
+    (e: Event) => {
+      const we = e as WheelEvent;
+      let scroller: Element | null;
+      if (prefs.displayMode === "editor") {
+        scroller = editorView ? editorView.scrollDOM : null;
+      } else if (prefs.displayMode === "preview") {
+        scroller = out;
+      } else {
+        return; // split — each pane handles its own wheel
+      }
+      if (!scroller) return;
+      if (!(we.target instanceof Node)) return;
+      if (scroller.contains(we.target)) return; // landed on inner scroller
+      we.preventDefault();
+      scroller.scrollBy({ top: we.deltaY, left: we.deltaX });
+    },
+    { passive: false },
+  );
 
   // Preview-only margin click: clicks on the margin areas (outside
   // the capped-width preview content but still inside .wrap) take
@@ -1139,8 +1168,8 @@ if (wrapEl) {
   // keyboard navigation. preventDefault + synchronous focus is the
   // working pattern (queueMicrotask deferred runs AFTER the default
   // focus shift, so focus ricochets).
-  wrapEl.addEventListener('mousedown', (e: Event) => {
-    if (prefs.displayMode !== 'preview') return;
+  wrapEl.addEventListener("mousedown", (e: Event) => {
+    if (prefs.displayMode !== "preview") return;
     const me = e as MouseEvent;
     if (!(me.target instanceof Node)) return;
     if (out.contains(me.target)) return;
@@ -1172,13 +1201,13 @@ if (wrapEl) {
   // .editor-pane which is inside .wrap), but the rAF refocus there
   // is a harmless no-op when we've already synchronously focused
   // the editor here.
-  wrapEl.addEventListener('mousedown', (e: Event) => {
-    if (prefs.displayMode !== 'editor') return;
+  wrapEl.addEventListener("mousedown", (e: Event) => {
+    if (prefs.displayMode !== "editor") return;
     if (!editorView) return;
     const me = e as MouseEvent;
     if (!(me.target instanceof Element)) return;
     if (editorView.scrollDOM.contains(me.target)) return;
-    if (me.target.closest('.cm-panels')) return;
+    if (me.target.closest(".cm-panels")) return;
     me.preventDefault();
     editorView.focus();
   });
@@ -1208,12 +1237,11 @@ if (wrapEl) {
 // preview mode, skip the redirect so the editor stays blurred and
 // the preview remains the read-only surface.
 const chromeFocusRedirect = (e: MouseEvent) => {
-  if (prefs.displayMode === 'preview') return;
+  if (prefs.displayMode === "preview") return;
   if (!(e.target instanceof Element)) return;
   if (e.target instanceof HTMLButtonElement) return;
   if (e.target instanceof HTMLInputElement) return;
-  const wasPreviewFocused =
-    prefs.displayMode === 'split' && document.activeElement === out;
+  const wasPreviewFocused = prefs.displayMode === "split" && document.activeElement === out;
   requestAnimationFrame(() => {
     if (wasPreviewFocused) {
       out.focus();
@@ -1222,9 +1250,9 @@ const chromeFocusRedirect = (e: MouseEvent) => {
     }
   });
 };
-const titlebar = document.querySelector('.titlebar');
-if (titlebar) titlebar.addEventListener('mousedown', chromeFocusRedirect as EventListener);
-statusBar.addEventListener('mousedown', chromeFocusRedirect as EventListener);
+const titlebar = document.querySelector(".titlebar");
+if (titlebar) titlebar.addEventListener("mousedown", chromeFocusRedirect as EventListener);
+statusBar.addEventListener("mousedown", chromeFocusRedirect as EventListener);
 
 // `:` auto-capture in split mode. If the editor doesn't have focus
 // when `:` is pressed (typically because the user clicked the preview
@@ -1251,23 +1279,27 @@ statusBar.addEventListener('mousedown', chromeFocusRedirect as EventListener);
 //
 // Capture phase beats CM6's keymap (same rationale as the existing
 // window shortcut listener in main.ts).
-window.addEventListener('keydown', (e) => {
-  if (e.key !== ':') return;
-  if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if (prefs.displayMode !== 'split') return;
-  if (!prefs.vimMode) return;
-  if (!editorView) return;
-  const active = document.activeElement;
-  if (active === editorView.contentDOM) return;
-  if (active instanceof HTMLInputElement) return;
-  if (active instanceof HTMLTextAreaElement) return;
-  const cm = getCM(editorView);
-  if (!cm) return;
-  e.preventDefault();
-  // `'user'` origin mirrors how the plugin labels user-initiated
-  // keystrokes internally (vs. replayed macros).
-  Vim.handleKey(cm, ':', 'user');
-}, { capture: true });
+window.addEventListener(
+  "keydown",
+  (e) => {
+    if (e.key !== ":") return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (prefs.displayMode !== "split") return;
+    if (!prefs.vimMode) return;
+    if (!editorView) return;
+    const active = document.activeElement;
+    if (active === editorView.contentDOM) return;
+    if (active instanceof HTMLInputElement) return;
+    if (active instanceof HTMLTextAreaElement) return;
+    const cm = getCM(editorView);
+    if (!cm) return;
+    e.preventDefault();
+    // `'user'` origin mirrors how the plugin labels user-initiated
+    // keystrokes internally (vs. replayed macros).
+    Vim.handleKey(cm, ":", "user");
+  },
+  { capture: true },
+);
 
 // Suppress the native context menu in the preview pane unless the
 // user has selected text inside the preview itself. The webview's
@@ -1290,7 +1322,7 @@ window.addEventListener('keydown', (e) => {
 // count — it'd surface a Copy item that copies from the editor when
 // the user is right-clicking in the preview, which is confusing.
 if (previewPaneEl) {
-  previewPaneEl.addEventListener('contextmenu', (e) => {
+  previewPaneEl.addEventListener("contextmenu", (e) => {
     const selection = window.getSelection();
     const hasPreviewSelection =
       selection !== null &&
@@ -1309,9 +1341,9 @@ if (previewPaneEl) {
 // find/replace panel lives inside .cm-editor, so we key off
 // contenteditable + inputs rather than excluding .cm-editor.
 if (import.meta.env.PROD) {
-  document.addEventListener('contextmenu', (e) => {
+  document.addEventListener("contextmenu", (e) => {
     const target = e.target as Element | null;
-    if (!target?.closest('input, textarea, [contenteditable]')) {
+    if (!target?.closest("input, textarea, [contenteditable]")) {
       e.preventDefault();
     }
   });
@@ -1338,40 +1370,44 @@ if (import.meta.env.PROD) {
 // CM6's default keymap handles Mod-a → selectAll (non-Vim), and the
 // Vim plugin handles Ctrl+A → increment-number (Vim mode). Both
 // behaviors are preserved by the early return below.
-window.addEventListener('keydown', (e) => {
-  const mod = isMac ? e.metaKey : e.ctrlKey;
-  if (!mod) return;
-  if ((e.key || '').toLowerCase() !== 'a') return;
-  // Reject if the secondary modifier or Shift is also held — this
-  // handler is for plain Ctrl+A / Cmd+A only, not Ctrl+Alt+A or
-  // Ctrl+Cmd+A or Ctrl+Shift+A. Secondary modifier is Alt on
-  // Linux/Windows, Ctrl on Mac (since primary is Cmd there); same
-  // mapping main.ts uses for app shortcuts.
-  const second = isMac ? e.ctrlKey : e.altKey;
-  if (e.shiftKey || second) return;
-  // Scope to the preview when:
-  //   (a) preview element is the currently-focused element (split or
-  //       preview-only after explicit focus via Ctrl+Alt+W or click), OR
-  //   (b) we're in preview-only mode regardless of where focus
-  //       actually lives. After setDisplayMode('preview') blurs the
-  //       editor, focus typically lands on <body>; Ctrl+A on body
-  //       falls through to the webview's default "select entire
-  //       visible document," which sweeps in the status bar text
-  //       (filename, format, word count) alongside the rendered
-  //       preview content. In preview-only there's no other pane the
-  //       user could possibly mean — preview is the sole visible
-  //       surface — so we scope unambiguously.
-  // Split mode with focus on body is intentionally NOT covered here:
-  // the user could mean either pane and we'd be guessing.
-  const previewFocused = document.activeElement === out;
-  const previewOnlyMode = prefs.displayMode === 'preview';
-  if (!previewFocused && !previewOnlyMode) return;
-  e.preventDefault();
-  const range = document.createRange();
-  range.selectNodeContents(out);
-  const selection = window.getSelection();
-  if (selection) {
-    selection.removeAllRanges();
-    selection.addRange(range);
-  }
-}, { capture: true });
+window.addEventListener(
+  "keydown",
+  (e) => {
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    if (!mod) return;
+    if ((e.key || "").toLowerCase() !== "a") return;
+    // Reject if the secondary modifier or Shift is also held — this
+    // handler is for plain Ctrl+A / Cmd+A only, not Ctrl+Alt+A or
+    // Ctrl+Cmd+A or Ctrl+Shift+A. Secondary modifier is Alt on
+    // Linux/Windows, Ctrl on Mac (since primary is Cmd there); same
+    // mapping main.ts uses for app shortcuts.
+    const second = isMac ? e.ctrlKey : e.altKey;
+    if (e.shiftKey || second) return;
+    // Scope to the preview when:
+    //   (a) preview element is the currently-focused element (split or
+    //       preview-only after explicit focus via Ctrl+Alt+W or click), OR
+    //   (b) we're in preview-only mode regardless of where focus
+    //       actually lives. After setDisplayMode('preview') blurs the
+    //       editor, focus typically lands on <body>; Ctrl+A on body
+    //       falls through to the webview's default "select entire
+    //       visible document," which sweeps in the status bar text
+    //       (filename, format, word count) alongside the rendered
+    //       preview content. In preview-only there's no other pane the
+    //       user could possibly mean — preview is the sole visible
+    //       surface — so we scope unambiguously.
+    // Split mode with focus on body is intentionally NOT covered here:
+    // the user could mean either pane and we'd be guessing.
+    const previewFocused = document.activeElement === out;
+    const previewOnlyMode = prefs.displayMode === "preview";
+    if (!previewFocused && !previewOnlyMode) return;
+    e.preventDefault();
+    const range = document.createRange();
+    range.selectNodeContents(out);
+    const selection = window.getSelection();
+    if (selection) {
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  },
+  { capture: true },
+);

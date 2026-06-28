@@ -3,14 +3,15 @@
 # bundled third-party dependencies (npm runtime deps + Rust crates).
 #
 # Run from repo root. Requires:
-#   - license-checker (fetched on demand via npx — kept out of the dependency tree on purpose)
+#   - pnpm (license data comes from the built-in `pnpm licenses list`, so
+#     nothing extra is fetched)
 #   - cargo-about with cli feature globally installed:
 #     cargo install --locked --features=cli cargo-about
-#   - python3 (used for formatting license-checker's JSON into plain text)
+#   - python3 (used for formatting pnpm's license JSON into plain text)
 #
 # Output: NOTICES at repo root, overwriting any existing file.
 #
-# Re-run this script after any dependency change (npm install, cargo
+# Re-run this script after any dependency change (pnpm install, cargo
 # add/update, bumping package.json or Cargo.toml versions). The resulting
 # NOTICES diff is committable alongside the dep change.
 
@@ -50,52 +51,63 @@ echo "=== npm package licenses ===" >> "$OUTPUT"
 echo "================================================================" >> "$OUTPUT"
 echo "" >> "$OUTPUT"
 
-# --production excludes devDependencies (eslint, vite, husky, etc.) since
-# those don't ship in the built artifact. Default JSON output includes
-# `licenses` (SPDX identifier), `licenseFile` (path to the package's
-# LICENSE file), and `repository`. We read licenseFile's contents
-# ourselves in the Python step — license-checker's --customFormat with
-# licenseText has inconsistent behavior across versions, so delegating
-# the file read is more robust.
-npx --yes license-checker \
-    --production \
-    --json > "$TMPDIR/npm.json"
+# pnpm's built-in license lister. --prod excludes devDependencies (vite,
+# vitest, oxlint, etc.) since those don't ship in the built artifact. The
+# JSON is keyed by SPDX license, and each entry gives the package's
+# install path(s) rather than a LICENSE file directly, so the Python step
+# locates the license text inside each package dir itself.
+pnpm licenses list --prod --json > "$TMPDIR/npm.json"
 
 # Format the JSON dump into plain-text sections. Inline python3 avoids a
 # separate formatter file; the heredoc keeps the logic self-contained.
-# The "pkg@version" key is split to get name/version since license-
-# checker doesn't expose those as separate fields in default output.
 python3 - "$TMPDIR/npm.json" <<'PYEOF' >> "$OUTPUT"
-import json, sys, os
+import json, sys, os, glob
+
 with open(sys.argv[1]) as f:
     data = json.load(f)
-for key in sorted(data.keys()):
-    pkg = data[key]
-    # key format: "name@version" or "@scope/name@version"
-    if key.startswith("@"):
-        name, _, ver = key.rpartition("@")
-    else:
-        name, _, ver = key.rpartition("@")
-    licenses = pkg.get("licenses") or "UNKNOWN"
-    license_file = pkg.get("licenseFile")
+
+# pnpm groups packages under their license key; flatten and sort by name
+# for stable, diffable output.
+packages = [entry for entries in data.values() for entry in entries]
+
+# Prefer a dedicated license file; fall back to a README, since some
+# packages (e.g. font-awesome) carry their terms there instead.
+LICENSE_GLOBS = ("LICENSE*", "LICENCE*", "License*", "licence*", "license*", "COPYING*")
+README_GLOBS = ("README*", "Readme*", "readme*")
+
+def find_text(pkg_dir, patterns):
+    for pat in patterns:
+        for path in sorted(glob.glob(os.path.join(pkg_dir, pat))):
+            if os.path.isfile(path):
+                try:
+                    with open(path, encoding="utf-8", errors="replace") as fh:
+                        return fh.read().strip()
+                except Exception as e:
+                    return f"(error reading {os.path.basename(path)}: {e})"
+    return ""
+
+for pkg in sorted(packages, key=lambda p: p["name"].lower()):
+    name = pkg["name"]
+    version = ", ".join(pkg.get("versions", []))
+    license_id = pkg.get("license") or "UNKNOWN"
+    homepage = pkg.get("homepage")
+    pkg_dir = (pkg.get("paths") or [None])[0]
+
     text = ""
-    if license_file and os.path.isfile(license_file):
-        try:
-            with open(license_file, encoding="utf-8", errors="replace") as lf:
-                text = lf.read().strip()
-        except Exception as e:
-            text = f"(error reading license file: {e})"
+    if pkg_dir and os.path.isdir(pkg_dir):
+        text = find_text(pkg_dir, LICENSE_GLOBS) or find_text(pkg_dir, README_GLOBS)
+
     print("----------------------------------------------------------------")
-    print(f"Package: {name} {ver}")
-    print(f"License: {licenses}")
-    if pkg.get("repository"):
-        print(f"Repository: {pkg['repository']}")
+    print(f"Package: {name} {version}")
+    print(f"License: {license_id}")
+    if homepage:
+        print(f"Homepage: {homepage}")
     print("----------------------------------------------------------------")
     print()
     if text:
         print(text)
     else:
-        print("(no LICENSE file bundled with this package; see SPDX identifier above)")
+        print("(no LICENSE or README file bundled with this package; see SPDX identifier above)")
     print()
 PYEOF
 

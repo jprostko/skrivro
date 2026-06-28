@@ -498,7 +498,7 @@ fn normalize_length(key: &str, val: &str, line_num: usize, max_tokens: usize) ->
 /// - One bad line does NOT abort loading the rest of the file
 ///
 /// All warning `eprintln!`s are wrapped in `#[cfg(debug_assertions)]` so
-/// they only fire in debug builds (visible during `npm run tauri dev` from
+/// they only fire in debug builds (visible during `pnpm tauri dev` from
 /// a terminal; compiled out of release builds entirely — zero runtime cost
 /// for end users, and no stderr noise from a launched .desktop entry).
 fn parse_skrivro_config(text: &str) -> SkrivroConfig {

@@ -7,4 +7,5 @@
 # set -e so a failing step aborts and git refuses the commit.
 set -e
 
-npm run check
+pnpm run check
+vp staged

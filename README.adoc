@@ -59,12 +59,12 @@ Skrivro doesn't ship pre-built binaries yet. To build from source:
 ----
 git clone <INSERT REPO URL HERE (Forgejo, GitHub mirror, etc.)>
 cd skrivro
-pnpm install
-pnpm tauri build
+vp install
+vp run tauri build
 ----
 
 The built binary lands in `src-tauri/target/release/`.
-Platform-specific system dependencies (webkit2gtk-4.1 on Linux, etc.) and packaging notes live in link:docs/BUILDING.adoc[].
+Prerequisites (the Rust toolchain and Vite+), platform-specific system dependencies (webkit2gtk-4.1 on Linux, etc.), and packaging notes live in link:docs/BUILDING.adoc[].
 
 == Documentation
 

@@ -4,7 +4,7 @@
 :toclevels: 2
 
 Skrivro stands on a lot of other people's work.
-The link:../NOTICES[NOTICES] file lists every dependency comprehensively (auto-generated from `license-checker` for npm packages and `cargo-about` for Rust crates).
+The link:../NOTICES[NOTICES] file lists every dependency comprehensively (auto-generated from `pnpm licenses list` for npm packages and `cargo-about` for Rust crates).
 This file is the curated version: the major projects that do most of the heavy lifting, with a sentence or two on what each contributes.
 
 All third-party dependencies are permissively licensed (MIT, Apache-2.0, BSD, ISC, OFL-1.1, and similar) or, in a few cases, the file-level MPL-2.0. There is no GPL-family copyleft. Of the MPL-2.0 crates, only option-ext (reached transitively through dirs) ships in the distributed binary. The rest are build-time only. Because MPL-2.0 is file-level, it never reaches Skrivro's own 0BSD source.
@@ -42,12 +42,13 @@ All third-party dependencies are permissively licensed (MIT, Apache-2.0, BSD, IS
 
 == Build tools
 
-* *https://vite.dev/[Vite]*: frontend build and dev server. Hot module reload during development, plus bundling, transpiling, and tree-shaking for production.
-* *https://www.typescriptlang.org/[TypeScript]*: the frontend language. Strict mode catches null / undefined errors and type mismatches at compile time.
-* *https://vitest.dev/[Vitest]*: the test runner for the frontend suite (`pnpm test`). See link:BUILDING.adoc[] for what it covers.
-* *https://eslint.org/[ESLint]* + *https://typescript-eslint.io/[typescript-eslint]*: linting.
-* *https://typicode.github.io/husky/[Husky]* + *https://github.com/lint-staged/lint-staged[lint-staged]*: the pre-commit hook that runs a whole-project typecheck plus ESLint over staged files.
-* *https://github.com/davglass/license-checker[license-checker]* (npm) and *https://github.com/EmbarkStudios/cargo-about[cargo-about]* (Rust): used to generate the link:../NOTICES[NOTICES] file by aggregating license metadata from every transitive dependency in both ecosystems. Run via `scripts/gen-notices.sh` when dependencies change.
+* *https://viteplus.dev/[Vite+]*: the unified toolchain. A single `vp` CLI drives the dev server, production build, linting, formatting, type checking, and tests, abstracting the package manager underneath it. The commands throughout link:BUILDING.adoc[] are its subcommands.
+* *https://vite.dev/[Vite]* + *https://github.com/rolldown/rolldown[Rolldown]*: the frontend bundler and dev server Vite+ runs. Hot module reload during development, plus bundling, transpiling, and tree-shaking for production.
+* *https://www.typescriptlang.org/[TypeScript]*: the frontend language. Strict mode catches null / undefined errors and type mismatches.
+* *https://github.com/microsoft/typescript-go[typescript-go]* (tsgo): the type checker, run via oxlint-tsgolint and faster than `tsc` over the same strict-mode source.
+* *https://github.com/oxc-project/oxc[Oxlint and Oxfmt]*: the Oxc project's Rust-based linter and formatter, run over the source through Vite+.
+* *https://vitest.dev/[Vitest]*: the test runner for the frontend suite. See link:BUILDING.adoc[] for what it covers.
+* *https://github.com/EmbarkStudios/cargo-about[cargo-about]*: aggregates license metadata from the Rust crates into the link:../NOTICES[NOTICES] file. The npm side comes from pnpm's built-in `pnpm licenses list`. Run both via `scripts/gen-notices.sh` when dependencies change.
 
 == Platform-specific
 

@@ -192,15 +192,15 @@ Skrivro keeps four kinds of state, in different places for different reasons:
 
 == Build pipeline
 
-`pnpm tauri build` orchestrates two builds in sequence:
+`vp run tauri build` orchestrates two builds in sequence:
 
-1. *Vite frontend build.* Reads `src/main.ts` as the entry, resolves all imports, transpiles TypeScript, bundles into `dist/index.html` + `dist/assets/*.js` + `dist/assets/*.css`. Vite is configured via `vite.config.ts`.
+1. *Vite+ frontend build.* Reads `src/main.ts` as the entry, resolves all imports, transpiles TypeScript, bundles into `dist/index.html` + `dist/assets/*.js` + `dist/assets/*.css`. Vite+ is configured via `vite.config.js`.
 2. *Cargo Rust build.* Compiles `src-tauri/` in release mode, statically linking where possible. Tauri's build script (`build.rs` calls `tauri_build::build()`) generates code that embeds the `dist/` directory into the binary.
 
 The result is a single binary that contains both the Rust code and the bundled frontend.
 Tauri's bundler (the third stage) wraps it in platform-appropriate installers (DMG, MSI, AppImage).
 
-`pnpm tauri dev` swaps step 1 for `vite dev` (a hot-reload dev server) and runs the Rust binary in debug mode pointed at that server instead of the bundled assets.
+`vp run tauri dev` swaps step 1 for `vp dev` (a hot-reload dev server) and runs the Rust binary in debug mode pointed at that server instead of the bundled assets.
 
 == Design choices worth knowing
 

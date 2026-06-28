@@ -14,8 +14,8 @@ Most of the friction is in getting the prerequisites in place.
 === All platforms
 
 * *Rust toolchain*: install via `rustup` from https://rustup.rs/[rustup.rs]. Stable channel is fine. Skrivro tracks no specific MSRV beyond what Tauri 2 itself requires.
-* *Node.js*: any recent LTS will do. The frontend build runs through Vite, which works on Node 18+.
-* *pnpm*: Skrivro's package manager, pinned via the `packageManager` field in `package.json`. If your Node ships Corepack, `corepack enable pnpm` activates the pinned version automatically. Otherwise install pnpm per https://pnpm.io/installation[pnpm.io/installation].
+* *Vite+*: the JavaScript-side toolchain, invoked as `vp`. Install it from https://viteplus.dev/[viteplus.dev]. It bundles the build, lint, format, type-check, and test tooling, and manages its own Node.js runtime (you opt in at install time), so Node does not need installing separately.
+* *pnpm*: the package manager Vite+ drives, pinned via the `packageManager` field in `package.json`. `vp install` detects and uses it automatically. If it is not already present, install it per https://pnpm.io/installation[pnpm.io/installation] or through Corepack.
 * *Git*: for cloning the source.
 
 === Linux
@@ -78,12 +78,12 @@ This is automatic. Tauri picks the right backend per platform.
 ----
 git clone <repo URL>
 cd skrivro
-pnpm install
+vp install
 ----
 
-`pnpm install` pulls the JavaScript / TypeScript dependencies (CodeMirror, Asciidoctor.js, markdown-it, the Tauri JS bindings, etc.) and runs the husky pre-commit hook setup.
+`vp install` reads the package manager from `package.json` (pnpm here), pulls the JavaScript / TypeScript dependencies (CodeMirror, Asciidoctor.js, markdown-it, the Tauri JS bindings, etc.), and runs the `prepare` step, which calls `vp config` to install the Vite+ pre-commit hook.
 
-The repo's `pnpm-workspace.yaml` carries a few supply-chain settings. The one you'll notice is `minimumReleaseAge`, which makes `pnpm install` hold back dependency versions published within the last few days. A brand-new release not resolving yet is expected, not an error.
+The repo's `pnpm-workspace.yaml` carries a few supply-chain settings. The one you'll notice is `minimumReleaseAge`, which makes `vp install` hold back dependency versions published within the last few days. A brand-new release not resolving yet is expected, not an error.
 
 The Rust dependencies install lazily on the first build. There's no separate Rust install step.
 
@@ -91,12 +91,12 @@ The Rust dependencies install lazily on the first build. There's no separate Rus
 
 [source,bash]
 ----
-pnpm tauri dev
+vp run tauri dev
 ----
 
 This command:
 
-1. Starts Vite's dev server on `http://localhost:1420`, which serves the frontend with hot module reload.
+1. Starts Vite+'s dev server on `http://localhost:1420`, which serves the frontend with hot module reload.
 2. Builds and runs the Rust binary in debug mode, pointed at that dev server.
 
 Hot reload works for the frontend (CSS, TypeScript, HTML edits reflect immediately).
@@ -109,12 +109,12 @@ Subsequent runs are fast: incremental compilation and the dependency graph is ca
 
 [source,bash]
 ----
-pnpm tauri build
+vp run tauri build
 ----
 
 This produces:
 
-1. The Vite-built frontend (in `dist/`).
+1. The Vite+-built frontend (in `dist/`).
 2. The release-mode Rust binary, statically linked where possible.
 3. Platform-specific bundles (DMG on macOS, MSI/NSIS on Windows, AppImage / DEB on Linux depending on what's available locally).
 
@@ -136,10 +136,10 @@ The release binary is small (~15-20 MB on Linux) because Tauri uses the system W
 
 == Tauri CLI
 
-Skrivro uses the pnpm-installed Tauri CLI (`@tauri-apps/cli`), not a globally-installed `cargo install tauri-cli`.
-That's why the build commands are `pnpm tauri ...` and not `cargo tauri ...`.
+Skrivro uses the project-local Tauri CLI (`@tauri-apps/cli`), not a globally-installed `cargo install tauri-cli`.
+That's why the build commands run as `vp run tauri ...` (which executes the `tauri` script) and not `cargo tauri ...`.
 
-If you happen to have `tauri-cli` installed via cargo at a different version than what `package.json` pins, the pnpm-installed version is what runs through `pnpm tauri ...` and what stays in sync with the Rust crates.
+If you happen to have `tauri-cli` installed via cargo at a different version than what `package.json` pins, the project-local version is what runs through `vp run tauri ...` and what stays in sync with the Rust crates.
 You can safely uninstall any cargo-installed copy:
 
 [source,bash]
@@ -149,29 +149,25 @@ cargo uninstall tauri-cli
 
 Skrivro pins matching versions of `@tauri-apps/cli` and the Tauri Rust crates so they line up.
 If you ever see a `Found version mismatched Tauri packages` error during build, the pinned version of one of the `@tauri-apps/plugin-*` packages drifted behind the Rust-side version.
-Bump the pin in `package.json` to match the resolved Rust version and re-run `pnpm install`.
+Bump the pin in `package.json` to match the resolved Rust version and re-run `vp install`.
 
-== Type checking
-
-[source,bash]
-----
-pnpm typecheck
-----
-
-Runs `tsc --noEmit` over the TypeScript source.
-Strict mode is on. This should pass clean.
-
-The husky pre-commit hook runs the same whole-project typecheck on every commit.
-
-== Linting
+== Checks
 
 [source,bash]
 ----
-pnpm lint
+vp check
 ----
 
-Runs ESLint over the source.
-Like typecheck, this should pass clean, and pre-commit also runs ESLint over staged files.
+`vp check` runs the whole quality gate in one pass: formatting (Oxfmt), linting (Oxlint, including the type-aware rules via oxlint-tsgolint), and type checking (tsgo, the TypeScript-go compiler). Strict mode is on throughout, and a clean tree reports no formatting, lint, or type errors.
+
+To apply formatting rather than just check it:
+
+[source,bash]
+----
+vp fmt
+----
+
+The pre-commit hook runs `vp check` over the whole project plus a `vp staged` pass that auto-fixes staged files, so every commit is gated on the same checks.
 
 == Testing
 
@@ -181,10 +177,10 @@ Skrivro has automated tests on both sides of the IPC boundary, covering the pure
 
 [source,bash]
 ----
-pnpm test
+vp test run
 ----
 
-Runs the Vitest suite once and exits. `pnpm test:watch` keeps it running in watch mode.
+Runs the Vitest suite once and exits. `vp test` keeps it running in watch mode.
 
 It covers format detection, the Markdown and AsciiDoc scroll-sync block mapping, the AsciiDoc `include::` preprocessor, and the spellcheck worker's checking protocol (the compound-strip filter and the user-supplied dictionary path).
 Test files sit next to the code they exercise: `src/renderer.test.ts`, `src/render-worker.test.ts`, `src/io.test.ts`, and `src/spellcheck/spellcheck-worker.test.ts`.
@@ -204,11 +200,27 @@ Covers the `skrivro.conf` parser and the `normalize_length` validation for lengt
 The suites cover pure logic only: there's no UI-level or end-to-end testing, and no CI pipeline. They run locally on demand.
 Confirming that the running app behaves correctly (keystrokes, rendering, platform chrome) is still done by hand.
 
+== Regenerating license notices
+
+The repo-root `NOTICES` file aggregates the license text of every bundled dependency. Regenerate it after any dependency change with:
+
+[source,bash]
+----
+scripts/gen-notices.sh
+----
+
+The script pulls npm-side licenses from pnpm's built-in `pnpm licenses list` and Rust-side licenses from `cargo-about`, so two tools are needed beyond the build prerequisites:
+
+* *cargo-about*: a global cargo subcommand, installed once per machine with `cargo install --locked --features=cli cargo-about`. It is not a project dependency, so it does not come along when you clone or sync the repo.
+* *python3*: used to format the license data into plain text. Any recent version works.
+
+Commit the resulting `NOTICES` diff alongside the dependency change that triggered it.
+
 == Common gotchas
 
 === "Found version mismatched Tauri packages"
 
-Bump the affected `@tauri-apps/plugin-*` version in `package.json` to match what Cargo resolved on the Rust side, then `pnpm install`.
+Bump the affected `@tauri-apps/plugin-*` version in `package.json` to match what Cargo resolved on the Rust side, then `vp install`.
 See the Tauri CLI section above for the why.
 
 === Linux: "package webkit2gtk-4.1 not found"
@@ -241,8 +253,8 @@ To wipe everything and start fresh:
 [source,bash]
 ----
 rm -rf node_modules dist src-tauri/target
-pnpm install
-pnpm tauri build
+vp install
+vp run tauri build
 ----
 
 Useful after toolchain upgrades, dependency rejiggering, or if you suspect cached build artifacts are interfering.

@@ -9,6 +9,7 @@
     "build": "vp build",
     "tauri": "tauri",
     "check": "vp check",
+    "fmt": "vp fmt",
     "test": "vp test run",
     "test:watch": "vp test",
     "prepare": "vp config"

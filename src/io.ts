@@ -488,10 +488,20 @@ export const openFile = () => {
   });
 };
 
+// Serialize the buffer for writing. Matches Vim's empty-file behavior:
+// a never-edited empty buffer (a new buffer, or a 0-byte file reopened)
+// writes 0 bytes, while any edit makes it a dirty save that gets the
+// POSIX trailing newline, so empty-but-edited content writes one byte.
+// Non-empty content always gets the trailing newline.
+const docToSave = () => {
+  const text = getDoc();
+  return text === "" && !currentBuffer.dirty ? "" : ensureTrailingNewline(text);
+};
+
 export const saveFile = async () => {
   if (!currentBuffer.path) return saveFileAs();
   try {
-    await writeTextFile(currentBuffer.path, ensureTrailingNewline(getDoc()));
+    await writeTextFile(currentBuffer.path, docToSave());
     setDirty(false);
     clearDraft();
   } catch (e) {
@@ -507,7 +517,7 @@ export const saveFileAs = async () => {
       defaultPath: currentBuffer.path || currentBuffer.name,
     });
     if (!selected) return; // user canceled — silent, the user knows
-    await writeTextFile(selected, ensureTrailingNewline(getDoc()));
+    await writeTextFile(selected, docToSave());
     currentBuffer.path = selected;
     currentBuffer.name = await basename(selected);
     setBufferFormat(detectFormat(selected));
@@ -639,7 +649,7 @@ Vim.defineEx("write", "w", async (_cm: any, params: VimExParams) => {
     let targetPath: string | null = null;
     try {
       targetPath = await resolveArgPath(arg);
-      await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
+      await writeTextFile(targetPath, docToSave());
     } catch (e) {
       console.error(e);
       vimMessage(
@@ -669,7 +679,7 @@ Vim.defineEx("saveas", "sav", async (_cm: any, params: VimExParams) => {
     let targetPath: string | null = null;
     try {
       targetPath = await resolveArgPath(arg);
-      await writeTextFile(targetPath, ensureTrailingNewline(getDoc()));
+      await writeTextFile(targetPath, docToSave());
       currentBuffer.path = targetPath;
       currentBuffer.name = await basename(targetPath);
       setBufferFormat(detectFormat(targetPath));

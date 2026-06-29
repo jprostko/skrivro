@@ -2040,6 +2040,17 @@
       // write-to-disk site (not to autosave draft or render input).
       const ensureTrailingNewline = (text) => (text.endsWith("\n") ? text : text + "\n");
 
+      // Serialize the buffer for writing. Matches Vim's empty-file
+      // behavior: a never-edited empty buffer (a new buffer, or a
+      // 0-byte file reopened) writes 0 bytes, while any edit makes it
+      // a dirty save that gets the POSIX trailing newline, so an
+      // empty-but-edited buffer writes one byte. Non-empty content
+      // always gets the trailing newline.
+      const docToSave = () => {
+        const text = getDoc();
+        return text === "" && !dirty ? "" : ensureTrailingNewline(text);
+      };
+
       const setDoc = (text) => {
         // Each wholesale content load is a new buffer epoch. renderOnce
         // captures docEpoch at entry and discards a pass whose buffer was
@@ -3458,7 +3469,7 @@
           if (!currentHandle) return saveFileAs();
           try {
             const w = await currentHandle.createWritable();
-            await w.write(ensureTrailingNewline(getDoc()));
+            await w.write(docToSave());
             await w.close();
             setDirty(false);
             persistSnapshot();
@@ -3480,7 +3491,7 @@
               suggestedName: currentName,
             });
             const w = await handle.createWritable();
-            await w.write(ensureTrailingNewline(getDoc()));
+            await w.write(docToSave());
             await w.close();
             currentHandle = handle;
             currentName = handle.name || currentName;
@@ -3505,7 +3516,7 @@
       };
 
       const downloadFile = (filename) => {
-        const blob = new Blob([ensureTrailingNewline(getDoc())], { type: "text/plain" });
+        const blob = new Blob([docToSave()], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;

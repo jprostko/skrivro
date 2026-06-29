@@ -51,7 +51,7 @@ Bonus: it stays out of Vim's kbd:[Ctrl+letter] namespace.
 | Save as. Opens the dialog regardless of whether the file already has a path.
 
 | kbd:[Ctrl+O]
-| Open file via the system file picker. Refuses if the current buffer is dirty (offers a "Discard changes?" confirm).
+| Open file via the system file picker. Refuses if the current buffer is dirty (offers a "Discard changes?" confirm). In Vim mode this chord jumps back through the jump list instead, so open with `:open` (see <<Ctrl+O and the jump list>>).
 
 | kbd:[Ctrl+N]
 | New empty buffer. Same dirty-buffer protection as kbd:[Ctrl+O].
@@ -321,7 +321,7 @@ If you rely on Vim's standard case-sensitivity controls (`set ignorecase`, `set 
 
 === Ctrl+O and the jump list
 
-In standard Vim, kbd:[Ctrl+O] jumps back through the jump list (older cursor positions) and kbd:[Ctrl+I] jumps forward. On Linux and Windows, Skrivro binds kbd:[Ctrl+O] to opening a file (see <<File operations>>) and claims the chord before Vim sees it, so the jump-back isn't available in Vim mode there. On Mac the file picker is kbd:[Cmd+O] instead, so physical kbd:[Ctrl+O] keeps its standard Vim behavior.
+In standard Vim, kbd:[Ctrl+O] jumps back through the jump list (older cursor positions) and kbd:[Ctrl+I] jumps forward. In Vim mode, Skrivro leaves both chords to Vim, so the jump list works as it does in real Vim. On Linux and Windows, kbd:[Ctrl+O] is the open-file shortcut when Vim mode is off (see <<File operations>>). To open a file while Vim mode is on, use the `:open` Ex command. On Mac the file picker is kbd:[Cmd+O], so physical kbd:[Ctrl+O] reaches Vim regardless of mode.
 
 == Toggles
 

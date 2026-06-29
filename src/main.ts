@@ -251,6 +251,12 @@ window.addEventListener(
       e.preventDefault();
       void saveFile();
     } else if (k === "o") {
+      // Vim mode owns Ctrl+O: let it fall through to the CM6 Vim layer
+      // for jumplist-back, the same way Ctrl+F falls through to Vim's
+      // page-forward. Linux and Windows only, since Mac's primary
+      // modifier is Cmd and Ctrl+O never reaches this branch there.
+      // Vim users open via :open, which shows the same file picker.
+      if (prefs.vimMode) return;
       e.preventDefault();
       openFile();
     } else if (k === "n") {

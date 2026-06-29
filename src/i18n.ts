@@ -157,6 +157,7 @@ export const STRINGS_SV: Record<string, string> = {
   Save: "Spara",
   "Save as": "Spara som",
   Open: "Öppna",
+  "Open (Vim users use :open)": "Öppna (Vim-användare använder :open)",
   New: "Ny",
   "Undo the last edit": "Ångra senaste ändringen",
   "Redo the last undone edit (Vim users use Ctrl+R)":

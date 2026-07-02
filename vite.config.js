@@ -57,10 +57,10 @@ export default defineConfig({
     // bundle size affects download time and first paint. Skrivro is a
     // Tauri desktop app — the JS ships embedded inside the binary and
     // loads from local memory at launch, so chunk size is not a perceived
-    // performance concern. Asciidoctor.js alone accounts for most of the
-    // ~1.2 MB bundle and cannot be tree-shaken (it's compiled from Ruby
-    // via Opal). Raise the threshold so the warning stops firing on
-    // every build.
+    // performance concern. Asciidoctor.js dominates the render-worker
+    // chunk and cannot be tree-shaken (it's compiled from Ruby via
+    // Opal). Raise the threshold so the warning stops firing on every
+    // build.
     chunkSizeWarningLimit: 2000,
   },
   // Vitest (pnpm test). The tests are their own target: builds never

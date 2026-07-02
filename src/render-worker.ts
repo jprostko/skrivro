@@ -108,7 +108,7 @@ md.renderer.rules.html_block = (tokens, idx) =>
 // ordinary blockquote; the gfmAlert core rule below retags those
 // blockquote tokens as alert tokens, and the renderer rules emit the
 // callout markup. The marker is case-sensitive — a wrong-case
-// `[!type]` falls through as a normal blockquote, matching GitHub.
+// `[!type]` falls through as a normal blockquote.
 const GFM_ALERT_TYPES = ["NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"] as const;
 type GfmAlertType = (typeof GFM_ALERT_TYPES)[number];
 

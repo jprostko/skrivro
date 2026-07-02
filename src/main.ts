@@ -41,8 +41,8 @@ import "./styles.css";
 // to actually display glyphs. Without this import, icon:: directives
 // render as empty invisible <i> elements.
 //
-// FA4 specifically (not 5/6/7) because Asciidoctor's Ruby source
-// hardcodes `"fa fa-#{target}"` at line 357 of lib/asciidoctor.rb,
+// FA4 specifically (not 5/6/7) because Asciidoctor's HTML5 converter
+// (lib/asciidoctor/converter/html5.rb) hardcodes `"fa fa-#{target}"`,
 // and modern FA versions use different class prefixes (fas, far, fab,
 // fa-solid, etc.). Using FA4 matches Asciidoctor's output 1:1 with no
 // shim CSS, no class rewriting, smallest bundle. See asciidoctor#2535
@@ -52,7 +52,11 @@ import "./styles.css";
 // Both permissive and compatible with Skrivro's 0BSD source
 // license. The OFL has a Reserved Font Name clause for "Font
 // Awesome" — we bundle unmodified so that clause doesn't affect
-// us. Bundle cost: ~240 KB (CSS ~75 KB, woff2 font ~165 KB).
+// us. Bundle cost: the minified CSS is ~31 KB, and all five font
+// formats FA4's @font-face references are emitted into dist
+// (~930 KB on disk, dominated by the legacy svg/ttf/eot
+// fallbacks); at runtime the webview downloads only the woff2
+// (~76 KB).
 import "font-awesome/css/font-awesome.min.css";
 
 import { invoke } from "@tauri-apps/api/core";
@@ -309,7 +313,9 @@ void appWindow.onCloseRequested((event) => {
 // Directories or non-text files fail at readTextFile inside
 // loadFileFromPath — the catch in that function logs to console and
 // leaves the existing buffer untouched. No visible error to the
-// user; the dropped-file just doesn't load, buffer stays as it was.
+// user (except an oversize file, whose FileTooLargeError message is
+// surfaced via vimMessage); the dropped-file just doesn't load,
+// buffer stays as it was.
 // If this becomes a frequent confusion point we could surface a
 // toast or dialog, but for now the silent-on-invalid behavior
 // matches how openFile handles readTextFile errors.
@@ -385,10 +391,11 @@ setLaunchCwd(launchInfo.cwd || "");
 // default SkrivroConfig with all fields undefined, and we fall through
 // to compiled-in defaults via applyUserConfig's `if (cfg.X)` guards.
 //
-// applyUserConfig MUST run before the EditorView is constructed below,
-// because the CM6 theme extension reads --edit-font-size and
-// --editor-padding at construction time. Setting them afterwards
-// would require a dispatched reconfigure.
+// applyUserConfig runs before the EditorView is constructed below so
+// the first paint already carries the user's fonts, sizes, and colors.
+// The CM6 theme references the values via var(), which the browser
+// resolves live, so a later assignment would still apply — the
+// ordering buys a clean first frame, not correctness.
 try {
   setUserConfig(await invoke<SkrivroConfig>("get_config"));
 } catch (e) {

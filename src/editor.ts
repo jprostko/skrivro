@@ -4,7 +4,7 @@
 //   - editorView (live binding, null until createEditor runs)
 //   - vimCompartment (reconfigured when the user toggles Vim mode)
 //   - languageCompartment (reconfigured when the buffer's format
-//     changes — holds asciidocLang today, swappable in place)
+//     changes — asciidocLang, markdownLang, or empty for plain text)
 //   - getDoc / setDoc (document read/write helpers)
 //   - createEditor(parent, callbacks) — constructs the EditorView
 //   - getCM re-export — used by status bar for reading Vim mode state
@@ -539,9 +539,10 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
 // Construct the EditorView and assign to the live-binding export.
 // `parent` is the host DOM element; `callbacks` supplies onDocChange
 // (for dirty / render / autosave) and onSelectionChange (for status
-// bar refresh). Call order: must be invoked AFTER applyUserConfig
-// so the theme extension sees the user's CSS variable overrides at
-// construction time.
+// bar refresh). Call order: invoked after applyUserConfig so the
+// first paint carries the user's CSS variable overrides (the theme's
+// var() references resolve live, so this is about a clean first
+// frame, not a hard requirement).
 export const createEditor = (
   parent: HTMLElement,
   initialDoc: string,

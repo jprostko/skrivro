@@ -181,10 +181,10 @@ struct SkrivroConfig {
     //
     // HTTPS-only by deliberate policy — even when this flag is
     // true, `http:` image sources are placeholdered. Setting this
-    // requires app restart to take effect (CSP is applied at
-    // webview creation time; flipping at runtime would create an
-    // inconsistency between what the webview permits and what the
-    // gate filters).
+    // requires app restart to take effect, for the same reason every
+    // key does: the config file is read once at launch, there is no
+    // runtime reload. (The CSP itself is static — img-src allows
+    // `https:` unconditionally; the gate alone decides.)
     allow_external_images: Option<bool>,
     // UI language — "auto" (default if unset; detect from browser
     // locale), "en" (force English), or "sv" (force Swedish). When
@@ -206,9 +206,11 @@ struct SkrivroConfig {
     // as auto. "off" is the one disabling value and a HARD off: no
     // dictionary loads and the runtime Ctrl+Alt+K / ⌃⌘K / :spell toggle
     // is inert. When a language is active the frontend loads the matching
-    // bundled Hunspell dictionary into nspell and underlines misspellings
-    // as CodeMirror decorations. English is US-only by design — no
-    // en-GB/CA/AU variants.
+    // Hunspell dictionary into nspell (bundled US English, or user-supplied
+    // files from <app_config_dir>/dictionaries/ — see the User-supplied
+    // dictionaries section below) and underlines misspellings as
+    // CodeMirror decorations. Only US English ships in the binary; other
+    // English variants and Swedish are user-supplied.
     spellcheck_language: Option<String>,
     // Theme colors resolved by load_theme() in get_config(). When the
     // user's `theme` key matches a non-default theme (i.e., anything
@@ -423,7 +425,7 @@ fn skrivro_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
 ///
 /// Called from `parse_skrivro_config` for:
 /// - Font-size keys (`edit-font-size`, `preview-font-size`, max_tokens=1)
-/// - Padding keys (`edit/preview-padding-x/y`, max_tokens=2)
+/// - Padding keys (`editor/preview-padding-x/y`, max_tokens=2)
 #[cfg_attr(not(debug_assertions), allow(unused_variables))]
 fn normalize_length(key: &str, val: &str, line_num: usize, max_tokens: usize) -> Option<String> {
     let tokens: Vec<&str> = val.split_whitespace().collect();
@@ -1181,7 +1183,7 @@ fn hide_macos_chrome(window: &tauri::WebviewWindow) -> tauri::Result<()> {
         .expect("ns_window pointer is non-null");
 
     // Method calls on Retained<NSWindow> don't require an unsafe block
-    // in objc2 0.6 — the wrapper already maintains the invariants. The
+    // in objc2 — the wrapper already maintains the invariants. The
     // only unsafe ops in this function are the raw pointer deref and
     // the Retained::retain call above.
     ns_window.setTitlebarAppearsTransparent(true);
@@ -1281,7 +1283,7 @@ pub fn run() {
     // application_id — even though GTK's own documentation suggests
     // application_id should be the canonical source of identity.
     //
-    // tao's Linux event loop (tao-0.34.8, see
+    // tao's Linux event loop (see
     // platform_impl/linux/event_loop.rs::new_gtk) calls gtk::init()
     // before anything has a chance to override the default. gtk::init()
     // locks in `prgname` from argv[0] — the executable name "skrivro"
@@ -1565,15 +1567,16 @@ pub fn run() {
             // Handle RunEvent::Opened for macOS AppleEvents file opens
             // (see the PendingOpens section near the top of this file
             // for the full design rationale). RunEvent::Opened is
-            // gated to macOS and iOS in Tauri's source — it does not
-            // exist as a variant on Linux or Windows. On those
-            // platforms file associations pass the file as a CLI
-            // argument handled by launch_info.
+            // gated to macOS, iOS, and Android in Tauri's source — it
+            // does not exist as a variant on Linux or Windows. On
+            // those platforms file associations pass the file as a
+            // CLI argument handled by launch_info.
             //
             // The cfg gate here mirrors the gate on the variant
-            // definition itself (see app.rs:232-238 in tauri 2.10.x).
-            // Without the gate, this code fails to compile on
-            // Linux/Windows with "variant not found in RunEvent".
+            // definition in tauri's src/app.rs (ours omits android
+            // since we don't build for it). Without the gate, this
+            // code fails to compile on Linux/Windows with "variant
+            // not found in RunEvent".
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             if let tauri::RunEvent::Opened { urls } = &event {
                 use tauri::{Emitter, Manager};

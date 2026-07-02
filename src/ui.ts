@@ -49,7 +49,7 @@ const previewPaneEl = document.querySelector(".preview-pane");
 //   - Mode pill (left): canonical Catppuccin colors from catppuccin/nvim
 //     (blue/green/mauve/red/peach). Hidden when Vim is off.
 //   - Filename (left): dirty indicator + basename
-//   - File type (right): hardcoded 'AsciiDoc' for v1
+//   - File type (right): the buffer format's display name (FORMAT_LABELS)
 //   - Cursor position (right): 'Ln 42, Col 85', 1-indexed, codepoint-aware
 //   - In visual modes, cursor position is replaced with selection info
 
@@ -557,9 +557,8 @@ export const applySpellcheck = (enabled: boolean) => {
 //
 // 65ch (narrow):  prose-optimal line length, comfortable for
 //   novels, essays, anything pure-prose.
-// 90ch (medium):  approximately Asciidoctor's default 62.5em;
-//   good for manuals, owner docs, mixed content. Geometric
-//   midpoint between narrow and wide.
+// 90ch (medium):  good for manuals, owner docs, mixed content.
+//   Geometric midpoint between narrow and wide.
 // 125ch (wide):   wider columns for technical references, API
 //   docs, anything code- or table-heavy.
 // 100vw (full):   no cap. Pane fills available width — for
@@ -940,10 +939,11 @@ export const setDisplayMode = (mode: string) => {
 // handled here — render() and formatCursorPosition() read them
 // directly from the module-level userConfig each time they run.
 //
-// Call order: must run BEFORE `createEditor(...)` in the init block,
-// because the CM6 theme extension reads CSS variables at editor
-// construction time. Overriding afterwards would require a dispatched
-// reconfigure.
+// Call order: runs before `createEditor(...)` in the init block so
+// the first paint carries the user's values. The CM6 theme references
+// these variables via var(), which the browser resolves live (see the
+// font-size note below), so a later assignment would still apply —
+// the ordering is for a clean first frame.
 export const applyUserConfig = (cfg: SkrivroConfig) => {
   const root = document.documentElement;
 
@@ -1072,8 +1072,10 @@ host.addEventListener("keyup", refreshStatus);
 // CM6 panel containing an <input> element; pressing `:` focuses
 // the input, and completing or canceling the command blurs it.
 // Tracking focus/blur on the input is the simplest signal — no
-// MutationObserver needed. The panel input is the only <input>
-// inside the editor host, so a tag-name check is precise enough.
+// MutationObserver needed. The check matches any <input> inside the
+// editor host, which today means the Vim Ex input and the
+// find/replace panel's fields, so the pill also reads COMMAND while
+// the search panel has focus.
 // `e.target instanceof HTMLInputElement` narrows EventTarget to the
 // specific <input> type we care about. Equivalent to the prior
 // `e.target.tagName === 'INPUT'` check but type-aware: TS sees

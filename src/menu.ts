@@ -122,9 +122,10 @@ export const installMenu = async () => {
         },
       }),
       await MenuItem.new({
-        // No keyboard shortcut: Cmd+E is taken by View > Editor Only, and
-        // there's no other obvious pick. Vim users can still type :e
-        // (or :e! to force-discard a dirty buffer) for the same action.
+        // No keyboard shortcut: Ctrl+Cmd+E (View > Editor Only) already
+        // owns the E mnemonic, and there's no other obvious pick. Vim
+        // users can still type :e (or :e! to force-discard a dirty
+        // buffer) for the same action.
         text: "Reload from Disk",
         action: () => {
           // Wrap with confirmDiscard so a dirty buffer prompts via our
@@ -248,7 +249,7 @@ export const installMenu = async () => {
   // canonical __tauri_window_menu__ value below (Tauri's init_app_menu
   // handles the set_as_windows_menu_for_nsapp call for us).
   const windowMenu = await Submenu.new({
-    // Tauri's init_app_menu helper (tauri-2.10.3/src/app.rs:2336-2351)
+    // Tauri's init_app_menu helper (src/app.rs in the tauri crate)
     // looks for this exact literal id and, when found, calls
     // Submenu::set_as_windows_menu_for_nsapp on the same main-thread
     // turn as init_for_nsapp (setMainMenu). Without this id, Tauri's
@@ -256,9 +257,9 @@ export const installMenu = async () => {
     // ourselves — but a manual invoke on a later runloop turn breaks
     // AppKit's Big-Sur Fn+F → Fullscreen-menu-item registration.
     // Using the canonical id is what lets Tauri keep both calls on
-    // the same turn. Constant value:
+    // the same turn. Constant:
     // pub const WINDOW_SUBMENU_ID: &str = "__tauri_window_menu__";
-    // (tauri-2.10.3/src/menu/menu.rs:19).
+    // (src/menu/menu.rs in the tauri crate).
     id: "__tauri_window_menu__",
     text: "Window",
     items: [
@@ -281,7 +282,8 @@ export const installMenu = async () => {
   const helpMenu = await Submenu.new({
     // Sibling of the Window menu id above — Tauri's init_app_menu
     // helper also handles set_as_help_menu_for_nsapp for this id.
-    // HELP_SUBMENU_ID = "__tauri_help_menu__" (tauri-2.10.3/src/menu/menu.rs:21).
+    // HELP_SUBMENU_ID = "__tauri_help_menu__"
+    // (src/menu/menu.rs in the tauri crate).
     id: "__tauri_help_menu__",
     text: "Help",
     items: [

@@ -15,7 +15,7 @@
 # User-supplied themes live alongside this file in a themes/ subdir,
 # e.g., Linux: ~/.config/com.skrivro.editor/themes/<name>.theme
 # A user-supplied theme with the same name as a bundled theme overrides
-# the bundled version.
+# the bundled version (except catppuccin-mocha, see the Theme section).
 #
 # Skrivro's parser ignores missing keys, malformed lines, and unknown
 # keys (with debug-mode warnings only), so you can leave whatever you
@@ -48,7 +48,9 @@
 
 # Preview (sans-serif) font. Built-in fallback stack:
 #   -apple-system, BlinkMacSystemFont, Inter, Segoe UI, Roboto,
-#   Helvetica Neue, Arial, sans-serif
+#   Helvetica Neue, Arial, sans-serif, plus the platform emoji fonts
+#   (Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color
+#   Emoji) so emoji render in color
 # preview-font = system-ui
 
 # edit-font-size = 0.95rem
@@ -99,7 +101,12 @@
 #   macOS:   ~/Library/Application Support/com.skrivro.editor/themes/<name>.theme
 #   Windows: %APPDATA%\com.skrivro.editor\themes\<name>.theme
 # then set `theme = <name>` here. A user-supplied file with the same
-# name as a bundled theme overrides the bundled version. The bundled
+# name as a bundled theme overrides the bundled version. The one
+# exception is catppuccin-mocha: its values are compiled into the app
+# and no theme file is looked up under that name, so a user
+# catppuccin-mocha.theme file is ignored. To tweak the default, save
+# your copy under a new name (for example my-mocha.theme) and set
+# theme = my-mocha here. The bundled
 # templates in the source tree end in `.theme.default` to signal
 # "reference template, not a live config". The user file is the same
 # format with the `.default` suffix dropped. Copy
@@ -273,9 +280,9 @@
 #
 # Unknown values (e.g. `language = de`) are rejected with a debug
 # warning and fall through to auto-detect. If you want a language
-# other than English or Swedish, there's no translation for it yet:
-# the translation table lives in src/i18n.ts's STRINGS_SV
-# and is easy to extend if someone contributes a translation.
+# other than English or Swedish, there's no translation for it: the
+# translation table lives in src/i18n.ts's STRINGS_SV and is easy
+# to extend in a fork.
 # language = auto
 
 # ================= Spellcheck =================

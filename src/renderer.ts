@@ -5,10 +5,9 @@
 // interface that preview.ts calls uniformly regardless of the active
 // markup format.
 //
-// Only AsciidoctorRenderer exists today. When additional formats are
-// added, each implementation lives here (or in a sibling module) and
-// the dispatch — "given this buffer, which Renderer do I use?" —
-// gets added at the point where the buffer's format field is read.
+// Three implementations live here — AsciidoctorRenderer,
+// markdownRenderer, and textRenderer — with getRenderer at the bottom
+// dispatching on the buffer's format field.
 
 import DOMPurify from "dompurify";
 

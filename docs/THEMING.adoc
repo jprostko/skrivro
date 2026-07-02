@@ -16,7 +16,7 @@ Custom themes can override bundled ones of the same name.
 |===
 | Name | Variant | Notes
 
-| `catppuccin-mocha` | dark | Default. Used when the `theme` config key is unset or set to this name. Compiled into the CSS as the `:root` fallback, so it's the only bundled theme that needs no file load at startup.
+| `catppuccin-mocha` | dark | Default. Used when the `theme` config key is unset or set to this name. Compiled into the CSS as the `:root` fallback, so it's the only bundled theme that needs no file load at startup, and the one name a user theme file cannot override (see <<Bundled vs. user files>>).
 | `catppuccin-latte` | light | Companion to Mocha, same Catppuccin family, light palette.
 | `dracula` | dark | Standard Dracula palette.
 | `nord` | dark | Standard Nord palette. Editor uses the lighter shade and preview uses the darker, inverted from Nord's natural pairing to match Skrivro's pane convention.
@@ -73,7 +73,9 @@ Examples:
 | `~/.config/com.skrivro.editor/themes/everforest.theme` | User-supplied custom theme. Reference it as `theme = everforest` in `skrivro.conf`.
 |===
 
-This means you can tweak any bundled theme by saving an edited copy at the same name in your config directory. You don't need to rename it.
+This means you can tweak a bundled theme by saving an edited copy at the same name in your config directory, no rename needed.
+The one exception is `catppuccin-mocha`: the default's values are compiled into the app and Skrivro never looks for a theme file under that name, so a `catppuccin-mocha.theme` user file is silently ignored.
+To tweak the default, save your copy under a new name (for example `my-mocha.theme`) and set `theme = my-mocha` in `skrivro.conf`.
 
 == Authoring a custom theme
 
@@ -180,10 +182,10 @@ The slot names are CSS custom property names with the `--skr-` prefix dropped. F
 === Overriding a bundled theme
 
 If you want to tweak Dracula slightly without giving it a new name, drop a `dracula.theme` file in your config directory's `themes/` subdir.
-Skrivro checks for user files first, so the user file wins for any name collision.
+Skrivro checks for user files first, so the user file wins for any name collision (except `catppuccin-mocha`, see <<Bundled vs. user files>>).
 
 This is also useful for testing palette changes: you can iterate on a `dracula.theme` user file without rebuilding the binary.
-When you're done, either delete the file (revert to the bundled Dracula) or contribute the changes back if you've improved on the bundled version.
+When you're done, either delete the file (revert to the bundled Dracula) or keep it as your own variant.
 
 === Private themes (e.g. licensed palettes)
 

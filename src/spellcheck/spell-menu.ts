@@ -7,7 +7,8 @@
 //
 // The popup core (create, position, dismiss) is kept self-contained so it
 // can be lifted into a generic primitive if a second right-click menu
-// ever appears. (Suggestions land in this same menu in a later step.)
+// ever appears. Spelling suggestions render in this same menu, above
+// the add/remove item.
 
 import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";

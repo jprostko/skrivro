@@ -31,7 +31,7 @@
        values at any specificity, so the CSS defaults in styles.css get
        overridden on first paint — no visible transition from Catppuccin
        Mocha defaults to the user's theme.
-       See lib.rs::compute_initial_theme_state for the Rust-side half. -->
+       See lib.rs::compute_initial_state for the Rust-side half. -->
     <script>
       (function () {
         var theme = window.__SKRIVRO_INITIAL_THEME__;
@@ -88,8 +88,8 @@
          tabindex="-1" on .preview-scroll makes it programmatically
          focusable (click or Ctrl+Alt+W / ⌃⌘W pane-toggle) without
          entering Tab order. The id="out" stays on .preview-scroll so
-         existing JS (preview rendering via .innerHTML, scroll sync via
-         .scrollTop, word count via .textContent) continues to work
+         existing JS (preview rendering via replaceChildren, scroll sync
+         via .scrollTop, word count via .textContent) continues to work
          against the same element handle. The :focus-within selector
          on .preview-pane still fires when its inner descendant is
          focused, which lights up the active-pane outline. -->

@@ -2,12 +2,12 @@
 // ================= Spellcheck worker =================
 //
 // Off-main-thread spellcheck. This worker owns the nspell instance(s)
-// and the bundled dictionaries; the main thread (spellcheck/index.ts)
+// and the loaded dictionaries; the main thread (spellcheck/index.ts)
 // posts the editor's visible text and gets back the misspelled ranges,
 // which it renders as CodeMirror decorations.
 //
 // Two reasons it lives in a worker rather than on the UI thread:
-// building nspell parses the 2.3 MB Swedish dictionary in one
+// building nspell parses a multi-megabyte Swedish dictionary in one
 // synchronous call (second-scale CPU that doesn't belong on the thread
 // that has to stay responsive), and it's the async boundary a future
 // Hunspell-via-WASM engine would want.
@@ -130,8 +130,9 @@ const loadEnBundled = async (): Promise<NSpell> => {
   return nspell(aff, dic);
 };
 
-// User-supplied English override (en_GB / en_AU / ...). Plain nspell —
-// English variants ship no compound directives.
+// User-supplied English override (en_GB / en_AU / ...). Plain nspell,
+// no stripping — English compound directives are narrow and safe (see
+// the Swedish block below for the full story).
 const buildEn = (d: DictPayload): NSpell => nspell(d.aff, d.dic);
 
 // nspell builds Hunspell's COMPOUNDRULE regexes but implements NONE of
@@ -165,7 +166,7 @@ export const stripCompounding = (aff: string): string =>
     .join("\n");
 
 // User-supplied Swedish. Always routed through stripCompounding: whether
-// it's the DSSO dictionary we point users at or another sv variant, nspell's
+// it's the common DSSO dictionary or another sv variant, nspell's
 // partial compound support would otherwise accept essentially any string.
 const buildSv = (d: DictPayload): NSpell => nspell(stripCompounding(d.aff), d.dic);
 

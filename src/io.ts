@@ -193,7 +193,7 @@ export const vimMessage = (text: string) => {
 //
 // Tauri's fs plugin wraps OS-level errors with a verbose
 // "failed to open file at path: <path> with error: <os msg>" prefix
-// (or "failed to write to file at path: ..." on writes). Since our
+// (or "failed to write bytes to file at path: ..." on writes). Since our
 // Exxx: message already cites the path, that prefix is pure noise —
 // stripping it leaves just the meaningful OS error, e.g.:
 //
@@ -236,8 +236,8 @@ export const setDirty = (d: boolean) => {
 // that should always follow a format change stay in one place:
 //
 //   1. CM6 language compartment reconfigure (via editor.ts) — swaps
-//      the active syntax highlighter. Today always resolves to
-//      asciidocLang, but this is where future language choices land.
+//      the active language extension (AsciiDoc highlighter, markdown,
+//      or plain text).
 //   2. Status bar refresh — the filetype slot shows the new format's
 //      display name.
 //   3. Preview re-render — since the renderer eventually dispatches

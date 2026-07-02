@@ -19,9 +19,9 @@ declare global {
     // Set by Rust via initialization_script with the user-selected
     // theme's color values. Keys are camelCase theme slot names (e.g.
     // `bg`, `bgPanel`, `accentAlt`); values are CSS color strings or
-    // null for slots the theme file didn't set. Read by the head
-    // inline <script> which converts each key to kebab-case and
-    // applies as --skr-<kebab> inline CSS var overrides.
+    // null for slots the theme file didn't set. Read by the inline
+    // <script> at the start of <body>, which converts each key to
+    // kebab-case and applies as --skr-<kebab> inline CSS var overrides.
     __SKRIVRO_INITIAL_THEME__?: Record<string, string | null>;
   }
 }

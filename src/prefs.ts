@@ -2,10 +2,10 @@
 // Per-user preferences persisted to localStorage. Mutable object
 // exported as a live binding; other modules read and write properties
 // directly (e.g., prefs.vimMode = true), then call savePrefs() to
-// persist the change to localStorage. The inline pre-paint script in
-// index.html's <head> also reads from PREFS_KEY to apply body classes
-// for titlebar/gutter/displayMode/statusBar state on the very first
-// frame — FOUC prevention for the UI chrome.
+// persist the change to localStorage. The inline pre-paint script at
+// the start of index.html's <body> also reads from PREFS_KEY to apply
+// body classes for titlebar/gutter/displayMode/statusBar state on the
+// very first frame — FOUC prevention for the UI chrome.
 
 const PREFS_KEY = "adoc-editor-prefs-v1";
 

@@ -94,10 +94,10 @@ let translateEditorLine: (editorLine: number) => number = (n) => n;
 // preview's scrollTop as a literal pixel value across content
 // replacement; combined with the scroll-past-end spacer, that means
 // opening a short file after scrolling deep into a long one can land
-// the viewport in the new file's spacer region (entirely blank). File-
-// load entry points (openFile via Ctrl+O / Cmd+O, newFile via
-// Ctrl+N / Cmd+N, drag-drop, :e filename, initial session-restore
-// launch) call
+// the viewport in the new file's spacer region (entirely blank). The
+// buffer-swap entry points in io.ts (loadFileFromPath — covering the
+// file picker, drag-drop, and OS open events — plus newFile and
+// :e filename) call
 // requestPreviewScrollToTop() to queue a reset; render() consumes the
 // flag right after writing the new HTML, so the reset lands on the
 // fresh content. Intentionally NOT set by edits, saves, or format

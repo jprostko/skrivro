@@ -696,7 +696,7 @@ body.mode-split .preview-scroll::after {
 }
 
 /* GFM alerts — GitHub's extended blockquote syntax (> [!NOTE], etc.)
-   that our markedRenderer's gfmAlert extension parses into
+   that the render worker's gfmAlert rule (render-worker.ts) parses into
    <div class="markdown-alert markdown-alert-note"> (and variants).
    Class names, HTML structure, and per-type colors mirror GitHub's
    actual rendered output so a user familiar with GitHub's README
@@ -881,7 +881,7 @@ body.mode-split .preview-scroll::after {
 }
 
 /* Spellcheck right-click menu (spell-menu.ts). A small popup over a
-   misspelled word offering add/remove (and, later, suggestions). It's
+   misspelled word offering suggestions plus add/remove. It's
    position:fixed and appended to <body>, so it isn't clipped by editor
    overflow; spell-menu.ts sets left/top from the click coordinates. */
 .spell-menu {
@@ -1549,11 +1549,11 @@ body.is-dirty .statusbar .status-filename::before {
   white-space: nowrap;
 }
 
-/* Spellcheck-off indicator. refreshStatus() reveals this (clears
-   `hidden`) only when spellcheck is enabled in config but toggled off at
-   runtime, and wraps the text in parens. Uses --skr-text-muted, which
-   intentionally does not match the surrounding status bar text
-   (--skr-text-dim). */
+/* Spellcheck indicator. refreshStatus() reveals this (clears `hidden`)
+   when spellcheck is enabled in config but toggled off at runtime, or
+   when a requested Swedish dictionary file is missing, and wraps the
+   text in parens. Uses --skr-text-muted, which intentionally does not
+   match the surrounding status bar text (--skr-text-dim). */
 .statusbar .status-spellcheck {
   color: var(--skr-text-muted);
   white-space: nowrap;

@@ -9,10 +9,11 @@
 // visible text whenever it changes, and renders the misspelled ranges
 // the worker returns as CodeMirror mark decorations.
 //
-// Why the worker: building nspell parses the 2.3 MB Swedish dictionary
-// in one synchronous shot — second-scale CPU that shouldn't sit on the
-// UI thread — and it's the async boundary a future Hunspell-via-WASM
-// engine would want. See spellcheck-worker.ts for the engine side.
+// Why the worker: building nspell parses a multi-megabyte Swedish
+// dictionary in one synchronous shot — second-scale CPU that shouldn't
+// sit on the UI thread — and it's the async boundary a future
+// Hunspell-via-WASM engine would want. See spellcheck-worker.ts for
+// the engine side.
 //
 // Single-editor assumption: the app has one editor window, so the
 // worker and its result hook are module-level singletons.

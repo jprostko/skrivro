@@ -7,8 +7,9 @@
 # palette's best match for the PURPOSE described in the comment.
 #
 # Place your theme at:
-#   Linux:   ~/.config/com.skrivro.editor/themes/your-theme.theme
-#            (or $XDG_CONFIG_HOME/com.skrivro.editor/themes/your-theme.theme)
+#   Linux:   $XDG_CONFIG_HOME/com.skrivro.editor/themes/your-theme.theme
+#            (or ~/.config/com.skrivro.editor/themes/your-theme.theme
+#            if XDG_CONFIG_HOME is unset)
 #   macOS:   ~/Library/Application Support/com.skrivro.editor/themes/your-theme.theme
 #   Windows: %APPDATA%\com.skrivro.editor\themes\your-theme.theme
 #

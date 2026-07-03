@@ -5347,8 +5347,23 @@
       // point: under Vim, Ctrl-F stays page-forward, so Vim users open the
       // panel here. Non-Vim users press Mod-f (Ctrl+F, or Cmd+F on Mac).
       // The panel handles find, replace, and replace-all.
+      //
+      // The panel selects its own search field when it mounts, but the
+      // Ex dialog is still closing: after this callback returns, the
+      // plugin's openDialog close path hides the dialog and synchronously
+      // refocuses the editor, which steals focus from the field. A
+      // microtask runs after that task, so refocusing there wins. The
+      // plugin's deferred blur-close fires later still but no-ops on an
+      // already-closed dialog, so nothing steals focus back a second
+      // time.
       Vim.defineEx("find", "find", () => {
+        if (!editorView) return;
         openSearchPanel(editorView);
+        queueMicrotask(() => {
+          const field = editorView?.dom.querySelector(".cm-search input[name=search]");
+          field?.focus();
+          field?.select();
+        });
       });
 
       // :width sets or reports the single-pane width mode. Bare

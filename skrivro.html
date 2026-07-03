@@ -121,7 +121,7 @@
         --font-mono:
           ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas,
           monospace;
-        --edit-font-size: 0.95rem;
+        --editor-font-size: 0.95rem;
         --preview-font-size: 1rem;
         --editor-padding-x: 2.5rem;
         --editor-padding-y: 2rem;
@@ -763,7 +763,7 @@
        specificity above the generic `.preview pre` rule (0,2,1 vs 0,1,1)
        and guard against any surprise that might leave the 0.85em from
        that rule winning for font-size. */
-        font-size: var(--edit-font-size);
+        font-size: var(--editor-font-size);
         line-height: 1.6;
         color: var(--skr-text);
       }
@@ -836,7 +836,7 @@
        base themes otherwise size those as a fraction of the panel
        (.cm-button 70%, label 80%), leaving them inconsistently small.
        Held as a ratio of the editor font so the panel tracks it. */
-        --search-font-size: calc(var(--edit-font-size) * 0.9);
+        --search-font-size: calc(var(--editor-font-size) * 0.9);
         font-size: var(--search-font-size);
       }
       .cm-panel.cm-search .cm-textfield {
@@ -3594,7 +3594,7 @@
             color: "var(--skr-text)",
             backgroundColor: "var(--skr-bg)",
             height: "100%",
-            fontSize: "var(--edit-font-size)",
+            fontSize: "var(--editor-font-size)",
           },
           ".cm-scroller": {
             fontFamily: "var(--font-mono)",

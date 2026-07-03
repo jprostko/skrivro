@@ -137,7 +137,7 @@ const showMenu = (
 export const spellMenuExtension: Extension = EditorView.domEventHandlers({
   contextmenu(event, view) {
     // Map the click to a document position. posAtCoords is reliable across
-    // our webviews — it resolves fine even at fractional DPI — and the
+    // our webviews (it resolves fine even at fractional DPI), and the
     // lookup below reads the raw worker results, so it finds the word even
     // though its on-screen squiggle is hidden the instant the right-click
     // drops the cursor into it.

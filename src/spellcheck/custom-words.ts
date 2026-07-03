@@ -1,6 +1,6 @@
 // ================= Custom words (personal dictionary) =================
 //
-// A user-maintained list of words the spellchecker should never flag —
+// A user-maintained list of words the spellchecker should never flag:
 // character names, place names, invented terms, domain jargon. Stored as
 // a plain text file (custom-words.txt) in the app config dir alongside
 // skrivro.conf, one word per line, matched case-insensitively. The file
@@ -8,7 +8,7 @@
 // to drop a word. Within the editor, Vim `zg`/`zug` and the right-click
 // menu add/remove the word under the cursor.
 //
-// This module holds the canonical in-memory list and the dedup; the
+// This module holds the canonical in-memory list and the dedup, and the
 // worker (spellcheck-worker.ts) owns the actual check and gets the list
 // pushed to it via setPersonalWords. Persistence goes through the Rust
 // read_custom_words / write_custom_words commands, which resolve the
@@ -24,13 +24,13 @@ const customWords = new Map<string, string>();
 
 const list = (): string[] => [...customWords.values()];
 
-/** Case-insensitive membership — the right-click menu uses this to choose
+/** Case-insensitive membership: the right-click menu uses this to choose
  *  between "Add to dictionary" and "Remove from dictionary". */
 export const hasCustomWord = (word: string): boolean => customWords.has(word.trim().toLowerCase());
 
 // Read the file into the in-memory map. The Rust command resolves the
 // path and returns [] when the file is absent, so a missing file is just
-// an empty list. Does NOT touch the worker — call syncCustomWordsToWorker
+// an empty list. Does NOT touch the worker: call syncCustomWordsToWorker
 // once the worker is ready (see main.ts).
 export const loadCustomWords = async (): Promise<void> => {
   try {

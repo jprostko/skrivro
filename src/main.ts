@@ -4,15 +4,15 @@
 // window-level keyboard shortcut listener and Tauri window event
 // listeners (onCloseRequested, onDragDropEvent, skrivro:open-file).
 //
-// Init order is load-bearing — read the comments at each step before
+// Init order is load-bearing: read the comments at each step before
 // reordering.
 
 // Side-effect CSS import. Vite processes this as part of the module
 // graph: in dev, it serves styles.css via the dev server (transformed
 // through the HMR pipeline, which causes a brief flash of unstyled
-// content before the CSS is injected — a known dev-mode artifact);
-// in release, Vite extracts it to a hashed external stylesheet at
-// /assets/styles-<hash>.css and emits a <link rel="stylesheet"> in
+// content before the CSS is injected, a known dev-mode artifact),
+// while in release, Vite extracts it to a hashed external stylesheet
+// at /assets/styles-<hash>.css and emits a <link rel="stylesheet"> in
 // the built HTML, which is render-blocking and has no FOUC.
 //
 // Keeping the CSS in an external file (vs. the original inline
@@ -20,13 +20,13 @@
 // from invalidating 'unsafe-inline' in style-src. CodeMirror 6's
 // runtime theme injection via style-mod creates dynamic <style>
 // elements at init time and relies on 'unsafe-inline' to be allowed
-// — with Tauri's auto-nonce on an inline <style>, 'unsafe-inline'
+// (with Tauri's auto-nonce on an inline <style>, 'unsafe-inline'
 // would be silently disabled per the CSP spec and CM6's theme would
-// fail to apply.
+// fail to apply).
 //
 // We tried <link rel="stylesheet"> in the HTML head instead of this
 // JS import, expecting the render-blocking <link> to prevent the dev
-// flash. It didn't — the flash persisted, apparently because Vite's
+// flash. It didn't: the flash persisted, apparently because Vite's
 // dev server transforms the link path in a way that disables the
 // blocking behavior, or because the flash comes from JS init timing
 // rather than CSS load order. Since neither approach fixes the dev
@@ -35,7 +35,7 @@
 import "./styles.css";
 
 // Font Awesome 4.7.0, bundled locally. Required for Asciidoctor's
-// :icons: font output — Asciidoctor's HTML converter hardcodes FA4-
+// :icons: font output: Asciidoctor's HTML converter hardcodes FA4-
 // style class names (`<i class="fa fa-X">`) for every `icon:name[]`
 // directive, and those classes need Font Awesome CSS + webfont loaded
 // to actually display glyphs. Without this import, icon:: directives
@@ -51,11 +51,11 @@ import "./styles.css";
 // License: MIT (CSS) + SIL Open Font License 1.1 (font files).
 // Both permissive and compatible with Skrivro's 0BSD source
 // license. The OFL has a Reserved Font Name clause for "Font
-// Awesome" — we bundle unmodified so that clause doesn't affect
+// Awesome", but we bundle unmodified so that clause doesn't affect
 // us. Bundle cost: the minified CSS is ~31 KB, and all five font
 // formats FA4's @font-face references are emitted into dist
 // (~930 KB on disk, dominated by the legacy svg/ttf/eot
-// fallbacks); at runtime the webview downloads only the woff2
+// fallbacks), and at runtime the webview downloads only the woff2
 // (~76 KB).
 import "font-awesome/css/font-awesome.min.css";
 
@@ -130,8 +130,8 @@ import {
 // Capture phase so we beat CM6's internal keymap + Vim bindings.
 //
 // Primary modifier (the "this is an app shortcut" key) is platform-strict:
-// on Mac it's metaKey (Cmd); on Linux/Windows it's ctrlKey. This leaves
-// Ctrl+letter on Mac alone so Vim's Ctrl-based bindings (Ctrl+V for
+// on Mac it's metaKey (Cmd), while on Linux/Windows it's ctrlKey. This
+// leaves Ctrl+letter on Mac alone so Vim's Ctrl-based bindings (Ctrl+V for
 // V-BLOCK, Ctrl+W for window commands, Ctrl+R for redo, Ctrl+D/U/F/B
 // for scrolling, Ctrl+O/I for jumplist, etc.) flow through to the
 // CM6 Vim plugin unimpeded. On Linux/Windows, metaKey is the Super/Win
@@ -139,11 +139,11 @@ import {
 // ignoring it there is a no-op with cleaner semantics.
 //
 // Secondary modifier (the disambiguator for toggle/mode shortcuts) is
-// also platform-strict: altKey (Alt) on Linux/Windows; ctrlKey (Ctrl)
+// also platform-strict: altKey (Alt) on Linux/Windows, and ctrlKey (Ctrl)
 // on Mac. Why Ctrl and not Option on Mac? macOS US/Dvorak layouts map
 // Option+letter to Unicode glyphs at the layout level (Option+V → √,
 // Option+T → †, Option+B → ∫, etc.), and the webview's keydown event
-// reports e.key as the COMPOSED character even when Cmd is also held —
+// reports e.key as the COMPOSED character even when Cmd is also held,
 // so e.key for Option+Cmd+V is "√", not "v", and a literal letter
 // match like `k === 'v'` silently fails. Verified empirically on
 // macOS Dvorak. Ctrl doesn't compose, so Ctrl+Cmd+V reports e.key="v"
@@ -152,7 +152,7 @@ import {
 // hides other apps, etc.), so Option would have been a minefield even
 // without the composition bug. Ctrl+Cmd has fewer system collisions
 // (Ctrl+Cmd+F fullscreen, Ctrl+Cmd+Q lock screen, Ctrl+Cmd+D look up
-// word, Ctrl+Cmd+Space emoji picker — none of our letters collide).
+// word, Ctrl+Cmd+Space emoji picker, and none of our letters collide).
 // Critically: Ctrl+Cmd+letter is a distinct chord from Vim's plain
 // Ctrl+letter, so Vim's namespace stays intact.
 //
@@ -167,7 +167,7 @@ window.addEventListener(
     const second = isMac ? e.ctrlKey : e.altKey;
     const k = (e.key || "").toLowerCase();
 
-    // Secondary-modifier shortcuts first — so Ctrl+Alt+S / Ctrl+Cmd+S (split)
+    // Secondary-modifier shortcuts first, so Ctrl+Alt+S / Ctrl+Cmd+S (split)
     // doesn't match plain Ctrl+S / Cmd+S (save).
     if (second && k === "v") {
       e.preventDefault();
@@ -197,17 +197,17 @@ window.addEventListener(
       e.preventDefault();
       toggleHelp();
     } else if (second && k === "r") {
-      // Format toggle (R for Representation — cycles the active buffer
+      // Format toggle (R for Representation, cycles the active buffer
       // format: AsciiDoc → Markdown → Text → AsciiDoc). F would be the
       // obvious letter but Ctrl+Cmd+F on Mac is the Fullscreen menu
       // shortcut that AppKit intercepts before the webview sees it.
       e.preventDefault();
       toggleFormat();
     } else if (second && k === "w") {
-      // Pane-focus toggle (W for Window — matches Vim's window-command
+      // Pane-focus toggle (W for Window, matches Vim's window-command
       // mnemonic without colliding with Vim's own <C-w> chord, which
-      // requires no Alt). Only meaningful in split mode; togglePaneFocus
-      // no-ops in editor-only and preview-only.
+      // requires no Alt). Only meaningful in split mode, and
+      // togglePaneFocus no-ops in editor-only and preview-only.
       e.preventDefault();
       togglePaneFocus();
     } else if (second && k === "y") {
@@ -226,9 +226,10 @@ window.addEventListener(
       e.preventDefault();
       cycleWidthMode();
     } else if (second && k === "i") {
-      // I for Index — alternate term for table of contents.
-      // Toggles TOC visibility (shown ↔ hidden). Session-scoped
-      // override; resets to "shown" on every launch.
+      // I for Index, an alternate term for table of contents.
+      // Toggles table of contents visibility (shown ↔ hidden),
+      // a session-scoped override resetting to "shown" on every
+      // launch.
       e.preventDefault();
       toggleTocVisibility();
     } else if (second && k === "k") {
@@ -242,8 +243,8 @@ window.addEventListener(
     // because those are universal cross-platform conventions (Ctrl+S /
     // Cmd+S for save, Ctrl+O / Cmd+O for open, Ctrl+N / Cmd+N for new).
     // Standalone used Ctrl+Alt+O / Ctrl+Alt+N to avoid colliding with the
-    // browser's own open-file and new-window shortcuts; Tauri has no such
-    // collision, so we move them onto the conventional keys.
+    // browser's own open-file and new-window shortcuts, but Tauri has no
+    // such collision, so we move them onto the conventional keys.
     // `void` prefix on each async-returning call: fire-and-forget is
     // the intent (the keydown handler doesn't await anything), and the
     // prefix makes that explicit for both readers and the no-floating-
@@ -276,7 +277,7 @@ window.addEventListener(
 // registered, Tauri's JS library intercepts ALL close requests and
 // uses window.destroy() internally to complete the close after the
 // handler finishes. This requires core:window:allow-destroy in
-// capabilities — without it, destroy() silently fails and the
+// capabilities: without it, destroy() silently fails and the
 // window becomes uncloseable.
 const appWindow = getCurrentWindow();
 // `void` prefix on the listener-registration Promise: Tauri's
@@ -286,18 +287,18 @@ const appWindow = getCurrentWindow();
 // correct semantics.
 void appWindow.onCloseRequested((event) => {
   if (!currentBuffer.dirty) {
-    // Clean close — no-op here; the Tauri library auto-calls destroy()
-    // to complete the close after the handler returns. We let io.ts's
-    // clean-exit paths (saveFile, newFile, etc.) manage the autosave
-    // draft; by the time a clean close happens, there shouldn't be a
-    // stale draft to clear.
+    // Clean close, a no-op here. The Tauri library auto-calls
+    // destroy() to complete the close after the handler returns. We
+    // let io.ts's clean-exit paths (saveFile, newFile, etc.) manage
+    // the autosave draft, and by the time a clean close happens, there
+    // shouldn't be a stale draft to clear.
     return;
   }
   event.preventDefault();
   askConfirm(tr("You have unsaved changes. Discard them?"), () => {
     // "Discard" means actually discard. clearDraft is called by the
-    // quitForce path in io.ts; for the close-X variant we inline it
-    // by importing from io. Keep the action minimal: the window
+    // quitForce path in io.ts, so for the close-X variant we inline
+    // it by importing from io. Keep the action minimal: the window
     // destroys itself, which triggers process exit.
     void appWindow.destroy();
   });
@@ -311,10 +312,10 @@ void appWindow.onCloseRequested((event) => {
 // the same Discard/Cancel dialog the user is already used to.
 //
 // Directories or non-text files fail at readTextFile inside
-// loadFileFromPath — the catch in that function logs to console and
+// loadFileFromPath: the catch in that function logs to console and
 // leaves the existing buffer untouched. No visible error to the
 // user (except an oversize file, whose FileTooLargeError message is
-// surfaced via vimMessage); the dropped-file just doesn't load,
+// surfaced via vimMessage), and the dropped-file just doesn't load,
 // buffer stays as it was.
 // If this becomes a frequent confusion point we could surface a
 // toast or dialog, but for now the silent-on-invalid behavior
@@ -337,7 +338,7 @@ void appWindow.onDragDropEvent((event) => {
 //
 // The cold-launch case (Skrivro NOT already running when the user
 // triggers the file open) is handled at init-time below by
-// take_pending_opens — any paths that arrived before this listener
+// take_pending_opens: any paths that arrived before this listener
 // was registered are picked up there. This listener handles every
 // subsequent open event for the lifetime of the app.
 //
@@ -356,11 +357,11 @@ void listen("skrivro:open-file", (event) => {
 // ================= Init =================
 
 // Install the macOS menu bar before any user-visible state. The menu
-// only ships on Mac — Linux/Windows would render Tauri menus in-window
-// (below the titlebar), which doesn't fit our borderless keyboard-first
-// layout there. Custom items are needed because the default menu's
-// Minimize / Close / Quit selectors don't route through our dirty-buffer
-// confirm flow; see menu.ts for the full rationale.
+// only ships on Mac, since Linux/Windows would render Tauri menus
+// in-window (below the titlebar), which doesn't fit our borderless
+// keyboard-first layout there. Custom items are needed because the
+// default menu's Minimize / Close / Quit selectors don't route through
+// our dirty-buffer confirm flow, see menu.ts for the full rationale.
 if (isMac) {
   await installMenu();
 }
@@ -387,14 +388,14 @@ try {
 setLaunchCwd(launchInfo.cwd || "");
 
 // Query Rust for user config file overrides. Missing / malformed /
-// unreadable file is not an error — the Rust side silently returns a
+// unreadable file is not an error: the Rust side silently returns a
 // default SkrivroConfig with all fields undefined, and we fall through
 // to compiled-in defaults via applyUserConfig's `if (cfg.X)` guards.
 //
 // applyUserConfig runs before the EditorView is constructed below so
 // the first paint already carries the user's fonts, sizes, and colors.
 // The CM6 theme references the values via var(), which the browser
-// resolves live, so a later assignment would still apply — the
+// resolves live, so a later assignment would still apply. The
 // ordering buys a clean first frame, not correctness.
 try {
   setUserConfig(await invoke<SkrivroConfig>("get_config"));
@@ -405,18 +406,18 @@ try {
 applyUserConfig(userConfig);
 
 // Determine the initial document content. Priority order:
-//   1. CLI argument — always wins, even over crash recovery
+//   1. CLI argument: always wins, even over crash recovery
 //   2. OS-dispatched file open (macOS AppleEvents via RunEvent::Opened,
-//      delivered to us through invoke('take_pending_opens')) — same
+//      delivered to us through invoke('take_pending_opens')), the same
 //      user intent as a CLI arg, just a different transport
-//   3. Autosave draft — crash recovery, always wins over session restore
-//   4. Session restore — on by default (skipped only if
+//   3. Autosave draft: crash recovery, always wins over session restore
+//   4. Session restore: on by default (skipped only if
 //      `restore-session = false`) AND a prior clean exit left a non-null
 //      lastFilePath AND that file exists/is readable now
 //   5. Default blank buffer
 //
 // Drain pending OS-dispatched opens regardless of whether we'll use
-// them — the list should never accumulate across launches.
+// them, since the list should never accumulate across launches.
 let pendingOpen: string | null = null;
 try {
   const pending = await invoke<string[]>("take_pending_opens");
@@ -424,11 +425,11 @@ try {
     // `pending[0] ?? null` converts the `string | undefined` that
     // noUncheckedIndexedAccess yields into the `string | null` shape
     // pendingOpen is declared with. The length guard makes the
-    // undefined branch unreachable at runtime; the ?? null is for
-    // the type system.
+    // undefined branch unreachable at runtime, and the ?? null is
+    // for the type system.
     pendingOpen = pending[0] ?? null;
     // If more than one file was dispatched (e.g., multi-select open),
-    // ignore the rest — Skrivro is single-document.
+    // ignore the rest, since Skrivro is single-document.
   }
 } catch (e) {
   console.error("Failed to take pending opens:", e);
@@ -436,13 +437,14 @@ try {
 
 let initialDoc = DEFAULT_DOC;
 let hasDraft = false;
-// A startup-time message — e.g. a launch file rejected by the
-// file-size guard — to surface once the editor exists. vimMessage
+// A startup-time message (e.g. a launch file rejected by the
+// file-size guard) to surface once the editor exists. vimMessage
 // no-ops before the editor is created, so it is stashed here and
 // flushed after createEditor below.
 let startupMessage: string | null = null;
 if (launchInfo.initial_file) {
-  // CLI argument wins — skip draft and session-restore entirely.
+  // CLI argument wins, so skip draft and session-restore
+  // entirely.
   try {
     initialDoc = await readDocumentText(launchInfo.initial_file);
     currentBuffer.path = launchInfo.initial_file;
@@ -451,12 +453,13 @@ if (launchInfo.initial_file) {
     // Record the CLI-opened file as the current session state,
     // so a subsequent launch without CLI args (and with
     // restore-session enabled) will pick up where this session
-    // left off. Fire-and-forget — failure doesn't block launch.
+    // left off. Fire-and-forget, since failure doesn't block
+    // launch.
     void writeSessionState(launchInfo.initial_file);
   } catch (e) {
     console.error("Failed to load file from CLI argument:", e);
     if (e instanceof FileTooLargeError) startupMessage = e.message;
-    // Fall back to draft / default (skip session restore — a CLI arg
+    // Fall back to draft / default (skip session restore: a CLI arg
     // that failed to load is a different failure mode than a normal
     // launch, and we don't want to silently substitute a different
     // file than the user asked for).
@@ -467,7 +470,7 @@ if (launchInfo.initial_file) {
 } else if (pendingOpen) {
   // OS told us to open this file (macOS `open -a Skrivro foo.adoc` or
   // double-click with Skrivro as handler). Same user intent as a CLI
-  // arg; same behavior — take precedence over draft / session restore.
+  // arg, same behavior: take precedence over draft / session restore.
   try {
     initialDoc = await readDocumentText(pendingOpen);
     currentBuffer.path = pendingOpen;
@@ -482,7 +485,7 @@ if (launchInfo.initial_file) {
     hasDraft = r.hasDraft;
   }
 } else {
-  // No CLI arg — try draft first (crash recovery), then session
+  // No CLI arg: try draft first (crash recovery), then session
   // restore unless disabled, then default.
   const r = resolveInitialDoc();
   if (r.hasDraft) {
@@ -500,13 +503,14 @@ if (launchInfo.initial_file) {
         } catch (e) {
           // File was deleted, moved, or is unreadable. Fall through
           // to blank buffer rather than surfacing an error dialog.
-          // State is intentionally NOT cleared here — if the file
+          // State is intentionally NOT cleared here: if the file
           // comes back (network mount, temporary permission issue)
           // the next launch will pick it up. Next file operation
           // will overwrite state with the new current file anyway.
           //
-          // An oversize file is the exception — that is explainable
-          // (unlike a vanished file), so it does get a message.
+          // An oversize file is the exception, since that is
+          // explainable (unlike a vanished file), so it does get a
+          // message.
           console.error("Session restore: failed to read", state.lastFilePath, e);
           if (e instanceof FileTooLargeError) startupMessage = e.message;
           initialDoc = DEFAULT_DOC;
@@ -522,10 +526,10 @@ if (launchInfo.initial_file) {
 // blank untitled buffer. Apply the user-configured default-format
 // (from skrivro.conf) to currentBuffer.format. The initial value
 // set in io.ts's currentBuffer declaration is always 'asciidoc'
-// because userConfig isn't populated yet at module-load time;
+// because userConfig isn't populated yet at module-load time, and
 // this is the first opportunity, now that get_config has resolved.
-// No-op when a launch path already set currentBuffer.path — its
-// format came from extension detection and should win.
+// No-op when a launch path already set currentBuffer.path, since
+// its format came from extension detection and should win.
 if (!currentBuffer.path) {
   currentBuffer.format = detectFormat(null);
 }
@@ -554,14 +558,14 @@ if (startupMessage) vimMessage(startupMessage);
 // Focus the editor only when it's actually visible. In preview-only
 // mode the editor pane is display:none, and calling editorView.focus()
 // on a hidden contentDOM can flip CM6's internal focus-state flag to
-// `true` even though the browser leaves activeElement on <body> —
+// `true` even though the browser leaves activeElement on <body>, and
 // subsequent keystrokes then route into the hidden editor and land
 // as text in the source (preview re-renders to show them, giving
 // the impression that typing in preview mode edits the document).
 // Explicit blur keeps CM6's state coherent with the visual state.
 // setDisplayMode already handles this correctly for user-triggered
-// mode switches; this block covers the fresh-launch case where the
-// mode comes from session prefs rather than a setDisplayMode call.
+// mode switches, while this block covers the fresh-launch case where
+// the mode comes from session prefs rather than a setDisplayMode call.
 if (prefs.displayMode === "preview") {
   editorView!.contentDOM.blur();
 } else {
@@ -570,7 +574,7 @@ if (prefs.displayMode === "preview") {
 
 // Resolve the spellcheck dictionaries (reading any user-supplied files from
 // <config>/dictionaries/), build them in the worker, then force the
-// decoration plugin to recompute — the editor was built before the async
+// decoration plugin to recompute, since the editor was built before the async
 // resolution could finish, so its first pass had no dictionary to check
 // against. resolveSpellcheck also sets the status-bar indicator state (e.g. a
 // missing Swedish dictionary), so refresh the bar once it lands. Runs
@@ -580,7 +584,7 @@ void resolveSpellcheck(userConfig.spellcheckLanguage).then(async (dicts) => {
   refreshStatus();
   if (!dicts || (!dicts.en && !dicts.sv)) return; // 'off', or nothing to load
   await Promise.all([initSpellcheck(dicts), loadCustomWords()]);
-  // Dictionaries built and the custom-word list loaded — seed the worker with
+  // Dictionaries built and the custom-word list loaded: seed the worker with
   // the custom words, then kick the first check (which now applies them).
   syncCustomWordsToWorker();
   editorView?.dispatch({ effects: spellcheckRecompute.of(null) });

@@ -1,7 +1,7 @@
 // Tests for renderer.ts's pure logic: the include preprocessor (the
 // attribute parsing and filtering, the recursive expansion, and the
 // editor-line to flat-line map that scroll sync depends on) and the
-// markdown pairing. The Tauri file APIs are stubbed — readTextFile
+// markdown pairing. The Tauri file APIs are stubbed: readTextFile
 // reads from an in-memory file map, and the path helpers get minimal
 // POSIX implementations.
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -46,11 +46,11 @@ vi.mocked(readTextFile).mockImplementation((path) => {
 
 beforeEach(() => {
   files.clear();
-  // Call history would otherwise accumulate across tests; the
-  // implementation stays in place, only the counts reset.
+  // Call history would otherwise accumulate across tests, so
+  // the implementation stays in place, only the counts reset.
   vi.mocked(readTextFile).mockClear();
-  // The include cache persists across renders by design; tests need
-  // each case to see its own virtual files.
+  // The include cache persists across renders by design, so tests
+  // need each case to see its own virtual files.
   clearAllRendererCaches();
 });
 

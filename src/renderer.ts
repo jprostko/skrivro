@@ -5,8 +5,8 @@
 // interface that preview.ts calls uniformly regardless of the active
 // markup format.
 //
-// Three implementations live here — AsciidoctorRenderer,
-// markdownRenderer, and textRenderer — with getRenderer at the bottom
+// Three implementations live here: AsciidoctorRenderer,
+// markdownRenderer, and textRenderer, with getRenderer at the bottom
 // dispatching on the buffer's format field.
 
 import DOMPurify from "dompurify";
@@ -23,9 +23,10 @@ import type { WorkerRenderRequest, WorkerRenderResponse } from "./render-worker.
 
 // One entry per mapped preview element. `line` is the source line
 // number that produced `el`, 1-indexed. For AsciiDoc this refers to
-// the FLATTENED source (post-include-expansion) — translation from
-// editor-source coordinates to flat-source coordinates is done via
-// RenderResult.translateEditorLine so callers never have to know.
+// the FLATTENED source (post-include-expansion), and translation
+// from editor-source coordinates to flat-source coordinates is done
+// via RenderResult.translateEditorLine so callers never have to
+// know.
 export interface BlockMapEntry {
   line: number;
   el: Element;
@@ -40,20 +41,20 @@ export interface RenderContext {
 }
 
 // Result of a single render. `fragment` is a DocumentFragment of the
-// already-sanitized rendered nodes — ready to move straight into the
+// already-sanitized rendered nodes, ready to move straight into the
 // preview container, with no HTML re-parse on the caller's side. The
 // two callbacks close over per-render state: `buildBlockMap` walks
 // the rendered output in the caller's container to produce the
-// scroll-sync map; `translateEditorLine` converts an editor-source
-// line number into whatever coordinate system the returned
-// BlockMapEntry.line values use (identity for renderers that don't
-// transform source; include-line-map-aware for AsciiDoc).
+// scroll-sync map, and `translateEditorLine` converts an
+// editor-source line number into whatever coordinate system the
+// returned BlockMapEntry.line values use (identity for renderers
+// that don't transform source, include-line-map-aware for AsciiDoc).
 export interface RenderResult {
   fragment: DocumentFragment;
   buildBlockMap: (rootElement: Element) => BlockMapEntry[];
   translateEditorLine: (editorLine: number) => number;
   // Asciidoctor's `:toc:` source attribute, surfaced so the
-  // sidebar-TOC layout in ui.ts can decide whether to activate the
+  // sidebar layout in ui.ts can decide whether to activate the
   // grid layout for the current doc. Values: 'left', 'right',
   // 'auto', 'macro', 'preamble', 'content', or null (no `:toc:`
   // set). Embedded-mode HTML doesn't carry classes that
@@ -65,8 +66,8 @@ export interface RenderResult {
 
 // The abstraction preview.ts consumes. Every concrete markup format
 // implements this. `clearCache` is a no-op for renderers without a
-// per-path cache; AsciidoctorRenderer uses it to invalidate the
-// include-file cache on buffer change / reload.
+// per-path cache, while AsciidoctorRenderer uses it to invalidate
+// the include-file cache on buffer change / reload.
 export interface Renderer {
   render(source: string, context: RenderContext): Promise<RenderResult>;
   clearCache(): void;
@@ -76,7 +77,7 @@ export interface Renderer {
 //
 // Must run BEFORE Asciidoctor sees the source. Asciidoctor.js's
 // browser-side include reader uses synchronous XMLHttpRequest against
-// the current page URL; in our Tauri webview the page URL is our own
+// the current page URL. In our Tauri webview the page URL is our own
 // index.html, served via Tauri's asset protocol, which has SPA-style
 // fallback: any unresolved path returns index.html with a 200 status.
 // The result is that every `include::` directive silently "resolves"
@@ -99,12 +100,12 @@ export interface Renderer {
 let includeCache = new Map<string, string>();
 
 // Parse the attributes inside `include::target[attrs]` into a keyed
-// object. Positional attributes (values without `=`) are ignored —
+// object. Positional attributes (values without `=`) are ignored:
 // the AsciiDoc include directive doesn't use positional attrs.
 //
 // Return type is Record<string, string>: all keys are strings, all
 // values are strings. TS's Record doesn't model "key might be absent
-// at runtime" — attrs.leveloffset is typed as string even when the
+// at runtime", so attrs.leveloffset is typed as string even when the
 // raw didn't include that key, so downstream `if (attrs.leveloffset)`
 // truthiness checks still do the right runtime work while TS's
 // narrowing accepts them.
@@ -126,7 +127,7 @@ export const parseIncludeAttrs = (raw: string): Record<string, string> => {
 // later by the caller since it needs to wrap the recursively-expanded
 // content, not the raw pre-expansion content.)
 export const applyIncludeAttrs = (content: string, attrs: Record<string, string>): string => {
-  // lines=N..M or lines=N..M;X..Y — keep specified 1-indexed ranges.
+  // lines=N..M or lines=N..M;X..Y: keep specified 1-indexed ranges.
   // Open-ended ranges like `lines=5..` mean "from line 5 to end".
   if (attrs.lines) {
     const lines = content.split("\n");
@@ -148,7 +149,7 @@ export const applyIncludeAttrs = (content: string, attrs: Record<string, string>
     }
     content = kept.join("\n");
   }
-  // tag=name or tags=n1;n2 — keep only lines inside matching tag
+  // tag=name or tags=n1;n2: keep only lines inside matching tag
   // regions, marked by `// tag::NAME[]` and `// end::NAME[]` comment
   // lines. Tag delimiter lines themselves are stripped from the output.
   if (attrs.tag || attrs.tags) {
@@ -178,7 +179,7 @@ export const applyIncludeAttrs = (content: string, attrs: Record<string, string>
     }
     content = kept.join("\n");
   }
-  // indent=N — normalize leading indent to exactly N spaces. Finds
+  // indent=N: normalize leading indent to exactly N spaces. Finds
   // the minimum indent across non-blank lines, strips it, then
   // prefixes N spaces. Blank lines are left untouched.
   if (attrs.indent !== undefined) {
@@ -188,7 +189,7 @@ export const applyIncludeAttrs = (content: string, attrs: Record<string, string>
     for (const line of lines) {
       if (line.trim().length === 0) continue;
       const m = line.match(/^( *)/);
-      // `m[1]!` — required capture group, always present when match
+      // `m[1]!`: required capture group, always present when match
       // succeeds. Non-null assertion satisfies noUncheckedIndexedAccess.
       if (m) minIndent = Math.min(minIndent, m[1]!.length);
     }
@@ -204,9 +205,9 @@ export const applyIncludeAttrs = (content: string, attrs: Record<string, string>
 // recursively expands any nested includes, and wraps the content
 // in :leveloffset: directives if the include specifies one. On any
 // error (missing file, permission denied, cycle), returns a visible
-// comment-style placeholder rather than throwing — a broken include
-// shouldn't crash the render, it should just show "Unresolved
-// include" where the content would have been.
+// comment-style placeholder rather than throwing, since a broken
+// include shouldn't crash the render, it should just show
+// "Unresolved include" where the content would have been.
 const expandOneInclude = async (
   target: string,
   attrsRaw: string,
@@ -235,8 +236,8 @@ const expandOneInclude = async (
     // leveloffset wrapping: emit `:leveloffset: +N` before and an
     // inverse `:leveloffset: -N` after, so Asciidoctor re-levels
     // headings inside the expanded content at parse time. We don't
-    // rewrite heading tokens ourselves — Asciidoctor's built-in
-    // leveloffset handling is the right tool for this.
+    // rewrite heading tokens ourselves, since Asciidoctor's
+    // built-in leveloffset handling is the right tool for this.
     if (attrs.leveloffset) {
       const lo = attrs.leveloffset;
       let sign, invSign, mag;
@@ -266,9 +267,9 @@ const expandOneInclude = async (
 };
 
 // Expand include directives inside content that itself came from an
-// expanded include. This variant does NOT build a line map — nested
-// includes are invisible to the editor's cursor position, so their
-// internal line coordinates aren't needed for scroll sync.
+// expanded include. This variant does NOT build a line map, since
+// nested includes are invisible to the editor's cursor position, so
+// their internal line coordinates aren't needed for scroll sync.
 const expandRecursively = async (
   source: string,
   baseDir: string,
@@ -281,8 +282,8 @@ const expandRecursively = async (
     const m = line.match(includeRe);
     if (m) {
       // `m[1]!` is the target path (required capture group in
-      // includeRe); `m[2]` is the attribute blob which has default
-      // empty-string semantics via the `[^\]]*` match — undefined
+      // includeRe), and `m[2]` is the attribute blob which has default
+      // empty-string semantics via the `[^\]]*` match: undefined
       // would mean the match failed, but we just guarded against that.
       out.push(await expandOneInclude(m[1]!.trim(), m[2]!, baseDir, cycle));
     } else {
@@ -302,7 +303,7 @@ const expandRecursively = async (
 //
 // For non-include root lines, the mapping is 1:1 adjusted by the
 // cumulative offset from preceding expansions. For include lines,
-// the mapping points to the FIRST line of expanded content — so
+// the mapping points to the FIRST line of expanded content, so
 // scroll-syncing on an `include::chapter-05/content.adoc[]` line
 // jumps the preview to the top of chapter 5.
 export const preprocessSource = async (
@@ -311,7 +312,7 @@ export const preprocessSource = async (
 ): Promise<{ source: string; lineMap: number[] }> => {
   const includeRe = /^include::([^[\n]+)\[([^\]]*)\]\s*$/;
   // split('\n') on a string ending with '\n' produces a trailing
-  // empty element. That's not a real line of content — it's the
+  // empty element. That's not a real line of content, it's the
   // representation of "the source ends with a newline." Drop it so
   // we don't emit a spurious blank line at the very end of the
   // flattened output.
@@ -325,7 +326,7 @@ export const preprocessSource = async (
   let flatLine = 1;
 
   for (let i = 0; i < rootLines.length; i++) {
-    // `rootLines[i]!` — the loop bound i < rootLines.length makes
+    // `rootLines[i]!`: the loop bound i < rootLines.length makes
     // index access safe at runtime, but noUncheckedIndexedAccess
     // can't narrow based on loop bounds.
     const line = rootLines[i]!;
@@ -340,8 +341,8 @@ export const preprocessSource = async (
         if (!expanded.endsWith("\n")) expanded += "\n";
         parts.push(expanded);
         // With the trailing '\n' guarantee, the number of flat
-        // lines in the expansion is (newlines) — each '\n'
-        // terminates exactly one line.
+        // lines in the expansion is (newlines), since each
+        // '\n' terminates exactly one line.
         flatLine += expanded.split("\n").length - 1;
       }
       // Empty expansion: consume the root include line but don't
@@ -374,7 +375,7 @@ export const preprocessSource = async (
 // DOM on the main thread to produce the scroll-sync BlockMapEntry[].
 
 // CSS selector matching the DOM elements Asciidoctor emits for those
-// block contexts. Order in the selector doesn't matter — querySelectorAll
+// block contexts. Order in the selector doesn't matter: querySelectorAll
 // returns matches in document order regardless.
 const DOM_BLOCK_SELECTOR = [
   ".paragraph",
@@ -400,10 +401,11 @@ const DOM_BLOCK_SELECTOR = [
 
 // Pair the worker's AsciiDoc block-line list against the rendered
 // DOM. blockLines[i] is the source line of the i-th mappable block in
-// document order; querySelectorAll returns the matching elements in
-// the same order, so domEls[i] is that block's element. A blockLines
-// entry of 0 marks a block with no usable source location — the index
-// still advances so the alignment holds, the entry is just skipped.
+// document order, and querySelectorAll returns the matching elements
+// in the same order, so domEls[i] is that block's element. A
+// blockLines entry of 0 marks a block with no usable source location:
+// the index still advances so the alignment holds, the entry is just
+// skipped.
 export const pairAsciidoctorBlockMap = (
   blockLines: number[],
   rootElement: Element,
@@ -426,9 +428,10 @@ export const pairAsciidoctorBlockMap = (
 
 // Pair the worker's Markdown block-line list against the rendered
 // DOM. The worker emits one entry per visible top-level token, in
-// order; rootElement.children are the rendered top-level elements.
-// Min guards a future divergence from the 1:1 token-to-element
-// invariant — sync degrades silently rather than throwing.
+// order, and rootElement.children are the rendered top-level
+// elements. Min guards a future divergence from the 1:1
+// token-to-element invariant, so sync degrades silently rather
+// than throwing.
 export const pairMarkdownBlockMap = (
   blockLines: number[],
   rootElement: Element,
@@ -446,13 +449,13 @@ export const pairMarkdownBlockMap = (
 //
 // Font Awesome 4 glyphs extracted from the webfont SVG and wrapped
 // in standalone SVG elements. Asciidoctor with `icons: 'font'` emits
-// admonition icons as <i class="fa icon-NAME"> — glyphs rendered by
+// admonition icons as <i class="fa icon-NAME">, glyphs rendered by
 // the FontAwesome font. We replace those elements with inline SVGs
 // during render post-processing (see replaceAdmonitionIcons below).
 //
 // Why SVG instead of the native font-icon output: font glyphs are
 // positioned by baseline metrics, not by visible bounding box, so
-// the cell's flex centering doesn't visually center the icon — the
+// the cell's flex centering doesn't visually center the icon: the
 // glyph floats toward the top of the cell because Font Awesome
 // glyphs are drawn like uppercase letters (ascender above baseline,
 // nothing below). SVGs have explicit viewBox/width/height and sit
@@ -462,14 +465,14 @@ export const pairMarkdownBlockMap = (
 // glyph naturally centered inside it. Two glyphs (warning, caution)
 // have ink that touches or extends past the standard viewBox edges
 // and use expanded 2048×2048 viewBoxes with offset origins so the
-// glyph bbox sits centered in the SVG bounding box; see the per-icon
+// glyph bbox sits centered in the SVG bounding box, see the per-icon
 // comments below.
 //
 // The path transform `matrix(1 0 0 -1 X 1536)` does two jobs:
-//   1. Flips the Y axis (fonts use y-up with baseline at y=0; SVG
-//      uses y-down), with +1536 translation so the ascent top lines
-//      up with y=0 in the original 1792×1792 viewBox space.
-//   2. X-offsets narrower glyphs so they're centered horizontally —
+//   1. Flips the Y axis (fonts use y-up with baseline at y=0, while
+//      SVG uses y-down), with +1536 translation so the ascent top
+//      lines up with y=0 in the original 1792×1792 viewBox space.
+//   2. X-offsets narrower glyphs so they're centered horizontally:
 //      X = (1792 − horiz-adv-x) / 2 for the centered viewBox case.
 //
 // The `fill="currentColor"` attribute makes the glyph inherit color
@@ -489,8 +492,8 @@ const ADMONITION_ICON_SVGS: Record<AdmonitionType, string> = {
   // exclamation-triangle (fa \f071). Glyph bbox extends to the top of
   // the viewBox (y=0) and slightly past both horizontal edges, so its
   // ink visibly overflows a tight viewBox. Expanded viewBox centers
-  // the bbox (cx=896, cy=832) in a 2048×2048 frame — 128 units
-  // horizontal padding, 192 units vertical — to give consistent
+  // the bbox (cx=896, cy=832) in a 2048×2048 frame (128 units
+  // horizontal padding, 192 units vertical) to give consistent
   // breathing room matching the other admonition icons.
   warning:
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-128 -192 2048 2048" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 0 1536)" d="M1024 161v190q0 14 -9.5 23.5t-22.5 9.5h-192q-13 0 -22.5 -9.5t-9.5 -23.5v-190q0 -14 9.5 -23.5t22.5 -9.5h192q13 0 22.5 9.5t9.5 23.5zM1022 535l18 459q0 12 -10 19q-13 11 -24 11h-220q-11 0 -24 -11q-10 -7 -10 -21l17 -457q0 -10 10 -16.5t24 -6.5h185q14 0 23.5 6.5t10.5 16.5zM1008 1469l768 -1408q35 -63 -2 -126q-17 -29 -46.5 -46t-63.5 -17h-1536q-34 0 -63.5 17t-46.5 46q-37 63 -2 126l768 1408q17 31 47 49t65 18t65 -18t47 -49z"/></svg>',
@@ -504,15 +507,15 @@ const ADMONITION_ICON_SVGS: Record<AdmonitionType, string> = {
 
 // Replace Asciidoctor's font-icon admonition markers (<i class="fa
 // icon-NAME" title="..."></i>) with the corresponding inline SVG.
-// Mutates `parsed` in place — the caller parses the worker's HTML
+// Mutates `parsed` in place: the caller parses the worker's HTML
 // once and passes the resulting Document through here and then to
 // DOMPurify, so the markup is never re-serialized to a string.
 //
 // We target only the admonition icon pattern (`icon-` class prefix).
 // Inline icon:name[] directives emit <i class="fa fa-NAME"> (note
 // the `fa-` prefix, not `icon-`) and deliberately flow through
-// unchanged — they're sized inline with surrounding text and the
-// baseline-positioning that makes admonition icons look off is
+// unchanged, since they're sized inline with surrounding text and
+// the baseline-positioning that makes admonition icons look off is
 // exactly what's wanted for a character-in-text inline icon.
 export const replaceAdmonitionIcons = (parsed: Document): void => {
   // Scope the query to icon cells under admonitionblocks, then
@@ -544,7 +547,7 @@ export const replaceAdmonitionIcons = (parsed: Document): void => {
 // id up and settles the matching promise.
 
 // The worker, created lazily on first render and reused for the
-// process lifetime. null until the first render — and again after a
+// process lifetime. null until the first render, and again after a
 // worker crash, when it's dropped so the next render builds a fresh
 // one.
 let renderWorker: Worker | null = null;
@@ -561,14 +564,14 @@ const pendingRenders = new Map<number, (response: WorkerRenderResponse) => void>
 // Lazily construct the worker and wire its listeners.
 //
 // new URL('./render-worker.ts', import.meta.url) is the Vite worker
-// pattern — Vite recognizes this exact form statically and emits the
+// pattern: Vite recognizes this exact form statically and emits the
 // worker module as its own bundle chunk.
 //
 // message handler: resolve whichever pendingRenders entry matches the
 // echoed id. error handler: a worker-level failure (module load
 // error, a throw outside the message handler) can't be tied to one
 // request, so every in-flight request is failed and the worker is
-// dropped — the next render lazily builds a fresh one.
+// dropped, so the next render lazily builds a fresh one.
 const getWorker = (): Worker => {
   if (renderWorker) return renderWorker;
   const worker = new Worker(new URL("./render-worker.ts", import.meta.url), { type: "module" });
@@ -595,10 +598,11 @@ const getWorker = (): Worker => {
   return worker;
 };
 
-// Send one render request to the worker; resolve with its response.
-// The returned promise always resolves (never rejects) — worker-side
-// failures come back as a WorkerRenderFailure, so callers branch on
-// `response.ok` rather than wrapping this in try/catch.
+// Send one render request to the worker and resolve with its
+// response. The returned promise always resolves (never rejects):
+// worker-side failures come back as a WorkerRenderFailure, so
+// callers branch on `response.ok` rather than wrapping this in
+// try/catch.
 const runInWorker = (req: Omit<WorkerRenderRequest, "id">): Promise<WorkerRenderResponse> => {
   const id = ++workerSeq;
   const worker = getWorker();
@@ -617,7 +621,7 @@ export const asciidoctorRenderer: Renderer = {
     // embedded output. icons: 'font' switches admonition rendering
     // from text labels to Font Awesome icon markup (<i class="fa
     // icon-note"> etc.), later swapped for inline SVGs by
-    // replaceAdmonitionIcons; styling for the icons lives in
+    // replaceAdmonitionIcons, and styling for the icons lives in
     // styles.css (see .admonitionblock td.icon [class^="fa icon-"]).
     //
     // Typed Record<string, unknown> so the docname/docfile/docdir keys
@@ -671,12 +675,12 @@ export const asciidoctorRenderer: Renderer = {
     // safe mode: config-file override via userConfig.asciidocSafeMode
     // (set-and-forget knob, no UI), default 'unsafe'. Asciidoctor's
     // safe modes (unsafe/safe/server/secure) were designed for a
-    // server-rendering threat model — an untrusted document processed
+    // server-rendering threat model: an untrusted document processed
     // by a trusted server and served to others. That model does not
     // apply to Skrivro: this is a single-user local editor where
     // users edit their own files, and restricting safe mode would
     // cripple legitimate features (docinfo, book-mode doctype,
-    // cross-directory includes) for no real gain — the user can
+    // cross-directory includes) for no real gain, since the user can
     // already open any OS-readable file via File → Open. The real
     // protections are Content-Security-Policy (blocks all network
     // egress so nothing can phone home) and the DOMPurify pass below
@@ -692,7 +696,7 @@ export const asciidoctorRenderer: Renderer = {
 
     // Parse the worker's HTML into a DOM exactly once. The
     // admonition-icon swap and DOMPurify both operate on that single
-    // DOM — replaceAdmonitionIcons mutates it in place, then
+    // DOM: replaceAdmonitionIcons mutates it in place, then
     // DOMPurify.sanitize takes the node (not a string) and returns a
     // DocumentFragment, so the markup is never re-serialized. Both
     // steps need a DOM (DOMParser / DOMPurify), so they run here on
@@ -708,10 +712,10 @@ export const asciidoctorRenderer: Renderer = {
     );
 
     // Capture the per-render state in closures. The caller invokes
-    // buildBlockMap after injecting the fragment into a container;
-    // pairAsciidoctorBlockMap pairs the worker's block-line list
+    // buildBlockMap after injecting the fragment into a container,
+    // and pairAsciidoctorBlockMap pairs the worker's block-line list
     // against that container's DOM. translateEditorLine looks up the
-    // flat-source line number for a given editor-source line —
+    // flat-source line number for a given editor-source line:
     // identity when there were no includes (lineMap is null), mapped
     // otherwise.
     const capturedLineMap = lineMap;
@@ -734,9 +738,10 @@ export const asciidoctorRenderer: Renderer = {
 //
 // Renders GitHub-Flavored Markdown. The parse runs in the render
 // worker (render-worker.ts hosts markdown-it plus the gfmAlert,
-// task-list, and emoji extensions); this renderer assembles the
-// request, sanitizes the worker's HTML, and pairs the worker's
-// block-line list against the rendered DOM for scroll sync.
+// task-list, and emoji extensions), while this renderer
+// assembles the request, sanitizes the worker's HTML, and pairs
+// the worker's block-line list against the rendered DOM for
+// scroll sync.
 
 export const markdownRenderer: Renderer = {
   async render(source: string, _context: RenderContext): Promise<RenderResult> {
@@ -745,7 +750,7 @@ export const markdownRenderer: Renderer = {
     const m1 = performance.now(); // [perf]
     if (!res.ok) throw new Error(res.error);
 
-    // DOMPurify sanitization matches the AsciiDoc path — the same
+    // DOMPurify sanitization matches the AsciiDoc path: the same
     // HTML-injection protection regardless of format. RETURN_DOM_FRAGMENT
     // hands back a DocumentFragment the caller injects directly, so the
     // HTML is parsed once (here, inside DOMPurify) rather than again on
@@ -761,14 +766,14 @@ export const markdownRenderer: Renderer = {
       fragment,
       // Pair the worker's per-token line list against the rendered
       // top-level children by index (the 1:1 token-to-element
-      // invariant; see pairMarkdownBlockMap).
+      // invariant, see pairMarkdownBlockMap).
       buildBlockMap: (rootElement: Element) => pairMarkdownBlockMap(blockLines, rootElement),
       // Markdown rendering does no source transformation (unlike
       // AsciiDoc's include expansion), so editor and output line
-      // coordinates coincide — identity translation is correct.
+      // coordinates coincide and identity translation is exact.
       translateEditorLine: (editorLine: number) => editorLine,
-      // Markdown has no `:toc:` analog, so sidebar-TOC layout never
-      // activates for markdown documents.
+      // Markdown has no `:toc:` analog, so the sidebar table of
+      // contents layout never activates for markdown documents.
       tocPosition: null,
     };
   },
@@ -782,24 +787,24 @@ export const markdownRenderer: Renderer = {
 //
 // Pass-through renderer for buffers the user has marked as plain
 // text. The preview mirrors the source verbatim in a monospace
-// block — no parsing, no transformation. AsciiDoc or Markdown
+// block: no parsing, no transformation. AsciiDoc or Markdown
 // syntax typed in a text-mode buffer stays literal in the preview.
 
 // HTML-entity escape for interpolation into the <pre> output. Same
 // set of metacharacters preview.ts's error-display path escapes,
 // kept as a local helper here so TextRenderer doesn't reach into
 // another module. Record<string, string> typing satisfies strict
-// mode's noUncheckedIndexedAccess; the `?? c` fallback is defensive
-// and unreachable given the regex class.
+// mode's noUncheckedIndexedAccess, and the `?? c` fallback is
+// defensive and unreachable given the regex class.
 const TEXT_ESCAPE_MAP: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
 const escapeForPre = (s: string): string => s.replace(/[&<>]/g, (c) => TEXT_ESCAPE_MAP[c] ?? c);
 
 export const textRenderer: Renderer = {
-  // Not declared async for the same reason as markdownRenderer — no
+  // Not declared async for the same reason as markdownRenderer: no
   // awaits inside, Promise.resolve matches the interface contract.
   render(source: string, _context: RenderContext): Promise<RenderResult> {
     // Wrap the escaped source in <pre class="text-verbatim">. The
-    // class is a hook for future styling — CSS can target it to
+    // class is a hook for future styling: CSS can target it to
     // adjust font or spacing specifically in text mode without
     // touching the generic <pre> used by AsciiDoc listing blocks.
     // DOMPurify pass is redundant here (our escape produces only
@@ -815,8 +820,8 @@ export const textRenderer: Renderer = {
       fragment,
       buildBlockMap: () => [],
       translateEditorLine: (editorLine: number) => editorLine,
-      // Plain text has no TOC concept; sidebar-TOC layout never
-      // activates for text documents.
+      // Plain text has no table of contents, so the sidebar
+      // layout never activates for text documents.
       tocPosition: null,
     });
   },
@@ -831,11 +836,11 @@ export const textRenderer: Renderer = {
 // Format → Renderer mapping. The single call site in preview.ts's
 // render() reads currentBuffer.format, calls getRenderer, and
 // invokes render on whatever comes back. Adding a new format means
-// adding a Renderer implementation above and a case here; preview.ts
-// doesn't change.
+// adding a Renderer implementation above and a case here, and
+// preview.ts doesn't change.
 //
-// The switch is exhaustive over the Format union — TypeScript will
-// flag any missing case if Format gains a new member.
+// The switch is exhaustive over the Format union, so TypeScript
+// will flag any missing case if Format gains a new member.
 export const getRenderer = (format: Format): Renderer => {
   switch (format) {
     case "markdown":
@@ -851,8 +856,9 @@ export const getRenderer = (format: Format): Renderer => {
 // file operations that change the buffer's identity (open, save-as,
 // new, reload, :e filename) so stale cached state doesn't bleed
 // across buffers. Only asciidoctorRenderer has a cache worth
-// clearing today; markdown and text no-op. Calling the set lets
-// io.ts stay agnostic about which renderer holds cacheable state.
+// clearing today, while markdown and text no-op. Calling the set
+// lets io.ts stay agnostic about which renderer holds cacheable
+// state.
 const ALL_RENDERERS: readonly Renderer[] = [asciidoctorRenderer, markdownRenderer, textRenderer];
 
 export const clearAllRendererCaches = (): void => {

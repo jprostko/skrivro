@@ -55,7 +55,7 @@ export default defineConfig({
     sourcemap: !!process.env.TAURI_DEBUG,
     // Vite's default 500 KB chunk-size warning targets web apps where
     // bundle size affects download time and first paint. Skrivro is a
-    // Tauri desktop app — the JS ships embedded inside the binary and
+    // Tauri desktop app: the JS ships embedded inside the binary and
     // loads from local memory at launch, so chunk size is not a perceived
     // performance concern. Asciidoctor.js dominates the render-worker
     // chunk and cannot be tree-shaken (it's compiled from Ruby via

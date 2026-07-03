@@ -63,13 +63,13 @@ let inCommandMode = false;
 // Vim mode flags (insertMode, visualMode, visualLine, visualBlock),
 // and whose .state.overwrite distinguishes REPLACE from plain INSERT.
 //
-// Returns null if Vim is off (signals "hide the pill"); returns
+// Returns null if Vim is off (signals "hide the pill"), and returns
 // 'command' if the Ex command panel is currently focused (tracked
 // via inCommandMode, set by focusin/focusout listeners registered
 // after editor creation).
 //
 // REPLACE vs INSERT precedence: the plugin models REPLACE as a
-// sub-state of INSERT (matching real Vim's internal model) —
+// sub-state of INSERT (matching real Vim's internal model):
 // pressing R sets vs.insertMode=true AND cm.state.overwrite=true
 // via the toggleOverwrite action. insertMode alone is ambiguous,
 // so the overwrite flag has to be checked BEFORE falling through
@@ -95,8 +95,8 @@ const readVimMode = () => {
 };
 
 // Sub-classify a visual-mode selection into char / line / block.
-// All three share the same pill color (mauve per canonical Catppuccin);
-// only the label text differs — VISUAL, V-LINE, V-BLOCK.
+// All three share the same pill color (mauve per canonical Catppuccin),
+// and only the label text differs: VISUAL, V-LINE, V-BLOCK.
 const readVisualVariant = () => {
   if (!editorView) return "char";
   try {
@@ -135,16 +135,16 @@ const formatModeLabel = (mode: string | null, variant: string | null) => {
 // letters all count as 1. Prose-correct by construction.
 //
 // Format is configurable via `cursor-position-format` in skrivro.conf:
-//   verbose (default): 'Ln 42, Col 85'  — prose-editor style
-//   compact:           '42:85'           — terse code-editor style
-//   ruler:             '42,85'           — Vim ruler style
+//   verbose (default): 'Ln 42, Col 85'  (prose-editor style)
+//   compact:           '42:85'           (terse code-editor style)
+//   ruler:             '42,85'           (Vim ruler style)
 // Stored in userConfig.cursorPositionFormat. Unknown values fall back
 // to verbose so a typo in the config doesn't break the status bar.
 //
-// Returns { text, col }. The `text` is the display string; `col` is
-// the raw numeric column so refreshStatus can compare it against
+// Returns { text, col }. The `text` is the display string, and `col`
+// is the raw numeric column so refreshStatus can compare it against
 // userConfig.softColumnLimit without recomputing. `col` is null in
-// the pre-editor fallback case where there's no cursor yet — the
+// the pre-editor fallback case where there's no cursor yet, and the
 // caller treats null as "never over-limit."
 const formatCursorPosition = () => {
   if (!editorView) return { text: `${tr("Ln")} 1, ${tr("Col")} 1`, col: null };
@@ -220,7 +220,7 @@ export const refreshStatus = () => {
 
   // Position slot: either Vim visual-mode selection info or cursor
   // position. Over-limit coloring only applies to the cursor position
-  // branch — selection info is a different display mode and the col
+  // branch: selection info is a different display mode and the col
   // concept doesn't map onto it.
   let overLimit = false;
   if (mode === "visual") {
@@ -241,7 +241,7 @@ export const refreshStatus = () => {
     // `soft-column-limit` in their config, `userConfig.softColumnLimit`
     // is `null`. A naive `!== undefined` check passes for null, and
     // then `col > null` coerces null to 0, making the condition
-    // effectively `col > 0` — which is always true for any cursor
+    // effectively `col > 0`, which is always true for any cursor
     // position ≥ 1, so the over-limit class would be applied
     // constantly. typeof is the unambiguous fix: only a real number
     // enables the threshold check.
@@ -257,7 +257,7 @@ export const refreshStatus = () => {
 
   // Spellcheck indicator: shown when spellcheck is on in config but either
   // toggled off at runtime, or a requested Swedish dictionary is missing
-  // (Swedish is user-supplied — see resolveSpellcheck). A normal, working
+  // (Swedish is user-supplied, see resolveSpellcheck). A normal, working
   // spellcheck shows nothing (the squiggles are the feedback), and config-off
   // has nothing to indicate. The label is wrapped in parens here.
   let spellNote = "";
@@ -284,7 +284,7 @@ export const refreshStatus = () => {
 
 // Human-readable display name for the filetype slot in the status bar.
 // Paralleled by FORMAT_DISPLAY_NAME in io.ts (used by the :format
-// readback); kept in sync by convention since the set is three entries.
+// readback), kept in sync by convention since the set is three entries.
 const FORMAT_LABELS: Record<Format, string> = {
   asciidoc: "AsciiDoc",
   markdown: "Markdown",
@@ -294,7 +294,8 @@ const FORMAT_LABELS: Record<Format, string> = {
 // Cycle through formats in a fixed order: asciidoc → markdown → text
 // → asciidoc. Bound to Ctrl+Alt+R / Ctrl+Cmd+R. The mutation work
 // (compartment reconfigure, status refresh, re-render) is centralized
-// in setBufferFormat — this just picks the next value and delegates.
+// in setBufferFormat, so this just picks the next value and
+// delegates.
 const FORMAT_CYCLE: readonly Format[] = ["asciidoc", "markdown", "text"];
 export const toggleFormat = () => {
   const idx = FORMAT_CYCLE.indexOf(currentBuffer.format);
@@ -309,8 +310,8 @@ export const toggleFormat = () => {
 // Count words in the rendered preview's text content. Visible only in
 // preview-only display mode (see the CSS `.status-word-count` rules),
 // but computed on every render regardless so the value is current the
-// moment the user switches into preview mode — no "stale until first
-// render-in-preview" surprise.
+// moment the user switches into preview mode, with no "stale until
+// first render-in-preview" surprise.
 //
 // Reading from the rendered DOM rather than the AsciiDoc source means
 // directive syntax (`include::`, attribute references, `:toc: left`)
@@ -318,13 +319,13 @@ export const toggleFormat = () => {
 // reflects what a reader of the rendered document actually sees.
 //
 // For documents with includes, the count reflects the fully-expanded
-// preview — opening book.adoc (which include::s chapters) shows the
+// preview: opening book.adoc (which include::s chapters) shows the
 // book-total, opening chapter-03.adoc directly shows that chapter.
 //
 // Format uses toLocaleString() with no arg so thousands separators
 // match the user's browser locale (comma in en-US, space in sv-SE,
 // dot in de-DE, etc.). Singular "1 word" vs plural "N words" handled
-// explicitly — "1 words" reads as broken.
+// explicitly, since "1 words" reads as broken.
 export const updateWordCount = () => {
   if (!statusWordCount) return;
   const text = out.textContent || "";
@@ -343,12 +344,12 @@ export const updateWordCount = () => {
 //
 // Native <dialog>.close() restores focus to whatever was active
 // before showModal(), but WebKit's restoration isn't reliably
-// synchronous — a `:` typed immediately after close can fire its
+// synchronous: a `:` typed immediately after close can fire its
 // keydown against <body> and then route its input event to the
 // editor's contentDOM once focus lands there, inserting the
 // character as text instead of triggering Vim's Ex prompt. Capturing
 // the pre-help focus and restoring it explicitly (synchronously)
-// sidesteps that race and preserves the user's actual context — if
+// sidesteps that race and preserves the user's actual context: if
 // they were on the preview pane in split mode before opening help,
 // focus goes back to body (where it was), not forced to the editor.
 //
@@ -357,10 +358,10 @@ export const updateWordCount = () => {
 //   - helpBtn mousedown: runs BEFORE the browser's native focus
 //     change moves focus to the button. Without this, clicking the
 //     `?` button captures the button itself as the "previous focus"
-//     (wrong — the actual previous focus was whatever the user was
+//     (wrong: the actual previous focus was whatever the user was
 //     doing before they clicked).
 //   - showHelp fallback: for the keyboard path (Ctrl+Alt+H / ⌃⌘H), no
-//     button mousedown fires; capture at showHelp time instead.
+//     button mousedown fires, so capture at showHelp time instead.
 //
 // preHelpFocus is cleared on hideHelp so a subsequent open via
 // keyboard doesn't inherit a stale value from a prior mouse click.
@@ -385,9 +386,10 @@ export const hideHelp = () => {
 
 // Focus restoration runs on the dialog's `close` event rather than
 // inside hideHelp, because hideHelp is only called from our own
-// click handlers (close button, backdrop click) — Escape triggers
-// the native close path, which fires the close event but doesn't
-// invoke hideHelp. Attaching here handles ALL close paths uniformly.
+// click handlers (close button, backdrop click), while Escape
+// triggers the native close path, which fires the close event but
+// doesn't invoke hideHelp. Attaching here handles ALL close paths
+// uniformly.
 helpDlg.addEventListener("close", () => {
   const restore = preHelpFocus;
   preHelpFocus = null;
@@ -403,7 +405,7 @@ helpDlg.addEventListener("close", () => {
   }
 
   // Split / editor modes: synchronous focus to the correctly-captured
-  // pre-help element. rAF is too slow — a `:` pressed before the
+  // pre-help element. rAF is too slow: a `:` pressed before the
   // next frame fires its keydown against <body>, bypassing Vim's
   // keydown intercept on contentDOM, then the input event arrives at
   // contentDOM once focus catches up and inserts the character as
@@ -412,7 +414,7 @@ helpDlg.addEventListener("close", () => {
   //
   // When restoring to the editor, use editorView.focus() rather than
   // contentDOM.focus() directly. CM6 tracks focus state internally
-  // (the Vim plugin consults it before intercepting keydowns); a
+  // (the Vim plugin consults it before intercepting keydowns), and a
   // bare DOM focus() leaves that internal state stale, so Vim's
   // handler can see "not focused" and pass `:` through to default
   // text insertion. editorView.focus() updates CM6's state coherently.
@@ -430,7 +432,7 @@ export const toggleHelp = () => {
 };
 helpBtn.addEventListener("click", showHelp);
 helpCloseBtn.addEventListener("click", hideHelp);
-// Dismiss the help dialog when the user clicks on its backdrop —
+// Dismiss the help dialog when the user clicks on its backdrop,
 // the ::backdrop pseudo-element rendered outside the dialog's box.
 //
 // Two pitfalls to avoid:
@@ -438,8 +440,8 @@ helpCloseBtn.addEventListener("click", hideHelp);
 //   1. Click-and-drag for text selection inside the content
 //      (mousedown on a child element, mouseup elsewhere) fires a
 //      click event whose target is the dialog itself (the deepest
-//      common ancestor of the two phases) — checking `e.target ===
-//      helpDlg` alone would dismiss on every drag-release.
+//      common ancestor of the two phases), so checking `e.target
+//      === helpDlg` alone would dismiss on every drag-release.
 //
 //   2. The dialog has no inner wrapper, so h2/h3/div.help-grid are
 //      direct children of helpDlg and the whitespace gaps BETWEEN
@@ -451,10 +453,11 @@ helpCloseBtn.addEventListener("click", hideHelp);
 // Solution: distinguish "click on dialog padding/whitespace" from
 // "click on actual backdrop" by checking the event coordinates
 // against the dialog's bounding rect. Padding/whitespace clicks
-// land INSIDE the rect; ::backdrop clicks land OUTSIDE it. Then
-// require BOTH the mousedown and the resulting click to have hit
-// the backdrop — drag-releases that happen to end on the backdrop
-// (or start on the backdrop and end inside) don't qualify.
+// land INSIDE the rect, while ::backdrop clicks land OUTSIDE it.
+// Then require BOTH the mousedown and the resulting click to have
+// hit the backdrop, so drag-releases that happen to end on the
+// backdrop (or start on the backdrop and end inside) don't
+// qualify.
 const isHelpBackdropAt = (e: MouseEvent): boolean => {
   if (e.target !== helpDlg) return false;
   const r = helpDlg.getBoundingClientRect();
@@ -505,7 +508,7 @@ export const toggleSyntaxHighlighting = () => {
 };
 // Explicit setter for `:syntax on` / `:syntax off` (as opposed to the
 // keybinding, which is a toggle). No-op if the pref is already in the
-// requested state — avoids the needless dispatch.
+// requested state, which avoids the needless dispatch.
 export const applySyntaxHighlighting = (enabled: boolean) => {
   if (prefs.syntaxHighlighting === enabled) return;
   prefs.syntaxHighlighting = enabled;
@@ -534,8 +537,8 @@ export const toggleSpellcheck = () => {
   setSpellcheck(prefs.spellcheck);
   refreshStatus();
 };
-// Explicit setter for `:spell on` / `:spell off`. Same config gate;
-// no-op when already in the requested state.
+// Explicit setter for `:spell on` / `:spell off`. Same config gate,
+// and a no-op when already in the requested state.
 export const applySpellcheck = (enabled: boolean) => {
   if (!spellcheckConfigured()) {
     vimMessage(tr(SPELLCHECK_OFF_MSG));
@@ -551,7 +554,7 @@ export const applySpellcheck = (enabled: boolean) => {
 // ================= Width mode =================
 // Four named width caps for the single-pane scrollers (editor-only
 // and preview-only display modes). Same ch value applied to both
-// panes; the natural mono-vs-proportional width difference gives
+// panes. The natural mono-vs-proportional width difference gives
 // the editor a wider visual cap than the preview at the same mode
 // setting.
 //
@@ -561,7 +564,7 @@ export const applySpellcheck = (enabled: boolean) => {
 //   Geometric midpoint between narrow and wide.
 // 125ch (wide):   wider columns for technical references, API
 //   docs, anything code- or table-heavy.
-// 100vw (full):   no cap. Pane fills available width — for
+// 100vw (full):   no cap. Pane fills available width: for
 //   ultrawide monitors, single-tile-half-screen tiling, or users
 //   who prefer maximum screen utilization. The 100% safety net
 //   in the rules still applies but is moot since 100vw ≥ 100%
@@ -578,12 +581,13 @@ const WIDTH_CAPS: Record<string, string> & { medium: string } = {
   full: "100vw",
 };
 
-// Sidebar TOC width per width mode, mapping Asciidoctor's spec
-// values (15em / 20em from their default stylesheet) onto our
-// modes. Narrow mode never activates sidebar layout (see
-// evaluateTocLayout below) so its value is unreachable in practice;
-// included for completeness and to keep the lookup total.
-// (`& { medium: string }` — same reason as WIDTH_CAPS above.)
+// Sidebar table-of-contents width per width mode, mapping the
+// Asciidoctor spec values (15em / 20em from their stylesheet)
+// onto our modes. Narrow mode never activates sidebar layout
+// (see evaluateTocLayout below) so its value is unreachable in
+// practice, but included for completeness and to keep the
+// lookup total. (`& { medium: string }`, same reason as
+// WIDTH_CAPS above.)
 const TOC_SIDEBAR_WIDTHS: Record<string, string> & { medium: string } = {
   narrow: "15em",
   medium: "15em",
@@ -595,9 +599,9 @@ const TOC_SIDEBAR_WIDTHS: Record<string, string> & { medium: string } = {
 // that the .cm-scroller and .preview-pane rules consume, and the
 // matching sidebar width into --toc-sidebar-width. Defensive
 // fallback to medium if the persisted pref is somehow invalid.
-// Re-evaluates the sidebar TOC layout — narrow disables sidebar
-// layout, so transitioning in/out of narrow needs to recompute
-// the layout class set.
+// Re-evaluates the sidebar table-of-contents layout, since
+// narrow disables it, so transitioning in/out of narrow needs to
+// recompute the layout class set.
 export const applyWidthMode = () => {
   const cap = WIDTH_CAPS[prefs.widthMode] || WIDTH_CAPS.medium;
   const tocSidebar = TOC_SIDEBAR_WIDTHS[prefs.widthMode] || TOC_SIDEBAR_WIDTHS.medium;
@@ -623,20 +627,20 @@ export const cycleWidthMode = () => {
   setWidthMode(next === undefined ? "medium" : next);
 };
 
-// ================= Sidebar TOC layout =================
+// ================= Sidebar table of contents layout =================
 // When the active document has `:toc: left` or `:toc: right`,
-// honor it as a sidebar layout — but only when the surrounding
+// honor it as a sidebar layout, but only when the surrounding
 // conditions can support it. Otherwise, fall back to the default
-// top-of-content TOC placement that Asciidoctor's embedded
+// top-of-content placement that Asciidoctor's embedded
 // output produces.
 //
 // Conditions for sidebar layout (all must hold):
 //   1. Document has toc-position 'left' or 'right' (read from
-//      the Asciidoctor doc object after load — embedded HTML
-//      doesn't carry classes that distinguish the variants;
+//      the Asciidoctor doc object after load: embedded HTML
+//      doesn't carry classes that distinguish the variants, so
 //      RenderResult.tocPosition surfaces it).
 //   2. Display mode is preview-only. Split mode's preview pane
-//      shares the window 50/50 with the editor — too narrow per
+//      shares the window 50/50 with the editor, too narrow per
 //      pane for a meaningful sidebar plus content. Editor-only
 //      mode hides the preview entirely so the layout is moot.
 //   3. Width mode is not narrow. Narrow's text budget can't
@@ -648,15 +652,15 @@ export const cycleWidthMode = () => {
 // called from preview.ts after each render.
 let lastTocPosition: string | null = null;
 
-// User-controlled override for TOC visibility. Toggled via
-// Ctrl+Alt+I / ⌃⌘I or the `:toc on|off` Ex command. Session-scoped
-// (not persisted to localStorage) — defaults to false on every
+// User-controlled override for table of contents visibility,
+// toggled via Ctrl+Alt+I / ⌃⌘I or `:toc on|off`. Session-scoped
+// (not persisted to localStorage), defaulting to false on every
 // launch so a fresh document load always shows whatever the
 // source requested. Reasoning: tocHidden is a per-view override
-// ("I don't want this doc's TOC right now"), not a permanent
-// UI preference. Persisting it would surprise the user on the
-// next launch ("where's my TOC?") with no preview-scroll
-// restoration to compensate.
+// ("I don't want this doc's table of contents right now"), not
+// a permanent UI preference. Persisting it would surprise the
+// user on the next launch ("where is my table of contents?")
+// with no preview-scroll restoration to compensate.
 let tocHidden = false;
 
 export const setLastTocPosition = (pos: string | null) => {
@@ -678,8 +682,8 @@ export const evaluateTocLayout = () => {
   previewPaneEl.classList.add(lastTocPosition === "left" ? "toc-left" : "toc-right");
 };
 
-// Flip the TOC visibility override and re-evaluate the layout.
-// Bound to Ctrl+Alt+I / ⌃⌘I.
+// Flip the table of contents visibility override and
+// re-evaluate the layout. Bound to Ctrl+Alt+I / ⌃⌘I.
 export const toggleTocVisibility = () => {
   tocHidden = !tocHidden;
   evaluateTocLayout();
@@ -708,12 +712,12 @@ export const isTocHidden = () => tocHidden;
 //
 // Two distinct mappings, switched by a CSS class on the <kbd>:
 //
-//   App-shortcut <kbd>s (default — no `vim` class). The keydown handler
+//   App-shortcut <kbd>s (default, no `vim` class). The keydown handler
 //   binds these. On Mac it accepts only metaKey (Cmd) as primary and
 //   ctrlKey (Ctrl) as secondary, so "Ctrl+Alt+T" in source maps to:
 //     Ctrl  → ⌘   (primary modifier on Mac is Cmd, not Ctrl)
-//     Alt   → ⌃   (secondary modifier on Mac is Ctrl, not Option —
-//                  see "Keyboard shortcuts" block in main.js for why
+//     Alt   → ⌃   (secondary modifier on Mac is Ctrl, not Option,
+//                  see "Keyboard shortcuts" block in main.ts for why
 //                  Option doesn't work: macOS layout-level character
 //                  composition breaks letter-matching, plus several
 //                  Option+Cmd+letter combos are OS-reserved at the
@@ -721,14 +725,14 @@ export const isTocHidden = () => tocHidden;
 //     Shift → ⇧
 //
 //   Vim-binding <kbd>s (kbd class="vim"). These represent literal
-//   physical keys that Vim binds inside the editor — we don't capture
+//   physical keys that Vim binds inside the editor. We don't capture
 //   them in our keydown handler. So "Ctrl+Q" in a Vim kbd really means
 //   physical Control+Q, not Cmd+Q. Different mapping needed:
 //     Ctrl  → ⌃   (literal Control symbol, the actual key Vim uses)
 //     Alt   → ⌥   (literal Option symbol)
 //     Shift → ⇧
 //   Without this distinction, V-BLOCK's "Ctrl+Q" would render as ⌘Q,
-//   which on Mac is Quit — actively misleading the reader. Mark a kbd
+//   which on Mac is Quit, actively misleading the reader. Mark a kbd
 //   as a Vim binding by adding class="vim" in the source HTML.
 //
 // Other Mac key symbols (Return ↵, Tab ⇥, Escape ⎋, Backspace ⌫)
@@ -737,19 +741,19 @@ export const isTocHidden = () => tocHidden;
 //
 // Also strips the .mac-only class from any element inside the help
 // dialog. Those elements are hidden by default via styles.css's
-// `.mac-only { display: none; }` rule; removing the class on Mac
+// `.mac-only { display: none; }` rule. Removing the class on Mac
 // makes them visible. Used for advertising Mac-specific alternative
-// bindings — e.g., V-BLOCK's Ctrl+V kbd, which only actually works
+// bindings, e.g., V-BLOCK's Ctrl+V kbd, which only actually works
 // on Mac (Linux/Windows webviews intercept Ctrl+V for paste before
 // it reaches Vim).
 //
 // .non-mac is the inverse: visible by default (no CSS rule needed),
 // removed here on Mac. Used where the authored Linux/Windows chord
-// would rewrite into a wrong or unbound Mac chord — e.g., redo's
+// would rewrite into a wrong or unbound Mac chord, e.g., redo's
 // Ctrl+Y, whose Mac form is Shift+Cmd+Z rather than Cmd+Y, so the
 // help row pairs a .non-mac Ctrl+Y with a .mac-only Ctrl+Shift+Z.
 //
-// Runs once at init since the help dialog's DOM is static — no need
+// Runs once at init since the help dialog's DOM is static, no need
 // to re-run on each dialog open.
 //
 // Selector scope: .help-dialog kbd. Other <kbd> elements elsewhere
@@ -783,7 +787,7 @@ export const applyMacModifierLabels = () => {
     }
     // A kbd with no modifier tokens (:w <var>filename</var>, zg) has
     // nothing to rewrite, and reassigning textContent would flatten
-    // its inner markup — the <var> placeholders. Leave it untouched.
+    // its inner markup (the <var> placeholders). Leave it untouched.
     if (mods.length === 0) return;
     mods.sort((a, b) => order.indexOf(a) - order.indexOf(b));
     kbd.textContent = mods.join("") + keys.join("");
@@ -813,18 +817,18 @@ export const applyDisplayMode = () => {
   cl.add(`mode-${prefs.displayMode}`);
 };
 // Toggle keyboard focus between the editor pane and the preview pane.
-// Only meaningful in split mode — in editor-only and preview-only
+// Only meaningful in split mode: in editor-only and preview-only
 // modes there's only one pane and nothing to toggle, so the call is
 // a no-op. Pairs with the :focus-within outline rule in styles.css
-// that visually marks the active pane; each press moves focus AND
+// that visually marks the active pane. Each press moves focus AND
 // the outline to the other pane.
 //
 // "Has focus" is read via editorView.hasFocus (a live CM6 getter that
-// handles nested focusable elements inside the editor — search panel
-// input, Vim Ex input, etc. — all count as "editor has focus"). If
+// handles nested focusable elements inside the editor: search panel
+// input, Vim Ex input, and the like all count as "editor has focus").
 // the editor has focus, move to the preview element (which is
 // programmatically focusable via tabindex="-1" on the div). Otherwise
-// move to the editor; this covers both the "preview is focused" case
+// move to the editor. This covers both the "preview is focused" case
 // and the "neither pane is focused" case (e.g., focus is on a
 // chrome element), both of which should land the user back in the
 // editor.
@@ -845,7 +849,7 @@ export const togglePaneFocus = () => {
 //
 // Mental model: entering editor-only or preview-only is an attention
 // shift comparable to switching to a different app. Returning to split
-// should resume the prior state, not reset to a default — same reason
+// should resume the prior state, not reset to a default, for the same
 // a browser's tab focus doesn't reset when you alt-tab away and back.
 //
 // Seeded to 'editor' because that's the pane the app starts focused
@@ -864,7 +868,7 @@ export const setDisplayMode = (mode: string) => {
   // would already have the right class), and single → single has no
   // split state worth recording. If focus is on neither pane (e.g., on
   // the help button, status bar, or body), keep the previous
-  // lastSplitFocus unchanged — overwriting with "nothing" would lose
+  // lastSplitFocus unchanged, since overwriting with "nothing" would lose
   // the last real value and we'd fall back to the default on return.
   if (prevMode === "split" && mode !== "split" && editorView) {
     if (editorView.hasFocus) {
@@ -887,17 +891,17 @@ export const setDisplayMode = (mode: string) => {
   //     still reach the invisible editor and modify the source
   //     behind the user's back. The out.focus() puts keyboard focus
   //     on the visible preview surface so arrow keys / Page Up /
-  //     Page Down actually scroll the preview — without it, focus
+  //     Page Down actually scroll the preview. Without it, focus
   //     falls to <body>, which doesn't react to those keys at all
   //     in this layout.
   //   - 'editor': focus the editor. With the preview hidden, the
-  //     editor is the only input surface — it should always be ready
-  //     to receive keystrokes, regardless of what was focused before
-  //     the mode switch (often body, after a prior preview-mode blur
-  //     or a click on preview in split mode). Without this, opening
-  //     the help dialog straight after switching to edit-only
-  //     captures `body` as pre-help focus, restoration lands on
-  //     body (no-op), and `:` silently fails.
+  //     editor is the only input surface, so it should always be
+  //     ready to receive keystrokes, regardless of what was focused
+  //     before the mode switch (often body, after a prior
+  //     preview-mode blur or a click on preview in split mode).
+  //     Without this, opening the help dialog straight after
+  //     switching to edit-only captures `body` as pre-help focus,
+  //     restoration lands on body (no-op), and `:` silently fails.
   //   - 'split' from a single-pane mode: restore focus to whichever
   //     pane was last focused in split before the round-trip, tracked
   //     in lastSplitFocus. See the comment above that variable for
@@ -916,9 +920,9 @@ export const setDisplayMode = (mode: string) => {
       editorView.focus();
     }
   }
-  // Sidebar TOC layout is preview-only; re-evaluate so leaving
-  // preview mode strips the sidebar classes (and entering it
-  // applies them if conditions hold).
+  // Sidebar table-of-contents layout is preview-only.
+  // Re-evaluate preview mode strips the sidebar classes (and
+  // entering it applies them if conditions hold).
   evaluateTocLayout();
 };
 
@@ -931,19 +935,19 @@ export const setDisplayMode = (mode: string) => {
 // --preview-padding-y) are all consumed by the CM6 theme and the
 // pane / scroll-container CSS rules, so a single assignment here
 // propagates to every rendered element that reads them. No CM6
-// dispatch effects, no theme reconfiguration dance — this is why
+// dispatch effects, no theme reconfiguration dance. This is why
 // CSS variables are strictly simpler than CM6 Compartments for
 // this use case.
 //
 // Runtime-read keys (asciidocSafeMode, cursorPositionFormat) are NOT
-// handled here — render() and formatCursorPosition() read them
+// handled here: render() and formatCursorPosition() read them
 // directly from the module-level userConfig each time they run.
 //
 // Call order: runs before `createEditor(...)` in the init block so
 // the first paint carries the user's values. The CM6 theme references
 // these variables via var(), which the browser resolves live (see the
-// font-size note below), so a later assignment would still apply —
-// the ordering is for a clean first frame.
+// font-size note below), so a later assignment would still apply.
+// The ordering is for a clean first frame.
 export const applyUserConfig = (cfg: SkrivroConfig) => {
   const root = document.documentElement;
 
@@ -953,7 +957,7 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   // user who sets `edit-font = Codelia` on a machine without Codelia
   // installed would get the browser's default monospace (usually ugly)
   // instead of our curated stack. Read the current stack via
-  // getComputedStyle — it's defined in styles.css, not as a JS
+  // getComputedStyle, since it's defined in styles.css, not as a JS
   // constant, so we can't inline the default here.
   if (cfg.editFont) {
     const current = getComputedStyle(root).getPropertyValue("--font-mono").trim();
@@ -979,8 +983,8 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   //
   // Editor side. --editor-padding-y is consumed by .cm-scroller's
   // margin-block in styles.css. Margin on .cm-scroller (rather than
-  // padding on .editor-pane) keeps CM6's .cm-panels-bottom — the
-  // container for Vim's Ex bar — anchored to the pane's bottom
+  // padding on .editor-pane) keeps CM6's .cm-panels-bottom (the
+  // container for Vim's Ex bar) anchored to the pane's bottom
   // rather than floating above a padded gap. --editor-padding-x is
   // consumed by .cm-line's padding-inline (in the CM6 theme) because
   // per-line horizontal padding is what keeps clicks near the far-
@@ -992,7 +996,7 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   // content is clipped away from the outer .preview-pane's edges.
   // --preview-padding-x is consumed by .preview-scroll's padding-inline.
   //
-  // Each variable's value is the user's raw string — one or two
+  // Each variable's value is the user's raw string: one or two
   // whitespace-separated CSS length tokens. The Rust-side
   // normalize_length helper has already validated token count
   // (max 2) and rejected any bare numbers, so whatever arrives
@@ -1049,7 +1053,7 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
     }
   }
 
-  // asciidocSafeMode and cursorPositionFormat are not applied here —
+  // asciidocSafeMode and cursorPositionFormat are not applied here:
   // they're read directly from userConfig by render() and
   // formatCursorPosition() at the points where they take effect.
 };
@@ -1058,7 +1062,7 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
 //
 // The CM6 updateListener (editor.js, inside makeExtensions) catches doc
 // and selection changes via onSelectionChange, which covers most Vim
-// mode transitions — most mode changes also tend to change selection
+// mode transitions, since most mode changes also tend to change selection
 // (v → visual starts a selection, Esc from insert → cursor moves back
 // by 1, etc.). But pure-mode transitions like `i` (normal → insert at
 // the current position) don't touch doc or selection, so onSelectionChange
@@ -1069,9 +1073,9 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
 host.addEventListener("keyup", refreshStatus);
 
 // COMMAND mode detection. The Vim command panel is rendered as a
-// CM6 panel containing an <input> element; pressing `:` focuses
+// CM6 panel containing an <input> element. Pressing `:` focuses
 // the input, and completing or canceling the command blurs it.
-// Tracking focus/blur on the input is the simplest signal — no
+// Tracking focus/blur on the input is the simplest signal, no
 // MutationObserver needed. The check matches any <input> inside the
 // editor host, which today means the Vim Ex input and the
 // find/replace panel's fields, so the pill also reads COMMAND while
@@ -1096,17 +1100,18 @@ host.addEventListener("focusout", (e) => {
 });
 
 // Keep the editor focused when clicking non-content regions of the
-// editor pane — gutter (line numbers), scrollbar, pane padding, and
+// editor pane: gutter (line numbers), scrollbar, pane padding, and
 // the empty space around the scroller. Without this, clicking any of
-// those moves focus to <body>; subsequent keystrokes, Vim commands,
-// and Ex commands (`:w`, `:e`, etc.) silently don't reach the editor
-// until the user clicks back into the content. The scrollbar case
-// produced an especially confusing symptom: the FIRST `:` after a
-// scrollbar click was swallowed (focus moving back to the editor
-// mid-keystroke), and only the second `:` opened the Ex prompt.
+// those moves focus to <body>, and subsequent keystrokes, Vim
+// commands, and Ex commands (`:w`, `:e`, etc.) silently don't reach
+// the editor until the user clicks back into the content. The
+// scrollbar case produced an especially confusing symptom: the FIRST
+// `:` after a scrollbar click was swallowed (focus moving back to
+// the editor mid-keystroke), and only the second `:` opened the Ex
+// prompt.
 //
-// .cm-content is CM6's contenteditable surface — the one place where
-// clicks legitimately move focus; CM6 handles cursor placement there,
+// .cm-content is CM6's contenteditable surface, the one place where
+// clicks legitimately move focus. CM6 handles cursor placement there,
 // so we skip our redirect. Input elements (CM6's search panel, the
 // Vim Ex input) are also skipped so their own focus semantics work.
 //
@@ -1129,13 +1134,13 @@ host.addEventListener("mousedown", (e) => {
 // centered with margin-auto inside its pane and capped to a width
 // less than the pane. The empty margin space around the scroller
 // lives in flex containers without overflow, so user input over
-// that space — wheel events, mousedowns — has no scrollable / focus
+// that space (wheel events, mousedowns) has no scrollable / focus
 // target ancestor by default. The handlers below forward those
 // events to the inner element so single-pane modes behave
 // consistently no matter where in the pane the cursor is.
 //
 // Skipped in split mode because the cap rules (`body.mode-editor` /
-// `body.mode-preview` scoping) don't apply there — each pane fills
+// `body.mode-preview` scoping) don't apply there: each pane fills
 // its half of .wrap with no margin gap to worry about.
 
 const wrapEl = document.querySelector(".wrap");
@@ -1153,7 +1158,7 @@ if (wrapEl) {
       } else if (prefs.displayMode === "preview") {
         scroller = out;
       } else {
-        return; // split — each pane handles its own wheel
+        return; // split: each pane handles its own wheel
       }
       if (!scroller) return;
       if (!(we.target instanceof Node)) return;
@@ -1182,7 +1187,7 @@ if (wrapEl) {
   // Editor-only margin click: clicks on the margin areas around
   // .cm-scroller can blur the editor's contentDOM. CM6 has its own
   // mousedown handler that catches margin clicks and places the
-  // cursor on the nearest line — for different-Y clicks this works
+  // cursor on the nearest line: for different-Y clicks this works
   // and keeps focus, but for same-Y clicks CM6 sees "no cursor
   // movement needed" and silently doesn't refocus contentDOM, so
   // the editor blurs.
@@ -1191,8 +1196,8 @@ if (wrapEl) {
   //   1. The browser's focus shift to <body> for clicks on a non-
   //      focusable target (which would override our focus call).
   //   2. CM6's margin-click cursor placement at different Y. That
-  //      jump is gone here — a deliberate trade-off. Margin clicks
-  //      as a way to navigate to a specific line are unusual; most
+  //      jump is gone here, a deliberate trade-off. Margin clicks
+  //      as a way to navigate to a specific line are unusual: most
   //      users click the text directly or use keyboard navigation.
   //      Losing that path is preferable to losing focus on accidental
   //      margin clicks.
@@ -1216,17 +1221,17 @@ if (wrapEl) {
 }
 
 // Keep a pane focused when clicking the titlebar or status bar (split
-// and editor-only modes only — in preview-only mode the editor is
+// and editor-only modes only: in preview-only mode the editor is
 // intentionally blurred by setDisplayMode). Both bars carry
 // `data-tauri-drag-region`, which sometimes consumes the mousedown
 // event (preserving pane focus as a side effect) and sometimes lets
 // it through (focus moves to <body>, and Ex commands silently fail
 // until the user clicks back into a pane). The flakiness is a Tauri
-// drag-region quirk; the redirect below makes focus preservation
+// drag-region quirk. The redirect below makes focus preservation
 // deterministic regardless of how Tauri handles any given click.
 //
 // In split mode, the redirect preserves whichever pane was focused
-// before the click — clicking chrome should be a no-op for focus
+// before the click, since clicking chrome should be a no-op for focus
 // state, not a pane switch from preview to editor. In editor-only
 // mode there's only one pane anyway, so this collapses to the old
 // "always editor" behavior. The wasPreviewFocused capture is
@@ -1234,9 +1239,9 @@ if (wrapEl) {
 // change), so it reflects the pre-click state even though the
 // .focus() call is deferred to the next frame via rAF.
 //
-// Skip clicks on buttons (the help `?` button) and inputs — those
-// have their own focus semantics that shouldn't be overridden. In
-// preview mode, skip the redirect so the editor stays blurred and
+// Skip clicks on buttons (the help `?` button) and inputs, since
+// those have their own focus semantics that shouldn't be overridden.
+// In preview mode, skip the redirect so the editor stays blurred and
 // the preview remains the read-only surface.
 const chromeFocusRedirect = (e: MouseEvent) => {
   if (prefs.displayMode === "preview") return;
@@ -1268,15 +1273,15 @@ statusBar.addEventListener("mousedown", chromeFocusRedirect as EventListener);
 //
 //   - Split mode only. Editor-only mode already focuses the editor
 //     on mode switch (so `:` naturally works there), and preview-
-//     only mode intentionally doesn't accept input — auto-capture
+//     only mode intentionally doesn't accept input, so auto-capture
 //     there would either open an invisible Ex prompt in the hidden
 //     editor or force a mode switch, both worse than doing nothing.
-//   - Plain `:` — no modifiers. Ctrl/Alt/Cmd+`:` might be a shortcut
-//     in some layout; don't swallow.
+//   - Plain `:` only, no modifiers. Ctrl/Alt/Cmd+`:` might be a
+//     shortcut in some layout, so don't swallow.
 //   - Skip when contentDOM already has focus (the normal Vim path
 //     handles it) and when an input/textarea has focus (the CM6
 //     search panel, the Vim Ex panel itself, confirm-dialog inputs).
-//   - Skip when Vim mode is disabled — `:` has no Ex meaning without
+//   - Skip when Vim mode is disabled: `:` has no Ex meaning without
 //     Vim, so swallowing it would just lose the keystroke.
 //
 // Capture phase beats CM6's keymap (same rationale as the existing
@@ -1307,7 +1312,7 @@ window.addEventListener(
 // user has selected text inside the preview itself. The webview's
 // default menu in the preview is just browser-navigation junk
 // (Back / Forward / Stop / Reload) which doesn't belong in a desktop
-// app — Reload specifically reloads the entire frontend and wipes
+// app. Reload specifically reloads the entire frontend and wipes
 // in-memory editor state down to the autosave's 500ms-window
 // granularity. With a selection, however, the native menu adds a
 // useful Copy item, so we let it through in that case.
@@ -1315,14 +1320,15 @@ window.addEventListener(
 // Scope: listener on `.preview-pane` (the outer wrapper, not
 // `.preview-scroll`) so right-clicks on the padding region between
 // `.preview-scroll` and the visible pane edges are also caught. The
-// editor pane is left alone — CM6's default context menu provides
+// editor pane is left alone: CM6's default context menu provides
 // useful items (Copy, Paste, Select All, Undo, Redo) there.
 //
 // Selection check confines the "let menu through" path to selections
 // anchored within the preview pane itself. A selection still active
 // in the editor (where the user copied something earlier) doesn't
-// count — it'd surface a Copy item that copies from the editor when
-// the user is right-clicking in the preview, which is confusing.
+// count, since it'd surface a Copy item that copies from the editor
+// when the user is right-clicking in the preview, which is
+// confusing.
 if (previewPaneEl) {
   previewPaneEl.addEventListener("contextmenu", (e) => {
     const selection = window.getSelection();
@@ -1339,7 +1345,7 @@ if (previewPaneEl) {
 
 // In production, kill the webview's native context menu on non-editable
 // surfaces (its reload/back/etc. items). Editable targets keep their
-// cut/copy/paste; dev keeps the full menu so Inspect stays. The
+// cut/copy/paste, while dev keeps the full menu so Inspect stays. The
 // find/replace panel lives inside .cm-editor, so we key off
 // contenteditable + inputs rather than excluding .cm-editor.
 if (import.meta.env.PROD) {
@@ -1354,7 +1360,7 @@ if (import.meta.env.PROD) {
 // Scope Ctrl+A (Cmd+A on Mac) to the preview's content when the
 // preview pane is the focused element. WebKit's default behavior on
 // Ctrl+A applied to a focused non-editable div with `tabindex="-1"`
-// is "select everything in the document" — which in split mode means
+// is "select everything in the document", which in split mode means
 // selecting both panes plus chrome text simultaneously. That sprawl
 // is what makes Ctrl+A appear broken in split-preview mode (the
 // selection IS happening, just unscoped). Confirmed via DevTools:
@@ -1378,11 +1384,11 @@ window.addEventListener(
     const mod = isMac ? e.metaKey : e.ctrlKey;
     if (!mod) return;
     if ((e.key || "").toLowerCase() !== "a") return;
-    // Reject if the secondary modifier or Shift is also held — this
+    // Reject if the secondary modifier or Shift is also held: this
     // handler is for plain Ctrl+A / Cmd+A only, not Ctrl+Alt+A or
     // Ctrl+Cmd+A or Ctrl+Shift+A. Secondary modifier is Alt on
-    // Linux/Windows, Ctrl on Mac (since primary is Cmd there); same
-    // mapping main.ts uses for app shortcuts.
+    // Linux/Windows, Ctrl on Mac (since primary is Cmd there), the
+    // same mapping main.ts uses for app shortcuts.
     const second = isMac ? e.ctrlKey : e.altKey;
     if (e.shiftKey || second) return;
     // Scope to the preview when:
@@ -1390,13 +1396,13 @@ window.addEventListener(
     //       preview-only after explicit focus via Ctrl+Alt+W or click), OR
     //   (b) we're in preview-only mode regardless of where focus
     //       actually lives. After setDisplayMode('preview') blurs the
-    //       editor, focus typically lands on <body>; Ctrl+A on body
+    //       editor, focus typically lands on <body>, and Ctrl+A on body
     //       falls through to the webview's default "select entire
     //       visible document," which sweeps in the status bar text
     //       (filename, format, word count) alongside the rendered
     //       preview content. In preview-only there's no other pane the
-    //       user could possibly mean — preview is the sole visible
-    //       surface — so we scope unambiguously.
+    //       user could possibly mean (preview is the sole visible
+    //       surface), so we scope unambiguously.
     // Split mode with focus on body is intentionally NOT covered here:
     // the user could mean either pane and we'd be guessing.
     const previewFocused = document.activeElement === out;

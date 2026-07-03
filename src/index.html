@@ -8,7 +8,7 @@
     <!-- Inline (non-module) script runs synchronously during parse, before
        the first paint. Reads prefs from localStorage and sets body classes
        immediately so the titlebar / gutter / display-mode state is correct
-       on the very first frame — no FOUC. The module script's applyTitlebar
+       on the very first frame, no FOUC. The module script's applyTitlebar
        / applyGutter / applyDisplayMode calls still run later, but they're
        no-ops because the classes are already correct. -->
     <script>
@@ -29,7 +29,7 @@
        parsing) with the user-selected theme's color values. Applies those
        as :root inline CSS overrides. Inline styles win over stylesheet
        values at any specificity, so the CSS defaults in styles.css get
-       overridden on first paint — no visible transition from Catppuccin
+       overridden on first paint, no visible transition from Catppuccin
        Mocha defaults to the user's theme.
        See lib.rs::compute_initial_state for the Rust-side half. -->
     <script>
@@ -50,7 +50,7 @@
     <!-- data-tauri-drag-region makes the titlebar a mouse-drag handle for
        moving the window, needed on decorationless Mac builds where there's
        otherwise no app-level way to drag. The help button inside remains
-       clickable — Tauri's drag-region handling excludes interactive
+       clickable, since Tauri's drag-region handling excludes interactive
        elements (buttons, inputs, etc.) from triggering drag. Users who
        hide the titlebar via Ctrl+Alt+T / ⌃⌘T lose the drag region along
        with it; that's an accepted tradeoff of the "minimal UI" toggle. -->
@@ -75,14 +75,14 @@
          positioned inset from the outer's top and bottom by the
          configured vertical padding. This gives the "text doesn't
          reach the pane's edges when scrolled" effect via geometric
-         clipping rather than via an overlay — overlays composited at
+         clipping rather than via an overlay: overlays composited at
          fractional DPI produce sub-pixel-bleed artifacts in WebKitGTK
          that are unfixable in CSS, whereas `overflow: hidden`
          clipping rounds to integer device pixels and renders cleanly
          at any scaling factor. Cost: the scroll container's height
          is shorter than the pane's, so its scrollbar track is shorter
          by the amount of top + bottom padding. Minor at default 2rem,
-         noticeable at large user-configured padding — documented in
+         noticeable at large user-configured padding, documented in
          resources/skrivro.conf.default.
 
          tabindex="-1" on .preview-scroll makes it programmatically
@@ -98,13 +98,13 @@
       </div>
     </main>
 
-    <!-- Status bar: mode pill (Vim-only) + filename on the left;
+    <!-- Status bar: mode pill (Vim-only) + filename on the left,
        file type + cursor position on the right. Toggled by
        Ctrl+Alt+B / ⌃⌘B. -->
     <!-- data-tauri-drag-region: second drag handle for the window, so users
        who hide the titlebar via Ctrl+Alt+T / ⌃⌘T still have a way to
        drag. All status bar slots are non-interactive (mode pill,
-       filename, filetype, position, word count, sync indicator — all
+       filename, filetype, position, word count, sync indicator, all
        display-only spans with no click handlers), so nothing gets
        swallowed by the drag behavior. -->
     <footer class="statusbar" id="statusbar" data-tauri-drag-region>
@@ -395,7 +395,7 @@
        lands on window.__SKRIVRO_LANG__ which the module script reads.
 
        For Swedish, translates the static status bar text ("Ln 1, Col 1"
-       and "0 words") in-place before first paint — no "Ln flashes then
+       and "0 words") in-place before first paint, no "Ln flashes then
        turns to Rad" experience. Module-side translation handles the
        rest (mode pill on transition, help dialog on init, confirm
        dialog on show). -->

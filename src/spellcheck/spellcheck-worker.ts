@@ -2,7 +2,7 @@
 // ================= Spellcheck worker =================
 //
 // Off-main-thread spellcheck. This worker owns the nspell instance(s)
-// and the loaded dictionaries; the main thread (spellcheck/index.ts)
+// and the loaded dictionaries, and the main thread (spellcheck/index.ts)
 // posts the editor's visible text and gets back the misspelled ranges,
 // which it renders as CodeMirror decorations.
 //
@@ -15,7 +15,7 @@
 // English ships bundled: its dictionary is vendored under ./dict and
 // emitted as a standalone asset via Vite `?url`, then fetched at runtime
 // (the wooorm package blocks deep .aff/.dic imports through its `exports`
-// field, so the file is vendored locally). Swedish is NOT bundled — it,
+// field, so the file is vendored locally). Swedish is NOT bundled: it,
 // and any English override, are user-supplied files the main thread reads
 // from the app config dir and hands in through the init message, so the
 // LGPL Swedish dictionary stays out of our binary. Offline either way: the
@@ -99,14 +99,15 @@ export type SpellResponse = ReadyResponse | ResultResponse | SuggestionsResponse
 
 // ===== Dictionaries =====
 
-// Loaded checkers — one for 'en' or 'sv', two for 'both'. A word is
+// Loaded checkers: one for 'en' or 'sv', two for 'both'. A word is
 // misspelled only if NONE of them accept it (so 'both' passes a word
-// either English or Swedish knows — right for mixed-language docs).
+// either English or Swedish knows, right for mixed-language docs).
 let spellers: NSpell[] = [];
 
 // Custom words (the user's personal dictionary), lowercased for
 // case-insensitive matching. Replaced wholesale by a `setPersonal`
-// message; a word in here is never flagged, in any configured language.
+// message, and a word in here is never flagged, in any configured
+// language.
 let personalWords = new Set<string>();
 
 // Per-word correctness memo, cleared whenever the dictionary set changes.
@@ -114,13 +115,14 @@ let personalWords = new Set<string>();
 // repeat lookups makes them O(1).
 const wordCache = new Map<string, boolean>();
 
-// `?url` gives the bundled asset's URL; fetch reads its text. Same-origin
-// (the worker shares the app's origin), so this resolves through the
-// app's asset protocol with no network access.
+// `?url` gives the bundled asset's URL, and fetch reads its text.
+// Same-origin (the worker shares the app's origin), so this resolves
+// through the app's asset protocol with no network access.
 const fetchText = (url: string): Promise<string> => fetch(url).then((r) => r.text());
 
 // Bundled English: fetch the vendored en-US asset. This is the only
-// dictionary that ships in the binary; everything else is user-supplied.
+// dictionary that ships in the binary, and everything else is
+// user-supplied.
 const loadEnBundled = async (): Promise<NSpell> => {
   const [affUrl, dicUrl] = await Promise.all([
     import("./dict/en-US.aff?url").then((m) => m.default),
@@ -131,7 +133,7 @@ const loadEnBundled = async (): Promise<NSpell> => {
 };
 
 // User-supplied English override (en_GB / en_AU / ...). Plain nspell,
-// no stripping — English compound directives are narrow and safe (see
+// no stripping: English compound directives are narrow and safe (see
 // the Swedish block below for the full story).
 const buildEn = (d: DictPayload): NSpell => nspell(d.aff, d.dic);
 
@@ -139,18 +141,18 @@ const buildEn = (d: DictPayload): NSpell => nspell(d.aff, d.dic);
 // the CHECKCOMPOUND* guard rules that constrain them. The Swedish
 // dictionary leans hard on compounding (COMPOUNDMIN 1 over single-
 // character stems plus a `0*`-style COMPOUNDRULE), so without the guards
-// nspell decomposes and accepts essentially ANY string — every word
+// nspell decomposes and accepts essentially ANY string: every word
 // validates and nothing is ever flagged. We strip the compound
 // directives before handing the .aff to nspell: base words and the many
 // lexicalized compounds already in the 153k-entry dictionary still
-// validate and garbage is correctly rejected; the cost is that novel /
-// productive compounds not individually listed slip through unflagged.
-// ONLYINCOMPOUND is stripped too — the dictionary mis-tags ~2,700
+// validate and garbage is correctly rejected, and the cost is that novel
+// / productive compounds not individually listed slip through unflagged.
+// ONLYINCOMPOUND is stripped too, since the dictionary mis-tags ~2,700
 // headwords (1.8%) with it, including everyday standalone words like
 // "fick"/"hoppar", and nspell (like real Hunspell) honors it, so keeping
 // it squiggles common words. Dropping it lets genuine bound stems
 // ("abborr-", "adoptiv-") validate standalone, a near-invisible false
-// negative; garbage rejection comes from COMPOUNDRULE and is unaffected.
+// negative. Garbage rejection comes from COMPOUNDRULE and is unaffected.
 // English carries a few compound directives too (bundled en-US and the
 // en variants both do), but narrow ones for number/ordinal forms, not
 // Swedish's broad single-stem compounding. They don't over-accept, so
@@ -217,9 +219,9 @@ const check = (pieces: CheckPiece[]): MisspelledRange[] => {
       // handled in spellcheck/index.ts. This worker flags every misspelling
       // so the right-click menu can read the full set.
       // Skip a letter-run that sits against a digit ("h1", "utf8", "v2")
-      // — an identifier, not prose. Adjacency is read from this slice via
+      // (an identifier, not prose). Adjacency is read from this slice via
       // charAt, which returns '' past either edge, so a word at the slice
-      // boundary sees no neighbor and isn't skipped — a negligible
+      // boundary sees no neighbor and isn't skipped, a negligible
       // difference confined to viewport edges.
       const before = text.charAt(localStart - 1);
       const after = text.charAt(localStart + word.length);

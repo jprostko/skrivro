@@ -5,20 +5,21 @@
 # Synthetic generation (rather than a real document) buys a size knob:
 # the tiers below sweep from small to pathological, so render and debounce
 # behavior can be measured against document size. Each document is built
-# by repeating a content unit — heading, prose, list, code block,
-# admonition, table — so the renderer is exercised on real features
+# by repeating a content unit (heading, prose, list, code block,
+# admonition, table), so the renderer is exercised on real features
 # rather than flat text.
 #
 # Also emits sync-drift-test.md, a fixed-content Markdown document that
 # demonstrates the scroll-sync drift on raw-HTML blocks (the sync map
-# pairs one block token to one preview element; a raw-HTML token can
+# pairs one block token to one preview element, while a raw-HTML token can
 # render as several elements or none, shifting every later pairing).
 # It has a control zone that syncs exactly, an HTML zone with a known
-# engineered shift, and numbered markers where the drift shows — a
+# engineered shift, and numbered markers where the drift shows, a
 # before/after artifact for fixing that pairing.
 #
 # Output goes to test-data/ at the repo root, overwriting any previous
-# run. The output is generated, not authored — it is not part of the app.
+# run. The output is generated, not authored, and it is not part of the
+# app.
 #
 # Usage:  scripts/gen-test-docs.sh
 
@@ -31,8 +32,8 @@ INC="$OUT/includes"
 
 # Tier name : content-unit count. One unit is roughly 1 KB, so the tiers
 # land approximately at: small ~2 KB, medium ~30 KB, large ~275 KB,
-# ridiculous ~1.5 MB. The run prints actual sizes — adjust a count here
-# if a tier drifts out of its intended range.
+# ridiculous ~1.5 MB. The run prints actual sizes, so adjust a count
+# here if a tier drifts out of its intended range.
 TIERS=(small:2 medium:30 large:250 ridiculous:1400)
 
 # Number of included chunk files for the include-heavy AsciiDoc variant.
@@ -50,7 +51,7 @@ CODE='fn render(source: &str) -> Html {
     document.to_html()
 }'
 
-# emit one AsciiDoc content unit; $1 = section index
+# emit an AsciiDoc content unit ($1 = section index)
 emit_adoc() {
   local n="$1"
   cat <<EOF
@@ -85,7 +86,7 @@ Admonition block for section $n, exercising the admonition render path.
 EOF
 }
 
-# emit one Markdown content unit; $1 = section index
+# emit a Markdown content unit ($1 = section index)
 emit_md() {
   local n="$1"
   cat <<EOF
@@ -147,7 +148,7 @@ done
 
 # --- scroll-sync drift document ----------------------------------------
 # Fixed content plus a marker loop. The HTML chunks are deliberately
-# blank-line-separated so each chunk is ONE markdown-it html_block token;
+# blank-line-separated so each chunk is ONE markdown-it html_block token,
 # a chunk of three divs renders as three top-level elements (+2 pairing
 # shift each), the two-div chunk as two (+1), and the comment renders as
 # zero (-1). Net shift: +6.

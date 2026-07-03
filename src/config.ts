@@ -2,8 +2,9 @@
 // Holds the parsed skrivro.conf contents loaded from Rust at init.
 // Separate from prefs.ts (which holds localStorage-backed UI state):
 // prefs = browser-local UI preferences (Vim mode, titlebar, display
-// mode, etc.); userConfig = external config file (fonts, padding,
-// theme, Asciidoctor safe mode, cursor position format, etc.).
+// mode, etc.), while userConfig = external config file (fonts,
+// padding, theme, Asciidoctor safe mode, cursor position format,
+// etc.).
 //
 // Populated by main.ts at init time via setUserConfig, then read by
 // ui.ts's applyUserConfig (for DOM-level application) and by specific
@@ -12,7 +13,7 @@
 // formatCursorPosition(), main.ts reads restoreSession for the
 // session-restore launch path.
 //
-// Exported as a live binding — when main.ts reassigns via
+// Exported as a live binding: when main.ts reassigns via
 // setUserConfig, all importers see the new value on next read.
 
 // ================= Types =================
@@ -23,8 +24,8 @@
 //
 //   - SkrivroConfig: Rust struct uses `#[serde(rename_all = "camelCase")]`,
 //     so field names arrive as camelCase in JS (edit_font → editFont).
-//   - ThemeColors: same — `bg_panel` (Rust) → `bgPanel` (JS).
-//   - SessionState: same — `last_file_path` (Rust) → `lastFilePath` (JS).
+//   - ThemeColors: same: `bg_panel` (Rust) → `bgPanel` (JS).
+//   - SessionState: same: `last_file_path` (Rust) → `lastFilePath` (JS).
 //   - LaunchInfo: NO rename annotation in Rust, so field names stay
 //     snake_case (`initial_file`, `cwd`).
 //
@@ -35,7 +36,7 @@
 // distinguish null from undefined-or-number.
 //
 // If the Rust struct grows a new field, adding it here is enough for
-// consumers to see it — TS will error at any usage site that doesn't
+// consumers to see it, since TS will error at any usage site that doesn't
 // know about it, which is a feature.
 
 export interface ThemeColors {
@@ -79,14 +80,15 @@ export interface ThemeColors {
 }
 
 export interface SkrivroConfig {
-  // Fonts (CSS font-family values — the user's input is prepended to
+  // Fonts (CSS font-family values, the user's input is prepended to
   // the built-in stack in applyUserConfig).
   editFont?: string;
   previewFont?: string;
 
   // Lengths (explicit CSS unit required by the Rust-side
-  // normalize_length helper; bare numbers are rejected before we see
-  // them, so what arrives here is always a valid CSS length string).
+  // normalize_length helper, and bare numbers are rejected before we
+  // see them, so what arrives here is always a valid CSS length
+  // string).
   editFontSize?: string;
   previewFontSize?: string;
   editorPaddingX?: string;
@@ -94,14 +96,15 @@ export interface SkrivroConfig {
   previewPaddingX?: string;
   previewPaddingY?: string;
 
-  // Theme name (informational — the actual colors are pre-resolved by
+  // Theme name (informational, the actual colors are pre-resolved by
   // Rust and arrive as themeColors below).
   theme?: string;
   themeColors?: ThemeColors | null;
 
   // Mode knobs. String types kept broad (not unioned literals) because
-  // the Rust-side parser may produce unknown values on typos — consumer
-  // code validates and falls through to defaults for unknown strings.
+  // the Rust-side parser may produce unknown values on typos, so
+  // consumer code validates and falls through to defaults for unknown
+  // strings.
   asciidocSafeMode?: string;
   cursorPositionFormat?: string;
   statusbarStyle?: string;
@@ -136,7 +139,7 @@ export interface SkrivroConfig {
 }
 
 // Rust-side: struct LaunchInfo { initial_file: Option<String>, cwd: String }.
-// NO camelCase rename — field names arrive as-is.
+// NO camelCase rename, so field names arrive as-is.
 export interface LaunchInfo {
   initial_file: string | null;
   cwd: string;

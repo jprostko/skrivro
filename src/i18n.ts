@@ -1,18 +1,19 @@
 // ================= Localization =================
 //
-// Minimal pragmatic translation system — English and Swedish only,
+// Minimal pragmatic translation system: English and Swedish only,
 // no i18n framework, no JSON loader, no runtime language switching.
 // Language is resolved once by the inline <script> at end of body
 // (which reads the Rust-side config override or falls back to
 // navigator.language auto-detect), landing on window.__SKRIVRO_LANG__.
 //
 // NOT translated (stays English everywhere):
-// - Ex commands (:w, :open, :syncpreview, etc.) — input syntax; real
-//   Vim doesn't localize command names either
-// - Keyboard shortcut names (Ctrl+S, ⌃⌘T on Mac, etc.) — physical key
+// - Ex commands (:w, :open, :syncpreview, etc.), input syntax (real
+//   Vim doesn't localize command names either)
+// - Keyboard shortcut names (Ctrl+S, ⌃⌘T on Mac, etc.), physical key
 //   identifiers, not translatable text
-// - Filename strings like untitled.adoc — filenames don't localize
-// - App name "Skrivro" — coined from Swedish, nothing to translate
+// - Filename strings like untitled.adoc, since filenames don't
+//   localize
+// - App name "Skrivro", coined from Swedish, nothing to translate
 //
 // To extend to a new language later: add a STRINGS_<LANG> map, update
 // the resolution logic in the inline <script>, extend the Rust-side
@@ -44,14 +45,15 @@ export const searchPhrases: Record<string, string> =
     : { "by word": "whole word", regexp: "regex" };
 
 // Mac detection for keyboard conventions. On Mac, the app's shortcut
-// modifier is Cmd (metaKey), not Ctrl — matching every native Mac app.
+// modifier is Cmd (metaKey), not Ctrl, matching every native Mac app.
 // Ctrl on Mac is deliberately left alone so Vim can keep its own
 // Ctrl-based bindings (Ctrl+V for V-BLOCK, Ctrl+W for window commands,
 // Ctrl+R for redo, Ctrl+D/U/F/B for scrolling, etc.). Linux and Windows
-// stay strict on Ctrl; metaKey on those platforms is the Super/Win key,
-// which is WM-reserved and almost never reaches a userland app anyway.
+// stay strict on Ctrl, and metaKey on those platforms is the Super/Win
+// key, which is WM-reserved and almost never reaches a userland app
+// anyway.
 //
-// navigator.userAgent match is good enough — this is a broad platform
+// navigator.userAgent match is good enough: this is a broad platform
 // gate, not a fingerprint. No @tauri-apps/plugin-os dependency needed.
 export const isMac = /Mac/i.test(navigator.userAgent);
 
@@ -60,16 +62,17 @@ export const isMac = /Mac/i.test(navigator.userAgent);
 // annotation TS infers the narrow literal shape of the object and
 // rejects string-indexed lookups under strict mode.
 export const STRINGS_SV: Record<string, string> = {
-  // Status bar — mode pill labels. NORMAL and V-BLOCK stay unchanged
-  // (NORMAL is the same word in Swedish; BLOCK is the same in Swedish
-  // as well — the abbreviated "V-" prefix is language-neutral).
+  // Status bar: mode pill labels. NORMAL and V-BLOCK stay unchanged
+  // (NORMAL is the same word in Swedish, and BLOCK is the same in
+  // Swedish as well, since the abbreviated "V-" prefix is
+  // language-neutral).
   INSERT: "INFOGA",
   REPLACE: "ERSÄTT",
   COMMAND: "KOMMANDO",
   VISUAL: "VISUELL",
   "V-LINE": "V-RAD",
 
-  // Status bar — cursor position prefixes and content-count labels
+  // Status bar: cursor position prefixes and content-count labels
   Ln: "Rad",
   Col: "Kol",
   word: "ord",
@@ -77,26 +80,26 @@ export const STRINGS_SV: Record<string, string> = {
   line: "rad",
   lines: "rader",
   char: "tecken",
-  chars: "tecken", // neuter noun — same plural form as singular
+  chars: "tecken", // neuter noun, same plural form as singular
 
-  // Status bar — spellcheck-off indicator (on in config, toggled off at
+  // Status bar: spellcheck-off indicator (on in config, toggled off at
   // runtime). Parens added at the call site.
   "spellcheck off": "stavningskontroll av",
 
-  // Status bar — user-supplied-dictionary states. Swedish (and any non
-  // en-US English) is loaded from <config>/dictionaries/; these show when
-  // a requested Swedish dictionary file is absent. Parens added at the
-  // call site.
+  // Status bar: user-supplied-dictionary states. Swedish (and any non
+  // en-US English) is loaded from <config>/dictionaries/, and these show
+  // when a requested Swedish dictionary file is absent. Parens added at
+  // the call site.
   "Swedish dictionary not found": "svensk ordlista saknas",
   "Swedish dictionary not found, English only": "svensk ordlista saknas, endast engelska",
   "Swedish dictionary not found, using English": "svensk ordlista saknas, använder engelska",
 
-  // Vim-panel / Ex-command channel — error messages and readbacks. By
+  // Vim-panel / Ex-command channel: error messages and readbacks. By
   // design these stay English (the Vim way): E-code prefixes
   // (E37:/E212:/E474:), command-argument tokens
   // (on/off/narrow/medium/wide/full), config keys (spellcheck-language),
   // and the ! modifier. %s placeholders fill positionally from tr() args.
-  // "Format: %s" has no entry — Format is identical in Swedish.
+  // "Format: %s" has no entry, since Format is identical in Swedish.
   "E212: Can't open file for writing: %s (%s)": "E212: Kan inte öppna filen för skrivning: %s (%s)",
   "E212: Can't open file for writing (%s)": "E212: Kan inte öppna filen för skrivning (%s)",
   "E484: Can't open file %s (%s)": "E484: Kan inte öppna filen %s (%s)",
@@ -125,21 +128,21 @@ export const STRINGS_SV: Record<string, string> = {
   '"%s" is not a custom word': '"%s" är inte ett eget ord',
   "%s is too large to open (%s, limit %s)": "%s är för stor för att öppna (%s, gräns %s)",
 
-  // Confirm dialog — message and button labels
+  // Confirm dialog: message and button labels
   "You have unsaved changes. Discard them?": "Du har osparade ändringar. Kasta dem?",
   Discard: "Kasta",
   Cancel: "Avbryt",
 
-  // Help dialog — top-level h2 headings (textContent-matched)
+  // Help dialog: top-level h2 headings (textContent-matched)
   "Keyboard shortcuts": "Kortkommandon",
   "Vim Ex commands (Vim mode only)":
     'Vim Ex-kommandon <span class="help-note">(endast i Vim-läge)</span>',
   "Vim normal mode (Vim mode only)":
     'Vim normalläge <span class="help-note">(endast i Vim-läge)</span>',
 
-  // Help dialog — h3 section headings. "File" repeats under both
-  // Keyboard shortcuts and Vim Ex commands; DOM sweep translates both
-  // occurrences since it matches by textContent.
+  // Help dialog: h3 section headings. "File" repeats under both
+  // Keyboard shortcuts and Vim Ex commands, and the DOM sweep
+  // translates both occurrences since it matches by textContent.
   File: "Fil",
   Display: "Visning",
   Navigation: "Navigering",
@@ -153,7 +156,7 @@ export const STRINGS_SV: Record<string, string> = {
   Find: "Sök",
   Editing: "Redigering",
 
-  // Help dialog — keyboard shortcut descriptions
+  // Help dialog: keyboard shortcut descriptions
   Save: "Spara",
   "Save as": "Spara som",
   Open: "Öppna",
@@ -179,11 +182,11 @@ export const STRINGS_SV: Record<string, string> = {
     "Växla synlighet för innehållsförteckning (återställs vid start)",
   "Sync preview to cursor": "Synka förhandsvisning till markör",
   "Toggle focus between editor and preview": "Växla fokus mellan redigerare och förhandsvisning",
-  // Help dialog — find/replace (Ctrl+F keybind + :find Ex command)
+  // Help dialog: find/replace (Ctrl+F keybind + :find Ex command)
   "Find and replace (Vim users use :find)": "Sök och ersätt (Vim-användare använder :find)",
   "Open find and replace": "Öppna sök och ersätt",
   // Ex command descriptions for :format. The format names (asciidoc /
-  // markdown / text) stay English — they are the literal command
+  // markdown / text) stay English, since they are the literal command
   // arguments the user types.
   "Show the current format": "Visa aktuellt format",
   "Set format: asciidoc / markdown / text": "Ställ in format: asciidoc / markdown / text",
@@ -197,7 +200,7 @@ export const STRINGS_SV: Record<string, string> = {
 
   // Ex command descriptions for :spell. The literal config-key name
   // (spellcheck-language) and the filename (skrivro.conf) stay English
-  // — same convention as the allow-external-images entry below.
+  // (same convention as the allow-external-images entry below).
   "Show whether spellcheck is on or off (offline, set the language with spellcheck-language in skrivro.conf)":
     "Visa om stavningskontroll är på eller av (offline, ställ in språket med spellcheck-language i skrivro.conf)",
   "Turn spellcheck on or off (mirrors Ctrl+Alt+K)":
@@ -221,7 +224,7 @@ export const STRINGS_SV: Record<string, string> = {
   "Show or hide the table of contents (mirrors Ctrl+Alt+I, resets on launch)":
     "Visa eller dölj innehållsförteckningen (motsvarar <kbd>Ctrl+Alt+I</kbd>, återställs vid start)",
 
-  // Help dialog — placeholder labels inside <kbd><var>...</var></kbd>
+  // Help dialog: placeholder labels inside <kbd><var>...</var></kbd>
   // syntax examples (e.g. ":w <var>filename</var>"). Translated even
   // though the surrounding Ex command stays English, because the
   // placeholder names a user-supplied value rather than being part
@@ -230,7 +233,7 @@ export const STRINGS_SV: Record<string, string> = {
   filename: "filnamn",
   name: "namn",
 
-  // Help dialog — Vim Ex command descriptions
+  // Help dialog: Vim Ex command descriptions
   "Save current file": "Spara aktuell fil",
   "Write buffer contents to a path (current buffer association unchanged)":
     "Skriv buffertinnehåll till en sökväg (aktuell buffertassociation oförändrad)",
@@ -242,7 +245,7 @@ export const STRINGS_SV: Record<string, string> = {
   "New empty buffer": "Ny tom buffert",
   "Show the file picker dialog": "Visa fildialogen",
 
-  // Help dialog — Vim Quit command descriptions
+  // Help dialog: Vim Quit command descriptions
   "Quit (confirm if dirty)": "Avsluta (bekräfta om osparad)",
   "Force quit, discard changes without prompting": "Tvinga avsluta, kasta ändringar utan att fråga",
   "Save and quit (always writes, updates mtime)":
@@ -255,11 +258,11 @@ export const STRINGS_SV: Record<string, string> = {
   "Save all, quit all": "Spara alla, avsluta alla",
   "Save if dirty (all), quit all": "Spara om osparad (alla), avsluta alla",
 
-  // Help dialog — Vim Preview command descriptions
+  // Help dialog: Vim Preview command descriptions
   "Snap preview to the block containing the caret line":
     "Snäpp förhandsvisning till blocket som innehåller markörraden",
 
-  // Help dialog — Vim normal mode / Modes
+  // Help dialog: Vim normal mode / Modes
   "Insert mode (before / after cursor)": "Infogningsläge (före / efter markör)",
   "Visual mode (character-wise)": "Visuellt läge (teckenvis)",
   "Visual line mode": "Visuellt radläge",
@@ -268,7 +271,7 @@ export const STRINGS_SV: Record<string, string> = {
   "Ex command line": "Ex-kommandorad",
   "Return to normal mode": "Återgå till normalläge",
 
-  // Help dialog — Vim normal mode Commands
+  // Help dialog: Vim normal mode Commands
   "Snap preview to cursor (same as :syncpreview)":
     "Snäpp förhandsvisning till markör (samma som :syncpreview)",
   "Save if dirty, quit (same as :x)": "Spara om osparad, avsluta (samma som :x)",
@@ -278,7 +281,7 @@ export const STRINGS_SV: Record<string, string> = {
   "Remove the word under the cursor from your custom dictionary (same as :spellundo)":
     "Ta bort ordet under markören från din egen ordlista (samma som :spellundo)",
 
-  // Preview pane — external-image gate placeholder. The literal
+  // Preview pane: external-image gate placeholder. The literal
   // `allow-external-images` config-key name stays English in both
   // languages (input syntax).
   "image blocked": "bild blockerad",
@@ -289,9 +292,9 @@ export const STRINGS_SV: Record<string, string> = {
 };
 
 // Translation helper. Returns the Swedish string if current language
-// is 'sv' and the map contains an entry; otherwise returns the input
-// unchanged. Missing entries are silently un-translated — acceptable
-// for partial coverage.
+// is 'sv' and the map contains an entry, and otherwise returns the
+// input unchanged. Missing entries are silently un-translated,
+// acceptable for partial coverage.
 //
 // Named `tr` rather than the conventional `t` because `t` is already
 // taken as module-level import alias for @lezer/highlight's `tags`
@@ -299,7 +302,8 @@ export const STRINGS_SV: Record<string, string> = {
 // than renaming the deeply-used Lezer import.
 // Optional %s placeholders are filled positionally from args, so a
 // message with interpolated values stays one translatable key (the
-// Vim-panel error/readback channel needs this; static UI uses tr(en)).
+// Vim-panel error/readback channel needs this, while static UI uses
+// tr(en)).
 export const tr = (en: string, ...args: unknown[]): string => {
   const s = lang === "sv" ? (STRINGS_SV[en] ?? en) : en;
   if (args.length === 0) return s;
@@ -310,7 +314,7 @@ export const tr = (en: string, ...args: unknown[]): string => {
 // Translate the help dialog's static content in-place. Runs once at
 // init since the dialog DOM doesn't change at runtime. Also handles
 // the confirm dialog's buttons (Cancel / Discard) which are static
-// in HTML too but only visible when the dialog is opened — no FOUC
+// in HTML too but only visible when the dialog is opened: no FOUC
 // concern, just needs to be done before the first confirm shows up.
 //
 // Uses innerHTML (not textContent) so future translation entries can

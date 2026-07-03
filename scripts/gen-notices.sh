@@ -59,19 +59,20 @@ echo "" >> "$OUTPUT"
 pnpm licenses list --prod --json > "$TMPDIR/npm.json"
 
 # Format the JSON dump into plain-text sections. Inline python3 avoids a
-# separate formatter file; the heredoc keeps the logic self-contained.
+# separate formatter file, and the heredoc keeps the logic
+# self-contained.
 python3 - "$TMPDIR/npm.json" <<'PYEOF' >> "$OUTPUT"
 import json, sys, os, glob
 
 with open(sys.argv[1]) as f:
     data = json.load(f)
 
-# pnpm groups packages under their license key; flatten and sort by name
-# for stable, diffable output.
+# pnpm groups packages under their license key, so flatten and sort by
+# name for stable, diffable output.
 packages = [entry for entries in data.values() for entry in entries]
 
-# Prefer a dedicated license file; fall back to a README, since some
-# packages (e.g. font-awesome) carry their terms there instead.
+# Prefer a dedicated license file, and fall back to a README, since
+# some packages (e.g. font-awesome) carry their terms there instead.
 LICENSE_GLOBS = ("LICENSE*", "LICENCE*", "License*", "licence*", "license*", "COPYING*")
 README_GLOBS = ("README*", "Readme*", "readme*")
 

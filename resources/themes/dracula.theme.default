@@ -1,4 +1,4 @@
-# Dracula — Skrivro theme port
+# Dracula: Skrivro theme port
 #
 # Source: dracula/vim (https://github.com/dracula/vim)
 # Palette reference: autoload/dracula.vim
@@ -27,7 +27,7 @@ surface-hover = #424450
 # shades for secondary/tertiary text (titlebar, captions, statusbar
 # labels). text-muted and text-dim below are computed midpoints between
 # fg and comment to fill that gap. They are NOT official Dracula palette
-# colors — they are interpolations chosen to produce natural-looking
+# colors, they are interpolations chosen to produce natural-looking
 # intermediate grays that feel consistent with Dracula's cool-toned
 # aesthetic.
 text = #F8F8F2

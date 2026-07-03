@@ -1,6 +1,6 @@
-# Catppuccin Mocha — Skrivro theme (REFERENCE FILE)
+# Catppuccin Mocha: Skrivro theme (REFERENCE FILE)
 #
-# This file is NOT loaded at runtime — Catppuccin Mocha is the CSS
+# This file is NOT loaded at runtime: Catppuccin Mocha is the CSS
 # default, so its values are compiled into styles.css as the :root
 # fallback. This file exists purely as a reference for theme authors:
 # copy it, rename to your-theme.theme, replace each value with your
@@ -22,24 +22,24 @@
 # Hierarchical layers from brightest to deepest.
 
 bg = #1e1e2e
-# Primary background — body, editor pane, scrollbar tracks, preview
+# Primary background: body, editor pane, scrollbar tracks, preview
 # block inner bg (exampleblock, sidebarblock, admonition).
 
 bg-panel = #181825
-# Chrome / elevated surfaces — titlebar, preview pane, confirm dialog,
+# Chrome / elevated surfaces: titlebar, preview pane, confirm dialog,
 # help dialog, CM6 Ex command panel.
 
 bg-inset = #11111b
-# Deepest layer — preview code/pre blocks, literalblock, render-error.
+# Deepest layer: preview code/pre blocks, literalblock, render-error.
 
 bg-backdrop = rgba(17, 17, 27, 0.6)
 # Dialog backdrop overlay (semi-transparent). The rgb channels match
-# bg-inset; the alpha controls how much the underlying content shows
-# through the modal overlay.
+# bg-inset, and the alpha controls how much the underlying content
+# shows through the modal overlay.
 
 bg-stripe = rgba(49, 50, 68, 0.3)
 # Preview table even-row zebra stripe. The rgb channels match the
-# surface color; the alpha keeps the stripe subtle.
+# surface color, and the alpha keeps the stripe subtle.
 
 bg-active-line = rgba(49, 50, 68, 0.25)
 # CM6 active line highlight. Same base as bg-stripe, slightly lower
@@ -51,15 +51,15 @@ shadow = rgba(0, 0, 0, 0.5)
 # don't look like black holes on a white background.
 
 # ================= Surfaces =================
-# Interactive chrome layers — borders, buttons, inputs, scrollbar.
+# Interactive chrome layers: borders, buttons, inputs, scrollbar.
 
 surface = #313244
 # Borders, button bg, input bg, code span bg, admonition table bg,
 # heading underlines (h1, h2 in preview).
 
 surface-hover = #45475a
-# Hover/active states — button hover, CM6 selection bg, scrollbar
-# thumb (including thumb:hover — the separate surface2 shade was
+# Hover/active states: button hover, CM6 selection bg, scrollbar
+# thumb (including thumb:hover, the separate surface2 shade was
 # trimmed because the thumb's geometric thickening on hover is the
 # visible feedback, not the color change).
 
@@ -67,34 +67,34 @@ surface-hover = #45475a
 # Four brightness levels from primary to barely-visible.
 
 text = #cdd6f4
-# Primary text — body, strong/em, dialog body, button text, CM6 fg.
+# Primary text: body, strong/em, dialog body, button text, CM6 fg.
 
 text-muted = #bac2de
-# Secondary — titlebar text, preview quote text, table caption,
+# Secondary: titlebar text, preview quote text, table caption,
 # dialog title/message, statusbar filename, active gutter line number.
 
 text-dim = #a6adc8
-# Tertiary — statusbar base color, filetype label, cursor position
+# Tertiary: statusbar base color, filetype label, cursor position
 # readout, muted mode pill (Normal) foreground.
 
 text-faint = #6c7086
-# Dimmest — inactive gutter line numbers, CM6 comments, CM6 syntax
+# Dimmest: inactive gutter line numbers, CM6 comments, CM6 syntax
 # punctuation, sync indicator at-rest color.
 
 # ================= Accents =================
 # Semantic accent colors. Each serves a specific UI/content purpose.
 
 accent = #b4befe
-# Primary accent — h1/h2 headings (preview + editor syntax), help
+# Primary accent: h1/h2 headings (preview + editor syntax), help
 # dialog title, help button hover/focus color, focus-visible outlines
 # on editor pane, confirm button, and help dialog.
 
 accent-alt = #cba6f7
-# Secondary accent — h3/h4 headings, quoteblock border-left accent,
+# Secondary accent: h3/h4 headings, quoteblock border-left accent,
 # help dialog h3.
 
 accent-minor = #f5c2e7
-# Tertiary accent — h5/h6 headings, muted mode pill Visual bg.
+# Tertiary accent: h5/h6 headings, muted mode pill Visual bg.
 
 link = #89b4fa
 # Links (preview + editor syntax), info admonition border, example

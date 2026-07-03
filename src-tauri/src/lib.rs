@@ -19,12 +19,12 @@ fn get_launch_info(state: tauri::State<LaunchInfo>) -> LaunchInfo {
 // On macOS, file associations work via AppleEvents, not CLI arguments.
 // When a user runs `open -a Skrivro foo.adoc` or double-clicks an
 // .adoc file in Finder (with Skrivro set as handler), macOS launches
-// Skrivro and sends an AppleEvent — Tauri surfaces this as
+// Skrivro and sends an AppleEvent, which Tauri surfaces as
 // RunEvent::Opened { urls }. The CLI argv is typically empty in this
 // scenario, so our existing launchInfo.initial_file mechanism doesn't
 // see the file.
 //
-// Linux and Windows don't need this path — on those platforms, file
+// Linux and Windows don't need this path: on those platforms, file
 // associations are invoked by passing the file as a CLI argument to
 // the app, which launchInfo.initial_file already handles.
 //
@@ -39,10 +39,10 @@ fn get_launch_info(state: tauri::State<LaunchInfo>) -> LaunchInfo {
 //
 // 2. Already-running (Skrivro is open, user triggers another file):
 //    Mac activates the running app and sends the event. Tauri fires
-//    RunEvent::Opened again; the handler both pushes to PendingOpens
-//    (in case something's still initializing) AND emits a Tauri event
-//    that the frontend's live listener catches to open the file in
-//    the existing instance.
+//    RunEvent::Opened again, and the handler both pushes to
+//    PendingOpens (in case something's still initializing) AND emits a
+//    Tauri event that the frontend's live listener catches to open the
+//    file in the existing instance.
 //
 // Both paths converge on frontend's loadFileFromPath, wrapped in
 // confirmDiscard so a dropped-in-during-unsaved-work file gets the
@@ -60,7 +60,7 @@ fn take_pending_opens(state: tauri::State<PendingOpens>) -> Vec<String> {
 // ================= User config file =================
 //
 // Skrivro reads a user-editable flat `key = value` config file at startup
-// for font / size / padding / mode-style overrides. Not required — missing
+// for font / size / padding / mode-style overrides. Not required: missing
 // file means "use compiled-in defaults."
 //
 // File location (resolved via Tauri's app_config_dir, which joins the
@@ -77,16 +77,16 @@ fn take_pending_opens(state: tauri::State<PendingOpens>) -> Vec<String> {
 //   preview-font = Charter
 //
 //   # All length-typed values (font sizes, padding) require an
-//   # explicit CSS unit. Bare numbers are rejected — the rule is
+//   # explicit CSS unit. Bare numbers are rejected, and the rule is
 //   # uniform across every length-typed key. Valid units: pt, px,
 //   # rem, em, %, vw, vh, ch, ex, etc. (we don't maintain an
-//   # allowlist; the webview's CSS engine is the ultimate validator).
+//   # allowlist, the webview's CSS engine is the ultimate validator).
 //   edit-font-size = 14pt
 //   preview-font-size = 15pt
 //
 //   # Padding (editor and preview, x / y axes). Each key accepts one or
 //   # two values. One value: applied uniformly to both ends of the axis.
-//   # Two values: reading order — for x it's `left right`, for y it's
+//   # Two values are in reading order: for x `left right`, for y
 //   # `top bottom`. Three or more values are rejected. Every token
 //   # needs a unit.
 //   editor-padding-x = 2.5rem
@@ -94,18 +94,18 @@ fn take_pending_opens(state: tauri::State<PendingOpens>) -> Vec<String> {
 //   preview-padding-x = 2.5rem
 //   preview-padding-y = 2rem
 //
-//   # Asciidoctor safe mode (set-and-forget; not exposed in UI)
+//   # Asciidoctor safe mode (set-and-forget, not exposed in UI)
 //   asciidoc-safe-mode = unsafe
 //
-//   # Status bar cursor position format — verbose / compact / ruler
+//   # Status bar cursor position format: verbose / compact / ruler
 //   cursor-position-format = verbose
 //
-//   # Status bar mode pill style — canonical / muted
+//   # Status bar mode pill style: canonical / muted
 //   statusbar-style = canonical
 //
 //   # Soft column limit: positive integer, character count, no default.
 //   # When set, the Col indicator in the status bar turns peach once the
-//   # cursor's column count on the current line exceeds this value —
+//   # cursor's column count on the current line exceeds this value,
 //   # useful for prose workflows with hard column-width conventions
 //   # (80- or 100-char line limits, commit messages, etc.). Tracks the
 //   # document column, not the visual wrap column, so soft-wrapped text
@@ -113,16 +113,16 @@ fn take_pending_opens(state: tauri::State<PendingOpens>) -> Vec<String> {
 //   soft-column-limit = 100
 //
 // Naming convention across three layers:
-//   - Config file:  kebab-case ("edit-font")   — user-facing spec
-//   - Rust struct:  snake_case (`edit_font`)   — Rust convention
-//   - JSON output:  camelCase  ("editFont")    — via serde rename_all,
+//   - Config file:  kebab-case ("edit-font"), the user-facing spec
+//   - Rust struct:  snake_case (`edit_font`), Rust convention
+//   - JSON output:  camelCase  ("editFont"), via serde rename_all,
 //                                                 for idiomatic JS
 //                                                 dot-access on the
 //                                                 frontend side.
 //
-// The parser's match arm handles kebab→snake mapping by hand; the serde
-// rename attribute handles snake→camel for the JSON boundary. JS code
-// then uses `cfg.editFont`, `cfg.asciidocSafeMode`, etc., without any
+// The parser's match arm handles kebab→snake mapping by hand, and the
+// serde rename attribute handles snake→camel for the JSON boundary. JS
+// code then uses `cfg.editFont`, `cfg.asciidocSafeMode`, etc., without any
 // bracket-notation gymnastics.
 
 #[derive(Serialize, Clone, Default)]
@@ -143,7 +143,7 @@ struct SkrivroConfig {
     // Format assigned to an untitled buffer (one with no file on
     // disk). Accepted values: asciidoc, markdown, text. When set,
     // a fresh launch with no CLI argument and no session-restore
-    // file — i.e., a brand-new blank buffer — starts in this
+    // file (i.e., a brand-new blank buffer) starts in this
     // format rather than the compiled-in 'asciidoc' default.
     // File-extension detection always wins: opening foo.md is
     // always markdown regardless of this setting. Unknown values
@@ -154,9 +154,9 @@ struct SkrivroConfig {
     // integer value there's no reason to store a string we'd have
     // to parse on the JS side anyway. Serde serializes Option<u32>
     // as `null | number`, so the frontend reads userConfig.softColumnLimit
-    // as `undefined | number` directly — no parseInt, no validation.
+    // as `undefined | number` directly, no parseInt, no validation.
     // Rejection logic (non-integer, zero, negative) lives in the
-    // parser's match arm; invalid values leave the field None and
+    // parser's match arm, and invalid values leave the field None and
     // the frontend falls through to "no limit, no over-limit coloring."
     soft_column_limit: Option<u32>,
     // Launch restores the last-opened file's path from session state
@@ -164,7 +164,7 @@ struct SkrivroConfig {
     // when the key is unset (None): a normal launch reopens the most
     // recently touched file. Set restore-session = false to start
     // blank instead. Crash recovery via the autosave draft is
-    // independent of this setting and takes priority over it;
+    // independent of this setting and takes priority over it, and
     // session-restore only fires when no draft is present. See the
     // Session state section below for the state file format and the
     // get_session_state / set_session_state commands.
@@ -176,17 +176,17 @@ struct SkrivroConfig {
     // rewritten to inline placeholders by the frontend's render-time
     // post-processing before any fetch can happen. The CSP relaxation
     // in tauri.conf.json (img-src includes `https:`) is what makes
-    // external loading possible WHEN the gate allows; the gate is
+    // external loading possible WHEN the gate allows. The gate is
     // the actual security boundary, not the CSP.
     //
-    // HTTPS-only by deliberate policy — even when this flag is
+    // HTTPS-only by deliberate policy: even when this flag is
     // true, `http:` image sources are placeholdered. Setting this
     // requires app restart to take effect, for the same reason every
     // key does: the config file is read once at launch, there is no
-    // runtime reload. (The CSP itself is static — img-src allows
-    // `https:` unconditionally; the gate alone decides.)
+    // runtime reload. (The CSP itself is static: img-src allows
+    // `https:` unconditionally, and the gate alone decides.)
     allow_external_images: Option<bool>,
-    // UI language — "auto" (default if unset; detect from browser
+    // UI language: "auto" (default if unset, detect from browser
     // locale), "en" (force English), or "sv" (force Swedish). When
     // the config specifies "en" or "sv" explicitly, that overrides
     // the auto-detect and gets passed to the frontend via the
@@ -200,16 +200,16 @@ struct SkrivroConfig {
     // Offline spellcheck language: "auto" (default), "off", "en" (US
     // English), "sv" (Swedish), or "both" (en + sv). "auto" detects the
     // dictionary from the system locale on the frontend (Swedish locale
-    // → Swedish, else English) and is stored here as None — same as the
-    // `language` key's auto — so an unset key, "auto", and an
+    // → Swedish, else English) and is stored here as None, the same as the
+    // `language` key's auto, so an unset key, "auto", and an
     // unrecognized value all arrive as None and the frontend treats them
     // as auto. "off" is the one disabling value and a HARD off: no
     // dictionary loads and the runtime Ctrl+Alt+K / ⌃⌘K / :spell toggle
     // is inert. When a language is active the frontend loads the matching
     // Hunspell dictionary into nspell (bundled US English, or user-supplied
-    // files from <app_config_dir>/dictionaries/ — see the User-supplied
+    // files from <app_config_dir>/dictionaries/, see the User-supplied
     // dictionaries section below) and underlines misspellings as
-    // CodeMirror decorations. Only US English ships in the binary; other
+    // CodeMirror decorations. Only US English ships in the binary. Other
     // English variants and Swedish are user-supplied.
     spellcheck_language: Option<String>,
     // Theme colors resolved by load_theme() in get_config(). When the
@@ -263,7 +263,7 @@ struct ThemeColors {
 }
 
 /// Parse a theme file's text into a `ThemeColors`. Same flat key=value
-/// format as skrivro.conf — one pair per line, # comments, blank lines
+/// format as skrivro.conf: one pair per line, # comments, blank lines
 /// ignored, unknown keys warned and skipped.
 #[cfg_attr(not(debug_assertions), allow(unused_variables))]
 fn parse_theme_file(text: &str) -> ThemeColors {
@@ -337,7 +337,7 @@ fn skrivro_themes_dir(app: &tauri::AppHandle) -> Option<PathBuf> {
 /// Load a theme by name. Resolution order:
 /// 1. User-supplied file at <app_config_dir>/themes/<name>.theme
 /// 2. Bundled theme data embedded at compile time via include_str!()
-/// 3. None — caller falls through to CSS defaults (catppuccin-mocha)
+/// 3. None: caller falls through to CSS defaults (catppuccin-mocha)
 ///
 /// User theme files use the `.theme` extension (matching the bundled
 /// templates' `.theme.default` minus the .default suffix that signals
@@ -385,7 +385,7 @@ fn load_theme(name: &str, app: &tauri::AppHandle) -> Option<ThemeColors> {
 /// name, so rename in tauri.conf.json propagates everywhere.
 ///
 /// Returns `None` only in a broken environment where Tauri can't resolve
-/// the user's config directory — we treat that as "no config available"
+/// the user's config directory, which we treat as "no config available"
 /// and fall through to defaults.
 fn skrivro_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
     use tauri::Manager;
@@ -394,14 +394,14 @@ fn skrivro_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
 
 /// Normalize a length value for every length-typed config key (font
 /// sizes, padding). All length values REQUIRE an explicit unit
-/// suffix — bare numbers are rejected because no single unit
+/// suffix: bare numbers are rejected because no single unit
 /// assumption is universally intuitive across the different length
 /// categories, and requiring units makes user intent unambiguous
 /// without parser heuristics.
 ///
 /// Accepted values are anything with a CSS unit suffix: `14pt`, `2rem`,
 /// `900px`, `80%`, `60vw`, `80ch`, `1.1em`, etc. We do not maintain an
-/// allowlist of valid CSS units — the webview validates far more
+/// allowlist of valid CSS units: the webview validates far more
 /// thoroughly than we ever could, and an allowlist would be maintenance
 /// burden with only downside (false positives when new units are added
 /// to CSS).
@@ -412,7 +412,7 @@ fn skrivro_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
 /// - Padding keys pass `2` (one value for uniform, two for asymmetric
 ///   start/end in reading order).
 ///
-/// Each token is validated independently — any bare number or leading-
+/// Each token is validated independently: any bare number or leading-
 /// minus value causes the whole value to be rejected.
 ///
 /// Rejection cases (all emit a debug warning):
@@ -420,7 +420,7 @@ fn skrivro_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
 /// - Any token is a bare number (parses as f64 with no trailing unit).
 ///   Examples that trigger: `14`, `2.5`, `.5`, `1e2`.
 /// - Any token starts with `-`. CSS would drop negative lengths
-///   silently; catching at parse time makes the diagnostic visible
+///   silently, so catching at parse time makes the diagnostic visible
 ///   in dev builds.
 ///
 /// Called from `parse_skrivro_config` for:
@@ -448,8 +448,8 @@ fn normalize_length(key: &str, val: &str, line_num: usize, max_tokens: usize) ->
     }
     for token in &tokens {
         // Reject bare numbers (no unit suffix). f64::parse accepts integer,
-        // decimal, and scientific forms (14, 14.5, .5, 1e5); any of those
-        // without a trailing unit triggers rejection.
+        // decimal, and scientific forms (14, 14.5, .5, 1e5), and any of
+        // those without a trailing unit triggers rejection.
         if token.parse::<f64>().is_ok() {
             #[cfg(debug_assertions)]
             eprintln!(
@@ -459,7 +459,8 @@ fn normalize_length(key: &str, val: &str, line_num: usize, max_tokens: usize) ->
             return None;
         }
         // Reject negative values like `-2rem` or `-100px`. CSS would drop
-        // these silently; catching at parse time surfaces the diagnostic.
+        // these silently, so catching at parse time surfaces the
+        // diagnostic.
         if token.starts_with('-') {
             #[cfg(debug_assertions)]
             eprintln!(
@@ -469,7 +470,7 @@ fn normalize_length(key: &str, val: &str, line_num: usize, max_tokens: usize) ->
             return None;
         }
     }
-    // All tokens passed validation — trust the user's units and let CSS
+    // All tokens passed validation: trust the user's units and let CSS
     // validate at render time if they typed something exotic.
     Some(tokens.join(" "))
 }
@@ -479,36 +480,37 @@ fn normalize_length(key: &str, val: &str, line_num: usize, max_tokens: usize) ->
 /// Parsing rules (per spec):
 /// - One `key = value` per line
 /// - Whitespace around `=` is tolerated and stripped
-/// - Full-line comments only — `#` at the start of a trimmed line
+/// - Full-line comments only: `#` at the start of a trimmed line
 /// - Blank lines ignored
 /// - Unknown keys: warn and skip (forward-compat for future config keys
 ///   so older binaries don't choke on newer configs)
 /// - Malformed lines (missing `=`): warn and skip
-/// - Empty values treated as "unset" — struct field stays `None`, frontend
+/// - Empty values treated as "unset": struct field stays `None`, frontend
 ///   falls through to compiled-in defaults
 /// - All length-valued keys (font sizes, padding) go through
 ///   `normalize_length`, which REJECTS bare numbers (an explicit CSS
 ///   unit is required) and rejects negative values. The helper takes
 ///   a `max_tokens` argument: font-size keys pass `1` (single length
-///   only); padding keys pass `2` to accept both `= 2rem` (uniform)
-///   and `= 2rem 3rem` (asymmetric start/end) forms. See that
+///   only), while padding keys pass `2` to accept both `= 2rem`
+///   (uniform) and `= 2rem 3rem` (asymmetric start/end) forms. See that
 ///   function's doc comment for the full rules.
 /// - `soft-column-limit` is parsed inline as a strict positive
-///   integer (not a CSS length) and stored in `Option<u32>` — the
+///   integer (not a CSS length) and stored in `Option<u32>`, the
 ///   only numeric-typed field in `SkrivroConfig`. Non-integer, zero,
 ///   or negative values are warned and skipped.
 /// - One bad line does NOT abort loading the rest of the file
 ///
 /// All warning `eprintln!`s are wrapped in `#[cfg(debug_assertions)]` so
 /// they only fire in debug builds (visible during `pnpm tauri dev` from
-/// a terminal; compiled out of release builds entirely — zero runtime cost
-/// for end users, and no stderr noise from a launched .desktop entry).
+/// a terminal, and compiled out of release builds entirely: zero runtime
+/// cost for end users, and no stderr noise from a launched .desktop
+/// entry).
 fn parse_skrivro_config(text: &str) -> SkrivroConfig {
     let mut cfg = SkrivroConfig::default();
     // `idx` is only referenced inside #[cfg(debug_assertions)] eprintln!s
     // below, so release builds see it as unused. cfg_attr here suppresses
-    // the unused_variables warning ONLY when debug_assertions is off —
-    // debug builds still get normal lint coverage.
+    // the unused_variables warning ONLY when debug_assertions is off,
+    // while debug builds still get normal lint coverage.
     #[cfg_attr(not(debug_assertions), allow(unused_variables))]
     for (idx, raw) in text.lines().enumerate() {
         let line = raw.trim();
@@ -547,9 +549,10 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
             "default-format" => {
                 // Accepted: asciidoc, markdown, text. Unknown values
                 // are rejected with a debug warning rather than silently
-                // treated as a fallback — a typo should surface rather
-                // than be swallowed. Field stays None on rejection and
-                // the frontend falls through to the compiled-in default.
+                // treated as a fallback, since a typo should surface
+                // rather than be swallowed. Field stays None on
+                // rejection and the frontend falls through to the
+                // compiled-in default.
                 match val.to_lowercase().as_str() {
                     "asciidoc" | "markdown" | "text" => {
                         cfg.default_format = Some(val.to_lowercase())
@@ -566,7 +569,7 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
             }
             "spellcheck-language" => {
                 // Accepted: auto (default), off, en, sv, both. "auto" maps
-                // to None — the frontend detects the dictionary from the
+                // to None: the frontend detects the dictionary from the
                 // system locale, the same representation the `language`
                 // key's auto uses. "off" disables the feature entirely (no
                 // dictionaries load). Unknown values are rejected with a
@@ -591,7 +594,7 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
                 // Strict positive integer. Zero or negative is meaningless
                 // (every column would be past the limit / no column could
                 // ever be past it), so we reject both alongside non-numeric
-                // garbage. No-unit parse, no pt inference — this is a
+                // garbage. No-unit parse, no pt inference: this is a
                 // character count, not a CSS length.
                 match val.parse::<u32>() {
                     Ok(n) if n > 0 => cfg.soft_column_limit = Some(n),
@@ -644,8 +647,8 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
                 }
             }
             "language" => {
-                // Accepted: auto (default; detect from browser locale), en,
-                // sv. Unknown languages are rejected with a debug warning —
+                // Accepted: auto (default, detect from browser locale), en,
+                // sv. Unknown languages are rejected with a debug warning,
                 // rather than silently falling back to English, we'd rather
                 // surface the typo so the user knows their intent wasn't
                 // honored. `auto` is represented as None in the struct
@@ -684,7 +687,7 @@ fn get_config(app: tauri::AppHandle) -> SkrivroConfig {
     let mut cfg = match std::fs::read_to_string(&path) {
         Ok(text) => parse_skrivro_config(&text),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            // Expected common case — no config file, use defaults. Silent.
+            // Expected common case: no config file, use defaults. Silent.
             SkrivroConfig::default()
         }
         Err(e) => {
@@ -718,7 +721,7 @@ fn get_config(app: tauri::AppHandle) -> SkrivroConfig {
 // ================= Session state =================
 //
 // Machine-local state persisted across clean exits. Currently just
-// stores the last-opened file path for the restore-session feature —
+// stores the last-opened file path for the restore-session feature:
 // unless `restore-session = false` is set in skrivro.conf (it defaults
 // on), and no CLI argument is given at launch and no crash-recovery
 // draft is present, the frontend loads the file at `lastFilePath` here.
@@ -759,8 +762,9 @@ struct SessionState {
 
 /// Resolve the state file path under Tauri's platform-appropriate
 /// app-local-data directory. Returns `None` if Tauri can't locate
-/// the directory (extremely unusual — would mean a broken install
-/// environment). Callers treat `None` as "no state available."
+/// the directory (extremely unusual, it would mean a broken
+/// install environment). Callers treat `None` as "no state
+/// available."
 fn session_state_path(app: &tauri::AppHandle) -> Option<PathBuf> {
     use tauri::Manager;
     app.path().app_local_data_dir().ok().map(|d| d.join("state.json"))
@@ -774,7 +778,7 @@ fn get_session_state(app: tauri::AppHandle) -> SessionState {
     let text = match std::fs::read_to_string(&path) {
         Ok(t) => t,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            // Expected common case — no prior session. Silent.
+            // Expected common case: no prior session. Silent.
             return SessionState::default();
         }
         Err(e) => {
@@ -823,7 +827,7 @@ fn set_session_state(
     let Some(path) = session_state_path(&app) else {
         return Err("no app-local-data dir available".to_string());
     };
-    // Ensure parent dir exists — on a fresh install the directory may
+    // Ensure parent dir exists: on a fresh install the directory may
     // not have been created yet. Safe to call repeatedly.
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
@@ -831,17 +835,17 @@ fn set_session_state(
     }
     let mut text = serde_json::to_string_pretty(&state).map_err(|e| e.to_string())?;
     // Append a trailing newline for POSIX compliance. serde_json's
-    // to_string_pretty doesn't add one; without it, `cat state.json`
-    // leaves the zsh `%` no-newline indicator, git-diff shows
-    // "No newline at end of file", and any tool that expects text
-    // files to end with \n sees the file as malformed. The body is
-    // LF-throughout on all platforms (serde_json doesn't produce
+    // to_string_pretty doesn't add one, and without it, `cat
+    // state.json` leaves the zsh `%` no-newline indicator, git-diff
+    // shows "No newline at end of file", and any tool that expects
+    // text files to end with \n sees the file as malformed. The body
+    // is LF-throughout on all platforms (serde_json doesn't produce
     // CRLF), so appending LF stays consistent.
     text.push('\n');
     // Atomic write: write to a sibling temp file, then rename. If the
-    // process dies mid-write, the original state.json is untouched;
-    // the orphan .tmp file will be overwritten next time. Rename is
-    // atomic within a directory on POSIX and on Windows (NTFS).
+    // process dies mid-write, the original state.json is untouched,
+    // and the orphan .tmp file will be overwritten next time. Rename
+    // is atomic within a directory on POSIX and on Windows (NTFS).
     let mut tmp = path.clone().into_os_string();
     tmp.push(".tmp");
     let tmp_path = PathBuf::from(tmp);
@@ -854,11 +858,11 @@ fn set_session_state(
 
 // ================= Custom words (personal spellcheck dictionary) =================
 //
-// A user-maintained list of words the spellchecker should never flag —
+// A user-maintained list of words the spellchecker should never flag:
 // names, invented terms, domain jargon. Stored as a plain text file at
 // <app_config_dir>/custom-words.txt, alongside skrivro.conf and themes/,
 // so the file itself is the management UI (edit it to bulk add/remove).
-// The frontend owns the in-memory list and the dedup; these two commands
+// The frontend owns the in-memory list and the dedup. These two commands
 // just read and rewrite the file (resolving the config dir and creating
 // it on first write, exactly like set_session_state).
 
@@ -888,7 +892,7 @@ fn read_custom_words(app: tauri::AppHandle) -> Vec<String> {
     };
     let text = match std::fs::read_to_string(&path) {
         Ok(t) => t,
-        // Expected common case — no custom words yet. Silent.
+        // Expected common case: no custom words yet. Silent.
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Vec::new(),
         Err(e) => {
             #[cfg(debug_assertions)]
@@ -909,7 +913,7 @@ fn write_custom_words(app: tauri::AppHandle, words: Vec<String>) -> Result<(), S
     let Some(path) = custom_words_path(&app) else {
         return Err("no app-config dir available".to_string());
     };
-    // Ensure the config dir exists — on a fresh install it may not yet.
+    // Ensure the config dir exists: on a fresh install it may not yet.
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("mkdir {}: {}", parent.display(), e))?;
@@ -941,7 +945,7 @@ fn write_custom_words(app: tauri::AppHandle, words: Vec<String>) -> Result<(), S
 // frontend loads them at startup, preferring a user file over the bundled
 // English. Swedish is deliberately not bundled (its DSSO dictionary is
 // LGPL-3.0, and keeping it out of the binary keeps Skrivro's distribution
-// permissive). This command reads one language's pair; the frontend's
+// permissive). This command reads one language's pair, and the frontend's
 // resolver (resolveSpellcheck) decides which language(s) to ask for.
 // Mirrors the themes resolver and read_custom_words: app_config_dir joined
 // with a fixed subdir.
@@ -1031,7 +1035,7 @@ fn read_user_dictionary(app: tauri::AppHandle, lang: String) -> Option<UserDicti
 // compiled-in CSS defaults):
 //   - No skrivro.conf on disk
 //   - Config doesn't specify a `theme` key
-//   - Theme is "catppuccin-mocha" (matches CSS defaults already — no
+//   - Theme is "catppuccin-mocha" (matches CSS defaults already, so no
 //     override needed)
 //   - Theme name isn't resolvable (not bundled, no user file)
 //   - JSON serialization of ThemeColors fails (shouldn't happen)
@@ -1039,12 +1043,12 @@ fn read_user_dictionary(app: tauri::AppHandle, lang: String) -> Option<UserDicti
 /// Compute the initial app state as (native_bg_hex, init_script_js).
 /// The init script combines two FOUC-prevention concerns:
 ///
-///   1. Theme override — sets `window.__SKRIVRO_INITIAL_THEME__` with
+///   1. Theme override: sets `window.__SKRIVRO_INITIAL_THEME__` with
 ///      resolved theme color values so the frontend's inline script
 ///      can apply CSS variable overrides before first paint. See the
 ///      module-level comment above for the theme-FOUC rationale.
 ///
-///   2. Language override — sets `window.__SKRIVRO_LANG_OVERRIDE__` to
+///   2. Language override: sets `window.__SKRIVRO_LANG_OVERRIDE__` to
 ///      the user's explicit `language` config value, if any. When
 ///      unset, the frontend auto-detects from `navigator.language` and
 ///      falls back to English for unsupported locales. Presence of the
@@ -1053,14 +1057,14 @@ fn read_user_dictionary(app: tauri::AppHandle, lang: String) -> Option<UserDicti
 ///
 /// Either or both parts may be empty. The combined script string is
 /// passed verbatim to `WebviewWindowBuilder::initialization_script`,
-/// which runs at document-start before any HTML is parsed — so the
+/// which runs at document-start before any HTML is parsed, so the
 /// globals are available to the inline scripts that consume them.
 fn compute_initial_state(app: &tauri::AppHandle) -> (String, String) {
     let mocha_bg = "#1e1e2e".to_string();
 
     // Read config once, use it to compute both the theme state and the
     // language override. Returns (native_bg_hex, combined_init_script).
-    // On any config-read failure, returns Mocha bg + empty script —
+    // On any config-read failure, returns Mocha bg + empty script,
     // same fallback semantics as before the language additions.
     let Some(path) = skrivro_config_path(app) else {
         return (mocha_bg, String::new());
@@ -1070,11 +1074,12 @@ fn compute_initial_state(app: &tauri::AppHandle) -> (String, String) {
     };
     let cfg = parse_skrivro_config(&text);
 
-    // Script parts accumulate into one init script; empty script when
-    // neither theme override nor language override is configured.
+    // Script parts accumulate into one init script, staying empty
+    // when neither theme override nor language override is
+    // configured.
     let mut parts: Vec<String> = Vec::new();
 
-    // Theme part — compute bg color and generate theme override script.
+    // Theme part: compute bg color and generate theme override script.
     let bg = match cfg.theme.as_deref() {
         None => mocha_bg.clone(),
         Some("catppuccin-mocha") => mocha_bg.clone(),
@@ -1087,7 +1092,7 @@ fn compute_initial_state(app: &tauri::AppHandle) -> (String, String) {
         },
     };
 
-    // Language part — emit a global only if config explicitly set it;
+    // Language part: emit a global only if config explicitly set it,
     // otherwise the frontend's inline script auto-detects from
     // navigator.language at startup. serde_json handles escaping, so
     // the embedded string is safe regardless of future locale
@@ -1106,7 +1111,7 @@ fn compute_initial_state(app: &tauri::AppHandle) -> (String, String) {
 /// Generate a JS snippet that sets `window.__SKRIVRO_INITIAL_THEME__` to
 /// a JSON object with the theme's color values. The object keys are
 /// camelCase via serde's `rename_all = "camelCase"` attribute on
-/// `ThemeColors`; the inline script in index.html converts them to
+/// `ThemeColors`, and the inline script in index.html converts them to
 /// kebab-case when setting `--skr-*` CSS custom properties.
 fn generate_theme_init_script(colors: &ThemeColors) -> String {
     match serde_json::to_string(colors) {
@@ -1116,8 +1121,8 @@ fn generate_theme_init_script(colors: &ThemeColors) -> String {
 }
 
 /// Parse a hex color string like "#1e1e2e" into a Tauri Color (RGBA with
-/// alpha=255). Returns `None` for malformed input; callers should fall
-/// back to a sensible default.
+/// alpha=255). Returns `None` for malformed input, so callers should
+/// fall back to a sensible default.
 fn parse_hex_color(hex: &str) -> Option<tauri::webview::Color> {
     let hex = hex.trim_start_matches('#');
     if hex.len() != 6 {
@@ -1140,18 +1145,18 @@ fn parse_hex_color(hex: &str) -> Option<tauri::webview::Color> {
 // borderless to match the app's keyboard-first aesthetic.
 //
 // Three Cocoa calls do the work:
-//   1. setTitlebarAppearsTransparent: YES — title bar background blends
-//      with the window content, no visible bar.
-//   2. setTitleVisibility: NSWindowTitleHidden — title text doesn't
+//   1. setTitlebarAppearsTransparent: YES, so the title bar background
+//      blends with the window content, no visible bar.
+//   2. setTitleVisibility: NSWindowTitleHidden, so title text doesn't
 //      render. Tauri sets the window title to "Skrivro" via the
 //      WebviewWindowBuilder, which would otherwise show in the bar.
 //   3. standardWindowButton(.closeButton/.miniaturizeButton/.zoomButton)
-//      .setHidden: YES — the three traffic lights individually.
+//      .setHidden: YES, which hides the three traffic lights individually.
 //
 // Ghostty additionally walks the view tree to find NSTitlebarContainerView
 // and hides it ("nuke from orbit"), to handle a macOS edge case where
 // a thin chrome strip can remain after the above calls. We're not
-// doing that yet — start with the basic three calls and see whether
+// doing that yet: start with the basic three calls and see whether
 // the strip actually appears in our app. If it does, add the subview
 // walk in a follow-up.
 //
@@ -1159,7 +1164,7 @@ fn parse_hex_color(hex: &str) -> Option<tauri::webview::Color> {
 // belt-and-suspenders step we're skipping initially. We don't change
 // the window title at runtime (the document filename lives in our
 // app's own titlebar widget, not the native title), and Tauri's
-// fullscreen exit path may or may not re-show chrome. Test first;
+// fullscreen exit path may or may not re-show chrome. Test first, and
 // add re-apply hooks only if needed.
 #[cfg(target_os = "macos")]
 fn hide_macos_chrome(window: &tauri::WebviewWindow) -> tauri::Result<()> {
@@ -1178,14 +1183,14 @@ fn hide_macos_chrome(window: &tauri::WebviewWindow) -> tauri::Result<()> {
 
     // Wrap with Retained to satisfy objc2's expected receiver type for
     // the methods below. This bumps the retain count for the duration
-    // of our calls and releases on drop — no ownership transfer.
+    // of our calls and releases on drop, no ownership transfer.
     let ns_window: Retained<NSWindow> = unsafe { Retained::retain(ns_window as *const NSWindow as *mut NSWindow) }
         .expect("ns_window pointer is non-null");
 
     // Method calls on Retained<NSWindow> don't require an unsafe block
-    // in objc2 — the wrapper already maintains the invariants. The
-    // only unsafe ops in this function are the raw pointer deref and
-    // the Retained::retain call above.
+    // in objc2, since the wrapper already maintains the invariants.
+    // The only unsafe ops in this function are the raw pointer deref
+    // and the Retained::retain call above.
     ns_window.setTitlebarAppearsTransparent(true);
     ns_window.setTitleVisibility(NSWindowTitleVisibility::Hidden);
     for kind in [
@@ -1242,8 +1247,8 @@ fn hide_macos_chrome(window: &tauri::WebviewWindow) -> tauri::Result<()> {
 // Re-apply collectionBehavior flags on every NSWindow. Same logic as
 // the setup-time pass inside hide_macos_chrome, exposed as a Tauri
 // command so JS can call it after the frontend has fully initialized.
-// Needed because wry creates an invisible helper NSWindow lazily —
-// AFTER hide_macos_chrome runs at setup — and AppKit's Window-menu
+// Needed because wry creates an invisible helper NSWindow lazily
+// (AFTER hide_macos_chrome runs at setup), and AppKit's Window-menu
 // auto-inject machinery iterates NSApp.windows and bails if any
 // window lacks the tiling flags. Calling this from JS after
 // installMenu() catches the helper once it's been created.
@@ -1280,21 +1285,21 @@ pub fn run() {
     // Why this exists: on Wayland, the compositor's concept of "window
     // class" comes from xdg_toplevel.app_id. GDK-Wayland populates that
     // field by calling g_get_prgname(), NOT by reading GtkApplication's
-    // application_id — even though GTK's own documentation suggests
+    // application_id, even though GTK's own documentation suggests
     // application_id should be the canonical source of identity.
     //
     // tao's Linux event loop (see
     // platform_impl/linux/event_loop.rs::new_gtk) calls gtk::init()
     // before anything has a chance to override the default. gtk::init()
-    // locks in `prgname` from argv[0] — the executable name "skrivro"
+    // locks in `prgname` from argv[0], the executable name "skrivro"
     // (from Cargo's [package] name). Without intervention, Hyprland and
     // any other Wayland compositor see our window class as "skrivro"
     // instead of "com.skrivro.editor".
     //
     // tauri.conf.json has `enableGTKAppId = true`, which makes Tauri
     // pass our identifier to `GtkApplication::new()` as application_id.
-    // That setting is DEFENSIVE, not load-bearing for the Wayland case
-    // — it makes the identifier available for GTK consumers that DO
+    // That setting is DEFENSIVE, not load-bearing for the Wayland case:
+    // it makes the identifier available for GTK consumers that DO
     // read application_id (D-Bus service dispatch, GNOME .desktop
     // matching, various future integrations), but it does NOT fix
     // xdg_toplevel.app_id on its own. tao's source has an acknowledging
@@ -1312,10 +1317,10 @@ pub fn run() {
     // "skrivro" regardless of what tauri.conf.json says.
     //
     // Must stay in sync with `identifier` in tauri.conf.json. If we
-    // ever rename the app again, both need to change — there's no way
-    // to read the Tauri config before calling into Tauri itself, which
-    // is exactly what we need to avoid here since Tauri/tao's init is
-    // the thing that's locking in the wrong prgname.
+    // ever rename the app again, both need to change, since there's no
+    // way to read the Tauri config before calling into Tauri itself,
+    // which is exactly what we need to avoid here since Tauri/tao's
+    // init is the thing that's locking in the wrong prgname.
     #[cfg(target_os = "linux")]
     glib::set_prgname(Some("com.skrivro.editor"));
 
@@ -1344,7 +1349,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(launch_info)
         .manage(PendingOpens::default())
-        // Single-instance plugin must be registered FIRST — before any
+        // Single-instance plugin must be registered FIRST, before any
         // other plugin or state that depends on app identity. When a
         // second `skrivro foo.adoc` is launched while an existing
         // instance is running, the plugin intercepts: second process
@@ -1357,7 +1362,7 @@ pub fn run() {
         // existing window, with a dirty-buffer confirmDiscard prompt
         // if needed.
         //
-        // On macOS this plugin is largely a no-op — macOS enforces
+        // On macOS this plugin is largely a no-op: macOS enforces
         // single-instance for .app bundles at the OS level, so a
         // second "process" doesn't actually spawn to forward args.
         // The file-association path for Mac uses RunEvent::Opened
@@ -1367,7 +1372,7 @@ pub fn run() {
 
             // Bring the existing window to the front so the user sees
             // the action. set_focus behavior on Wayland is subject to
-            // compositor focus-stealing-prevention rules; on Hyprland
+            // compositor focus-stealing-prevention rules. On Hyprland
             // the default setup honors app-initiated focus requests
             // from the same session.
             if let Some(window) = app_handle.get_webview_window("main") {
@@ -1376,9 +1381,9 @@ pub fn run() {
             }
 
             // Resolve the file argument (if any). argv[0] is the
-            // executable path; argv[1] is the first file arg by
+            // executable path, and argv[1] is the first file arg by
             // convention. Relative paths resolve against the SECOND
-            // instance's cwd (not the first's) — that matches what
+            // instance's cwd (not the first's), which matches what
             // the user typed from their shell.
             if let Some(arg) = argv.get(1) {
                 let p = std::path::PathBuf::from(arg);
@@ -1407,7 +1412,7 @@ pub fn run() {
             // every window using these flags.
             //
             // Decorations is a build-time platform decision in our app
-            // (false on Linux/Windows, true on macOS — see the
+            // (false on Linux/Windows, true on macOS, see the
             // WebviewWindowBuilder below), not a user-toggleable
             // runtime preference. Letting the plugin restore a stale
             // saved value on top of our build-time setting on macOS
@@ -1478,7 +1483,7 @@ pub fn run() {
             // Window state restore (size, position, maximized, fullscreen,
             // visible) happens automatically via the tauri-plugin-window-state
             // plugin's on_window_ready hook, using the StateFlags configured
-            // at plugin registration above (excludes DECORATIONS — see the
+            // at plugin registration above (excludes DECORATIONS, see the
             // plugin block for why). On first launch or after `rm`ing the
             // plugin's state file, the restore is a no-op and the window
             // keeps the inner_size(1280, 720) default from the builder.
@@ -1486,7 +1491,7 @@ pub fn run() {
             // match wherever the user had it when they last closed Skrivro.
             //
             // There is a brief reshape visible at launch as the default
-            // size/position snaps to the restored values — accepted as a
+            // size/position snaps to the restored values, accepted as a
             // minor cosmetic cost for the persistence win. If this becomes
             // annoying, the fix is to read the plugin's saved state
             // manually before building the window and pass the restored
@@ -1519,9 +1524,9 @@ pub fn run() {
             //
             // Strip the Unicode submenu via webkit's context-menu signal.
             // Cut/Copy/Paste/Delete/Select All and the emoji picker stay
-            // (they have legitimate use). The Input Methods submenu — only
+            // (they have legitimate use). The Input Methods submenu, only
             // present when a GTK input method daemon like fcitx5 or ibus is
-            // active — also stays, since IME users genuinely need it.
+            // active, also stays, since IME users genuinely need it.
             #[cfg(target_os = "linux")]
             {
                 window.with_webview(|webview| {
@@ -1567,7 +1572,7 @@ pub fn run() {
             // Handle RunEvent::Opened for macOS AppleEvents file opens
             // (see the PendingOpens section near the top of this file
             // for the full design rationale). RunEvent::Opened is
-            // gated to macOS, iOS, and Android in Tauri's source — it
+            // gated to macOS, iOS, and Android in Tauri's source: it
             // does not exist as a variant on Linux or Windows. On
             // those platforms file associations pass the file as a
             // CLI argument handled by launch_info.
@@ -1653,8 +1658,9 @@ mod tests {
 
     #[test]
     fn length_enforces_the_token_cap() {
-        // Font sizes take exactly one value; padding takes one or two
-        // (CSS shorthand). Anything past the cap is dropped whole.
+        // Font sizes take exactly one value, while padding takes one
+        // or two (CSS shorthand). Anything past the cap is dropped
+        // whole.
         assert_eq!(normalize_length("edit-font-size", "1rem 2rem", 1, 1), None);
         assert_eq!(
             normalize_length("editor-padding-x", "1rem 2rem 3rem", 1, 2),
@@ -1706,7 +1712,7 @@ mod tests {
     #[test]
     fn config_preserves_internal_value_spacing() {
         // Font names and other free-string values keep their internal
-        // spaces; only the surrounding whitespace is trimmed.
+        // spaces. Only the surrounding whitespace is trimmed.
         let cfg = parse_skrivro_config("edit-font = Iosevka Comfy\n");
         assert_eq!(cfg.edit_font.as_deref(), Some("Iosevka Comfy"));
     }
@@ -1864,7 +1870,7 @@ theme = gruvbox-dark
 
     #[test]
     fn dic_accepts_a_bom_prefixed_count() {
-        // en_GB.dic / en_ZA.dic ship a UTF-8 BOM before the count; it is
+        // en_GB.dic / en_ZA.dic ship a UTF-8 BOM before the count, and it is
         // stripped only when present, so a BOM-less .dic is never truncated.
         assert!(dic_starts_with_count("\u{feff}97199\nword\n"));
     }

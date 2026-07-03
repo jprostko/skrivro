@@ -1,9 +1,9 @@
 // Tests for the worker's Markdown scroll-sync pieces: the per-token
-// line map and the invariant it depends on — every top-level token
+// line map and the invariant it depends on: every top-level token
 // renders as exactly one top-level element, so the main thread can
 // pair lines to elements by index. The worker registers its message
-// handler at import time; happy-dom supplies the addEventListener
-// global it expects.
+// handler at import time, and happy-dom supplies the
+// addEventListener global it expects.
 import { describe, expect, it } from "vite-plus/test";
 import { ad, computeMarkdownLineMap, extractAsciidoctorBlockLines, md } from "./render-worker.js";
 
@@ -34,8 +34,8 @@ describe("computeMarkdownLineMap", () => {
   });
 
   it("emits one entry per top-level block and none for nested blocks", () => {
-    // The blockquote contains a paragraph; only the blockquote itself
-    // is top-level, so the map has exactly two entries.
+    // The blockquote contains a paragraph, and only the blockquote
+    // itself is top-level, so the map has exactly two entries.
     const source = "> quoted text\n\ntail paragraph\n";
     const { tokens, body } = parseAndRender(source);
     const map = computeMarkdownLineMap(tokens);

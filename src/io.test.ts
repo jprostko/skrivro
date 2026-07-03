@@ -1,6 +1,6 @@
 // Tests for io.ts's pure helpers. Importing io.ts wires the Vim Ex
 // commands and the file pipeline as a side effect, so its sibling
-// modules and the Tauri APIs are stubbed out — the subjects here are
+// modules and the Tauri APIs are stubbed out: the subjects here are
 // the pure functions, not the wiring.
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -57,7 +57,7 @@ vi.mock("./ui.js", () => ({
 }));
 
 // io.ts grabs its dialog elements at import time, so the DOM they live
-// in has to exist before the module loads — hence the scaffold plus a
+// in has to exist before the module loads, hence the scaffold plus a
 // dynamic import (a static import would hoist above the scaffold).
 document.body.innerHTML = `
   <span id="name"></span>

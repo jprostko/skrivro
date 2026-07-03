@@ -4,10 +4,12 @@
 //   - editorView (live binding, null until createEditor runs)
 //   - vimCompartment (reconfigured when the user toggles Vim mode)
 //   - languageCompartment (reconfigured when the buffer's format
-//     changes — asciidocLang, markdownLang, or empty for plain text)
+//     changes to asciidocLang, markdownLang, or empty for plain
+//     text)
 //   - getDoc / setDoc (document read/write helpers)
-//   - createEditor(parent, callbacks) — constructs the EditorView
-//   - getCM re-export — used by status bar for reading Vim mode state
+//   - createEditor(parent, callbacks), which constructs the
+//     EditorView
+//   - getCM re-export, used by status bar for reading Vim mode state
 
 import { EditorState, Compartment, Prec, type Extension } from "@codemirror/state";
 import {
@@ -42,9 +44,9 @@ import { searchPhrases } from "./i18n.js";
 // Re-exports used by other modules (io for Vim.defineEx, ui for getCM).
 export { Vim, getCM };
 
-// Live binding — null until createEditor runs, then holds the
+// Live binding: null until createEditor runs, then holds the
 // EditorView instance. Typed as `EditorView | null` so importers
-// must narrow before accessing instance members; this is a deliberate
+// must narrow before accessing instance members. This is a deliberate
 // safety net for the "accessed before init" case (e.g., a module
 // top-level side effect that fires too early).
 export let editorView: EditorView | null = null;
@@ -96,12 +98,12 @@ const catppuccinTheme = EditorView.theme(
     // Vertical (-y) is applied as margin-block on .cm-scroller in
     // styles.css, NOT as padding on .cm-content or .editor-pane.
     // Margin on .cm-scroller (rather than padding on the pane) keeps
-    // CM6's .cm-panels-bottom — the container for Vim's Ex command
-    // line — anchored to the pane's actual bottom instead of floating
+    // CM6's .cm-panels-bottom (the container for Vim's Ex command
+    // line) anchored to the pane's actual bottom instead of floating
     // above a padded gap. The effect is still geometric clipping:
     // .cm-scroller is inset from .cm-editor's top/bottom by margin-y,
     // so scrolled content cannot reach the pane's edges. An overlay-
-    // bar alternative is unfixable on WebKitGTK at fractional DPI;
+    // bar alternative is unfixable on WebKitGTK at fractional DPI, while
     // geometric clipping renders cleanly at any DPI.
     //
     // Horizontal (-x) is on .cm-line (per-line, below), NOT on the pane.
@@ -111,7 +113,7 @@ const catppuccinTheme = EditorView.theme(
     // The -x padding also doesn't contribute to any scroll-padding
     // concern because the editor doesn't scroll horizontally.
     //
-    // .cm-content itself intentionally has no padding — everything it
+    // .cm-content itself intentionally has no padding: everything it
     // used to carry is now on the surrounding layers.
     ".cm-content": {
       caretColor: "var(--skr-cursor)",
@@ -175,10 +177,10 @@ const catppuccinTheme = EditorView.theme(
     // CM6 (or @replit/codemirror-vim's .cm-vim-panel class) sets 10px
     // of horizontal padding on .cm-panel. The right side shows as a
     // dark sliver in :open and similar Ex-command panels because
-    // nothing lives there — the PCRE-hint slot is a separate flex
+    // nothing lives there: the PCRE-hint slot is a separate flex
     // sibling that only exists in search mode. Zero the right padding
-    // so the input reaches the panel edge; 10px on the left stays so
-    // the : prefix has breathing room.
+    // so the input reaches the panel edge, while 10px on the left
+    // stays so the : prefix has breathing room.
     ".cm-panel": {
       paddingRight: "0",
     },
@@ -203,9 +205,9 @@ const catppuccinTheme = EditorView.theme(
     // makePrompt() in vim.js builds it as a <span style="color:#888"> that
     // sits as the second flex child of the outer panel div (the first child
     // is the prefix + input span). Adjacent sibling combinator matches only
-    // when a second span exists — Ex command panels have only one span
+    // when a second span exists, and Ex command panels have only one span
     // child (desc is undefined), so those are untouched. The hint is
-    // informational but repetitive; since we already default pcre to false
+    // informational but repetitive. Since we already default pcre to false
     // at init, users rarely need to toggle, and the label is clutter in
     // an otherwise clean command bar.
     ".cm-panel span + span": {
@@ -235,7 +237,7 @@ const catppuccinHighlight = HighlightStyle.define([
 ]);
 
 // ================= Minimal AsciiDoc stream highlighter =================
-// Not a full parser — just enough to color what you'll actually see:
+// Not a full parser, just enough to color what you'll actually see:
 // headings, attributes, comments, lists, block titles, listing blocks,
 // and inline emphasis/code/links.
 const asciidocLang = StreamLanguage.define({
@@ -263,13 +265,13 @@ const asciidocLang = StreamLanguage.define({
       if (stream.match(/\/\/.*$/)) return "comment";
       // Heading: 1..6 leading '=' followed by space + content.
       // CM6's stream.match returns `true | RegExpMatchArray`
-      // depending on overload — we need the RegExpMatchArray form
+      // depending on overload, so we need the RegExpMatchArray form
       // to access h[1] (the `={1,6}` capture group), so narrow with
       // `typeof h !== 'boolean'` before indexing.
       const h = stream.match(/(={1,6})\s+/);
       if (h && typeof h !== "boolean") {
         stream.skipToEnd();
-        // `h[1]!` — noUncheckedIndexedAccess types capture groups as
+        // `h[1]!`: noUncheckedIndexedAccess types capture groups as
         // `string | undefined`, but the regex has one required capture
         // group so the match array always has at least 2 elements.
         return "heading" + h[1]!.length;
@@ -321,7 +323,7 @@ const asciidocLang = StreamLanguage.define({
 // ================= Runtime compartments =================
 // Compartments let specific extension slots be reconfigured on a live
 // editor state without rebuilding the full extension set. Each slot
-// has its own Compartment — reconfiguring one leaves the others
+// has its own Compartment, so reconfiguring one leaves the others
 // untouched.
 
 // Reconfigured when the user toggles Vim mode.
@@ -330,13 +332,13 @@ export const vimCompartment = new Compartment();
 // Reconfigured when the current buffer's format changes. Holds the
 // language extension (syntax highlighter / tokenizer + any language-
 // specific keymap). Switching format dispatches a reconfigure effect
-// via setEditorLanguage — no rebuild of the full extension set.
+// via setEditorLanguage, no rebuild of the full extension set.
 export const languageCompartment = new Compartment();
 
 // Reconfigured by the runtime spellcheck toggle (Ctrl+Alt+K /
 // ⌃⌘K / :spell). Holds the decoration plugin when spellcheck is
 // active, an empty list when off. The actual dictionaries load
-// asynchronously in the spellcheck module — see setSpellcheck /
+// asynchronously in the spellcheck module, see setSpellcheck /
 // resolveSpellcheckExtension.
 export const spellcheckCompartment = new Compartment();
 
@@ -353,7 +355,7 @@ export const spellcheckCompartment = new Compartment();
 const markdownLang: Extension = [markdown({ base: markdownLanguage, addKeymap: false })];
 
 // Map a buffer format to the CM6 language extension that should be
-// active in its compartment slot. Text mode uses an empty array —
+// active in its compartment slot. Text mode uses an empty array:
 // no syntax highlighting, no language-specific keymap, just plain
 // text editing. Exhaustive switch on the Format union so TypeScript
 // flags any missing case if a new format is added.
@@ -371,22 +373,23 @@ const languageFor = (format: Format): Extension => {
 // Resolves the language compartment's contents given both the current
 // buffer format AND the syntaxHighlighting pref. When the pref is off
 // we hand back an empty extension list regardless of format, which
-// strips tokenization and therefore all per-token coloring; the
+// strips tokenization and therefore all per-token coloring, while the
 // syntaxHighlighting(defaultHighlightStyle) / syntaxHighlighting(
 // catppuccinHighlight) extensions elsewhere in the extension list stay
 // wired up but have nothing to color. Other CM6 affordances
 // (highlightActiveLine, search matches, gutter numbers, the focus
 // outline, the Vim cursor shape) all live in unrelated extensions and
-// are unaffected — "syntax off" is truly "plain editor with every
+// are unaffected: "syntax off" is truly "plain editor with every
 // other affordance intact," not "bare textarea."
 const resolveLanguageExtension = (format: Format): Extension =>
   prefs.syntaxHighlighting ? languageFor(format) : [];
 
 // Reconfigure the language compartment for a given format. Called
 // by io.ts's setBufferFormat whenever the buffer's format changes.
-// Safe to call before createEditor has run — the early return skips
-// the dispatch; the initial compartment value (set in makeExtensions)
-// already reflects currentBuffer.format at construction time.
+// Safe to call before createEditor has run: the early return skips
+// the dispatch, and the initial compartment value (set in
+// makeExtensions) already reflects currentBuffer.format at
+// construction time.
 export const setEditorLanguage = (format: Format) => {
   if (!editorView) return;
   editorView.dispatch({
@@ -394,14 +397,15 @@ export const setEditorLanguage = (format: Format) => {
   });
 };
 
-// Runtime syntax-highlighting toggle — reconfigure the language
+// Runtime syntax-highlighting toggle: reconfigure the language
 // compartment to either hold the format's normal language extension
 // or an empty list. Symmetric with setVimMode: pure-effect, no pref
 // mutation (the caller in ui.ts flips the pref and calls through
 // here, same pattern as toggleVim/setVimMode). Reads currentBuffer
 // .format at dispatch time because the compartment needs to be
 // repopulated with the CURRENT format's language when turning
-// highlighting back on — we can't cache the format from elsewhere.
+// highlighting back on, since we can't cache the format from
+// elsewhere.
 export const setSyntaxHighlighting = (enabled: boolean) => {
   if (!editorView) return;
   editorView.dispatch({
@@ -409,8 +413,8 @@ export const setSyntaxHighlighting = (enabled: boolean) => {
   });
 };
 
-// Whether spellcheck is enabled by config. It's on by default — an unset
-// key or 'auto' resolves to a locale-detected language — and only an
+// Whether spellcheck is enabled by config. It's on by default (an unset
+// key or 'auto' resolves to a locale-detected language), and only
 // explicit 'off' disables it. When this is false (explicit 'off') the
 // feature is hard-off: no dictionary loads and the runtime toggle is
 // inert (ui.ts shows a "disabled in config" message instead of flipping).
@@ -418,13 +422,13 @@ export const spellcheckConfigured = (): boolean => userConfig.spellcheckLanguage
 
 // Initial spellcheck-compartment contents: the decoration plugin when
 // config enables it AND the runtime pref is on, else empty. The plugin
-// can be present before any dictionary has loaded — it just decorates
+// can be present before any dictionary has loaded: it just decorates
 // nothing until initSpellcheck (called from main.ts) resolves and
 // dispatches spellcheckRecompute.
 const resolveSpellcheckExtension = (): Extension =>
   spellcheckConfigured() && prefs.spellcheck ? [spellcheckExtension, spellMenuExtension] : [];
 
-// Runtime spellcheck toggle — reconfigure the compartment to hold the
+// Runtime spellcheck toggle: reconfigure the compartment to hold the
 // decoration plugin or an empty list. Symmetric with setSyntaxHighlighting:
 // pure-effect, no pref mutation. ui.ts flips prefs.spellcheck and gates
 // on spellcheckConfigured() before calling here.
@@ -441,9 +445,9 @@ export const setSpellcheck = (enabled: boolean) => {
 
 // Callbacks passed through createEditor → makeExtensions, wired into
 // the CM6 updateListener. onDocChange fires when the document
-// actually changed (not on suppressDocEvents-guarded setDoc calls);
-// onSelectionChange fires on either doc or selection change (drives
-// the status bar refresh).
+// actually changed (not on suppressDocEvents-guarded setDoc calls),
+// and onSelectionChange fires on either doc or selection change
+// (drives the status bar refresh).
 export interface EditorCallbacks {
   onDocChange?: () => void;
   onSelectionChange?: () => void;
@@ -454,7 +458,7 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   vimCompartment.of(prefs.vimMode ? [vim()] : []),
 
   // Enable CM6 multi-range selections. Required for Vim visual-block
-  // mode (Ctrl+Q / Ctrl+V) to extend vertically — the @replit/codemirror-vim
+  // mode (Ctrl+Q / Ctrl+V) to extend vertically: the @replit/codemirror-vim
   // plugin represents a V-BLOCK selection as multiple parallel ranges
   // (one per row) and dispatches them via cm6.dispatch({ selection: ... }).
   // CM6 silently collapses multi-range selections to a single range
@@ -462,7 +466,7 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   // facet, pressing j/k in V-BLOCK appears to enter block mode (the
   // plugin's internal vim.visualBlock=true is set) but the visible CM6
   // selection never grows beyond one row. The plugin itself doesn't
-  // set this facet — consuming code has to.
+  // set this facet, so consuming code has to.
   EditorState.allowMultipleSelections.of(true),
 
   // base editing
@@ -473,7 +477,7 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   // only shows actual browser text selection (from mouse drag), NOT
   // internal selection state set programmatically. That means Vim
   // visual mode (which dispatches selection changes via CM6's state)
-  // tracks the selection internally but has no visible highlight —
+  // tracks the selection internally but has no visible highlight, so
   // pressing v + motions appears to do nothing. drawSelection() fixes
   // that by rendering the internal selection as visible highlights.
   // It's also what renders the fat Vim block cursor.
@@ -485,7 +489,7 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   bracketMatching(),
   EditorView.lineWrapping,
 
-  // language — the compartment lets the highlighter be swapped at
+  // language: the compartment lets the highlighter be swapped at
   // runtime via setEditorLanguage when the buffer format changes.
   // Initial value reflects currentBuffer.format so a launch that
   // opened a .md file (or restored a markdown buffer) gets the
@@ -494,12 +498,12 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   // could re-dispatch.
   languageCompartment.of(resolveLanguageExtension(currentBuffer.format)),
 
-  // spellcheck — compartment lets the misspelling-decoration plugin be
-  // toggled at runtime (Ctrl+Alt+K / ⌃⌘K / :spell) without rebuilding
-  // the editor. Initial value reflects config + pref; the dictionaries
-  // load asynchronously after createEditor, so a present-but-unfed
-  // plugin simply decorates nothing until initSpellcheck dispatches
-  // spellcheckRecompute.
+  // spellcheck: the compartment lets the misspelling-decoration plugin
+  // be toggled at runtime (Ctrl+Alt+K / ⌃⌘K / :spell) without
+  // rebuilding the editor. Initial value reflects config + pref, and
+  // the dictionaries load asynchronously after createEditor, so a
+  // present-but-unfed plugin simply decorates nothing until
+  // initSpellcheck dispatches spellcheckRecompute.
   spellcheckCompartment.of(resolveSpellcheckExtension()),
 
   // highlighting
@@ -512,10 +516,10 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
   // base keymap
   keymap.of([...defaultKeymap, ...historyKeymap]),
 
-  // find/replace — CM's search panel, mounted at the top of the editor.
+  // find/replace: CM's search panel, mounted at the top of the editor.
   // Opened by Mod-f (Ctrl+F, or Cmd+F on Mac) for non-Vim users, or the
   // `:find` Ex command for Vim users. searchKeymap is Prec.low, so in Vim
-  // mode Vim's own keymap wins (its Ctrl-F keeps paging forward); with Vim
+  // mode Vim's own keymap wins (its Ctrl-F keeps paging forward). With Vim
   // off, Mod-f opens the panel.
   search({ top: true }),
   EditorState.phrases.of(searchPhrases),
@@ -537,12 +541,12 @@ const makeExtensions = (callbacks: EditorCallbacks) => [
 ];
 
 // Construct the EditorView and assign to the live-binding export.
-// `parent` is the host DOM element; `callbacks` supplies onDocChange
-// (for dirty / render / autosave) and onSelectionChange (for status
-// bar refresh). Call order: invoked after applyUserConfig so the
-// first paint carries the user's CSS variable overrides (the theme's
-// var() references resolve live, so this is about a clean first
-// frame, not a hard requirement).
+// `parent` is the host DOM element, and `callbacks` supplies
+// onDocChange (for dirty / render / autosave) and onSelectionChange
+// (for status bar refresh). Call order: invoked after
+// applyUserConfig so the first paint carries the user's CSS variable
+// overrides (the theme's var() references resolve live, so this is
+// about a clean first frame, not a hard requirement).
 export const createEditor = (
   parent: HTMLElement,
   initialDoc: string,
@@ -556,12 +560,12 @@ export const createEditor = (
   return editorView;
 };
 
-// Runtime Vim toggle — reconfigure the Vim compartment so Vim mode
+// Runtime Vim toggle: reconfigure the Vim compartment so Vim mode
 // can be flipped on/off without a full editor rebuild.
 export const setVimMode = (on: boolean) => {
   // Same "null before init" guard as setDoc. toggleVim in ui.ts is
-  // user-triggered, so the editor has always been created by then —
-  // this is type-level armor against the unreachable case.
+  // user-triggered, so the editor has always been created by then,
+  // and this is type-level armor against the unreachable case.
   if (!editorView) return;
   editorView.dispatch({
     effects: vimCompartment.reconfigure(on ? [vim()] : []),

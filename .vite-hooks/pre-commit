@@ -1,4 +1,4 @@
-# Pre-commit hook — runs the project quality gate (format, lint, and
+# Pre-commit hook: runs the project quality gate (format, lint, and
 # type check, via vp check) and blocks the commit if it fails.
 #
 # CWD is the git repo root, where package.json, tsconfig, and

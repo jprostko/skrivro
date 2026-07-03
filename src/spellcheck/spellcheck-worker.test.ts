@@ -1,11 +1,11 @@
 // Tests for the spellcheck worker, driven through its real message
 // protocol. Under happy-dom the worker's `self` is the window, so
 // dispatching MessageEvents exercises the actual handler, and its
-// postMessage replies come back as window message events — the same
+// postMessage replies come back as window message events, the same
 // black-box surface the main thread sees. The dictionary `?url`
-// imports resolve to asset paths; fetch is stubbed to read those
-// files from disk, so the suite runs against the real vendored
-// dictionaries.
+// imports resolve to asset paths, and fetch is stubbed to read
+// those files from disk, so the suite runs against the real
+// vendored dictionaries.
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -99,8 +99,8 @@ describe("check", () => {
   });
 
   it("skips letter runs adjacent to digits", async () => {
-    // qqqz alone is a misspelling; against a digit it reads as an
-    // identifier and stays unflagged on either side.
+    // qqqz alone is a misspelling, but against a digit it reads
+    // as an identifier and stays unflagged on either side.
     expect(await flaggedWords("qqqz")).toEqual(["qqqz"]);
     expect(await flaggedWords("qqqz1 2qqqz utf8")).toEqual([]);
   });
@@ -128,7 +128,7 @@ describe("setPersonal", () => {
 // raw Swedish .aff makes it accept any string. We strip the compound
 // directives (including ONLYINCOMPOUND, which the DSSO dictionary mis-applies
 // to everyday standalone words) before handing the .aff to nspell. The live
-// Swedish behavior is validated manually against a user-supplied dictionary;
+// Swedish behavior is validated manually against a user-supplied dictionary,
 // here we pin the filter itself, which is the part that's our code.
 describe("stripCompounding", () => {
   it("drops every compound directive and keeps the rest of the .aff", () => {

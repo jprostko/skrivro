@@ -1,11 +1,11 @@
-# Tokyo Night Day — Skrivro theme port
+# Tokyo Night Day: Skrivro theme port
 #
 # Source: folke/tokyonight.nvim (https://github.com/folke/tokyonight.nvim)
 # Palette reference: extras/lua/tokyonight_day.lua (authoritative
 # pre-computed dump of the Day variant).
 #
 # Day is the official light variant of the Tokyo Night family. Pairs
-# naturally with Skrivro's bundled Tokyo Night Moon — same style
+# naturally with Skrivro's bundled Tokyo Night Moon, the same style
 # language, flipped luminance.
 #
 # Skrivro convention: the editor pane on the left is the BRIGHTER
@@ -21,7 +21,7 @@
 # Mocha reference file (catppuccin-mocha.theme.default) for the full
 # slot schema with purpose descriptions.
 
-# Backgrounds — editor brighter than preview per Skrivro convention
+# Backgrounds: editor brighter than preview per Skrivro convention
 bg = #e1e2e7
 bg-panel = #d0d5e3
 bg-inset = #c1c9df
@@ -34,13 +34,13 @@ shadow = rgba(0, 0, 0, 0.1)
 surface = #c4c8da
 surface-hover = #8990b3
 
-# Text — dark-to-light gradient on light bg (most prominent first)
+# Text: dark-to-light gradient on light bg (most prominent first)
 text = #3760bf
 text-muted = #6172b0
 text-dim = #848cb5
 text-faint = #a1a6c5
 
-# Accents — official Tokyo Night Day palette values
+# Accents: official Tokyo Night Day palette values
 accent = #9854f1
 accent-alt = #7847bd
 accent-minor = #007197

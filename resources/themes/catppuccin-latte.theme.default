@@ -1,11 +1,11 @@
-# Catppuccin Latte — Skrivro theme port
+# Catppuccin Latte: Skrivro theme port
 #
 # Source: catppuccin/palette (https://github.com/catppuccin/palette)
 # Palette reference: palette.json, Latte variant
 #
 # Latte is the official light variant of Catppuccin. Pairs naturally
-# with Skrivro's bundled Catppuccin Mocha (the CSS default) — same
-# color family, flipped luminance.
+# with Skrivro's bundled Catppuccin Mocha (the CSS default), the
+# same color family, flipped luminance.
 #
 # Skrivro convention: the editor pane on the left is the BRIGHTER
 # surface, the preview pane on the right is slightly darker. For a
@@ -20,7 +20,7 @@
 # Mocha reference file (catppuccin-mocha.theme.default) for the full
 # slot schema with purpose descriptions.
 
-# Backgrounds — editor brighter than preview per Skrivro convention
+# Backgrounds: editor brighter than preview per Skrivro convention
 bg = #eff1f5
 bg-panel = #e6e9ef
 bg-inset = #dce0e8
@@ -33,13 +33,13 @@ shadow = rgba(0, 0, 0, 0.1)
 surface = #ccd0da
 surface-hover = #bcc0cc
 
-# Text — dark-to-light gradient on light bg (most prominent first)
+# Text: dark-to-light gradient on light bg (most prominent first)
 text = #4c4f69
 text-muted = #5c5f77
 text-dim = #6c6f85
 text-faint = #9ca0b0
 
-# Accents — official Catppuccin Latte palette values
+# Accents: official Catppuccin Latte palette values
 accent = #7287fd
 accent-alt = #8839ef
 accent-minor = #ea76cb

@@ -1,4 +1,4 @@
-# Nord — Skrivro theme port
+# Nord: Skrivro theme port
 #
 # Source: nordtheme.com / arcticicestudio/nord
 # Palette: 16 colors across 4 categories (Polar Night, Snow Storm,
@@ -26,7 +26,7 @@ bg-active-line = rgba(67, 76, 94, 0.25)
 shadow = rgba(0, 0, 0, 0.5)
 
 # bg-inset (#272C36) is a computed shade slightly darker than nord0.
-# The official Nord palette has no color darker than nord0 — it is
+# The official Nord palette has no color darker than nord0: it is
 # designed as the absolute floor. Without a darker shade, code blocks
 # and literalblocks would have the same background as the body,
 # making them visually indistinct. The computed value preserves the
@@ -50,7 +50,7 @@ text-muted = #B5BCC9
 text-dim = #929AA9
 text-faint = #4C566A
 
-# Accents — Frost (cool blues/cyans) and Aurora (warm colors)
+# Accents: Frost (cool blues/cyans) and Aurora (warm colors)
 accent = #88C0D0
 accent-alt = #81A1C1
 accent-minor = #B48EAD

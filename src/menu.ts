@@ -1,7 +1,7 @@
 // ================= macOS menu bar =================
 //
 // Builds and installs Skrivro's macOS menu bar via Tauri's @tauri-apps/api/menu.
-// Mac-only; called from main.ts under `if (isMac)`. Linux/Windows don't get
+// Mac-only, called from main.ts under `if (isMac)`. Linux/Windows don't get
 // a menu bar (Tauri menus would render in-window on those platforms, which
 // doesn't fit a borderless keyboard-first editor).
 //
@@ -13,14 +13,14 @@
 // integration, while the window presents visually as borderless.
 //
 // The implication for this file: most Window menu items are
-// PredefinedMenuItem instances — they wire to canonical NSWindow
+// PredefinedMenuItem instances: they wire to canonical NSWindow
 // selectors (performMiniaturize: / zoom: / toggleFullScreen:) which
 // work because the style mask has the bits. The predefined Fullscreen
 // item additionally gets AppKit's Big Sur shortcut substitution: shown
 // as 🌐F on modern MacBooks, with hardware Fn+F routing to it.
 //
 // Why we still need a custom menu (rather than letting Tauri use its
-// default) — two reasons remain:
+// default), and two reasons remain:
 //   1. Predefined Quit calls NSApplication.terminate: directly, which
 //      bypasses our window's onCloseRequested handler. A dirty buffer
 //      would be silently exited without the discard-changes confirm
@@ -28,7 +28,7 @@
 //      DOES route through onCloseRequested → confirmDiscard. Single-
 //      window app, so closing the window = quitting the app. Same
 //      routing reason for File > Close Window and Window > Close
-//      Window — all three share closeAction below.
+//      Window, and all three share closeAction below.
 //   2. The default File menu is bare ("Close Window" only). We populate
 //      it with New / Open / Save / Save As / Reload so Mac users can
 //      discover and invoke file operations through the menu instead of
@@ -36,7 +36,7 @@
 //
 // Reload menu item wraps reloadFile() in confirmDiscard so a dirty
 // buffer prompts via our GUI confirm dialog. reloadFile() itself
-// doesn't check dirty — it unconditionally overwrites the buffer —
+// doesn't check dirty (it unconditionally overwrites the buffer),
 // so without the wrapper the menu item would silently discard unsaved
 // changes.
 
@@ -56,7 +56,7 @@ import {
 import { syncPreviewToCaret } from "./preview.js";
 
 // Convenience: the Window > Close, File > Close Window, and App > Quit items
-// all do the same thing — close this single window, which routes through
+// all do the same thing: close this single window, which routes through
 // onCloseRequested → dirty-buffer confirm → window destroy → process exit.
 // Defined once so the three menu items can share it.
 const closeAction = () => {
@@ -69,8 +69,9 @@ export const installMenu = async () => {
     text: "Skrivro",
     items: [
       // About item takes an AboutMetadata object (or null for defaults
-      // from tauri.conf.json). null is fine — productName "Skrivro" is
-      // already in our Tauri config and Tauri reads from there.
+      // from tauri.conf.json). null is fine, since productName
+      // "Skrivro" is already in our Tauri config and Tauri reads from
+      // there.
       await PredefinedMenuItem.new({ item: { About: null } }),
       await PredefinedMenuItem.new({ item: "Separator" }),
       await PredefinedMenuItem.new({ item: "Services" }),
@@ -91,7 +92,7 @@ export const installMenu = async () => {
   // Default Tauri menu's File only has "Close Window". We add the standard
   // file-op set so Mac users can discover and invoke them through the menu.
   // All actions call the same JS handlers that the keyboard shortcuts in
-  // main.ts's keydown listener call — no logic duplication, just a second
+  // main.ts's keydown listener call, no logic duplication, just a second
   // entry point.
   const fileMenu = await Submenu.new({
     text: "File",
@@ -129,9 +130,9 @@ export const installMenu = async () => {
         text: "Reload from Disk",
         action: () => {
           // Wrap with confirmDiscard so a dirty buffer prompts via our
-          // GUI confirm dialog. reloadFile itself doesn't check dirty;
-          // without this wrapper, the menu item would silently discard
-          // unsaved changes.
+          // GUI confirm dialog. reloadFile itself doesn't check dirty,
+          // so without this wrapper, the menu item would silently
+          // discard unsaved changes.
           confirmDiscard(() => {
             void reloadFile();
           });
@@ -148,8 +149,8 @@ export const installMenu = async () => {
 
   // --- Edit menu ---
   // All standard predefined items. macOS auto-injects AutoFill / Start
-  // Dictation / Emoji & Symbols below these — we don't (and can't) add
-  // those.
+  // Dictation / Emoji & Symbols below these, and we don't (and can't)
+  // add those.
   const editMenu = await Submenu.new({
     text: "Edit",
     items: [
@@ -244,7 +245,7 @@ export const installMenu = async () => {
   //
   // macOS auto-injects Move & Resize / Full Screen Tile / Fill /
   // Center / Remove Window from Set / Bring All to Front / per-window
-  // list when this submenu is registered as NSApp.windowsMenu —
+  // list when this submenu is registered as NSApp.windowsMenu,
   // which happens automatically because we set the submenu id to the
   // canonical __tauri_window_menu__ value below (Tauri's init_app_menu
   // handles the set_as_windows_menu_for_nsapp call for us).
@@ -254,7 +255,7 @@ export const installMenu = async () => {
     // Submenu::set_as_windows_menu_for_nsapp on the same main-thread
     // turn as init_for_nsapp (setMainMenu). Without this id, Tauri's
     // helper skips the setWindowsMenu call and we'd have to invoke it
-    // ourselves — but a manual invoke on a later runloop turn breaks
+    // ourselves, but a manual invoke on a later runloop turn breaks
     // AppKit's Big-Sur Fn+F → Fullscreen-menu-item registration.
     // Using the canonical id is what lets Tauri keep both calls on
     // the same turn. Constant:
@@ -280,7 +281,7 @@ export const installMenu = async () => {
   // uses elsewhere (Ctrl+Cmd+H on Mac after the platform-strict modifier
   // remap).
   const helpMenu = await Submenu.new({
-    // Sibling of the Window menu id above — Tauri's init_app_menu
+    // Sibling of the Window menu id above: Tauri's init_app_menu
     // helper also handles set_as_help_menu_for_nsapp for this id.
     // HELP_SUBMENU_ID = "__tauri_help_menu__"
     // (src/menu/menu.rs in the tauri crate).

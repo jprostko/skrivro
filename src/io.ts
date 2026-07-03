@@ -2,9 +2,9 @@
 // File I/O, dirty-buffer tracking, title + filename state, autosave
 // draft, session state, the Vim Ex command set, and the quit-command
 // helpers. Owns the current buffer's per-buffer state on a single
-// `currentBuffer: Buffer` object. Other modules read fields directly;
-// mutations use `setDirty(d)` (which also triggers updateTitle) or
-// direct property assignment for path / name.
+// `currentBuffer: Buffer` object. Other modules read fields directly,
+// and mutations use `setDirty(d)` (which also triggers updateTitle)
+// or direct property assignment for path / name.
 
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile, stat } from "@tauri-apps/plugin-fs";
@@ -45,18 +45,18 @@ export const DEFAULT_NAME = "untitled.adoc";
 export const DEFAULT_DOC = "";
 
 // Hard upper bound on the size of a file Skrivro will open, in bytes
-// (3 MiB). A file above this is refused before any read — see
+// (3 MiB). A file above this is refused before any read, see
 // readDocumentText / FileTooLargeError below.
 //
 // The limit tracks usability, not just crash-avoidance. AsciiDoc
 // render cost is roughly linear in source size, so the limit is also
 // the slowest open Skrivro allows: a file at 3 MiB takes on the
-// order of ten seconds — large and slow, but it completes — whereas
+// order of ten seconds (large and slow, but it completes), whereas
 // a much higher ceiling would admit files that take minutes, which
 // is functionally a hang. 3 MiB still clears any realistic single
 // document: a ~400,000-word novel (a very long one) is roughly
 // 2.5 MB as AsciiDoc, comfortably under. Compile-time constant by
-// design — no config override; raise it by recompiling.
+// design: no config override, raise it by recompiling.
 const MAX_FILE_BYTES = 3 * 1024 * 1024;
 
 // ================= DOM refs =================
@@ -86,10 +86,10 @@ const confirmCancelBtn = document.getElementById("confirmCancelBtn")!;
 //
 // `currentBuffer` is exported as const, which pins the reference but
 // lets callers read and mutate fields. For dirty specifically, use
-// `setDirty(d)` — it also triggers updateTitle() to keep the status
-// bar / title in sync. path, name, and format are plain assignments;
-// by convention, format should be kept in sync with path via
-// detectFormat(path) at every site that writes path.
+// `setDirty(d)`, which also triggers updateTitle() to keep the
+// status bar / title in sync. path, name, and format are plain
+// assignments, and by convention, format should be kept in sync with
+// path via detectFormat(path) at every site that writes path.
 
 // Markup format associated with the current buffer. Drives which
 // Renderer implementation handles render + scroll-sync and which
@@ -114,13 +114,13 @@ export const currentBuffer: Buffer = {
 // extension. Case-insensitive so FOO.ADOC and foo.adoc are treated
 // the same. Paths without a recognized markup extension fall to
 // 'text'. A null path (untitled buffer) reads userConfig.defaultFormat
-// — set via the `default-format` key in skrivro.conf — and falls
+// (set via the `default-format` key in skrivro.conf) and falls
 // through to 'asciidoc' when unset or if the config value isn't
 // one of the recognized formats. File-extension detection ALWAYS
 // wins over the config default: opening foo.md is markdown
 // regardless of what default-format says.
 //
-// Only GFM is supported under 'markdown' — other markdown flavors
+// Only GFM is supported under 'markdown': other markdown flavors
 // (Pandoc, MultiMarkdown, etc.) still use .md as their conventional
 // extension and will render via the same GFM pipeline, which may
 // produce imperfect results for flavor-specific syntax. Documented
@@ -154,18 +154,18 @@ export const setLaunchCwd = (cwd: string) => {
 
 // ================= Ex command panel messages =================
 //
-// Surfaces error/info messages to the user via the CM6 Vim panel — the
+// Surfaces error/info messages to the user via the CM6 Vim panel, the
 // same bottom bar where the plugin itself shows errors like "Not an
 // editor command :foo" and "Invalid regex". Use this anywhere we would
 // otherwise console.error() silently and leave the user wondering why
 // a command did nothing.
 //
-// Mechanism: cm.openNotification is the plugin's documented hook (see
-// its .d.ts line 665). Class `cm-vim-message` matches the plugin's own
+// Mechanism: cm.openNotification is the plugin's documented hook.
+// Class `cm-vim-message` matches the plugin's own
 // convention so our messages and the plugin's built-in errors share
-// styling; inline white-space:pre preserves any formatting in the
+// styling, and inline white-space:pre preserves any formatting in the
 // message text. The plugin inlines color:red on its own notifications,
-// which collides with every non-Mocha theme — styles.css overrides
+// which collides with every non-Mocha theme, so styles.css overrides
 // .cm-vim-message color to the theme's --skr-error slot, which also
 // retheme's the plugin's own errors as a side benefit.
 //
@@ -173,7 +173,7 @@ export const setLaunchCwd = (cwd: string) => {
 // default for errors because 15s is a long time to stare at a short
 // message like "E37: No write since last change". Still enough time
 // to read a verbose E212 with a long path. Safe to call from any code
-// path; if the editor isn't ready yet we no-op silently rather than
+// path. If the editor isn't ready yet we no-op silently rather than
 // throw.
 export const vimMessage = (text: string) => {
   if (!editorView) return;
@@ -194,7 +194,7 @@ export const vimMessage = (text: string) => {
 // Tauri's fs plugin wraps OS-level errors with a verbose
 // "failed to open file at path: <path> with error: <os msg>" prefix
 // (or "failed to write bytes to file at path: ..." on writes). Since our
-// Exxx: message already cites the path, that prefix is pure noise —
+// Exxx: message already cites the path, that prefix is pure noise, so
 // stripping it leaves just the meaningful OS error, e.g.:
 //
 //   before: "failed to open file at path: /foo with error: No such file..."
@@ -221,7 +221,7 @@ export const updateTitle = () => {
   getCurrentWindow()
     .setTitle(title)
     .catch((e) => console.error("setTitle failed:", e));
-  // Status bar mirrors filename + dirty indicator; refresh on any title update.
+  // Status bar mirrors filename + dirty indicator, so refresh it too.
   refreshStatus();
 };
 
@@ -235,12 +235,12 @@ export const setDirty = (d: boolean) => {
 // rather than assigning the field directly so the three side effects
 // that should always follow a format change stay in one place:
 //
-//   1. CM6 language compartment reconfigure (via editor.ts) — swaps
-//      the active language extension (AsciiDoc highlighter, markdown,
-//      or plain text).
-//   2. Status bar refresh — the filetype slot shows the new format's
+//   1. CM6 language compartment reconfigure (via editor.ts), which
+//      swaps the active language extension (AsciiDoc highlighter,
+//      markdown, or plain text).
+//   2. Status bar refresh: the filetype slot shows the new format's
 //      display name.
-//   3. Preview re-render — since the renderer eventually dispatches
+//   3. Preview re-render: since the renderer eventually dispatches
 //      on format, the preview should reflect the new choice.
 //
 // No-op when the requested format equals the current one, so
@@ -392,7 +392,7 @@ const formatBytes = (bytes: number): string => {
 };
 
 // Thrown by readDocumentText when a file exceeds MAX_FILE_BYTES. The
-// Error message is the ready-to-display, user-facing string — call
+// Error message is the ready-to-display, user-facing string: call
 // sites catch this type, show e.message via vimMessage, and skip the
 // load. A distinct class (rather than a flag on a plain Error) is
 // what lets each catch tell "too large" apart from an ordinary open
@@ -416,7 +416,7 @@ export class FileTooLargeError extends Error {
 // this: the file picker, drag-drop, the OS open event, :e filename,
 // reload, and the launch-time paths in main.ts.
 //
-// stat() follows symlinks, and that is load-bearing — a symlink's
+// stat() follows symlinks, and that is load-bearing: a symlink's
 // own size is just the few bytes of the stored path, so measuring it
 // (which lstat would do) would wave through a symlink pointing at a
 // multi-gigabyte file. Never swap stat() for lstat() here. A stat()
@@ -429,7 +429,7 @@ export const readDocumentText = async (path: string): Promise<string> => {
   try {
     size = (await stat(path)).size;
   } catch {
-    // stat failed — see above; fall through to the read.
+    // stat failed, see above. Fall through to the read.
   }
   if (size !== null && size > MAX_FILE_BYTES) {
     throw new FileTooLargeError(await basename(path), size);
@@ -438,7 +438,7 @@ export const readDocumentText = async (path: string): Promise<string> => {
 };
 
 // Internal: load a file from a given absolute path into the editor.
-// Does NOT guard against a dirty buffer — callers are responsible for
+// Does NOT guard against a dirty buffer: callers are responsible for
 // running this inside a confirmDiscard wrapper if appropriate.
 // Used by openFile (file-picker dialog), the drag-drop handler, and
 // could be reused by future entry points like recent-files menus.
@@ -454,16 +454,16 @@ export const loadFileFromPath = async (path: string) => {
     clearAllRendererCaches();
     // `void` prefix on fire-and-forget async calls: writeSessionState
     // is async (awaits invoke(...)) but failure is non-fatal and
-    // handled internally; render is async but we don't need its result.
-    // Prefix makes the fire-and-forget intent explicit for both readers
-    // and the no-floating-promises lint rule.
+    // handled internally, and render is async but we don't need its
+    // result. Prefix makes the fire-and-forget intent explicit for both
+    // readers and the no-floating-promises lint rule.
     void writeSessionState(currentBuffer.path);
     updateTitle();
     requestPreviewScrollToTop();
     void render();
   } catch (e) {
     // Oversize file: surface the (already user-facing) message.
-    // Other failures keep the existing console-only behavior — the
+    // Other failures keep the existing console-only behavior: the
     // silent-on-invalid handling for drag-drop and the picker is
     // deliberate (see the onDragDropEvent comment in main.ts).
     if (e instanceof FileTooLargeError) {
@@ -516,7 +516,7 @@ export const saveFileAs = async () => {
     selected = await save({
       defaultPath: currentBuffer.path || currentBuffer.name,
     });
-    if (!selected) return; // user canceled — silent, the user knows
+    if (!selected) return; // user canceled: silent, the user knows
     await writeTextFile(selected, docToSave());
     currentBuffer.path = selected;
     currentBuffer.name = await basename(selected);
@@ -552,7 +552,7 @@ export const newFile = () => {
     updateTitle();
     requestPreviewScrollToTop();
     void render();
-    // Non-null assertion safe here — newFile is user-invoked, only
+    // Non-null assertion safe here: newFile is user-invoked, only
     // reachable after createEditor has run.
     editorView!.focus();
     // Move cursor to end
@@ -572,8 +572,8 @@ export const reloadFile = async () => {
     void render();
   } catch (e) {
     console.error(e);
-    // A file can grow past the limit between open and reload — :e is
-    // exactly the "the file on disk changed" operation — so the
+    // A file can grow past the limit between open and reload (:e is
+    // exactly the "the file on disk changed" operation), so the
     // oversize case is live here, not only at first open.
     vimMessage(
       e instanceof FileTooLargeError
@@ -607,8 +607,8 @@ const resolveArgPath = async (arg: string): Promise<string> => {
 //
 // @replit/codemirror-vim exposes the ! bang suffix to user-defined
 // commands via params.argString (as a leading "!"), NOT via params.bang
-// — params.bang is undefined for every command registered through
-// Vim.defineEx. Naively checking params.bang silently treats every
+// (params.bang is undefined for every command registered through
+// Vim.defineEx). Naively checking params.bang silently treats every
 // bang variant as the non-bang form, and naively trimming argString
 // treats the leading "!" as part of the filename argument. Both
 // mistakes are easy to make (I made both), so all Ex handlers that
@@ -636,10 +636,10 @@ const parseExArgs = (params: VimExParams) => {
 
 Vim.defineEx("write", "w", async (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
-  // Bang has no additional effect in our :w path — Vim's :w! forces
+  // Bang has no additional effect in our :w path: Vim's :w! forces
   // write to a readonly file, and Skrivro has no readonly concept.
   if (arg) {
-    // :w filename / :w! filename — write the buffer's content to
+    // :w filename / :w! filename: write the buffer's content to
     // `filename`, but do NOT change the buffer's current file. The
     // buffer stays associated with its original file, dirty flag
     // unchanged. Matches Vim semantics: `:w bar.adoc` followed by
@@ -659,7 +659,7 @@ Vim.defineEx("write", "w", async (_cm: any, params: VimExParams) => {
       );
     }
   } else {
-    // :w or :w! — save to current file. Error reporting happens inside
+    // :w or :w! (no filename): save to current file. Error reporting
     // saveFile / saveFileAs.
     void saveFile();
   }
@@ -667,11 +667,11 @@ Vim.defineEx("write", "w", async (_cm: any, params: VimExParams) => {
 
 Vim.defineEx("saveas", "sav", async (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
-  // Bang has no additional effect — Vim's :saveas! forces overwrite
+  // Bang has no additional effect: Vim's :saveas! forces overwrite
   // of an existing file, and Skrivro's writeTextFile has no such
   // refuse-if-exists check to override.
   if (arg) {
-    // :saveas filename / :saveas! filename — write to the given path
+    // :saveas filename / :saveas! filename: write to the given path
     // AND rename the buffer. Future :w calls will save to this new
     // path. Matches Vim semantics: this is the buffer-renaming
     // counterpart to :w filename's pure-write. Relative paths resolve
@@ -696,10 +696,10 @@ Vim.defineEx("saveas", "sav", async (_cm: any, params: VimExParams) => {
       );
     }
   } else {
-    // :saveas (no args) — non-standard: show the save dialog. Real Vim
-    // errors with "Argument required" here, but a dialog is friendlier
-    // for a GUI editor and matches what Ctrl+Shift+S / ⇧⌘S does. Error
-    // reporting happens inside saveFileAs.
+    // :saveas (no args) is non-standard: show the save dialog. Real
+    // Vim errors with "Argument required" here, but a dialog is
+    // friendlier for a GUI editor and matches what Ctrl+Shift+S / ⇧⌘S
+    // does. Error reporting happens inside saveFileAs.
     void saveFileAs();
   }
 });
@@ -708,14 +708,14 @@ Vim.defineEx("edit", "e", async (_cm: any, params: VimExParams) => {
   const { bang, arg } = parseExArgs(params);
   // Refuse to discard a dirty buffer without the force bang. Applies
   // to both :e (reload current file from disk) and :e filename (open
-  // a new one). Match Vim's exact wording — users who know the E37
-  // code from Vim recognize it instantly.
+  // a new one). Match Vim's exact wording, since users who know the
+  // E37 code from Vim recognize it instantly.
   if (currentBuffer.dirty && !bang) {
     vimMessage(tr("E37: No write since last change (add ! to override)"));
     return;
   }
   if (arg) {
-    // :e filename or :e! filename — open specific file by path.
+    // :e filename or :e! filename: open specific file by path.
     // Same Vim-style path resolution as :w filename.
     let sourcePath: string | null = null;
     try {
@@ -743,8 +743,8 @@ Vim.defineEx("edit", "e", async (_cm: any, params: VimExParams) => {
       );
     }
   } else {
-    // :e or :e! — reload current file from disk. Error reporting
-    // happens inside reloadFile.
+    // :e or :e! (no filename): reload current file from disk.
+    // Error happens inside reloadFile.
     void reloadFile();
   }
 });
@@ -757,14 +757,14 @@ Vim.defineEx("new", "new", () => {
   newFile();
 });
 
-// :open / :op — non-standard, shows the native file picker dialog.
-// Vim has no canonical Ex command for "show file browser"; this is
+// :open / :op, non-standard, shows the native file picker dialog.
+// Vim has no canonical Ex command for "show file browser", so this is
 // our addition so Vim-mode users don't have to leave the command line.
 Vim.defineEx("open", "op", () => {
   openFile();
 });
 
-// :syncpreview / :syncp — snap the preview to the block containing
+// :syncpreview / :syncp snap the preview to the block containing
 // the editor caret's source line. Same action as Ctrl+Alt+L / ⌃⌘L.
 Vim.defineEx("syncpreview", "syncp", () => {
   syncPreviewToCaret();
@@ -773,7 +773,7 @@ Vim.defineEx("syncpreview", "syncp", () => {
 // ================= Format commands =================
 //
 // :format (no arg) shows the current format.
-// :format <name> sets the format — asciidoc / markdown / text.
+// :format <name> sets the format: asciidoc / markdown / text.
 // Unknown values surface an E-style error in the Vim panel.
 //
 // :asciidoc / :markdown / :text are direct one-shot aliases so the
@@ -792,9 +792,9 @@ const parseFormat = (s: string): Format | null => {
 };
 
 // Human-readable name for the format, used in the :format (no arg)
-// readback and in error messages. Parallels FORMAT_LABELS in ui.ts;
+// readback and in error messages. Parallels FORMAT_LABELS in ui.ts,
 // duplicated here rather than imported to avoid a circular import
-// (ui.ts already imports from io.ts). The set is three entries —
+// (ui.ts already imports from io.ts). The set is three entries, so
 // keeping it in sync manually is trivial.
 const FORMAT_DISPLAY_NAME: Record<Format, string> = {
   asciidoc: "AsciiDoc",
@@ -826,7 +826,7 @@ Vim.defineEx("text", "text", () => {
   setBufferFormat("text");
 });
 
-// `:syntax on` / `:syntax off` — matches real Vim's command of the
+// `:syntax on` / `:syntax off`, matching real Vim's command of the
 // same name (Vim also accepts `enable`/`disable`, but on/off are the
 // canonical forms most users type and the only two we need). Bare
 // `:syntax` reports current state. Invalid argument emits an E474
@@ -847,11 +847,11 @@ Vim.defineEx("syntax", "syn", (_cm: any, params: VimExParams) => {
   }
 });
 
-// `:spell on` / `:spell off` — runtime spellcheck toggle, mirroring
+// `:spell on` / `:spell off`, a runtime spellcheck toggle mirroring
 // `:syntax`. Bare `:spell` reports state (and notes when spellcheck is
 // disabled in the config). The on/off forms route through
 // applySpellcheck, which is inert with a message when the config has
-// spellcheck off. Registered with no short alias on purpose — a
+// spellcheck off. Registered with no short alias on purpose: a
 // 2-letter `:sp` would shadow real Vim's split-window command.
 Vim.defineEx("spell", "spell", (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
@@ -874,10 +874,11 @@ Vim.defineEx("spell", "spell", (_cm: any, params: VimExParams) => {
 });
 
 // `:spellgood` (Vim `zg`) adds the word under the cursor to the custom
-// word list so it stops being flagged; `:spellundo` (Vim `zug`) removes
-// it. Mirrors Vim's own spellfile commands. Both are inert with a message
-// when spellcheck is off, whether disabled in the config or toggled off at
-// runtime. No short alias (would shadow real Vim's `:sp` split).
+// word list so it stops being flagged, and `:spellundo` (Vim `zug`)
+// removes it. Mirrors Vim's own spellfile commands. Both are inert with a
+// message when spellcheck is off, whether disabled in the config or
+// toggled off at runtime. No short alias (would shadow real Vim's `:sp`
+// split).
 const wordUnderCursor = (): string | null => {
   if (!editorView) return null;
   const { state } = editorView;
@@ -927,7 +928,7 @@ Vim.defineEx("spellundo", "spellundo", (_cm: any) => {
   );
 });
 
-// `:find` — opens CodeMirror's find/replace panel. The Vim-mode entry
+// `:find` opens CodeMirror's find/replace panel. The Vim-mode entry
 // point: under Vim, Ctrl-F stays page-forward, so Vim users open the panel
 // here. Non-Vim users press Mod-f (Ctrl+F, or Cmd+F on Mac). The panel
 // handles find, replace, and replace-all.
@@ -935,9 +936,9 @@ Vim.defineEx("find", "find", () => {
   if (editorView) openSearchPanel(editorView);
 });
 
-// `:width` — sets or reports the single-pane width mode. Bare
-// `:width` reports current; `:width narrow|medium|wide|full` sets.
-// Same E474 error shape as `:syntax` for invalid arguments.
+// `:width` sets or reports the single-pane width mode. Bare
+// `:width` reports current, and `:width narrow|medium|wide|full`
+// sets. Same E474 error shape as `:syntax` for invalid arguments.
 Vim.defineEx("width", "width", (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
@@ -952,9 +953,10 @@ Vim.defineEx("width", "width", (_cm: any, params: VimExParams) => {
   }
 });
 
-// `:toc` — sets or reports the TOC visibility override. Bare
-// `:toc` reports current; `:toc on|off` sets. Mirrors :syntax's
-// shape. Visibility is session-scoped (resets on launch).
+// `:toc` sets or reports the table of contents visibility
+// override. Bare `:toc` reports current, and `:toc on|off`
+// sets. Mirrors :syntax's shape. Visibility is session-scoped
+// (resets on launch).
 Vim.defineEx("toc", "toc", (_cm: any, params: VimExParams) => {
   const { arg } = parseExArgs(params);
   if (!arg) {
@@ -976,34 +978,34 @@ Vim.defineEx("toc", "toc", (_cm: any, params: VimExParams) => {
 // Clean-quit commands call getCurrentWindow().close(), which flows
 // through the onCloseRequested handler below. That handler checks
 // dirty state and shows the custom Catppuccin confirm dialog if
-// there are unsaved changes — matching the behavior of clicking the
+// there are unsaved changes, matching the behavior of clicking the
 // window's X button, for UI consistency with the rest of Skrivro.
 //
 // The force variants (:q!, ZQ) call destroy() directly, bypassing
 // onCloseRequested so no prompt appears. clearDraft() runs first so
-// the next launch starts clean — without it, the autosave draft
+// the next launch starts clean: without it, the autosave draft
 // restoration would bring the "discarded" content back.
 //
 // :wq vs :x semantics match Vim faithfully:
 //   :wq ALWAYS calls saveFile(), so the filesystem mtime is bumped
 //       even on an unchanged buffer (unconditional write).
-//   :x  only calls saveFile() when dirty — on a clean buffer, mtime
+//   :x  only calls saveFile() when dirty: on a clean buffer, mtime
 //       is not touched. Matters for tools that watch mtime.
 //
 // :wq! and :x! accept the bang but have no additional effect here.
-// Vim's :wq! forces write to a readonly file; Skrivro has no
+// Vim's :wq! forces write to a readonly file, and Skrivro has no
 // readonly concept. Vim's :x! forces write even when the buffer is
 // clean, which in our context is literally what :wq does. Both
 // resolve to "always write and quit" for our purposes.
 //
 // After saveFile() we check `dirty` to detect save failure or a
-// canceled save-as dialog: on success, saveFile() sets dirty=false;
-// on error or cancel, dirty stays true. If dirty is still true we
-// return without closing, so a canceled save never drops the user
-// out of the editor unexpectedly.
+// canceled save-as dialog: on success, saveFile() sets dirty=false,
+// while on error or cancel, dirty stays true. If dirty is still
+// true we return without closing, so a canceled save never drops
+// the user out of the editor unexpectedly.
 
 // getCurrentWindow().close() and .destroy() return Promise<void>. We
-// don't care about the result — once fired, the app is going away —
+// don't care about the result (once fired, the app is going away),
 // so `void` prefix marks them fire-and-forget.
 const quitClean = () => {
   void getCurrentWindow().close();
@@ -1034,7 +1036,7 @@ const exitIfDirty = async (_cm: any, params: VimExParams) => {
 };
 
 // Note on aliases: Vim.defineEx(name, shortName, handler) requires
-// shortName to be a LITERAL prefix of name — the plugin throws if
+// shortName to be a LITERAL prefix of name: the plugin throws if
 // you pass e.g. ('quitall', 'qa', ...) because 'qa' is not a prefix
 // of 'quitall'. Vim's own command table aliases :qa to :quitall via
 // internal alias logic, but the plugin's defineEx has no such logic.
@@ -1044,37 +1046,39 @@ const exitIfDirty = async (_cm: any, params: VimExParams) => {
 
 // :q / :quit  (plus :q! / :quit! bang variant for force-quit)
 Vim.defineEx("quit", "q", quitHandler);
-// :quitall — full form, registered as a standalone command since
-// 'qa' is not a prefix of 'quitall'.
+// :quitall is the full form, registered as a standalone command
+// since 'qa' is not a prefix of 'quitall'.
 Vim.defineEx("quitall", "quitall", quitHandler);
-// :qall / :qa — registered together because 'qa' IS a prefix of
+// :qall / :qa are registered together because 'qa' IS a prefix of
 // 'qall'. This is the registration that covers the common 2-letter
 // muscle memory (:qa) and the 4-letter form (:qall).
 Vim.defineEx("qall", "qa", quitHandler);
 
-// :wq (plus :wq! bang, which is a no-op — see note above)
+// :wq (plus :wq! bang, which is a no-op, see note above)
 Vim.defineEx("wq", "wq", writeAndQuit);
-// :wqall / :wqa — 'wqa' is a prefix of 'wqall', so one registration
+// :wqall / :wqa: 'wqa' is a prefix of 'wqall', so one registration
 // gives both forms.
 Vim.defineEx("wqall", "wqa", writeAndQuit);
 
-// :x  — short form, registered as its own command because 'x' is
-// not a prefix of 'exit'. Accepts the :x! bang to force save.
+// :x is the short form, registered as its own command because
+// 'x' is not a prefix of 'exit'. Accepts the :x! bang to force
+// save.
 Vim.defineEx("x", "x", exitIfDirty);
-// :exit — full form, standalone registration (can't use 'e' as its
-// short form because that would clash with the existing :edit / :e).
+// :exit is the full form, a standalone registration (can't use 'e'
+// as its short form because that would clash with the existing :edit
+// / :e).
 Vim.defineEx("exit", "exit", exitIfDirty);
-// :xit — another valid Vim alias for :exit.
+// :xit is another Vim alias for :exit.
 Vim.defineEx("xit", "xit", exitIfDirty);
-// :xall / :xa — 'xa' is a prefix of 'xall', so one registration
+// :xall / :xa: 'xa' is a prefix of 'xall', so one registration
 // gives both forms.
 Vim.defineEx("xall", "xa", exitIfDirty);
 
 // Normal-mode mapping: gz → :syncpreview<CR>. gz is in Vim's `g`
 // namespace for extended commands and is unused in standard Vim.
 // Wrapped in try/catch because Vim.map's exact signature in
-// @replit/codemirror-vim isn't documented; if it fails, the Ex
-// command and Ctrl+Alt+L / ⌃⌘L both still work.
+// @replit/codemirror-vim isn't documented, so if it fails, the
+// Ex command and Ctrl+Alt+L / ⌃⌘L both still work.
 try {
   Vim.map("gz", ":syncpreview<CR>", "normal");
 } catch (e) {
@@ -1109,25 +1113,26 @@ try {
 // binding on those platforms. The plugin's defaultKeymap binds both
 // Ctrl+V and Ctrl+Q to V-BLOCK as a cross-platform compat measure
 // (Vim itself uses Ctrl+Q on Windows, where Ctrl+V is system paste).
-// On Linux/Windows, the dual binding is invisible — only Ctrl+Q
-// reaches Vim — so users press Ctrl+Q.
+// On Linux/Windows, the dual binding is invisible (only Ctrl+Q
+// reaches Vim), so users press Ctrl+Q.
 //
 // On Mac, paste is Cmd+V, so physical Ctrl+V flows through to Vim
 // cleanly and both keys enter V-BLOCK. We tried Vim.unmap('<C-q>',
 // 'normal') to remove the redundant Ctrl+Q binding on Mac (so
 // V-BLOCK would have exactly one entry key matching the canonical
-// Vim convention) — the call doesn't throw but also doesn't unbind
-// the key, presumably because plugin-default bindings live outside
-// the user-keymap layer that Vim.unmap operates on. The plugin's
-// API isn't documented enough to know the right approach, so we
-// accept the dual-binding reality on Mac and have the help dialog
-// advertise both keys (the Ctrl+V kbd is marked .mac-only so it
-// only shows on Mac; Linux/Windows users still see only Ctrl+Q).
+// Vim convention), but the call doesn't throw but also doesn't
+// unbind the key, presumably because plugin-default bindings live
+// outside the user-keymap layer that Vim.unmap operates on. The
+// plugin's API isn't documented enough to know the right approach,
+// so we accept the dual-binding reality on Mac and have the help
+// dialog advertise both keys (the Ctrl+V kbd is marked .mac-only so
+// it only shows on Mac, while Linux/Windows users still see only
+// Ctrl+Q).
 
 // Default regex engine to Vim magic-mode translation instead of raw
 // JavaScript RegExp. The plugin ships with pcre=true (shown in the
 // search panel hint as "JavaScript regexp: set pcre"), which lets JS
-// regex syntax pass through untranslated — an odd default for a Vim
+// regex syntax pass through untranslated, an odd default for a Vim
 // emulator, since Vim users expect \(foo\|bar\), \<word\>, and other
 // magic-mode syntax to work as written. Flipping pcre off enables
 // the plugin's Vim-to-JS regex translation layer. Try/catch for the

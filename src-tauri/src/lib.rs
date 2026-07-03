@@ -213,13 +213,13 @@ struct SkrivroConfig {
     // English variants and Swedish are user-supplied.
     spellcheck_language: Option<String>,
     // Theme colors resolved by load_theme() in get_config(). When the
-    // user's `theme` key matches a non-default theme (i.e., anything
-    // other than "catppuccin-mocha"), the Rust side loads the theme
-    // file, parses it, and attaches the resolved colors here. The
-    // frontend's applyUserConfig() iterates these and writes each as
-    // an inline :root style, overriding the CSS-default Catppuccin
-    // Mocha values. When the theme is catppuccin-mocha (or unset),
-    // this field is None and the CSS defaults show through untouched.
+    // user's `theme` key is set, the Rust side resolves the name
+    // (user file first, then bundled data) and attaches the resolved
+    // colors here. The frontend's applyUserConfig() iterates these
+    // and writes each as an inline :root style, overriding the
+    // CSS-default Catppuccin Mocha values. When the key is unset, or
+    // names catppuccin-mocha without a user override file, this
+    // field is None and the CSS defaults show through untouched.
     theme_colors: Option<ThemeColors>,
 }
 
@@ -355,6 +355,12 @@ fn load_theme(name: &str, app: &tauri::AppHandle) -> Option<ThemeColors> {
     }
     // Fall back to bundled themes
     match name {
+        // The default theme's values are the compiled-in CSS :root
+        // defaults, so it has no bundled data. Reaching this match
+        // means no user override file was found, and None lets the
+        // defaults show through (and skips the not-found diagnostic
+        // below, which would be misleading for the built-in default).
+        "catppuccin-mocha" => None,
         "dracula" => Some(parse_theme_file(include_str!("../../resources/themes/dracula.theme.default"))),
         "tokyo-night-moon" => Some(parse_theme_file(include_str!("../../resources/themes/tokyo-night-moon.theme.default"))),
         "nord" => Some(parse_theme_file(include_str!("../../resources/themes/nord.theme.default"))),
@@ -705,14 +711,14 @@ fn get_config(app: tauri::AppHandle) -> SkrivroConfig {
         }
     };
 
-    // Resolve theme colors. "catppuccin-mocha" (or unset) → no override
-    // needed, CSS defaults are already Catppuccin Mocha. Any other value
-    // triggers load_theme which checks for a user-supplied .conf first,
-    // then falls back to bundled theme data.
+    // Resolve theme colors. An unset `theme` key means no override: the
+    // CSS defaults are already Catppuccin Mocha and no theme file is
+    // consulted. Any explicit name, catppuccin-mocha included, goes
+    // through load_theme so a user-supplied .theme file can override.
+    // Explicit catppuccin-mocha without a user file resolves to None
+    // and the defaults show through.
     if let Some(ref name) = cfg.theme {
-        if name != "catppuccin-mocha" {
-            cfg.theme_colors = load_theme(name, &app);
-        }
+        cfg.theme_colors = load_theme(name, &app);
     }
 
     cfg
@@ -1035,8 +1041,8 @@ fn read_user_dictionary(app: tauri::AppHandle, lang: String) -> Option<UserDicti
 // compiled-in CSS defaults):
 //   - No skrivro.conf on disk
 //   - Config doesn't specify a `theme` key
-//   - Theme is "catppuccin-mocha" (matches CSS defaults already, so no
-//     override needed)
+//   - Theme is "catppuccin-mocha" with no user override file (the CSS
+//     defaults already match, nothing to load)
 //   - Theme name isn't resolvable (not bundled, no user file)
 //   - JSON serialization of ThemeColors fails (shouldn't happen)
 
@@ -1082,7 +1088,6 @@ fn compute_initial_state(app: &tauri::AppHandle) -> (String, String) {
     // Theme part: compute bg color and generate theme override script.
     let bg = match cfg.theme.as_deref() {
         None => mocha_bg.clone(),
-        Some("catppuccin-mocha") => mocha_bg.clone(),
         Some(theme_name) => match load_theme(theme_name, app) {
             Some(colors) => {
                 parts.push(generate_theme_init_script(&colors));

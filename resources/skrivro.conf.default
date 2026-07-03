@@ -15,7 +15,7 @@
 # User-supplied themes live alongside this file in a themes/ subdir,
 # e.g., Linux: ~/.config/com.skrivro.editor/themes/<name>.theme
 # A user-supplied theme with the same name as a bundled theme overrides
-# the bundled version (except catppuccin-mocha, see the Theme section).
+# the bundled version.
 #
 # Skrivro's parser ignores missing keys, malformed lines, and unknown
 # keys (with debug-mode warnings only), so you can leave whatever you
@@ -101,18 +101,17 @@
 #   macOS:   ~/Library/Application Support/com.skrivro.editor/themes/<name>.theme
 #   Windows: %APPDATA%\com.skrivro.editor\themes\<name>.theme
 # then set `theme = <name>` here. A user-supplied file with the same
-# name as a bundled theme overrides the bundled version. The one
-# exception is catppuccin-mocha: its values are compiled into the app
-# and no theme file is looked up under that name, so a user
-# catppuccin-mocha.theme file is ignored. To tweak the default, save
-# your copy under a new name (for example my-mocha.theme) and set
-# theme = my-mocha here. The bundled
-# templates in the source tree end in `.theme.default` to signal
-# "reference template, not a live config". The user file is the same
-# format with the `.default` suffix dropped. Copy
+# name as a bundled theme overrides the bundled version. That includes
+# the default: with theme = catppuccin-mocha set here, a user
+# catppuccin-mocha.theme file overrides the compiled-in values. Theme
+# files are only consulted when this key is set, so leaving it unset
+# always renders the built-in default. The bundled templates in the
+# source tree end in `.theme.default` to signal "reference template,
+# not a live config". The user file is the same format with the
+# `.default` suffix dropped. Copy
 # resources/themes/catppuccin-mocha.theme.default to
-# <app_config_dir>/themes/<name>.theme and fill in your palette.
-# All 24 slots are documented inline in the template.
+# <app_config_dir>/themes/<name>.theme and fill in your palette. All 24
+# slots are documented inline in the template.
 # theme = catppuccin-mocha
 
 # ================= Format =================

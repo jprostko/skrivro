@@ -1,13 +1,13 @@
 <!doctype html>
 <!--
-  Skrivro — standalone single-file build.
+  Skrivro: standalone single-file build.
 
   Browser-only build of Skrivro, kept current with the primary Tauri
   desktop build wherever browser constraints allow. A few desktop
   features can't cross into a sandboxed browser page and are
-  intentionally absent here — the skrivro.conf config file and
+  intentionally absent here (the skrivro.conf config file and
   theming, AsciiDoc include:: resolution, arbitrary-path :w / :e, and
-  a true application quit — all of which need native filesystem or
+  a true application quit), all of which need native filesystem or
   window access the browser doesn't grant. Everything else (the
   editor, Vim mode, AsciiDoc and GitHub-Flavored Markdown rendering,
   scroll sync, status bar, and the display / width modes) tracks the
@@ -25,24 +25,23 @@
 
     <!-- Restrictive Content Security Policy. Blocks all external origins
      except esm.sh (which is required because the standalone version loads
-     its JavaScript modules from esm.sh's CDN at runtime — we have no build
-     step to bundle them locally), unpkg.com on connect-src only (the
-     spellcheck dictionary's .aff/.dic files are fetched from there,
-     since esm.sh serves only module builds, not raw package files), and
-     https image sources (so external
-     image references in user documents — image::https://...[] in AsciiDoc,
-     ![](https://...) in Markdown — actually load instead of silently
-     failing). The Tauri version has a JavaScript-layer gate on top of the
-     same img-src policy (allow-external-images config key, default on);
-     standalone has no such gate, so https images flow through whenever
-     a document references them. 'unsafe-inline' is used on script-src
-     because without a build step there's no way to compute hashes for our
-     inline scripts; DOMPurify handles the equivalent protection at the
-     output level by stripping script tags from the rendered output
-     before it enters the live DOM. object-src/frame-src/form-action
-     are 'none' to
-     block plugin/iframe/form attack vectors regardless of what DOMPurify
-     does or doesn't catch. -->
+     its JavaScript modules from esm.sh's CDN at runtime, as we have no
+     build step to bundle them locally), unpkg.com on connect-src only (the
+     spellcheck dictionary's .aff/.dic files are fetched from there, since
+     esm.sh serves only module builds, not raw package files), and https
+     image sources (so external image references in user documents,
+     image::https://...[] in AsciiDoc or ![](https://...) in Markdown,
+     actually load instead of silently failing). The Tauri version has a
+     JavaScript-layer gate on top of the same img-src policy
+     (allow-external-images config key, default on). Standalone has no such
+     gate, so https images flow through whenever a document references
+     them. 'unsafe-inline' is used on script-src because without a build
+     step there's no way to compute hashes for our inline scripts.
+     DOMPurify handles the equivalent protection at the output level by
+     stripping script tags from the rendered output before it enters the
+     live DOM. object-src/frame-src/form-action are 'none' to block
+     plugin/iframe/form attack vectors regardless of what DOMPurify does or
+     doesn't catch. -->
     <meta
       http-equiv="Content-Security-Policy"
       content="
@@ -82,7 +81,7 @@
 
     <style>
       :root {
-        /* Skrivro semantic theme — Catppuccin Mocha port */
+        /* Skrivro semantic theme: Catppuccin Mocha port */
 
         /* Backgrounds */
         --skr-bg: #1e1e2e;
@@ -131,17 +130,17 @@
 
         /* Single-pane width cap (consumed by .cm-scroller in editor-only
        and .preview in preview-only). Default value is the medium
-       mode; applyWidthMode in the script section overrides this on
-       launch based on the user's persisted widthMode pref. See the
+       mode, and applyWidthMode in the script section overrides this
+       on launch based on the user's persisted widthMode pref. See the
        formula comment block further down for details. */
         --width-cap: 90ch;
 
-        /* Sidebar TOC width when the doc requests `:toc: left` or
-       `:toc: right` and conditions for sidebar layout are met
-       (preview-only mode + width mode != narrow). Echoes
-       Asciidoctor's spec values (15em / 20em from their default
-       stylesheet) but mapped onto our width modes instead of
-       viewport breakpoints: medium and wide both get 15em (the
+        /* Sidebar table of contents width when the doc requests
+       `:toc: left` or `:toc: right` and conditions for sidebar
+       layout are met (preview-only mode + width mode != narrow).
+       Echoes Asciidoctor's spec values (15em / 20em from their
+       default stylesheet) but mapped onto our width modes instead
+       of viewport breakpoints: medium and wide both get 15em (the
        spec's smaller value), full gets 20em (the spec's larger
        value). applyWidthMode in the script section overrides this
        on launch and on width-mode changes. The :root default here
@@ -261,7 +260,7 @@
      range stops where the rendered content ends, which means
      scrollIntoView (used by sync-preview) on the document's last
      ~viewport-worth of content can't bring those blocks to the top
-     of the viewport — they're clamped to whatever scroll position
+     of the viewport: they're clamped to whatever scroll position
      keeps the document end visible at the bottom. The spacer adds
      a viewport-height-minus-a-bit of empty scrollable space so any
      block, including the last, can be scrolled to the top. The 4em
@@ -270,7 +269,7 @@
 
      Scoped to split mode only because that's the only mode where
      scroll-sync runs. In preview-only mode the user is just
-     reading; the natural scroll endpoint is "last line at the
+     reading. The natural scroll endpoint is "last line at the
      bottom of the viewport," and the empty spacer would just be
      unwanted blank space below the last line. In editor-only mode
      the preview is `display: none`, so the spacer's reach is moot
@@ -281,7 +280,7 @@
         height: calc(100vh - 4em);
       }
 
-      /* ---------- Preview — generic HTML ---------- */
+      /* ---------- Preview: generic HTML ---------- */
       .preview h1,
       .preview h2,
       .preview h3,
@@ -406,20 +405,20 @@
       }
 
       /* GFM task lists. The Markdown renderer tags each task-list item
-     with a `task-list-item` class — the same class GitHub's renderer
-     uses — so this rule targets them with a plain class selector,
+     with a `task-list-item` class (the same class GitHub's renderer
+     uses), so this rule targets them with a plain class selector,
      tight and loose lists alike.
-
-     Hide the native bullet — showing both a bullet and a checkbox is
-     redundant. The checkbox is then pulled left by a negative margin
-     so it sits where the bullet would have, matching GitHub. That
-     negative margin is on the checkbox, NOT the <li>: the <li> keeps
-     its normal place in list flow, so a nested task list still
+     
+     Hide the native bullet, since showing both a bullet and a checkbox
+     is redundant. The checkbox is then pulled left by a negative
+     margin so it sits where the bullet would have, matching GitHub.
+     That negative margin is on the checkbox, NOT the <li>: the <li>
+     keeps its normal place in list flow, so a nested task list still
      indents under its parent. (A -1.5em on the <li> itself cancels
      each nested list's 1.5em padding-left and flattens the nesting.)
-
+     
      accent-color sets the checked-state fill to the theme's link
-     color; most modern browsers also tint the unchecked border
+     color, and most modern browsers also tint the unchecked border
      towards that color, improving visibility against dark backgrounds
      (the default unchecked box is near-invisible on Catppuccin Mocha).
      vertical-align: middle keeps the checkbox centered on the text
@@ -458,7 +457,7 @@
         background: var(--skr-bg-stripe);
       }
 
-      /* ---------- Preview — AsciiDoctor block classes ---------- */
+      /* ---------- Preview: AsciiDoctor block classes ---------- */
       .preview .listingblock pre,
       .preview .literalblock pre {
         background: var(--skr-bg-inset);
@@ -477,21 +476,22 @@
         background: var(--skr-bg);
         margin: 1em 0;
       }
-      /* AsciiDoc admonitions — Asciidoctor emits them as a 2-column table
+      /* AsciiDoc admonitions: Asciidoctor emits them as a 2-column table
      wrapped in <div class="admonitionblock <type>">. With
      `icons: 'font'` set in load options (see render() below), the icon
      cell contains <i class="fa icon-<type>"> referencing Font Awesome
-     glyphs by their Asciidoctor semantic alias; without that attribute,
-     it'd contain a text label div instead.
-
+     glyphs by their Asciidoctor semantic alias. Without that
+     attribute, it'd contain a text label div instead.
+     
      Structural rules below match Asciidoctor's own stylesheet: bare
      table, no background, icon cell fixed-width and centered, a 1px
      divider between icon and content columns, content cell padded.
      Colors stay on our --skr-* palette rather than Asciidoctor's
      tuned-for-light hex values so dark themes resolve correctly.
-
-     No colored left-edge stripe — Asciidoctor's native output doesn't
-     have one. Type signaling is carried entirely by the icon color. */
+     
+     No colored left-edge stripe, since Asciidoctor's native output
+     doesn't have one. Type signaling is carried entirely by the icon
+     color. */
       .preview .admonitionblock {
         margin: 1em 0;
       }
@@ -501,14 +501,14 @@
      to center an SVG inside a td involves baseline math, line-box
      expansion, and font-metric quirks that aren't worth the complexity.
      Flexbox align-items: center is the most predictable vertical-
-     centering primitive in CSS — same answer everywhere, no gotchas.
+     centering primitive in CSS: same answer everywhere, no gotchas.
 
      `display: contents` on tbody/tr removes them from layout while
      preserving accessibility semantics, so the table flex container's
      direct flex items are the icon and content tds. */
       .preview .admonitionblock > table {
         /* Flex with `align-items: center` cross-aligns each cell's box to
-       the row midline — icon cell (2.5em) and content cell (text line)
+       the row midline: icon cell (2.5em) and content cell (text line)
        end up center-to-center. Container height = max(items) = 2.5em
        in the common case. The vertical separator is a positioned
        pseudo-element (below) rather than a border on the content
@@ -547,8 +547,8 @@
         /* Fixed-width icon column that scales with the preview font size:
        the `flex: 0 0 5em` basis renders ~80px at the default
        preview-font-size (1rem), roughly the width of Asciidoctor's stock
-       admonition icon column. No grow, no shrink; the internal flex
-       container centers the SVG on both axes. */
+       admonition icon column. No grow, no shrink, and the internal
+       flex container centers the SVG on both axes. */
         flex: 0 0 5em;
         display: flex;
         align-items: center;
@@ -567,7 +567,7 @@
      single-line block-form admonition, growing the row to ~3.25em and
      making it visibly taller than the icon for no good reason. Reset
      the outermost margins so the row tracks the icon's 2.5em height
-     in the common case; inner paragraphs (in multi-paragraph
+     in the common case. Inner paragraphs (in multi-paragraph
      admonitions) keep their margins for inter-paragraph spacing.
      Selectors cover both a bare <p> and Asciidoctor's `<div
      class="paragraph"><p>` wrapper pattern. */
@@ -604,7 +604,7 @@
         color: var(--skr-warning);
       }
 
-      /* GFM alerts — GitHub's extended blockquote syntax (> [!NOTE], etc.)
+      /* GFM alerts: GitHub's extended blockquote syntax (> [!NOTE], etc.)
      that our markdownRenderer's gfmAlert rule parses into
      <div class="markdown-alert markdown-alert-note"> (and variants).
      Class names, HTML structure, and per-type colors mirror GitHub's
@@ -617,7 +617,7 @@
        warning   → attention (yellow)
        caution   → danger    (red)
      These match the Primer semantics 1-to-1 using our --skr-* palette
-     slots; our AsciiDoc admonition mapping uses a different palette
+     slots. Our AsciiDoc admonition mapping uses a different palette
      because AsciiDoc conventions for important/warning/caution
      disagree with GitHub's. Cross-format divergence is intentional
      so each format renders like its source-convention upstream. */
@@ -639,11 +639,11 @@
         display: flex;
         align-items: center;
         gap: 0.4em;
-        /* Capitalize defensively — the token handler already emits
+        /* Capitalize defensively: the token handler already emits
        Title-cased "Note" / "Tip" / etc., but a future change might
        not, and this keeps the header visually correct either way. */
         text-transform: capitalize;
-        /* Color comes from the per-type rules below — each alert variant
+        /* Color comes from the per-type rules below: each alert variant
        colors both the left stripe AND the title text with the same
        semantic slot. The inlined Octicon SVG inherits via
        `fill: currentColor` (rule below), so the icon color tracks
@@ -651,7 +651,7 @@
       }
       /* Octicon SVGs inlined inside the title. `fill: currentColor` is
      what makes the single title-color rule color the icon along with
-     the title text — no per-type icon rules needed. flex-shrink: 0
+     the title text, no per-type icon rules needed. flex-shrink: 0
      prevents the SVG from being squeezed on narrow containers. */
       .preview .markdown-alert-title .octicon {
         fill: currentColor;
@@ -739,14 +739,14 @@
       /* Text-mode preview: TextRenderer emits a single <pre class="text-verbatim">
      that is the entire document body, not a listing block inside a larger
      document. Without scoped styling it inherits .preview pre rules meant
-     for code samples — a rounded card with its own background, padding,
-     and left-edge accent — which look wrong when the "card" IS the whole
+     for code samples (a rounded card with its own background, padding,
+     and left-edge accent), which look wrong when the "card" IS the whole
      pane. Override: flush everything and let the preview pane's own
      padding be the only layer of inset. pre-wrap wraps long lines at
      whitespace while preserving explicit newlines, matching the editor
      pane's word-wrap behavior. Font family and size track the editor
      settings so both panes present the same characters at the same visual
-     weight — text mode is a mirror of what you typed, not a transformed
+     weight: text mode is a mirror of what you typed, not a transformed
      rendering of it. */
       .preview pre.text-verbatim {
         background: transparent;
@@ -786,8 +786,8 @@
       }
 
       /* Spellcheck right-click menu. position:fixed and appended to <body>,
-     so it isn't clipped by editor overflow; the menu code sets left/top
-     from the click coordinates. */
+     so it isn't clipped by editor overflow, and the menu code sets
+     left/top from the click coordinates. */
       .spell-menu {
         position: fixed;
         z-index: 1000;
@@ -894,7 +894,7 @@
      scrollable text area inside .cm-editor) rather than on
      .editor-pane. .cm-panels (the Vim Ex command bar / search bar)
      is a sibling of .cm-scroller inside .cm-editor, so a cap on
-     .editor-pane constrains the Ex bar too — leaving it stranded
+     .editor-pane constrains the Ex bar too, leaving it stranded
      in the centered editor column instead of spanning the full
      window like Vim's convention expects. Capping at .cm-scroller
      leaves the Ex bar full-window-width while the text area still
@@ -907,7 +907,7 @@
      the script section): 65ch for narrow, 90ch for medium, 125ch
      for wide. The ch unit is "width of '0' in the current font",
      so the same ch value renders differently in editor (monospace)
-     vs preview (proportional) — naturally giving the editor a
+     vs preview (proportional), naturally giving the editor a
      wider visual cap than the preview at the same mode. That
      mismatch is desirable: editing tends to want wider lines
      (especially for code), reading tends to want narrower (prose
@@ -918,7 +918,7 @@
      the cap would exceed the available width. Required on the
      editor's `width:` rule (without it, an explicit width could
      overflow narrower parents). Kept on the preview's `max-width:`
-     too — structurally redundant for max-width but identical
+     too: structurally redundant for max-width but identical
      wrapping across both rules reads cleaner than two that look
      similar but differ in a fourth term. */
       body.mode-editor .cm-scroller {
@@ -930,31 +930,31 @@
         margin: 0 auto;
       }
 
-      /* Sidebar TOC layout — applied when:
+      /* Sidebar table of contents layout, applied when:
      - Document has `:toc: left` or `:toc: right` (read from
-       Asciidoctor's `toc-position` attribute; see render() and
+       Asciidoctor's `toc-position` attribute, see render() and
        evaluateTocLayout() in the script section).
      - Display mode is preview-only (split is too narrow per
-       pane; editor-only the preview is hidden).
+       pane, and editor-only hides the preview).
      - Width mode is not narrow (narrow's text budget can't
        accommodate a sidebar without compromising prose comfort).
      evaluateTocLayout() adds .has-sidebar-toc + .toc-left/.toc-right
-     when all three hold; removes them otherwise. The CSS below
-     applies based on classes alone — body.mode-* gating is
+     when all three hold, and removes them otherwise. The CSS below
+     applies based on classes alone: body.mode-* gating is
      unnecessary because the classes only get added in the right
      mode.
 
      The sidebar layout EXPANDS the preview's max-width to
      content-cap + sidebar-width + gap, replacing the normal
      content-cap-only constraint. Content stays at the comfortable
-     reading width; sidebar overhead adds on top. The 100% safety
-     net still applies — on viewports too narrow to fit sidebar +
+     reading width. Sidebar overhead adds on top. The 100% safety
+     net still applies: on viewports too narrow to fit sidebar +
      content, the layout shrinks to fit the viewport. */
       /* The body.mode-preview prefix lifts specificity to (0,3,1),
      beating the (0,2,1) of the body.mode-preview .preview rule
      above that sets the non-sidebar max-width. Without the prefix,
      .preview.has-sidebar-toc sat at (0,2,0), the mode rule won,
-     and max-width stayed at 90ch instead of the expanded calc —
+     and max-width stayed at 90ch instead of the expanded calc,
      which collapsed the content column to .preview-width minus
      sidebar instead of preserving it. */
       body.mode-preview .preview.has-sidebar-toc {
@@ -962,13 +962,13 @@
         column-gap: 2em;
         max-width: min(calc(var(--width-cap) + var(--toc-sidebar-width) + 2em), 100%);
       }
-      /* minmax(0, 1fr) instead of bare 1fr — grid's `1fr` cell defaults
+      /* minmax(0, 1fr) instead of bare 1fr: grid's `1fr` cell defaults
      to a min-width of min-content (the widest unbreakable unit
      inside it, e.g. a long code line or URL). With prose plus code
      blocks, that min-content can exceed the calc()-derived
      content-column width, forcing the grid container to grow past
      its max-width and producing horizontal scrollbars on .preview.
-     minmax(0, 1fr) lets the cell shrink below min-content; long
+     minmax(0, 1fr) lets the cell shrink below min-content. Long
      lines inside code blocks then overflow within the code block's
      own overflow-x rather than the whole preview's scroll. */
       .preview.has-sidebar-toc.toc-left {
@@ -977,20 +977,22 @@
       .preview.has-sidebar-toc.toc-right {
         grid-template-columns: minmax(0, 1fr) var(--toc-sidebar-width);
       }
-      /* Default: every child goes in the content column. The TOC
-     selector below overrides this for #toc itself. */
+      /* Default: every child goes in the content column. The
+     #toc selector below overrides this for the table of contents
+     itself. */
       .preview.has-sidebar-toc.toc-left > * {
         grid-column: 2;
       }
       .preview.has-sidebar-toc.toc-right > * {
         grid-column: 1;
       }
-      /* TOC: occupies the sidebar column, spans all rows so it fills
-     the layout's full vertical extent. position: sticky pins it
-     to the top of the visible area as content scrolls. align-self:
-     start prevents the grid from stretching it to row height; its
-     natural height + max-height (with overflow-y) handle the case
-     where the TOC itself is taller than the viewport. */
+      /* The table of contents occupies the sidebar column, spans all
+     rows so it fills the layout's full vertical extent.
+     position: sticky pins it to the top of the visible area as
+     content scrolls. align-self: start prevents the grid from
+     stretching it to row height, and its natural height + max-height
+     (with overflow-y) handle the case where the table of contents
+     itself is taller than the viewport. */
       .preview.has-sidebar-toc.toc-left > #toc {
         grid-column: 1;
         grid-row: 1 / -1;
@@ -1009,10 +1011,11 @@
         max-height: calc(100vh - 4em);
         overflow-y: auto;
       }
-      /* TOC theming using --skr-* vars. Subtle border on the inner
-     side (between TOC and content) plus muted padding. Title is
-     slightly heavier; nested lists indent with no bullets to
-     match Asciidoctor's default visual but using our palette. */
+      /* Table of contents theming using --skr-* vars. Subtle
+     border on the inner side (between it and the content) plus
+     muted padding. Title is slightly heavier, and nested lists
+     indent with no bullets to match Asciidoctor's default visual
+     but using our palette. */
       .preview.has-sidebar-toc > #toc {
         padding: 1em 1.5em;
         background: var(--skr-bg-panel);
@@ -1045,40 +1048,41 @@
         text-decoration: underline;
       }
 
-      /* TOC visibility toggle — when the user has hidden the TOC via
-     Ctrl+Alt+I / ⌃⌘I or `:toc off`, evaluateTocLayout adds .toc-hidden
-     to .preview AND skips adding the sidebar layout classes. So
-     this single rule covers both layouts: the inline TOC at the
-     top of content (Asciidoctor's default placement) and the
-     sidebar TOC inside the grid. */
+      /* Table of contents visibility toggle: when the user has
+     hidden it via Ctrl+Alt+I / ⌃⌘I or `:toc off`, evaluateTocLayout
+     adds .toc-hidden to .preview AND skips adding the sidebar layout
+     classes. So this single rule covers both layouts: the inline
+     table of contents at the top of content (Asciidoctor's default
+     placement) and the sidebar one inside the grid. */
       .preview.toc-hidden #toc {
         display: none;
       }
 
       /* ---------- Active-pane outline (split mode only) ---------- */
       /* Visual indicator showing which pane has keyboard focus. Only
-     meaningful in split mode; in single-pane modes there's nothing
+     meaningful in split mode. In single-pane modes there's nothing
      to disambiguate.
-
+     
      The editor side splits the indicator across two mechanisms
      because .cm-editor fills .editor-pane and its background paints
      over any outline drawn at outline-offset:-1, leaving the outline
      visible only on the right edge (where the static border-right
      sits in the border zone, outside .cm-editor's reach). The fix:
-     (1) recolor the static border-right to accent on focus — that's
-     the right side of the rectangle; (2) a positioned ::after pseudo
-     paints top/left/bottom borders. As a positioned descendant, the
+     (1) recolor the static border-right to accent on focus (that's
+     the right side of the rectangle), and (2) a positioned ::after
+     pseudo paints top/left/bottom borders. As a positioned
+     descendant, the
      pseudo paints AFTER .cm-editor's subtree in stacking order, so
      its borders sit on top of the content backgrounds rather than
      behind them. inset:0 + box-sizing:border-box places the borders
      at the same pixel columns an outline at offset -1 would have
      occupied. pointer-events:none so it doesn't intercept clicks.
-
+     
      Preview side uses a plain outline because .preview has padding
      and its rendered HTML doesn't reach the pane edges, so no child
      background covers the outline area. The .preview:focus rule
      suppresses the default browser focus ring on the focusable
-     element itself — the :focus-within rule above does the work. */
+     element itself (the :focus-within rule above does the work). */
       body.mode-split .editor-pane:focus-within {
         border-right-color: var(--skr-accent);
       }
@@ -1178,10 +1182,12 @@
         box-shadow: 0 10px 40px var(--skr-shadow);
         position: relative;
         /* Match the editor/preview scrollbars. Firefox uses the
-       scrollbar-* properties; WebKit uses the ::-webkit-scrollbar
-       pseudo-elements below. Track is mantle (to match the dialog
-       background) rather than base, so it blends into the dialog
-       instead of showing a visible column. */
+       scrollbar-* properties, while WebKit uses the
+       ::-webkit-scrollbar pseudo-elements below. Track is
+       mantle (to match the dialog background) rather than base,
+       so it blends into the dialog instead of showing a visible
+       column.
+        */
         scrollbar-color: var(--skr-surface-hover) var(--skr-bg-panel);
         scrollbar-width: thin;
       }
@@ -1378,7 +1384,7 @@
       }
 
       /* Status bar slots whose visibility depends on display mode:
-     - The Vim mode pill describes editor state — irrelevant when
+     - The Vim mode pill describes editor state, irrelevant when
        the editor is hidden in preview-only mode.
      - The cursor position (Ln/Col) is the editor caret, so it's
        also meaningless in preview-only mode where the editor is
@@ -1402,14 +1408,14 @@
      feedback accent back down to its dim resting color when
      scroll-sync fires (via Ctrl+Alt+L / ⌃⌘L, :syncpreview, or gz). The
      flash provides feedback even when the preview doesn't visibly
-     move — e.g., if the caret line was already at the top of the
+     move: e.g., if the caret line was already at the top of the
      visible block, scrollIntoView is a no-op but the user still
      gets confirmation their keystroke registered.
 
      Only visible in split mode. In editor-only and preview-only
      modes one of the two panes is hidden, so syncing the editor
      caret to a preview block (or vice versa) doesn't represent
-     anything the user can see — showing the indicator there would
+     anything the user can see, so showing the indicator there would
      just be visual noise.
 
      Implemented as a CSS animation rather than a transition + class
@@ -1460,13 +1466,13 @@
 
       /* Vertically center the Ex panel's content. The plugin builds
      the Ex prompt as a tree of nested flex containers all the way
-     down — .cm-vim-panel → dialog div → makePrompt div (display:
+     down: .cm-vim-panel → dialog div → makePrompt div (display:
      flex) → prompt span (display: flex, flex: 1) → prefix + input.
      Each flex level defaults to align-items: stretch, so the
      prefix span (the ":" or "/") and the input stretch vertically
      and the text inside them floats to the top of the stretched
      line-box. Centering only the outermost .cm-vim-panel isn't
-     enough; we have to override align-items on every flex
+     enough. We have to override align-items on every flex
      container in the chain. Applying the rule to all descendant
      divs and spans is broad but safe: non-flex descendants
      silently ignore align-items, and the rule only affects short
@@ -1483,7 +1489,7 @@
     <!-- Inline (non-module) script runs synchronously during parse, before
        the first paint. Reads prefs from localStorage and sets body classes
        immediately so the titlebar / gutter / display-mode state is correct
-       on the very first frame — no FOUC. The module script's applyTitlebar
+       on the very first frame: no FOUC. The module script's applyTitlebar
        / applyGutter / applyDisplayMode calls still run later, but they're
        no-ops because the classes are already correct. -->
     <script>
@@ -1516,7 +1522,7 @@
       <div class="preview" id="out" tabindex="-1"></div>
     </main>
 
-    <!-- Status bar: mode pill (Vim-only) + filename on the left;
+    <!-- Status bar: mode pill (Vim-only) + filename on the left,
        file type + cursor position on the right. Toggled by
        Ctrl+Alt+B / ⌃⌘B. -->
     <footer class="statusbar" id="statusbar">
@@ -1557,7 +1563,7 @@
        script below) rewrites them at init to Apple symbol form (Ctrl→⌘,
        Alt→⌃, Shift→⇧, Command last), so authored Ctrl+Shift+Z renders as
        ⇧⌘Z. kbds marked class="vim" are physical keys (Ctrl→⌃, Alt→⌥).
-       class="mac-only" elements show only on Mac; class="non-mac"
+       class="mac-only" elements show only on Mac. class="non-mac"
        elements are removed on Mac (used where the Linux/Windows chord is
        not the Mac chord, like redo's Ctrl+Y vs ⇧⌘Z). -->
     <dialog id="helpDialog" class="help-dialog">
@@ -1862,13 +1868,13 @@
 
       let currentHandle = null;
       let currentName = DEFAULT_NAME;
-      let docEpoch = 0; // bumped by setDoc on each wholesale buffer load; renderOnce captures it to spot a mid-render buffer swap
+      let docEpoch = 0; // bumped by setDoc on each wholesale buffer load. renderOnce captures it to spot a mid-render buffer swap
       let dirty = false;
       let renderTimer = null;
       let autosaveTimer = null;
       let editorView = null;
       let suppressDocEvents = false; // true during programmatic setDoc calls
-      let inCommandMode = false; // true while Vim's : command panel is focused — flips the mode pill to COMMAND
+      let inCommandMode = false; // true while Vim's : command panel is focused (flips the mode pill to COMMAND)
       // Active document format: 'asciidoc' | 'markdown' | 'text'. Set
       // from the opened file's extension (detectFormat) and by the
       // format toggle / :format Ex commands via setBufferFormat.
@@ -1897,13 +1903,13 @@
       // Vim mode flags (insertMode, visualMode, visualLine, visualBlock),
       // and whose .state.overwrite distinguishes REPLACE from plain INSERT.
       //
-      // Returns null if Vim is off (signals "hide the pill"); returns
+      // Returns null if Vim is off (signals "hide the pill"). Returns
       // 'command' if the Ex command panel is currently focused (tracked
       // via inCommandMode, set by focusin/focusout listeners registered
       // after editor creation).
       //
       // REPLACE vs INSERT precedence: the plugin models REPLACE as a
-      // sub-state of INSERT (matching real Vim's internal model) —
+      // sub-state of INSERT (matching real Vim's internal model):
       // pressing R sets vs.insertMode=true AND cm.state.overwrite=true
       // via the toggleOverwrite action. insertMode alone is ambiguous,
       // so the overwrite flag has to be checked BEFORE falling through
@@ -1929,8 +1935,8 @@
       };
 
       // Sub-classify a visual-mode selection into char / line / block.
-      // All three share the same pill color (mauve per canonical Catppuccin);
-      // only the label text differs — VISUAL, V-LINE, V-BLOCK.
+      // All three share the same pill color (mauve per canonical Catppuccin),
+      // and only the label text differs: VISUAL, V-LINE, V-BLOCK.
       const readVisualVariant = () => {
         if (!editorView) return "char";
         try {
@@ -2063,7 +2069,7 @@
         // Each wholesale content load is a new buffer epoch. renderOnce
         // captures docEpoch at entry and discards a pass whose buffer was
         // swapped out mid-render. setDoc is the sole wholesale-replace
-        // path — user edits go through CM6 directly — so it is the exact
+        // path (user edits go through CM6 directly), so it is the exact
         // place to mark the boundary.
         docEpoch++;
         suppressDocEvents = true;
@@ -2117,7 +2123,7 @@
       ]);
 
       // CSS selector matching the DOM elements Asciidoctor emits for those
-      // block contexts. Order in the selector doesn't matter — querySelectorAll
+      // block contexts. Order in the selector doesn't matter: querySelectorAll
       // returns matches in document order regardless.
       const DOM_BLOCK_SELECTOR = [
         ".paragraph",
@@ -2200,13 +2206,13 @@
       //
       // Font Awesome 4 glyphs extracted from the webfont SVG and wrapped
       // in standalone SVG elements. Asciidoctor with `icons: 'font'` emits
-      // admonition icons as <i class="fa icon-NAME"> — glyphs rendered by
+      // admonition icons as <i class="fa icon-NAME">, glyphs rendered by
       // the FontAwesome font. We replace those elements with inline SVGs
       // during render post-processing (see replaceAdmonitionIcons below).
       //
       // Why SVG instead of the native font-icon output: font glyphs are
       // positioned by baseline metrics, not by visible bounding box, so
-      // the cell's flex centering doesn't visually center the icon — the
+      // the cell's flex centering doesn't visually center the icon: the
       // glyph floats toward the top of the cell because Font Awesome
       // glyphs are drawn like uppercase letters (ascender above baseline,
       // nothing below). SVGs have explicit viewBox/width/height and sit
@@ -2216,14 +2222,14 @@
       // glyph naturally centered inside it. Two glyphs (warning, caution)
       // have ink that touches or extends past the standard viewBox edges
       // and use expanded 2048×2048 viewBoxes with offset origins so the
-      // glyph bbox sits centered in the SVG bounding box; see the per-icon
+      // glyph bbox sits centered in the SVG bounding box, see the per-icon
       // comments below.
       //
       // The path transform `matrix(1 0 0 -1 X 1536)` does two jobs:
-      //   1. Flips the Y axis (fonts use y-up with baseline at y=0; SVG
-      //      uses y-down), with +1536 translation so the ascent top lines
-      //      up with y=0 in the original 1792×1792 viewBox space.
-      //   2. X-offsets narrower glyphs so they're centered horizontally —
+      //   1. Flips the Y axis (fonts use y-up with baseline at y=0, while
+      //      SVG uses y-down), with +1536 translation so the ascent top
+      //      lines up with y=0 in the original 1792×1792 viewBox space.
+      //   2. X-offsets narrower glyphs so they're centered horizontally:
       //      X = (1792 − horiz-adv-x) / 2 for the centered viewBox case.
       //
       // The `fill="currentColor"` attribute makes the glyph inherit color
@@ -2240,8 +2246,8 @@
         // exclamation-triangle (fa \f071). Glyph bbox extends to the top of
         // the viewBox (y=0) and slightly past both horizontal edges, so its
         // ink visibly overflows a tight viewBox. Expanded viewBox centers
-        // the bbox (cx=896, cy=832) in a 2048×2048 frame — 128 units
-        // horizontal padding, 192 units vertical — to give consistent
+        // the bbox (cx=896, cy=832) in a 2048×2048 frame (128 units
+        // horizontal padding, 192 units vertical) to give consistent
         // breathing room matching the other admonition icons.
         warning:
           '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-128 -192 2048 2048" fill="currentColor" aria-hidden="true"><path transform="matrix(1 0 0 -1 0 1536)" d="M1024 161v190q0 14 -9.5 23.5t-22.5 9.5h-192q-13 0 -22.5 -9.5t-9.5 -23.5v-190q0 -14 9.5 -23.5t22.5 -9.5h192q13 0 22.5 9.5t9.5 23.5zM1022 535l18 459q0 12 -10 19q-13 11 -24 11h-220q-11 0 -24 -11q-10 -7 -10 -21l17 -457q0 -10 10 -16.5t24 -6.5h185q14 0 23.5 6.5t10.5 16.5zM1008 1469l768 -1408q35 -63 -2 -126q-17 -29 -46.5 -46t-63.5 -17h-1536q-34 0 -63.5 17t-46.5 46q-37 63 -2 126l768 1408q17 31 47 49t65 18t65 -18t47 -49z"/></svg>',
@@ -2255,7 +2261,7 @@
 
       // Replace Asciidoctor's font-icon admonition markers (<i class="fa
       // icon-NAME" title="..."></i>) with the corresponding inline SVG.
-      // Mutates the parsed Document in place — the caller parses the
+      // Mutates the parsed Document in place: the caller parses the
       // rendered HTML once and passes the resulting Document through here
       // and then to DOMPurify, so the markup is never re-serialized to a
       // string.
@@ -2263,8 +2269,8 @@
       // We target only the admonition icon pattern (`icon-` class prefix).
       // Inline icon:name[] directives emit <i class="fa fa-NAME"> (note
       // the `fa-` prefix, not `icon-`) and deliberately flow through
-      // unchanged — they're sized inline with surrounding text and the
-      // baseline-positioning that makes admonition icons look off is
+      // unchanged, since they're sized inline with surrounding text and
+      // the baseline-positioning that makes admonition icons look off is
       // exactly what's wanted for a character-in-text inline icon.
       const replaceAdmonitionIcons = (parsed) => {
         // Scope the query to icon cells under admonitionblocks, then
@@ -2288,7 +2294,7 @@
 
       const asciidoctorRenderer = {
         async render(source, _context) {
-          // Standalone has no include preprocessing — the browser can't
+          // Standalone has no include preprocessing: the browser can't
           // read sibling files via Tauri's filesystem plugin, so any
           // include:: directives in source flow into Asciidoctor's own
           // browser include reader and surface as "Unresolved directive"
@@ -2297,7 +2303,7 @@
 
           // Load first (so we get the AST for the scroll-sync block map),
           // then convert. sourcemap=true is a TOP-LEVEL option to load(),
-          // NOT nested under attributes — this is what makes Asciidoctor
+          // NOT nested under attributes: this is what makes Asciidoctor
           // annotate blocks with their source line numbers. Getting this
           // wrong silently produces blocks with null source locations.
           //
@@ -2305,7 +2311,7 @@
           // parser-level features and were designed for a server-rendering
           // threat model where an untrusted user submits a document that a
           // trusted server processes on its own filesystem and serves to
-          // other users. That model does not apply to Skrivro — this is a
+          // other users. That model does not apply to Skrivro: this is a
           // single-user local editor where users edit their own files.
           // Restricting safe mode here would cripple legitimate features
           // (docinfo, book-mode doctype, etc.) without providing real
@@ -2322,7 +2328,7 @@
           // icons: 'font' switches admonition rendering from text labels
           // to Font Awesome icon markup (<i class="fa icon-note"> etc.),
           // matching Asciidoctor's standard convention. Styling for the
-          // resulting icons lives in the stylesheet above — see the rules
+          // resulting icons lives in the stylesheet above, see the rules
           // targeting .admonitionblock td.icon [class^="fa icon-"].
           const doc = ad.load(source, {
             safe: "unsafe",
@@ -2331,7 +2337,7 @@
           });
           // Parse the converted HTML into a DOM exactly once. The
           // admonition-icon swap and DOMPurify both operate on that single
-          // Document — replaceAdmonitionIcons mutates it in place, then
+          // Document: replaceAdmonitionIcons mutates it in place, then
           // DOMPurify.sanitize takes the node (not a string) and returns a
           // DocumentFragment, so the markup is never re-serialized. Both
           // steps need a DOM, so they run here. DOMPurify keeps <svg>/<path>
@@ -2345,9 +2351,9 @@
           const fragment = DOMPurify.sanitize(parsed.body, { RETURN_DOM_FRAGMENT: true });
 
           // Capture the per-render state in closures. The caller appends
-          // `fragment` into a container; buildBlockMap then walks the parsed
-          // `doc` AST against that container. translateEditorLine is the
-          // identity function for standalone — there's no include
+          // `fragment` into a container, and buildBlockMap then walks the
+          // parsed `doc` AST against that container. translateEditorLine is
+          // the identity function for standalone: there's no include
           // preprocessing, so editor line numbers and Asciidoctor source-
           // map line numbers are the same coordinate system.
           return {
@@ -2368,27 +2374,27 @@
 
       // One configured MarkdownIt instance, built once and reused for
       // every render. Options match GitHub-Flavored Markdown:
-      //   html: true    — raw HTML in the source passes through. Raw HTML
+      //   html: true    raw HTML in the source passes through. Raw HTML
       //                   is part of CommonMark, and DOMPurify sanitizes
       //                   the output below, so this is the spec-conforming
       //                   setting.
-      //   linkify: true — bare URLs become links (GFM autolinks extension).
-      //   breaks: false — a lone newline is a CommonMark softbreak, not a
-      //                   <br>; paragraphs still break on blank lines.
+      //   linkify: true bare URLs become links (GFM autolinks extension).
+      //   breaks: false a lone newline is a CommonMark softbreak, not a
+      //                   <br>, and paragraphs still break on blank lines.
       // langPrefix keeps its 'language-' default, so fenced code emits
-      // <code class="language-xxx"> — the class the preview's syntax CSS
+      // <code class="language-xxx">, the class the preview's syntax CSS
       // keys on.
       const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
 
       // GFM's strikethrough extension renders to <del> (per the GFM spec).
       // markdown-it's built-in strikethrough is its own, non-GFM extension
-      // and emits <s>; override its renderer rules to <del> so the output
-      // conforms to GFM.
+      // and emits <s>, so override its renderer rules to <del> so the
+      // output conforms to GFM.
       md.renderer.rules.s_open = () => "<del>";
       md.renderer.rules.s_close = () => "</del>";
 
       // Raw-HTML blocks are the one top-level token type whose default
-      // rendering can produce any number of elements — several siblings in
+      // rendering can produce any number of elements: several siblings in
       // one blank-line-delimited chunk, or none at all for a comment. That
       // breaks the 1:1 token-to-element invariant the scroll-sync pairing
       // relies on, shifting every pairing after the block. Wrap each
@@ -2402,27 +2408,27 @@
       // ================= GFM alerts =================
       //
       // GitHub Flavored Markdown extends the blockquote syntax with
-      // "alerts" — a blockquote whose first line is `[!TYPE]` where TYPE
+      // "alerts": a blockquote whose first line is `[!TYPE]` where TYPE
       // is one of NOTE / TIP / IMPORTANT / WARNING / CAUTION. markdown-it
-      // parses such input as an ordinary blockquote; the gfmAlertRule core
+      // parses such input as an ordinary blockquote. The gfmAlertRule core
       // rule below retags those blockquote tokens as alert tokens, and the
       // renderer rules emit the callout markup. The marker is
-      // case-sensitive — a wrong-case `[!type]` falls through as a normal
+      // case-sensitive: a wrong-case `[!type]` falls through as a normal
       // blockquote.
 
       // The five recognized alert types.
       const GFM_ALERT_TYPES = ["NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"];
 
       // Matches the alert marker at the start of the blockquote's first
-      // paragraph — markdown-it has already stripped the `> ` prefix.
-      // Capture group 1 is the type word; any text after `[!TYPE]` on the
-      // marker line is matched and discarded.
+      // paragraph, since markdown-it has already stripped the `> `
+      // prefix. Capture group 1 is the type word, and any text after
+      // `[!TYPE]` on the marker line is matched and discarded.
       const GFM_ALERT_MARKER_RE = /^\[!(\w+)\][^\n]*(?:\n|$)/;
 
       // Octicon SVG markup per alert type, copied verbatim from GitHub's
       // markdown API output (POST /markdown with GFM alerts as input).
       // Inlined in the rendered HTML so the glyphs inherit `fill:
-      // currentColor` from the title's color rule — single color rule
+      // currentColor` from the title's color rule: single color rule
       // colors border, title text, AND icon together without extra
       // per-icon styling.
       const GFM_ALERT_OCTICONS = {
@@ -2440,7 +2446,7 @@
       // paragraph opens with a valid `[!TYPE]` marker and retag them as
       // alerts. Registered after `block` (so blockquotes are tokenized)
       // and before `inline` (so the marker text can be cut from the
-      // still-raw paragraph content). Nested alerts work for free — the
+      // still-raw paragraph content). Nested alerts work for free: the
       // loop visits every blockquote_open token, inner ones included.
       const gfmAlertRule = (state) => {
         const tokens = state.tokens;
@@ -2449,7 +2455,7 @@
           if (!open || open.type !== "blockquote_open") continue;
 
           // A blockquote's first child must be a paragraph for it to be an
-          // alert — the `[!TYPE]` marker is always plain text.
+          // alert: the `[!TYPE]` marker is always plain text.
           const paraOpen = tokens[i + 1];
           const inline = tokens[i + 2];
           const paraClose = tokens[i + 3];
@@ -2482,8 +2488,9 @@
           }
           if (!closeTok) continue;
 
-          // Retag the wrapper tokens; the gfm_alert_open / gfm_alert_close
-          // renderer rules emit the callout <div> and its title.
+          // Retag the wrapper tokens, and the gfm_alert_open /
+          // gfm_alert_close renderer rules emit the callout <div> and its
+          // title.
           open.type = "gfm_alert_open";
           open.tag = "div";
           open.meta = { type: rawType };
@@ -2492,8 +2499,8 @@
 
           // Strip the marker line from the first paragraph. If the marker
           // was the whole paragraph, hide the now-empty wrapper so it does
-          // not render as <p></p>; otherwise keep the paragraph minus its
-          // first line.
+          // not render as <p></p>, and otherwise keep the paragraph minus
+          // its first line.
           const rest = inline.content.slice(m[0].length);
           if (rest.length === 0) {
             paraOpen.hidden = true;
@@ -2508,8 +2515,8 @@
       };
 
       // Renderer rules for the retagged alert tokens. gfm_alert_open emits
-      // the callout <div> plus the icon-and-label title <p>; the alert
-      // body renders in between as usual; gfm_alert_close emits the
+      // the callout <div> plus the icon-and-label title <p>, the alert
+      // body renders in between as usual, and gfm_alert_close emits the
       // closing </div>.
       md.renderer.rules.gfm_alert_open = (tokens, idx) => {
         const token = tokens[idx];
@@ -2527,11 +2534,11 @@
       // ================= GFM task lists =================
       //
       // `- [ ]` / `- [x]` list items. markdown-it has no native task-list
-      // support; this core rule reproduces the GFM `tasklist` extension.
+      // support. This core rule reproduces the GFM `tasklist` extension.
       // For each list item whose first block is a paragraph beginning with
       // a marker, it replaces the marker text with an <input type=checkbox>
-      // at the start of that paragraph's content — the same place cmark-gfm
-      // (GitHub's reference implementation) puts it — and tags the <li>
+      // at the start of that paragraph's content, the same place cmark-gfm
+      // (GitHub's reference implementation) puts it, and tags the <li>
       // with a task-list-item class so the stylesheet can hide its bullet.
       // Registered before `inline` so the marker can be cut from the
       // still-raw paragraph text.
@@ -2555,7 +2562,7 @@
 
           // With html:true the inline parser turns the prepended <input>
           // into an html_inline token, so the checkbox shares the item
-          // text's inline flow — checkbox and text stay on one line in
+          // text's inline flow, so checkbox and text stay on one line in
           // both tight and loose lists.
           const checkbox = `<input ${checked ? 'checked="" ' : ""}disabled="" type="checkbox"> `;
           inline.content = checkbox + inline.content.slice(m[0].length);
@@ -2569,10 +2576,10 @@
       // ================= Emoji shortcodes =================
       //
       // GitHub-style `:name:` shortcodes render as the unicode emoji. The
-      // `bare` markdown-it-emoji plugin ships no emoji data of its own;
-      // feeding it gemoji's nameToEmoji keeps the exact shortcode set the
-      // previous (marked-emoji) renderer used. The plugin emits the raw
-      // codepoint, so the system emoji font draws the glyph — no <img>
+      // `bare` markdown-it-emoji plugin ships no emoji data of its own,
+      // so feeding it gemoji's nameToEmoji keeps the exact shortcode set
+      // the previous (marked-emoji) renderer used. The plugin emits the
+      // raw codepoint, so the system emoji font draws the glyph: no <img>
       // tags, no network access. `:)`-style shortcuts stay off, the
       // plugin's default.
       md.use(markdownItEmoji, { defs: nameToEmoji });
@@ -2580,10 +2587,10 @@
       // Compute one source-line entry per top-level rendered block, in
       // document order, for buildBlockMap to pair against the preview's
       // top-level elements. markdown-it tags every token with a nesting
-      // `level` and a `[startLine, endLine]` source `map`; the top-level
-      // blocks are the level-0 tokens that are not close tokens (a
-      // block_open, or a self-contained block such as fence / hr /
-      // html_block). A token with no map contributes a 0, which the
+      // `level` and a `[startLine, endLine]` source `map`, and the
+      // top-level blocks are the level-0 tokens that are not close
+      // tokens (a block_open, or a self-contained block such as fence /
+      // hr / html_block). A token with no map contributes a 0, which the
       // pairing step skips.
       const computeMarkdownLineMap = (tokens) => {
         const lines = [];
@@ -2596,14 +2603,14 @@
       };
 
       const markdownRenderer = {
-        // Synchronous — md.render and md.parse are synchronous, as is
+        // Synchronous: md.render and md.parse are synchronous, as is
         // DOMPurify. Promise.resolve matches the Renderer interface's
         // Promise-returning contract.
         render(source, _context) {
           // md.render runs the full parse + render pipeline with the core
           // rules (gfmAlert, gfmTaskList, emoji) applied.
           const rawHtml = md.render(source);
-          // DOMPurify sanitization matches the AsciidoctorRenderer path —
+          // DOMPurify sanitization matches the AsciidoctorRenderer path:
           // the same HTML-injection protection for either format.
           // RETURN_DOM_FRAGMENT hands back a DocumentFragment the caller
           // appends directly, so the HTML is parsed into a DOM once (here,
@@ -2612,15 +2619,15 @@
 
           return Promise.resolve({
             fragment,
-            // Scroll-sync block map, built LAZILY — only when
+            // Scroll-sync block map, built LAZILY: only when
             // syncPreviewToCaret needs it. The closure re-parses `source`
-            // (markdown-it is linear and fast); a render that never
+            // (markdown-it is linear and fast), so a render that never
             // triggers sync stays single-pass.
             buildBlockMap: (rootElement) => {
               const tokens = md.parse(source, {});
               const lineList = computeMarkdownLineMap(tokens);
               // Pair each rendered top-level child with its source line.
-              // Min guards the 1:1 token-to-element invariant — sync
+              // Min guards the 1:1 token-to-element invariant: sync
               // degrades silently rather than throwing if it diverges.
               const children = rootElement.children;
               const n = Math.min(children.length, lineList.length);
@@ -2643,14 +2650,14 @@
       //
       // Pass-through renderer for buffers the user has marked as plain
       // text. The preview mirrors the source verbatim in a monospace
-      // block — no parsing, no transformation. AsciiDoc or Markdown
+      // block: no parsing, no transformation. AsciiDoc or Markdown
       // syntax typed in a text-mode buffer stays literal in the preview.
       const textRenderer = {
-        // Not declared async for the same reason as markdownRenderer — no
+        // Not declared async for the same reason as markdownRenderer: no
         // awaits inside, Promise.resolve matches the interface contract.
         render(source, _context) {
           // Wrap the escaped source in <pre class="text-verbatim">. The
-          // class is a hook for future styling — CSS can target it to
+          // class is a hook for future styling: CSS can target it to
           // adjust font or spacing specifically in text mode without
           // touching the generic <pre> used by AsciiDoc listing blocks.
           // DOMPurify pass is redundant here (our escape produces only
@@ -2665,8 +2672,8 @@
             fragment,
             buildBlockMap: () => [],
             translateEditorLine: (editorLine) => editorLine,
-            // Plain text has no TOC concept; sidebar-TOC layout never
-            // activates for text documents.
+            // Plain text has no table of contents, so the sidebar
+            // layout never activates for text documents.
             tocPosition: null,
           });
         },
@@ -2677,9 +2684,10 @@
       // Format → Renderer mapping. The single call site in render() reads
       // currentFormat, calls getRenderer, and invokes render on whatever
       // comes back. Adding a new format means adding a Renderer
-      // implementation above and a case here; render() doesn't change.
+      // implementation above and a case here, and render() doesn't
+      // change.
       //
-      // No clearAllRendererCaches helper exists in standalone — the Tauri
+      // No clearAllRendererCaches helper exists in standalone: the Tauri
       // version has one to invalidate asciidoctorRenderer's include-file
       // cache on buffer-identity-changing operations, but standalone has
       // no include preprocessing (browser can't read sibling files), so
@@ -2697,13 +2705,14 @@
 
       // ================= Render =================
 
-      // Scroll-sync state, populated lazily — the block map and
+      // Scroll-sync state, populated lazily: the block map and
       // translateEditorLine callback are supplied by each render's
       // Renderer result but computed on demand the first time
       // syncPreviewToCaret runs after a render. Users who never trigger
-      // sync pay zero cost for the map build; sync users pay the build
-      // cost once per render cycle, then reuse the cached map across
-      // repeated sync triggers until the next render invalidates it.
+      // sync pay zero cost for the map build, while sync users pay the
+      // build cost once per render cycle, then reuse the cached map
+      // across repeated sync triggers until the next render invalidates
+      // it.
       //
       // `blockMap = null` means "not yet built" (either initial state or
       // invalidated by a recent render). `latestBuildBlockMap === null`
@@ -2717,7 +2726,7 @@
 
       // ================= Render coalescing =================
       //
-      // render() is async and one pass can be slow — a large document's
+      // render() is async and one pass can be slow: a large document's
       // parse runs from tens of milliseconds to a second or more. The
       // debounce below merges a burst of edits within its window into a
       // single render, but it does not stop a render from starting while
@@ -2730,14 +2739,14 @@
       // renderInFlight is set and any further trigger only raises
       // renderPending rather than starting a second pass. When the pass
       // finishes, a raised renderPending is re-submitted through the
-      // debounce — see render() below for why the debounce rather than
+      // debounce, see render() below for why the debounce rather than
       // an immediate re-run. At most one pass runs at a time, and a
       // burst of edits collapses to a single trailing pass.
       //
       // The old render-staleness token that lived here did two jobs:
       // stop a stale render from clobbering a newer one, and stop a
       // superseded render from writing its result at all. Coalescing
-      // covers the first — strictly sequential passes cannot overlap, so
+      // covers the first: strictly sequential passes cannot overlap, so
       // a clobber is structurally impossible. The buffer-staleness check
       // inside renderOnce (currentFormat + docEpoch) covers the second.
       let renderInFlight = false;
@@ -2749,18 +2758,18 @@
       let lastRenderMs = 0;
 
       // A single render pass: source -> HTML -> preview DOM. Reached only
-      // through render() below, which serializes calls — nothing else
+      // through render() below, which serializes calls, so nothing else
       // should invoke it directly.
       const renderOnce = async () => {
         const started = performance.now();
         try {
           const source = getDoc();
-          // Format-keyed dispatch — the active renderer is chosen per
+          // Format-keyed dispatch: the active renderer is chosen per
           // render from currentFormat (set from the file extension, or
           // changed at runtime via the format toggle / Ex commands).
           // Capture the format and the doc epoch this pass renders
-          // against; the staleness check before the DOM write compares
-          // the live values against these.
+          // against, and the staleness check before the DOM write
+          // compares the live values against these.
           const renderedFormat = currentFormat;
           const renderedEpoch = docEpoch;
           const result = await getRenderer(renderedFormat).render(source, { path: null });
@@ -2768,20 +2777,21 @@
           // Buffer-staleness check. If a different document was loaded
           // (setDoc bumps docEpoch) or the format was toggled while this
           // pass was rendering, the result is for a buffer that is no
-          // longer current — discard it rather than write stale content.
-          // render()'s renderPending path has already queued a trailing
-          // pass for the new buffer.
+          // longer current, so discard it rather than write stale
+          // content. render()'s renderPending path has already queued a
+          // trailing pass for the new buffer.
           if (currentFormat !== renderedFormat || docEpoch !== renderedEpoch) return;
 
           // append the already-sanitized fragment's nodes into the preview
-          // (replaceChildren empties the fragment into out) — no HTML-string
-          // re-parse; the renderer handed back a DocumentFragment, not a string.
+          // (replaceChildren empties the fragment into out): no HTML-string
+          // re-parse, since the renderer handed back a DocumentFragment, not a
+          // string.
           out.replaceChildren(result.fragment);
 
           // Invalidate the cached map and stash the new builder for lazy
           // evaluation on the next syncPreviewToCaret call. buildBlockMap
-          // is NOT invoked here — skipping the (potentially non-trivial)
-          // map build for every render is the point.
+          // is NOT invoked here, since skipping the (potentially
+          // non-trivial) map build for every render is the point.
           blockMap = null;
           latestBuildBlockMap = result.buildBlockMap;
           translateEditorLine = result.translateEditorLine;
@@ -2797,14 +2807,15 @@
           console.error("render failed:", e);
           const msg = e instanceof Error ? e.message : String(e);
           out.innerHTML = `<pre class="render-error">Render error: ${escapeHtml(msg)}</pre>`;
-          // Error state has no renderable block map; clear both the cache
-          // and the builder so sync attempts after an error are no-ops
-          // instead of trying to build from stale (or nonexistent) state.
+          // Error state has no renderable block map, so clear both the
+          // cache and the builder so sync attempts after an error are
+          // no-ops instead of trying to build from stale (or nonexistent)
+          // state.
           blockMap = null;
           latestBuildBlockMap = null;
           lastTocPosition = null;
           evaluateTocLayout();
-          // Skip updateWordCount on render error — the error message's
+          // Skip updateWordCount on render error: the error message's
           // word count is meaningless, leaving the previous successful
           // value visible reads less jarringly.
         } finally {
@@ -2817,17 +2828,17 @@
       // Coalescing entry point for a render. While a pass is already in
       // flight, a call here only raises renderPending and returns. Once
       // the pass finishes, a raised renderPending is re-submitted through
-      // scheduleRender — the debounce — NOT re-run immediately.
+      // scheduleRender (the debounce), NOT re-run immediately.
       //
       // Why the debounce and not an immediate re-run: a render blocks the
       // main thread for its full duration, so keystrokes typed during one
       // queue up unprocessed. An immediate re-run starts the next pass
       // before the event loop can drain that queue, so the queued
       // keystrokes trickle out a few per pass and each batch triggers yet
-      // another pass — N keystrokes degrade into N passes. Re-submitting
+      // another pass: N keystrokes degrade into N passes. Re-submitting
       // through the debounce leaves the thread idle long enough for the
-      // whole queue to drain at once; the debounce then collapses that
-      // burst into a single trailing pass.
+      // whole queue to drain at once, and the debounce then collapses
+      // that burst into a single trailing pass.
       //
       // Callers invoke this fire-and-forget, so returning early without
       // awaiting a pass breaks no caller's expectations.
@@ -2848,22 +2859,22 @@
         if (renderPending) scheduleRender();
       };
 
-      // Schedule a render on a debounce whose window is adaptive — it
+      // Schedule a render on a debounce whose window is adaptive: it
       // scales with the cost of the most recent pass (lastRenderMs),
       // clamped to the range [100ms, 1000ms].
       //
       // A fixed window only coalesces a typing burst when it outlasts the
-      // gap between keystrokes. At 100ms it does not — real typing leaves
-      // 150ms+ between keystrokes — so a fixed 100ms window fires a
+      // gap between keystrokes. At 100ms it does not (real typing leaves
+      // 150ms+ between keystrokes), so a fixed 100ms window fires a
       // render per keystroke. That is invisible when a render costs
       // ~30ms and ruinous when it costs seconds (one multi-second pass
       // per keystroke). Scaling the window to render cost fixes both
       // ends: a cheap document keeps the 100ms floor and stays
-      // effectively live; an expensive one gets a window wide enough — up
-      // to the 1000ms cap — to swallow a whole typing burst into a
-      // single trailing pass. The floor preserves the current feel for
-      // normal documents; the cap bounds how far the preview can lag
-      // behind a stopped cursor.
+      // effectively live, while an expensive one gets a window wide
+      // enough (up to the 1000ms cap) to swallow a whole typing burst
+      // into a single trailing pass. The floor preserves the current feel
+      // for normal documents, and the cap bounds how far the preview can
+      // lag behind a stopped cursor.
       const scheduleRender = () => {
         clearTimeout(renderTimer);
         const delay = Math.min(Math.max(lastRenderMs, 100), 1000);
@@ -2874,15 +2885,15 @@
       // Sync-once: snap the preview to the block containing (or nearest
       // preceding) the editor caret's source line. Triggered by Ctrl+Alt+L /
       // ⌃⌘L, the :syncpreview Ex command, or gz in Vim normal mode. NOT a
-      // continuous sync — both panes stay independently scrollable and we
+      // continuous sync: both panes stay independently scrollable and we
       // don't touch them unless the user asks.
 
       // Flash the sync indicator. Removing and re-adding the class in
       // the same tick doesn't restart the animation because the browser
-      // batches the class changes; forcing a synchronous reflow via
+      // batches the class changes. Forcing a synchronous reflow via
       // `void offsetWidth` between the two flushes the pending style
       // changes so the subsequent add is recognized as a fresh state
-      // change. Canonical "restart a CSS animation from JS" pattern —
+      // change. Canonical "restart a CSS animation from JS" pattern,
       // ugly but stable across browsers.
       const flashSync = () => {
         if (!statusSyncIndicator) return;
@@ -2901,7 +2912,7 @@
       // function.
       const syncPreviewToCaret = () => {
         if (!editorView) return;
-        // Build the block map lazily — the FIRST sync after each render
+        // Build the block map lazily: the FIRST sync after each render
         // pays the lexer+walk cost, subsequent syncs reuse the cached
         // map until the next render invalidates it. Users who never
         // trigger sync pay nothing. `latestBuildBlockMap` is null pre-
@@ -2912,7 +2923,7 @@
           blockMap = latestBuildBlockMap(out);
         }
         if (!blockMap.length) return;
-        // Flash the sync indicator after the guards pass — the guards
+        // Flash the sync indicator after the guards pass: the guards
         // protect against no-op invocations (empty document, pre-init
         // editor) where the sync command is semantically meaningless.
         // Any invocation that gets past them is a "real" sync attempt
@@ -2944,7 +2955,8 @@
         nameEl.textContent = currentName;
         document.body.classList.toggle("is-dirty", dirty);
         document.title = `${dirty ? "● " : ""}${currentName} — Skrivro Web`;
-        // Status bar mirrors filename + dirty indicator; refresh on any title update.
+        // Status bar mirrors filename + dirty indicator, so refresh on any title
+        // update.
         refreshStatus();
       };
       const setDirty = (d) => {
@@ -2958,7 +2970,7 @@
       // A single localStorage entry mirrors the current buffer so a page
       // reload (an accidental F5, a crash) comes back to the same document
       // instead of a blank untitled.adoc. It records content, name, and
-      // the dirty flag — so a clean, just-opened or just-saved buffer
+      // the dirty flag, so a clean, just-opened or just-saved buffer
       // restores clean (honest ● indicator, no spurious beforeunload
       // prompt) and a mid-edit buffer restores dirty.
       //
@@ -2969,7 +2981,7 @@
       // is the File System Access handle (handles can't be JSON-serialized
       // to localStorage), so after a reload Ctrl+S / Cmd+S falls back to save-as
       // until the file is re-linked. Reattaching the live handle would
-      // need IndexedDB — deliberately out of scope here.
+      // need IndexedDB, deliberately out of scope here.
       const persistSnapshot = () => {
         try {
           localStorage.setItem(
@@ -3015,19 +3027,19 @@
       // Detect the AsciiDoc/Markdown/text format from a path's extension,
       // or fall back to the compiled-in default when there's no path.
       // Centralized here so every site that opens or creates a buffer
-      // routes through the same extension table — guaranteeing that a
+      // routes through the same extension table, guaranteeing that a
       // `.md` file always gets markdown rendering and a `.adoc` file
       // always gets asciidoc rendering, regardless of the buffer's
       // previous format.
       //
       // Three formats supported: asciidoc / markdown / text. Anything
       // else (`.txt`, `.log`, no extension at all) gets text. We don't
-      // try to sniff content; format-by-extension is a hard rule the user
+      // try to sniff content. Format-by-extension is a hard rule the user
       // can rely on. If you open `mydoc.adoc` and want markdown rendering,
       // you rename it. If a file has no extension, that's a signal the
       // user picked some format-agnostic interaction (config, log,
       // readme-without-extension) and treating it as plain text mirrors
-      // what most editors do — and dodges the false-precision of guessing.
+      // what most editors do, and dodges the false-precision of guessing.
       //
       // We deliberately don't auto-detect format from CONTENT (e.g.,
       // "this looks like AsciiDoc because it starts with `:doctype:`").
@@ -3046,11 +3058,11 @@
       // than assigning the field directly so the three side effects that
       // should always follow a format change stay in one place:
       //
-      //   1. CM6 language compartment reconfigure — swaps the active
+      //   1. CM6 language compartment reconfigure, which swaps the active
       //      syntax highlighter (asciidocLang / markdownLang / [] for text).
-      //   2. Status bar refresh — the filetype slot shows the new format's
+      //   2. Status bar refresh: the filetype slot shows the new format's
       //      display name.
-      //   3. Preview re-render — since the renderer dispatches on format,
+      //   3. Preview re-render: since the renderer dispatches on format,
       //      the preview should reflect the new choice.
       //
       // No-op when the requested format equals the current one, so
@@ -3070,7 +3082,7 @@
 
       // ================= File ops =================
 
-      // Custom confirm dialog — replaces window.confirm so it does not consume
+      // Custom confirm dialog: replaces window.confirm so it does not consume
       // the transient user activation required by the File System Access API.
       // Pattern: callback-based (not Promise-based). The OK button click handler
       // runs the saved action synchronously inside its own click gesture, which
@@ -3103,11 +3115,11 @@
       // opens so we can restore on close. Two capture paths:
       //   - mousedown on helpBtn: clicking the button itself moves
       //     focus to the button by default, so a showHelp-time read of
-      //     activeElement would see the button (wrong — we want what
+      //     activeElement would see the button (wrong: we want what
       //     the user was doing before they clicked). Capturing on
       //     mousedown grabs the pre-click activeElement.
       //   - showHelp fallback: for the keyboard path (Ctrl+Alt+H / ⌃⌘H), no
-      //     button mousedown fires; capture at showHelp time instead.
+      //     button mousedown fires, so capture at showHelp time instead.
       //
       // preHelpFocus is cleared on close so a subsequent open via
       // keyboard doesn't inherit a stale value from a prior mouse click.
@@ -3137,7 +3149,7 @@
 
       // Focus restoration runs on the dialog's `close` event rather
       // than inside hideHelp, because hideHelp is only called from our
-      // own click handlers (close button, backdrop click) — Escape
+      // own click handlers (close button, backdrop click), while Escape
       // triggers the native close path, which fires the close event
       // but doesn't invoke hideHelp. Attaching here handles ALL close
       // paths uniformly.
@@ -3153,10 +3165,10 @@
       // When restoring to the editor, use editorView.focus() rather
       // than contentDOM.focus() directly. CM6 tracks focus state
       // internally (the Vim plugin consults it before intercepting
-      // keydowns); a bare DOM focus() leaves that internal state stale,
-      // so Vim's handler can see "not focused" and pass `:` through to
-      // default text insertion. editorView.focus() updates CM6's state
-      // coherently.
+      // keydowns), and a bare DOM focus() leaves that internal state
+      // stale, so Vim's handler can see "not focused" and pass `:`
+      // through to default text insertion. editorView.focus() updates
+      // CM6's state coherently.
       helpDlg.addEventListener("close", () => {
         const restore = preHelpFocus;
         preHelpFocus = null;
@@ -3176,7 +3188,7 @@
 
       helpBtn.addEventListener("click", showHelp);
       helpCloseBtn.addEventListener("click", hideHelp);
-      // Dismiss the help dialog when the user clicks on its backdrop —
+      // Dismiss the help dialog when the user clicks on its backdrop,
       // the ::backdrop pseudo-element rendered outside the dialog's box.
       //
       // Two pitfalls to avoid:
@@ -3184,8 +3196,8 @@
       //   1. Click-and-drag for text selection inside the content
       //      (mousedown on a child element, mouseup elsewhere) fires a
       //      click event whose target is the dialog itself (the deepest
-      //      common ancestor of the two phases) — checking `e.target ===
-      //      helpDlg` alone would dismiss on every drag-release.
+      //      common ancestor of the two phases), so checking `e.target
+      //      === helpDlg` alone would dismiss on every drag-release.
       //
       //   2. The dialog has no inner wrapper, so h2/h3/div.help-grid are
       //      direct children of helpDlg and the whitespace gaps BETWEEN
@@ -3197,10 +3209,11 @@
       // Solution: distinguish "click on dialog padding/whitespace" from
       // "click on actual backdrop" by checking the event coordinates
       // against the dialog's bounding rect. Padding/whitespace clicks
-      // land INSIDE the rect; ::backdrop clicks land OUTSIDE it. Then
-      // require BOTH the mousedown and the resulting click to have hit
-      // the backdrop — drag-releases that happen to end on the backdrop
-      // (or start on the backdrop and end inside) don't qualify.
+      // land INSIDE the rect, while ::backdrop clicks land OUTSIDE it.
+      // Then require BOTH the mousedown and the resulting click to have
+      // hit the backdrop, so drag-releases that happen to end on the
+      // backdrop (or start on the backdrop and end inside) don't
+      // qualify.
       const isHelpBackdropAt = (e) => {
         if (e.target !== helpDlg) return false;
         const r = helpDlg.getBoundingClientRect();
@@ -3226,7 +3239,7 @@
 
       // ================= Ex command panel messages =================
       //
-      // Surfaces error/info messages to the user via the CM6 Vim panel —
+      // Surfaces error/info messages to the user via the CM6 Vim panel,
       // the same bottom bar where the plugin itself shows errors like
       // "Not an editor command :foo" and "Invalid regex". Use this
       // anywhere we would otherwise console.error() silently and leave
@@ -3234,16 +3247,16 @@
       //
       // Mechanism: cm.openNotification is the plugin's documented hook.
       // Class `cm-vim-message` matches the plugin's own convention so
-      // our messages and the plugin's built-in errors share styling;
-      // inline white-space:pre preserves any formatting in the message
-      // text. The plugin inlines color:red on its own notifications,
-      // which the CSS above retheme's to --skr-error.
+      // our messages and the plugin's built-in errors share styling,
+      // and inline white-space:pre preserves any formatting in the
+      // message text. The plugin inlines color:red on its own
+      // notifications, which the CSS above retheme's to --skr-error.
       //
       // Duration 5000ms auto-dismiss. Shorter than the plugin's own
       // 15000ms default for errors because 15s is a long time to stare
       // at a short message like "E37: No write since last change".
       // Still enough time to read a verbose E212 with a long path. Safe
-      // to call from any code path; if the editor isn't ready yet we
+      // to call from any code path: if the editor isn't ready yet we
       // no-op silently rather than throw.
       const vimMessage = (text) => {
         if (!editorView) return;
@@ -3265,19 +3278,19 @@
       //
       // Hard upper bound on the size of a file Skrivro will open, in
       // bytes (3 MiB). A file above this is refused before any read, so
-      // an accidental open of a non-document — a disk image, a video, an
-      // archive — cannot pull hundreds of megabytes into the webview and
+      // an accidental open of a non-document (a disk image, a video, an
+      // archive) cannot pull hundreds of megabytes into the webview and
       // hang it.
       //
       // The limit tracks usability, not just crash-avoidance. Render
       // cost is roughly linear in source size, so the limit is also the
       // slowest open Skrivro allows: a file at 3 MiB takes on the order
-      // of ten seconds — large and slow, but it completes — whereas a
+      // of ten seconds (large and slow, but it completes), whereas a
       // much higher ceiling would admit files that take minutes, which
       // is functionally a hang. 3 MiB still clears any realistic single
       // document: a ~400,000-word novel (a very long one) is roughly
       // 2.5 MB as AsciiDoc, comfortably under. To raise it, edit the
-      // constant — there is no config override.
+      // constant: there is no config override.
       const MAX_FILE_BYTES = 3 * 1024 * 1024;
 
       // Human-readable byte count for the too-large message. 1024-based
@@ -3293,7 +3306,7 @@
       };
 
       // Thrown by readDocumentText when a file exceeds MAX_FILE_BYTES.
-      // The Error message is the ready-to-display, user-facing string —
+      // The Error message is the ready-to-display, user-facing string:
       // call sites catch this type, show e.message via vimMessage, and
       // skip the load. A distinct class (rather than a flag on a plain
       // Error) is what lets each catch tell "too large" apart from an
@@ -3310,7 +3323,7 @@
       // Size-guarded stand-in for a bare file.text() when loading a
       // document into the buffer. Every buffer-open path routes through
       // this: the file picker, the <input> fallback, drag-and-drop, and
-      // reload. Unlike a path-based read there is no separate stat call —
+      // reload. Unlike a path-based read there is no separate stat call:
       // the File object the browser hands us already carries the real
       // .size (a picked or dropped symlink is resolved before we see it).
       const readDocumentText = async (file) => {
@@ -3327,7 +3340,8 @@
             // the OK-button click handler's gesture context so it sees a fresh
             // transient user activation. The IIFE starts synchronously, so its
             // first statement (the await-expression) calls showOpenFilePicker
-            // before the microtask yield — that is what keeps the gesture live.
+            // before the microtask yield, and that is what keeps the gesture
+            // live.
             (async () => {
               try {
                 const [handle] = await window.showOpenFilePicker({ multiple: false });
@@ -3396,13 +3410,13 @@
       //     file. Used the same way as showOpenFilePicker's result so
       //     subsequent saves round-trip to the dropped file.
       //   - Fallback browsers (Firefox/Safari): dataTransfer.files[0]
-      //     gives a File without a handle; subsequent saves go through
+      //     gives a File without a handle, so subsequent saves go through
       //     the save-as / download path.
       //
       // dragover's preventDefault is required for the drop event to
-      // fire at all; without it the browser opens the dragged file in
+      // fire at all. Without it the browser opens the dragged file in
       // place of the page. Non-file drops (text, URLs) and unreadable
-      // files fail the same way openFile's catch path does — vimMessage
+      // files fail the same way openFile's catch path does: vimMessage
       // with E484.
       document.addEventListener("dragover", (e) => {
         e.preventDefault();
@@ -3649,10 +3663,10 @@
           // CM6 (or @replit/codemirror-vim's .cm-vim-panel class) sets 10px
           // of horizontal padding on .cm-panel. The right side shows as a
           // dark sliver in :open and similar Ex-command panels because
-          // nothing lives there — the PCRE-hint slot is a separate flex
+          // nothing lives there: the PCRE-hint slot is a separate flex
           // sibling that only exists in search mode. Zero the right padding
-          // so the input reaches the panel edge; 10px on the left stays so
-          // the : prefix has breathing room.
+          // so the input reaches the panel edge, while 10px on the left
+          // stays so the : prefix has breathing room.
           ".cm-panel": {
             paddingRight: "0",
           },
@@ -3669,9 +3683,9 @@
           // makePrompt() in vim.js builds it as a <span style="color:#888"> that
           // sits as the second flex child of the outer panel div (the first child
           // is the prefix + input span). Adjacent sibling combinator matches only
-          // when a second span exists — Ex command panels have only one span
+          // when a second span exists: Ex command panels have only one span
           // child (desc is undefined), so those are untouched. The hint is
-          // informational but repetitive; since we already default pcre to false
+          // informational but repetitive. Since we already default pcre to false
           // at init, users rarely need to toggle, and the label is clutter in
           // an otherwise clean command bar.
           ".cm-panel span + span": {
@@ -3701,7 +3715,7 @@
       ]);
 
       // ================= Minimal AsciiDoc stream highlighter =================
-      // Not a full parser — just enough to color what you'll actually see:
+      // Not a full parser, just enough to color what you'll actually see:
       // headings, attributes, comments, lists, block titles, listing blocks,
       // and inline emphasis/code/links.
       const asciidocLang = StreamLanguage.define({
@@ -3794,7 +3808,7 @@
       const markdownLang = [markdown({ base: markdownLanguage, addKeymap: false })];
 
       // Map a buffer format to the CM6 language extension that should be
-      // active in its compartment slot. Text mode uses an empty array —
+      // active in its compartment slot. Text mode uses an empty array:
       // no syntax highlighting, no language-specific keymap, just plain
       // text editing.
       const languageFor = (format) => {
@@ -3811,13 +3825,13 @@
       // Resolves the language compartment's contents given both the current
       // buffer format AND the syntaxHighlighting pref. When the pref is off
       // we hand back an empty extension list regardless of format, which
-      // strips tokenization and therefore all per-token coloring; the
+      // strips tokenization and therefore all per-token coloring. The
       // syntaxHighlighting(defaultHighlightStyle) / syntaxHighlighting(
       // catppuccinHighlight) extensions elsewhere in the extension list stay
       // wired up but have nothing to color. Other CM6 affordances
       // (highlightActiveLine, search matches, gutter numbers, the focus
       // outline, the Vim cursor shape) all live in unrelated extensions and
-      // are unaffected — "syntax off" is truly "plain editor with every
+      // are unaffected: "syntax off" is truly "plain editor with every
       // other affordance intact," not "bare textarea."
       const resolveLanguageExtension = (format) =>
         prefs.syntaxHighlighting ? languageFor(format) : [];
@@ -3826,7 +3840,7 @@
       // Reconfigured when the current buffer's format changes. Holds the
       // language extension (syntax highlighter / tokenizer + any language-
       // specific keymap). Switching format dispatches a reconfigure effect
-      // from setBufferFormat — no rebuild of the full extension set.
+      // from setBufferFormat, with no rebuild of the full extension set.
       const langCompartment = new Compartment();
 
       // ================= Spellcheck =================
@@ -3842,14 +3856,14 @@
       // so master's Web Worker buys nothing here), and the engine plus
       // dictionary load lazily from the CDN the first time spellcheck is
       // active. Spellcheck is on by default, so that load normally happens
-      // at launch — a user who turns it off avoids the download on later
+      // at launch, and a user who turns it off avoids the download on later
       // launches.
 
       const spellCompartment = new Compartment();
 
       // Lazy engine. `engineLoading` memoizes the in-flight load so repeated
-      // toggles share one download; it resets to null on failure so the next
-      // toggle-on can retry.
+      // toggles share one download, and it resets to null on failure so the
+      // next toggle-on can retry.
       let spellEngine = null;
       let engineLoading = null;
       // A non-ok response throws instead of returning the CDN's error page,
@@ -3877,7 +3891,7 @@
       // character names, place names, invented terms, domain jargon. Matched
       // case-insensitively and consulted before the engine. Unlike master,
       // which keeps the list in an editable custom-words.txt in the config
-      // dir, this build persists it as a localStorage key — there is no file
+      // dir, this build persists it as a localStorage key: there is no file
       // to bulk-edit, so Vim zg/zug (and the right-click menu) are the whole
       // management surface.
 
@@ -3897,7 +3911,7 @@
         }
       } catch {}
 
-      // Case-insensitive membership — the right-click menu uses this to
+      // Case-insensitive membership: the right-click menu uses this to
       // choose between "Add to dictionary" and "Remove from dictionary".
       const hasCustomWord = (word) => customWords.has(word.trim().toLowerCase());
 
@@ -3960,7 +3974,7 @@
             const word = m[0];
             if (!word || word.length < 2) continue;
             const start = from + m.index;
-            // Skip a letter-run that sits against a digit ("h1", "utf8") — an
+            // Skip a letter-run that sits against a digit ("h1", "utf8"): an
             // identifier, not prose. charAt returns '' past either edge, so a
             // word at the slice boundary sees no neighbor and isn't skipped.
             const before = text.charAt(m.index - 1);
@@ -3972,12 +3986,12 @@
         return ranges;
       };
 
-      // Kick a re-check from outside the update cycle — dispatched after the
+      // Kick a re-check from outside the update cycle, dispatched after the
       // engine finishes loading.
       const spellcheckRecompute = StateEffect.define();
 
-      // Carries a fresh set of misspelled ranges into editor state; the
-      // decoration field rebuilds from it.
+      // Carries a fresh set of misspelled ranges into editor state, and
+      // the decoration field rebuilds from it.
       const setSpellRanges = StateEffect.define();
 
       // One mark decoration, reused for every misspelling. The squiggle is
@@ -3994,7 +4008,7 @@
         return builder.finish();
       };
 
-      // Holds the RAW misspelled ranges — every misspelling in the viewport,
+      // Holds the RAW misspelled ranges: every misspelling in the viewport,
       // including the word the cursor is in. Maps them through edits so they
       // shift with typing until the next check refreshes them. Not rendered
       // directly: caretSkipDisplay derives the visible squiggles from it
@@ -4031,8 +4045,8 @@
 
       // Derive the VISIBLE squiggles from the raw field: every misspelling
       // except the word the cursor sits in (or at the trailing edge of). That
-      // word is likely being typed, so squiggling it mid-keystroke is noise —
-      // it gets flagged the moment the cursor leaves.
+      // word is likely being typed, so squiggling it mid-keystroke is noise,
+      // and it gets flagged the moment the cursor leaves.
       const buildSpellDisplay = (state) => {
         const raw = state.field(spellDecoField);
         const sel = state.selection.main;
@@ -4071,7 +4085,7 @@
       // synchronous and viewport-sized (well under a millisecond), but a CM6
       // plugin cannot dispatch from inside an update cycle, so the recheck is
       // deferred to a microtask and recomputes from the view's then-current
-      // state — there is no stale-result window to guard against.
+      // state, so there is no stale-result window to guard against.
       const spellcheckPlugin = ViewPlugin.fromClass(
         class {
           constructor(view) {
@@ -4082,7 +4096,7 @@
           }
           update(update) {
             // selectionSet is intentionally absent: a cursor move re-derives
-            // the display layer; the raw set is unchanged.
+            // the display layer, and the raw set is unchanged.
             if (
               update.docChanged ||
               update.viewportChanged ||
@@ -4284,7 +4298,7 @@
         vimCompartment.of(prefs.vimMode ? [vim()] : []),
 
         // Enable CM6 multi-range selections. Required for Vim visual-block
-        // mode (Ctrl+Q / Ctrl+V) to extend vertically — the @replit/codemirror-vim
+        // mode (Ctrl+Q / Ctrl+V) to extend vertically: the @replit/codemirror-vim
         // plugin represents a V-BLOCK selection as multiple parallel ranges
         // (one per row) and dispatches them via cm6.dispatch({ selection: ... }).
         // CM6 silently collapses multi-range selections to a single range
@@ -4292,7 +4306,7 @@
         // facet, pressing j/k in V-BLOCK appears to enter block mode (the
         // plugin's internal vim.visualBlock=true is set) but the visible CM6
         // selection never grows beyond one row. The plugin itself doesn't
-        // set this facet — consuming code has to.
+        // set this facet: consuming code has to.
         EditorState.allowMultipleSelections.of(true),
 
         // base editing
@@ -4303,7 +4317,7 @@
         // only shows actual browser text selection (from mouse drag), NOT
         // internal selection state set programmatically. That means Vim
         // visual mode (which dispatches selection changes via CM6's state)
-        // tracks the selection internally but has no visible highlight —
+        // tracks the selection internally but has no visible highlight:
         // pressing v + motions appears to do nothing. drawSelection() fixes
         // that by rendering the internal selection as visible highlights.
         // It's also what renders the fat Vim block cursor.
@@ -4315,14 +4329,14 @@
         bracketMatching(),
         EditorView.lineWrapping,
 
-        // language — wrapped in a compartment so the syntax-highlighting
+        // language: wrapped in a compartment so the syntax-highlighting
         // toggle and setBufferFormat can reconfigure its contents at
         // runtime via resolveLanguageExtension(currentFormat).
         langCompartment.of(resolveLanguageExtension(currentFormat)),
 
-        // spellcheck — compartment lets the squiggle machinery be toggled at
+        // spellcheck: compartment lets the squiggle machinery be toggled at
         // runtime without rebuilding the editor. The engine loads lazily on
-        // first enable; until it arrives the plugin's rechecks no-op.
+        // first enable, and until it arrives the plugin's rechecks no-op.
         spellCompartment.of(prefs.spellcheck ? spellcheckExtension : []),
 
         // highlighting
@@ -4335,12 +4349,13 @@
         // base keymap
         keymap.of([...defaultKeymap, ...historyKeymap]),
 
-        // find/replace — CM's search panel, mounted at the top of the editor.
+        // find/replace: CM's search panel, mounted at the top of the editor.
         // Opened by Mod-f (Ctrl+F, or Cmd+F on Mac) for non-Vim users, or the
         // `:find` Ex command for Vim users. searchKeymap is Prec.low, so in
-        // Vim mode Vim's own keymap wins (its Ctrl-F keeps paging forward);
-        // with Vim off, Mod-f opens the panel. The phrases entries rename two
-        // of CM's default labels; unlisted keys fall back to CM's defaults.
+        // Vim mode Vim's own keymap wins (its Ctrl-F keeps paging forward),
+        // and with Vim off, Mod-f opens the panel. The phrases entries rename
+        // two of CM's default labels, and unlisted keys fall back to CM's
+        // defaults.
         search({ top: true }),
         EditorState.phrases.of({ "by word": "whole word", regexp: "regex" }),
         Prec.low(keymap.of(searchKeymap)),
@@ -4388,10 +4403,10 @@
       // ================= Width mode =================
       // Four named width caps for the single-pane scrollers (editor-
       // only and preview-only modes). Same ch value applied to both
-      // panes; the natural mono-vs-proportional width difference gives
-      // the editor a wider visual cap than the preview at the same
-      // mode setting. See the --width-cap comment block in the CSS for
-      // the typography rationale.
+      // panes, and the natural mono-vs-proportional width difference
+      // gives the editor a wider visual cap than the preview at the
+      // same mode setting. See the --width-cap comment block in the
+      // CSS for the typography rationale.
       //
       // 65ch (narrow): prose-optimal line length, comfortable for
       //   novels, essays, anything pure-prose.
@@ -4400,7 +4415,7 @@
       //   narrow and wide.
       // 125ch (wide): for technical references, API docs, anything
       //   code- or table-heavy where wider columns help.
-      // 100vw (full): no cap. Pane fills the available width — for
+      // 100vw (full): no cap. Pane fills the available width, for
       //   ultrawide monitors, single-tile-half-screen tiling, or
       //   users who just prefer maximum screen utilization. The
       //   100% safety net in the rules still applies but is moot
@@ -4408,20 +4423,22 @@
       const WIDTH_MODES = ["narrow", "medium", "wide", "full"];
       const WIDTH_CAPS = { narrow: "65ch", medium: "90ch", wide: "125ch", full: "100vw" };
 
-      // Sidebar TOC width per width mode, mapping Asciidoctor's spec
-      // values (15em / 20em from their default stylesheet) onto our
-      // modes. Narrow mode never activates sidebar layout (see
-      // evaluateTocLayout) so its value is unreachable in practice;
-      // included for completeness and to keep the lookup total.
+      // Sidebar table of contents width per width mode, mapping
+      // Asciidoctor's spec values (15em / 20em from their default
+      // stylesheet) onto our modes. Narrow mode never activates
+      // sidebar layout (see evaluateTocLayout) so its value is
+      // unreachable in practice, but included for completeness and
+      // to keep the lookup total.
       const TOC_SIDEBAR_WIDTHS = { narrow: "15em", medium: "15em", wide: "15em", full: "20em" };
 
       // Push the active mode's cap into the --width-cap CSS variable
       // that the .cm-scroller and .preview rules consume, and the
       // matching sidebar width into --toc-sidebar-width. Defensive
       // fallback to medium if the persisted pref is somehow invalid.
-      // Also re-evaluates the sidebar TOC layout — the narrow mode is
-      // the one mode that disables sidebar layout, so transitioning
-      // in/out of narrow needs to recompute the layout class set.
+      // Also re-evaluates the sidebar table of contents layout: the
+      // narrow mode is the one mode that disables sidebar layout, so
+      // transitioning in/out of narrow needs to recompute the layout
+      // class set.
       const applyWidthMode = () => {
         const cap = WIDTH_CAPS[prefs.widthMode] || WIDTH_CAPS.medium;
         const tocSidebar = TOC_SIDEBAR_WIDTHS[prefs.widthMode] || TOC_SIDEBAR_WIDTHS.medium;
@@ -4447,48 +4464,49 @@
         setWidthMode(next === undefined ? "medium" : next);
       };
 
-      // ================= Sidebar TOC layout =================
+      // ================= Sidebar table of contents layout =================
       // When the active document has `:toc: left` or `:toc: right`,
-      // honor it as a sidebar layout — but only when the surrounding
+      // honor it as a sidebar layout, but only when the surrounding
       // conditions can support it. Otherwise, fall back to the default
-      // top-of-content TOC placement that Asciidoctor's embedded
-      // output produces.
+      // top-of-content placement that Asciidoctor's embedded output
+      // produces.
       //
       // Conditions for sidebar layout (all must hold):
       //   1. Document has toc-position 'left' or 'right' (read from
-      //      the Asciidoctor doc object after load — this is how the
+      //      the Asciidoctor doc object after load: this is how the
       //      `:toc: <pos>` source attribute surfaces in the embedded-
       //      mode HTML, since the HTML itself doesn't carry a class
       //      to distinguish the variants).
       //   2. Display mode is preview-only. Split mode's preview pane
-      //      shares the window 50/50 with the editor — too narrow to
+      //      shares the window 50/50 with the editor, too narrow to
       //      give a meaningful sidebar plus content. Editor-only mode
       //      hides the preview entirely so the layout is moot.
       //   3. Width mode is not 'narrow'. Narrow's whole point is a
-      //      prose-comfortable text column; pulling a sidebar out of
-      //      that budget would crush the column past readability.
+      //      prose-comfortable text column, and pulling a sidebar out
+      //      of that budget would crush the column past readability.
       //      Medium/wide/full have enough budget.
       //
       // When any condition fails, the .has-sidebar-toc class is
-      // removed and the TOC renders as a regular block at the top of
-      // content (Asciidoctor's default embedded output).
+      // removed and the table of contents renders as a regular block
+      // at the top of content (Asciidoctor's default embedded
+      // output).
       //
       // Cached toc-position from the most recent successful render.
       // Used by evaluateTocLayout when display/width mode changes
-      // without a re-render — we still know whether the active doc
-      // requested sidebar TOC.
+      // without a re-render: we still know whether the active doc
+      // requested a sidebar table of contents.
       let lastTocPosition = null;
 
-      // User-controlled override for TOC visibility. Toggled via
-      // Ctrl+Alt+I / ⌃⌘I or the `:toc on|off` Ex command. Session-scoped
-      // (not persisted to localStorage) — defaults to false on every
-      // launch so a fresh document load always shows whatever the
-      // source requested. The reasoning: tocHidden is a per-view
-      // override ("I don't want this doc's TOC right now"), not a
-      // permanent UI preference. Persisting it would surprise the
-      // user on the next launch ("where's my TOC?") with no
-      // navigation aid since preview scroll position isn't restored
-      // either.
+      // User-controlled override for table of contents visibility.
+      // Toggled via Ctrl+Alt+I / ⌃⌘I or the `:toc on|off` Ex command.
+      // Session-scoped (not persisted to localStorage): defaults to
+      // false on every launch so a fresh document load always shows
+      // whatever the source requested. The reasoning: tocHidden is a
+      // per-view override ("I don't want this doc's table of contents
+      // right now"), not a permanent UI preference. Persisting it would
+      // surprise the user on the next launch ("where's my table of
+      // contents?") with no navigation aid since preview scroll position
+      // isn't restored either.
       let tocHidden = false;
 
       const evaluateTocLayout = () => {
@@ -4504,8 +4522,8 @@
         out.classList.add(lastTocPosition === "left" ? "toc-left" : "toc-right");
       };
 
-      // Flip the TOC visibility override and re-evaluate the layout.
-      // Bound to Ctrl+Alt+I / ⌃⌘I.
+      // Flip the table of contents visibility override and
+      // re-evaluate the layout. Bound to Ctrl+Alt+I / ⌃⌘I.
       const toggleTocVisibility = () => {
         tocHidden = !tocHidden;
         evaluateTocLayout();
@@ -4524,19 +4542,19 @@
       // convention is symbols with no separator, in a fixed order: Control,
       // Option, Shift, Command, with Command always LAST (next to the key).
       // So ⌘S, ⇧⌘N, ⌃⌘E, matching what users see in macOS menus and the
-      // system keyboard shortcut UI. On non-Mac the function is a no-op; the
-      // labels stay as authored ("Ctrl+Alt+E").
+      // system keyboard shortcut UI. On non-Mac the function is a no-op, and
+      // the labels stay as authored ("Ctrl+Alt+E").
       //
       // Two passes:
       //   1. Strip the .mac-only class from elements that should appear
       //      only on Mac (e.g., the alternate Ctrl+V V-BLOCK binding,
       //      which works on Mac because browser paste is Cmd+V there
       //      but doesn't work on Linux/Windows where Ctrl+V is paste).
-      //      Default CSS hides .mac-only; removing the class reveals
+      //      Default CSS hides .mac-only, and removing the class reveals
       //      the element. .non-mac is the inverse: visible by default
       //      (no CSS rule needed), removed here on Mac. Used where the
       //      authored Linux/Windows chord would rewrite into a wrong or
-      //      unbound Mac chord — e.g., redo's Ctrl+Y, whose Mac form is
+      //      unbound Mac chord: e.g., redo's Ctrl+Y, whose Mac form is
       //      Shift+Cmd+Z rather than Cmd+Y, so the help row pairs a
       //      .non-mac Ctrl+Y with a .mac-only Ctrl+Shift+Z.
       //   2. On every kbd, map each modifier to its symbol and emit the
@@ -4545,9 +4563,9 @@
       //      App shortcuts get Ctrl→⌘ and Alt→⌃ (matching the strict-
       //      modifier handler above: primary modifier becomes Cmd,
       //      secondary becomes Ctrl). Vim-namespace kbds (marked
-      //      class="vim") get Ctrl→⌃ and Alt→⌥ instead — Vim's Ctrl
+      //      class="vim") get Ctrl→⌃ and Alt→⌥ instead: Vim's Ctrl
       //      and Alt namespaces are conceptually separate from app
-      //      shortcuts; on Mac users press the actual Control / Option
+      //      shortcuts, and on Mac users press the actual Control / Option
       //      keys for Vim bindings, not Cmd.
       const applyMacModifierLabels = () => {
         if (!isMac) return;
@@ -4577,7 +4595,7 @@
           }
           // A kbd with no modifier tokens (:format <var>name</var>, :w) has
           // nothing to rewrite, and reassigning textContent would flatten
-          // its inner markup — the <var> placeholder. Leave it untouched.
+          // its inner markup (the <var> placeholder). Leave it untouched.
           if (mods.length === 0) return;
           mods.sort((a, b) => order.indexOf(a) - order.indexOf(b));
           kbd.textContent = mods.join("") + keys.join("");
@@ -4602,7 +4620,7 @@
       };
 
       // Toggle editor syntax highlighting on/off and persist. Same shape
-      // as toggleVim — pref flip, persist, dispatch a compartment
+      // as toggleVim: pref flip, persist, dispatch a compartment
       // reconfigure. Called by Ctrl+Alt+Y / ⌃⌘Y and (via
       // applySyntaxHighlighting) by the :syntax Ex command.
       const toggleSyntaxHighlighting = () => {
@@ -4613,7 +4631,7 @@
         });
       };
 
-      // Explicit setter for `:syntax on` / `:syntax off` — distinct from
+      // Explicit setter for `:syntax on` / `:syntax off`, distinct from
       // the keybinding which is a pure toggle. No-op when the pref is
       // already in the requested state, which avoids the needless
       // dispatch and any visible flicker.
@@ -4671,8 +4689,8 @@
 
       const toggleSpellcheck = () => setSpellcheck(!spellcheckOn());
 
-      // Explicit setter for `:spell on` / `:spell off` — no-op when already
-      // in the requested state.
+      // Explicit setter for `:spell on` / `:spell off`, a no-op when
+      // already in the requested state.
       const applySpellcheck = (enabled) => {
         if (spellcheckOn() === enabled) return;
         setSpellcheck(enabled);
@@ -4681,7 +4699,8 @@
       // Cycle through formats in a fixed order: asciidoc → markdown → text
       // → asciidoc. Bound to Ctrl+Alt+R / Ctrl+Cmd+R. The mutation work
       // (compartment reconfigure, status refresh, re-render) is centralized
-      // in setBufferFormat — this just picks the next value and delegates.
+      // in setBufferFormat, so this just picks the next value and
+      // delegates.
       const FORMAT_CYCLE = ["asciidoc", "markdown", "text"];
       const toggleFormat = () => {
         const idx = FORMAT_CYCLE.indexOf(currentFormat);
@@ -4705,7 +4724,7 @@
       // only leaves focus on a preview that's now display:none, so
       // keystrokes go nowhere visible). For preview-only, we explicitly
       // blur the editor's contentDOM so CodeMirror's internal focus
-      // state matches the visual state — without that, CM6 still thinks
+      // state matches the visual state: without that, CM6 still thinks
       // it's focused even though the pane is hidden.
       const applyFocusForMode = () => {
         if (!editorView) return;
@@ -4744,9 +4763,10 @@
         savePrefs();
         applyDisplayMode();
         applyFocusForMode();
-        // Sidebar TOC layout is preview-only; re-evaluate so leaving
-        // preview mode strips the sidebar classes (and entering it
-        // applies them if conditions hold).
+        // Sidebar table of contents layout is preview-only.
+        // Re-evaluate so leaving preview mode strips the sidebar
+        // classes (and entering it applies them if conditions
+        // hold).
         evaluateTocLayout();
       };
 
@@ -4757,7 +4777,7 @@
       // split mode (single-pane modes have nowhere to toggle to).
       //
       // The preview's tabindex="-1" makes it programmatically focusable
-      // (declared in the markup); without that attribute, out.focus()
+      // (declared in the markup). Without that attribute, out.focus()
       // would silently no-op. lastSplitFocus is updated so the
       // display-mode switch can restore the previously-focused pane on
       // a round-trip (split → editor-only → split).
@@ -4776,9 +4796,10 @@
       };
 
       // Click anywhere in the preview pane focuses it (standard "click
-      // to focus" behavior; without this, only the keyboard toggle could
-      // move focus to preview). Mousedown rather than click so the focus
-      // change happens before any text-selection drag inside the pane.
+      // to focus" behavior, since without this only the keyboard toggle
+      // could move focus to preview). Mousedown rather than click so the
+      // focus change happens before any text-selection drag inside the
+      // pane.
       out.addEventListener("mousedown", () => {
         if (prefs.displayMode === "split") {
           // Defer the focus call so the click's default behavior (text
@@ -4791,7 +4812,7 @@
       // Preview-only mode: clicks on the margin areas (outside the
       // capped-width preview content but still inside .wrap) take focus
       // off the preview and put it on <body>, which breaks keyboard
-      // navigation. Mirrors the wheel-forwarder logic above — margin
+      // navigation. Mirrors the wheel-forwarder logic above: margin
       // mousedowns delegate to the inner element. Inside-content clicks
       // are skipped because the preview's own tabindex-driven native
       // focus already handles them.
@@ -4799,10 +4820,10 @@
       // preventDefault + synchronous focus, NOT queueMicrotask: the
       // browser's default mousedown handling moves focus to <body> when
       // the target isn't focusable. A microtask-deferred out.focus()
-      // would land AFTER that default shift, so focus ricochets — out
+      // would land AFTER that default shift, so focus ricochets: out
       // is briefly focused, then immediately blurred. preventDefault
-      // suppresses the default shift entirely; out.focus() then runs
-      // synchronously and sticks.
+      // suppresses the default shift entirely, and out.focus() then
+      // runs synchronously and sticks.
       document.querySelector(".wrap").addEventListener("mousedown", (e) => {
         if (prefs.displayMode !== "preview") return;
         if (out.contains(e.target)) return;
@@ -4813,7 +4834,7 @@
       // Editor-only mode: clicks on the margin areas around .cm-scroller
       // can blur the editor's contentDOM. CM6 has its own mousedown
       // handler that catches margin clicks and places the cursor on the
-      // nearest line (the line at the click Y) — for different-Y clicks
+      // nearest line (the line at the click Y): for different-Y clicks
       // this works fine and keeps focus, but for same-Y clicks CM6 sees
       // "no cursor movement needed" and apparently doesn't re-focus
       // contentDOM, so the editor ends up blurred.
@@ -4825,14 +4846,14 @@
       //   1. The browser's focus shift to <body> for clicks on a non-
       //      focusable target, which would override our focus call.
       //   2. CM6's margin-click handling that places the cursor on
-      //      the line at the click Y. That cursor jump is gone here —
+      //      the line at the click Y. That cursor jump is gone here,
       //      a deliberate trade-off. CM6's same behavior with no
       //      cursor-position change (when the click Y matches the
-      //      cursor's current line) silently blurred the editor; the
+      //      cursor's current line) silently blurred the editor, and the
       //      simplest fix that keeps focus reliable is to preventDefault
       //      uniformly. Margin clicks as a way to navigate to a line
-      //      are unusual — most users click the text directly or use
-      //      keyboard navigation — so losing that path is preferable
+      //      are unusual (most users click the text directly or use
+      //      keyboard navigation), so losing that path is preferable
       //      to randomly losing focus on accidental margin clicks.
       //
       // The .cm-panels skip is so clicks on the Vim Ex command bar (or
@@ -4855,7 +4876,7 @@
       // (.cm-scroller for editor, .preview itself for preview) is
       // centered with margin-auto and capped to less than the pane
       // width. Wheel events over the empty margin areas around the
-      // content have no scrollable ancestor — the pane wrappers and
+      // content have no scrollable ancestor: the pane wrappers and
       // .wrap are flex containers without overflow, so the events
       // fire into the void and the user sees nothing scroll.
       //
@@ -4877,7 +4898,7 @@
           } else if (prefs.displayMode === "preview") {
             scroller = out;
           } else {
-            return; // split — each pane handles its own wheel
+            return; // split: each pane handles its own wheel
           }
           if (!scroller) return;
           if (scroller.contains(e.target)) return; // landed on inner scroller
@@ -4891,20 +4912,20 @@
       // Capture phase so we beat CM6's internal keymap + Vim bindings.
       //
       // Primary modifier (the "this is an app shortcut" key) is platform-
-      // strict: on Mac it's metaKey (Cmd); on Linux/Windows it's ctrlKey.
-      // This leaves Ctrl+letter on Mac alone so Vim's Ctrl-based bindings
-      // (Ctrl+R for redo, Ctrl+D/U/F/B for scrolling, Ctrl+O/I for the
-      // jumplist, etc.) flow through to the CM6 Vim plugin unimpeded. On
-      // Linux/Windows, metaKey is the Super/Win key, which is WM-reserved
-      // and virtually never reaches userland, so ignoring it there is a
-      // no-op with cleaner semantics.
+      // strict: on Mac it's metaKey (Cmd), while on Linux/Windows it's
+      // ctrlKey. This leaves Ctrl+letter on Mac alone so Vim's Ctrl-based
+      // bindings (Ctrl+R for redo, Ctrl+D/U/F/B for scrolling, Ctrl+O/I for
+      // the jumplist, etc.) flow through to the CM6 Vim plugin unimpeded.
+      // On Linux/Windows, metaKey is the Super/Win key, which is
+      // WM-reserved and virtually never reaches userland, so ignoring it
+      // there is a no-op with cleaner semantics.
       //
       // Secondary modifier (the disambiguator for toggle/mode shortcuts)
-      // is also platform-strict: altKey (Alt) on Linux/Windows; ctrlKey
+      // is also platform-strict: altKey (Alt) on Linux/Windows, and ctrlKey
       // (Ctrl) on Mac. Why Ctrl and not Option on Mac? macOS US/Dvorak
       // layouts map Option+letter to Unicode glyphs at the layout level
       // (Option+V → √, Option+T → †, etc.), and the webview reports e.key
-      // as the COMPOSED character even when Cmd is also held — so a
+      // as the COMPOSED character even when Cmd is also held, so a
       // literal letter match like `k === 'v'` silently fails. Ctrl
       // doesn't compose, so Ctrl+Cmd+V reports e.key="v" cleanly.
       // Critically: Ctrl+Cmd+letter is a distinct chord from Vim's plain
@@ -4927,7 +4948,7 @@
           const second = isMac ? e.ctrlKey : e.altKey;
           const k = (e.key || "").toLowerCase();
 
-          // Secondary-modifier shortcuts first — so Ctrl+Alt+S / ⌃⌘S
+          // Secondary-modifier shortcuts first, so Ctrl+Alt+S / ⌃⌘S
           // (split) doesn't match plain Ctrl+S / ⌘S (save).
           if (second && k === "n") {
             e.preventDefault();
@@ -4981,16 +5002,17 @@
             e.preventDefault();
             cycleWidthMode();
           } else if (second && k === "i") {
-            // I for Index — alternate term for table of contents.
-            // Toggles TOC visibility (shown ↔ hidden). Session-scoped
-            // override; resets to "shown" on every launch.
+            // I for Index, an alternate term for table of contents.
+            // Toggles table of contents visibility (shown ↔ hidden),
+            // a session-scoped override resetting to "shown" on every
+            // launch.
             e.preventDefault();
             toggleTocVisibility();
           } else if (second && k === "h") {
             e.preventDefault();
             toggleHelp();
           } else if (second && k === "r") {
-            // Format toggle (R for Representation — cycles the active buffer
+            // Format toggle (R for Representation: cycles the active buffer
             // format: AsciiDoc → Markdown → Text → AsciiDoc). F would be the
             // obvious letter but Ctrl+Cmd+F on Mac is the Fullscreen menu
             // shortcut that AppKit intercepts before the webview sees it.
@@ -5015,8 +5037,8 @@
       // Parse an Ex command's argString into a normalized { bang, arg } pair.
       //
       // @replit/codemirror-vim exposes the ! bang suffix to user-defined
-      // commands via params.argString (as a leading "!"), NOT via params.bang
-      // — params.bang is undefined for every command registered through
+      // commands via params.argString (as a leading "!"), NOT via
+      // params.bang, which is undefined for every command registered through
       // Vim.defineEx. Naively checking params.bang silently treats every
       // bang variant as the non-bang form, and naively trimming argString
       // treats the leading "!" as part of the filename argument. All Ex
@@ -5035,8 +5057,8 @@
 
       Vim.defineEx("write", "w", (cm, params) => {
         // :w filename is not supported in standalone (no filesystem path access).
-        // :w and :w! both save to current file; any filename argument is
-        // silently ignored. Bang itself has no additional effect — Vim's
+        // :w and :w! both save to current file. Any filename argument is
+        // silently ignored. Bang itself has no additional effect: Vim's
         // :w! forces write to a readonly file, and Skrivro has no readonly
         // concept.
         const { arg } = parseExArgs(params);
@@ -5050,8 +5072,8 @@
 
       Vim.defineEx("edit", "e", (cm, params) => {
         // :e filename is not supported in standalone (no filesystem path access).
-        // :e — reload from disk if clean; refuse if dirty (use :e! to force).
-        // :e! — force reload, discarding any unsaved changes.
+        // :e reloads from disk if clean and refuses if dirty (use :e!
+        // to force). :e! force-reloads, discarding any unsaved changes.
         const { bang, arg } = parseExArgs(params);
         if (arg) return; // filename argument ignored per the :w note above
         if (dirty && !bang) {
@@ -5069,14 +5091,14 @@
         newFile();
       });
 
-      // :open / :op — non-standard, shows the native file picker dialog.
-      // Vim has no canonical Ex command for "show file browser"; this is
+      // :open / :op is non-standard and shows the native file picker dialog.
+      // Vim has no canonical Ex command for "show file browser". This is
       // our addition so Vim-mode users don't have to leave the command line.
       Vim.defineEx("open", "op", () => {
         openFile();
       });
 
-      // :syncpreview / :syncp — snap the preview to the block containing
+      // :syncpreview / :syncp snaps the preview to the block containing
       // the editor caret's source line. Same action as Ctrl+Alt+L / ⌃⌘L.
       Vim.defineEx("syncpreview", "syncp", () => {
         syncPreviewToCaret();
@@ -5085,8 +5107,8 @@
       // Normal-mode mapping: gz → :syncpreview<CR>. gz is in Vim's `g`
       // namespace for extended commands and is unused in standard Vim.
       // Wrapped in try/catch because Vim.map's exact signature in
-      // @replit/codemirror-vim isn't documented; if it fails, the Ex
-      // command and Ctrl+Alt+L / ⌃⌘L both still work.
+      // @replit/codemirror-vim isn't documented, so if it fails, the
+      // Ex command and Ctrl+Alt+L / ⌃⌘L both still work.
       try {
         Vim.map("gz", ":syncpreview<CR>", "normal");
       } catch (e) {
@@ -5110,29 +5132,29 @@
       // explaining why the window doesn't actually close. Per the
       // HTML spec, window.close() succeeds only on a script-opened
       // window (window.open) or a tab whose session history holds a
-      // single entry — so the standalone "user opened skrivro.html
+      // single entry, so the standalone "user opened skrivro.html
       // in a normal tab" case is blocked. Rather than
       // have :q produce "Not an editor command :q" and confuse Vim
       // users, we acknowledge the commands so they exist in Vim's
       // command vocabulary and tell the user what to do.
       //
       // E37 still fires on dirty :q / :qa / :qall (without bang) for
-      // semantic parity with Vim — even though we can't actually
+      // semantic parity with Vim: even though we can't actually
       // close, the dirty warning is useful info before the user
       // manually closes the tab. Real Vim's `:q` on dirty errors out
-      // with E37; `:q!` skips the check. Preserving that distinction
-      // is more useful than collapsing every variant to a single
-      // "quit blocked" message.
+      // with E37, and `:q!` skips the check. Preserving that
+      // distinction is more useful than collapsing every variant to a
+      // single "quit blocked" message.
       //
       // saveFile() is async and not awaited in the :wq / :x families.
       // If the save errors (E212), its vimMessage will land in the
-      // same panel and overwrite closeBlocked()'s message — save
+      // same panel and overwrite closeBlocked()'s message: save
       // errors outrank the informational close-blocked notice.
       const closeBlocked = () => {
         vimMessage("Quit blocked by the browser. Please close the tab/window manually.");
       };
 
-      // :q / :q! — refuse if dirty without bang; otherwise close-blocked.
+      // :q / :q! refuses if dirty without bang, otherwise close-blocks.
       Vim.defineEx("quit", "q", (cm, params) => {
         const { bang } = parseExArgs(params);
         if (dirty && !bang) {
@@ -5142,7 +5164,7 @@
         closeBlocked();
       });
 
-      // :qa / :qall / :qa! / :qall! — single-buffer collapse to :q.
+      // :qa / :qall / :qa! / :qall! collapse to :q (single buffer).
       Vim.defineEx("qall", "qa", (cm, params) => {
         const { bang } = parseExArgs(params);
         if (dirty && !bang) {
@@ -5152,32 +5174,33 @@
         closeBlocked();
       });
 
-      // :wq / :wq! — save then close-blocked.
+      // :wq / :wq!: save then close-blocked.
       Vim.defineEx("wq", "wq", () => {
         saveFile();
         closeBlocked();
       });
 
-      // :wqa / :wqall — single-buffer collapse to :wq.
+      // :wqa / :wqall collapse to :wq (single buffer).
       Vim.defineEx("wqall", "wqa", () => {
         saveFile();
         closeBlocked();
       });
 
-      // :x / :x! / :xit — save if dirty, then close-blocked.
+      // :x / :x! / :xit: save if dirty, then close-blocked.
       Vim.defineEx("xit", "x", () => {
         if (dirty) saveFile();
         closeBlocked();
       });
 
-      // :xa / :xall — single-buffer collapse to :x.
+      // :xa / :xall collapse to :x (single buffer).
       Vim.defineEx("xall", "xa", () => {
         if (dirty) saveFile();
         closeBlocked();
       });
 
-      // :exit — Vim's own command name (alias for :x); separate
-      // registration even though the body is identical.
+      // :exit is Vim's own command name (alias for :x), a
+      // separate registration even though the body is
+      // identical.
       Vim.defineEx("exit", "exi", () => {
         if (dirty) saveFile();
         closeBlocked();
@@ -5194,7 +5217,7 @@
       }
 
       // :format (no arg) shows the current format.
-      // :format <name> sets the format — asciidoc / markdown / text.
+      // :format <name> sets the format: asciidoc / markdown / text.
       // Unknown values surface an E-style error in the Vim panel.
       //
       // :asciidoc / :markdown / :text are direct one-shot aliases so the
@@ -5236,7 +5259,7 @@
         setBufferFormat("text");
       });
 
-      // :syntax / :syn — matches real Vim's command of the same name
+      // :syntax / :syn matches real Vim's command of the same name
       // (Vim also accepts `enable`/`disable`, but `on`/`off` are the
       // canonical forms most users type and the only two we need).
       // Bare `:syntax` reports current state. Invalid argument emits
@@ -5257,7 +5280,7 @@
         }
       });
 
-      // :spell — sets or reports the runtime spellcheck toggle. Bare
+      // :spell sets or reports the runtime spellcheck toggle. Bare
       // `:spell` reports current state. English-only on this build, and
       // the dictionary loads from the CDN on first enable. Same E474
       // error shape as :syntax for invalid arguments.
@@ -5278,10 +5301,10 @@
       });
 
       // `:spellgood` (Vim `zg`) adds the word under the cursor to the custom
-      // word list so it stops being flagged; `:spellundo` (Vim `zug`) removes
-      // it. Mirrors Vim's own spellfile commands. Both are inert with a
-      // message when spellcheck is toggled off. No short alias (would shadow
-      // real Vim's `:sp` split).
+      // word list so it stops being flagged, and `:spellundo` (Vim `zug`)
+      // removes it. Mirrors Vim's own spellfile commands. Both are inert with
+      // a message when spellcheck is toggled off. No short alias (would
+      // shadow real Vim's `:sp` split).
       const wordUnderCursor = () => {
         const { state } = editorView;
         const range = state.wordAt(state.selection.main.head);
@@ -5320,7 +5343,7 @@
         );
       });
 
-      // `:find` — opens CodeMirror's find/replace panel. The Vim-mode entry
+      // `:find` opens CodeMirror's find/replace panel. The Vim-mode entry
       // point: under Vim, Ctrl-F stays page-forward, so Vim users open the
       // panel here. Non-Vim users press Mod-f (Ctrl+F, or Cmd+F on Mac).
       // The panel handles find, replace, and replace-all.
@@ -5328,9 +5351,9 @@
         openSearchPanel(editorView);
       });
 
-      // :width — sets or reports the single-pane width mode. Bare
-      // `:width` reports current; `:width narrow|medium|wide|full` sets.
-      // Same E474 error shape as :syntax for invalid arguments.
+      // :width sets or reports the single-pane width mode. Bare
+      // `:width` reports current, and `:width narrow|medium|wide|full`
+      // sets. Same E474 error shape as :syntax for invalid arguments.
       Vim.defineEx("width", "width", (cm, params) => {
         const { arg } = parseExArgs(params);
         if (!arg) {
@@ -5345,10 +5368,10 @@
         }
       });
 
-      // :toc — sets or reports the TOC visibility override. Bare
-      // `:toc` reports current; `:toc on|off` sets. Mirrors :syntax's
-      // shape. Visibility is session-scoped (resets on launch); see
-      // tocHidden for rationale.
+      // :toc sets or reports the table of contents visibility
+      // override. Bare `:toc` reports current, and `:toc on|off`
+      // sets. Mirrors :syntax's shape. Visibility is session-scoped
+      // (resets on launch), see tocHidden for rationale.
       Vim.defineEx("toc", "toc", (cm, params) => {
         const { arg } = parseExArgs(params);
         if (!arg) {
@@ -5370,7 +5393,7 @@
       // CM6's key handler, so Ctrl+V is unreachable as a Vim binding
       // there. The plugin already ships Ctrl+Q as a native default
       // binding for V-BLOCK entry (see @replit/codemirror-vim's
-      // defaultKeymap — it's the same workaround Vim itself uses on
+      // defaultKeymap: it's the same workaround Vim itself uses on
       // Windows, where Ctrl+V is also the system paste shortcut), so
       // no remapping is needed on our side: users press Ctrl+Q to
       // enter V-BLOCK. On Mac, browser paste is Cmd+V, so plain
@@ -5382,7 +5405,7 @@
       // Default regex engine to Vim magic-mode translation instead of raw
       // JavaScript RegExp. The plugin ships with pcre=true (shown in the
       // search panel hint as "JavaScript regexp: set pcre"), which lets JS
-      // regex syntax pass through untranslated — an odd default for a Vim
+      // regex syntax pass through untranslated, an odd default for a Vim
       // emulator, since Vim users expect \(foo\|bar\), \<word\>, and other
       // magic-mode syntax to work as written. Flipping pcre off enables
       // the plugin's Vim-to-JS regex translation layer. Try/catch for the
@@ -5439,7 +5462,7 @@
       // Status bar event hooks.
       //
       // The CM6 updateListener (above, inside makeExtensions) catches doc
-      // and selection changes, which covers most Vim mode transitions —
+      // and selection changes, which covers most Vim mode transitions:
       // most mode changes also tend to change selection (v → visual starts
       // a selection, Esc from insert → cursor moves back by 1, etc.). But
       // pure-mode transitions like `i` (normal → insert at the current
@@ -5451,9 +5474,9 @@
       host.addEventListener("keyup", refreshStatus);
 
       // COMMAND mode detection. The Vim command panel is rendered as a
-      // CM6 panel containing an <input> element; pressing `:` focuses
+      // CM6 panel containing an <input> element. Pressing `:` focuses
       // the input, and completing or canceling the command blurs it.
-      // Tracking focus/blur on the input is the simplest signal — no
+      // Tracking focus/blur on the input is the simplest signal: no
       // MutationObserver needed. The check matches any <input> inside
       // the editor host, which today means the Vim Ex input and the
       // find/replace panel's fields, so the pill also reads COMMAND
@@ -5474,7 +5497,7 @@
       if (initialDirty) setDirty(true);
       updateTitle();
       render();
-      // Initial focus respects the saved display mode — the unconditional
+      // Initial focus respects the saved display mode: the unconditional
       // editorView.focus() that used to live here would stick focus on the
       // hidden editor when launching in preview-only mode.
       applyFocusForMode();

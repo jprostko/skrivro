@@ -1298,9 +1298,9 @@ pub fn run() {
     // platform_impl/linux/event_loop.rs::new_gtk) calls gtk::init()
     // before anything has a chance to override the default. gtk::init()
     // locks in `prgname` from argv[0], the executable name "skrivro"
-    // (from Cargo's [package] name). Without intervention, Hyprland and
-    // any other Wayland compositor see our window class as "skrivro"
-    // instead of "com.skrivro.editor".
+    // (from Cargo's [package] name). Without intervention, Wayland
+    // compositors see our window class as "skrivro" instead of
+    // "com.skrivro.editor".
     //
     // tauri.conf.json has `enableGTKAppId = true`, which makes Tauri
     // pass our identifier to `GtkApplication::new()` as application_id.
@@ -1470,7 +1470,7 @@ pub fn run() {
             // Mac gets decorations(true) to land the full style mask
             // (.titled / .closable / .miniaturizable / .resizable) that
             // AppKit's predefined menu items need. Linux / Windows stay
-            // decorations(false) (Hyprland tiling WM / consistency).
+            // decorations(false) (tiling WMs / consistency).
             #[cfg(target_os = "macos")]
             {
                 builder = builder.decorations(true);
@@ -1711,16 +1711,16 @@ mod tests {
 
     #[test]
     fn config_trims_whitespace_around_key_and_value() {
-        let cfg = parse_skrivro_config("   editor-font   =   Iosevka   \n");
-        assert_eq!(cfg.editor_font.as_deref(), Some("Iosevka"));
+        let cfg = parse_skrivro_config("   editor-font   =   Hack   \n");
+        assert_eq!(cfg.editor_font.as_deref(), Some("Hack"));
     }
 
     #[test]
     fn config_preserves_internal_value_spacing() {
         // Font names and other free-string values keep their internal
         // spaces. Only the surrounding whitespace is trimmed.
-        let cfg = parse_skrivro_config("editor-font = Iosevka Comfy\n");
-        assert_eq!(cfg.editor_font.as_deref(), Some("Iosevka Comfy"));
+        let cfg = parse_skrivro_config("editor-font = JetBrains Mono\n");
+        assert_eq!(cfg.editor_font.as_deref(), Some("JetBrains Mono"));
     }
 
     #[test]
@@ -1736,17 +1736,17 @@ mod tests {
     #[test]
     fn config_skips_malformed_lines_and_continues() {
         let cfg = parse_skrivro_config(
-            "editor-font = Iosevka\nthis line has no equals sign\npreview-font = Alegreya\n",
+            "editor-font = Hack\nthis line has no equals sign\npreview-font = Source Serif\n",
         );
-        assert_eq!(cfg.editor_font.as_deref(), Some("Iosevka"));
-        assert_eq!(cfg.preview_font.as_deref(), Some("Alegreya"));
+        assert_eq!(cfg.editor_font.as_deref(), Some("Hack"));
+        assert_eq!(cfg.preview_font.as_deref(), Some("Source Serif"));
     }
 
     #[test]
     fn config_skips_unknown_keys() {
         // Keys are exact and case-sensitive: a typo or a case variant
         // is an unknown key, not a fuzzy match.
-        let cfg = parse_skrivro_config("editor-fnot = Iosevka\nEDITOR-FONT = Iosevka\n");
+        let cfg = parse_skrivro_config("editor-fnot = Hack\nEDITOR-FONT = Hack\n");
         assert_eq!(cfg.editor_font, None);
     }
 
@@ -1849,14 +1849,14 @@ mod tests {
     #[test]
     fn config_one_bad_line_does_not_abort_the_rest() {
         let text = "\
-editor-font = Iosevka
+editor-font = Hack
 soft-column-limit = ninety
 !!! not a config line
 preview-font-size = -2rem
 theme = gruvbox-dark
 ";
         let cfg = parse_skrivro_config(text);
-        assert_eq!(cfg.editor_font.as_deref(), Some("Iosevka"));
+        assert_eq!(cfg.editor_font.as_deref(), Some("Hack"));
         assert_eq!(cfg.theme.as_deref(), Some("gruvbox-dark"));
         assert_eq!(cfg.soft_column_limit, None);
         assert_eq!(cfg.preview_font_size, None);

@@ -954,11 +954,11 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   // Font overrides: prepend the user's font to the existing stack so
   // their choice wins if the font is installed on the system, and the
   // original fallback chain kicks in if not. Without prepending, a
-  // user who sets `editor-font = Codelia` on a machine without Codelia
-  // installed would get the browser's default monospace (usually ugly)
-  // instead of our curated stack. Read the current stack via
-  // getComputedStyle, since it's defined in styles.css, not as a JS
-  // constant, so we can't inline the default here.
+  // user whose `editor-font` names a font the machine doesn't have
+  // would get the browser's default monospace (usually ugly) instead
+  // of our curated stack. Read the current stack via getComputedStyle,
+  // since it's defined in styles.css, not as a JS constant, so we
+  // can't inline the default here.
   if (cfg.editorFont) {
     const current = getComputedStyle(root).getPropertyValue("--font-mono").trim();
     root.style.setProperty("--font-mono", `${cfg.editorFont}, ${current}`);

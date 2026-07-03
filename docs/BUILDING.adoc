@@ -33,7 +33,7 @@ sudo apt install \
   libayatana-appindicator3-dev
 ----
 
-On Arch / Artix (and derivatives):
+On Arch Linux (and derivatives):
 
 [source,bash]
 ----
@@ -130,7 +130,7 @@ Output locations:
 |===
 
 Linux bundle types depend on what's available: `dpkg-deb` for DEB packages, `appimagetool` for AppImage.
-On Arch / Artix, neither ships by default. The raw binary at `src-tauri/target/release/skrivro` is what to use, or write your own PKGBUILD.
+On Arch Linux and derivatives, neither ships by default. The raw binary at `src-tauri/target/release/skrivro` is what to use, or write your own PKGBUILD.
 
 The release binary is small (~15-20 MB on Linux) because Tauri uses the system WebView rather than bundling Chromium.
 

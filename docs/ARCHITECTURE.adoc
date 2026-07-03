@@ -198,7 +198,7 @@ Skrivro keeps four kinds of state, in different places for different reasons:
 2. *Cargo Rust build.* Compiles `src-tauri/` in release mode, statically linking where possible. Tauri's build script (`build.rs` calls `tauri_build::build()`) generates code that embeds the `dist/` directory into the binary.
 
 The result is a single binary that contains both the Rust code and the bundled frontend.
-Tauri's bundler (the third stage) wraps it in platform-appropriate installers (DMG, MSI, AppImage).
+Tauri's bundler (the third stage) wraps it in platform-appropriate installers on macOS (DMG) and Windows (MSI/NSIS), while the Linux artifact is the raw binary.
 
 `vp run tauri dev` swaps step 1 for `vp dev` (a hot-reload dev server) and runs the Rust binary in debug mode pointed at that server instead of the bundled assets.
 

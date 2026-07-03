@@ -116,7 +116,7 @@ This produces:
 
 1. The Vite+-built frontend (in `dist/`).
 2. The release-mode Rust binary, statically linked where possible.
-3. Platform-specific bundles (DMG on macOS, MSI/NSIS on Windows, AppImage / DEB on Linux depending on what's available locally).
+3. Platform-specific bundles on macOS (DMG) and Windows (MSI/NSIS). A Linux build produces no bundles, only the raw binary.
 
 Output locations:
 
@@ -125,12 +125,10 @@ Output locations:
 | Raw binary | `src-tauri/target/release/skrivro` (or `skrivro.exe` on Windows)
 | macOS bundle | `src-tauri/target/release/bundle/dmg/Skrivro_<version>_<arch>.dmg`
 | Windows installer | `src-tauri/target/release/bundle/msi/Skrivro_<version>_x64_en-US.msi` (or NSIS variant)
-| Linux AppImage | `src-tauri/target/release/bundle/appimage/skrivro_<version>_amd64.AppImage`
-| Linux DEB | `src-tauri/target/release/bundle/deb/skrivro_<version>_amd64.deb`
 |===
 
-Linux bundle types depend on what's available: `dpkg-deb` for DEB packages, `appimagetool` for AppImage.
-On Arch Linux and derivatives, neither ships by default. The raw binary at `src-tauri/target/release/skrivro` is what to use, or write your own PKGBUILD.
+Linux bundle generation is deliberately not configured: `bundle.targets` in `tauri.conf.json` lists only the macOS and Windows formats.
+The Linux build artifact is the raw binary at `src-tauri/target/release/skrivro`.
 
 The release binary is small (~15-20 MB on Linux) because Tauri uses the system WebView rather than bundling Chromium.
 

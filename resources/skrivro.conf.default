@@ -44,7 +44,7 @@
 # Editor (monospace) font. Built-in fallback stack:
 #   ui-monospace, JetBrains Mono, Cascadia Code, Fira Code,
 #   Menlo, Monaco, Consolas, monospace
-# edit-font = ui-monospace
+# editor-font = ui-monospace
 
 # Preview (sans-serif) font. Built-in fallback stack:
 #   -apple-system, BlinkMacSystemFont, Inter, Segoe UI, Roboto,
@@ -53,7 +53,7 @@
 #   Emoji) so emoji render in color
 # preview-font = system-ui
 
-# edit-font-size = 0.95rem
+# editor-font-size = 0.95rem
 # preview-font-size = 1rem
 
 # ================= Layout =================

@@ -930,7 +930,7 @@ export const setDisplayMode = (mode: string) => {
 //
 // Apply overrides from the user's skrivro.conf file to :root CSS custom
 // properties and body classes. The CSS variables (--font-mono,
-// --font-sans, --edit-font-size, --preview-font-size,
+// --font-sans, --editor-font-size, --preview-font-size,
 // --editor-padding-x, --editor-padding-y, --preview-padding-x,
 // --preview-padding-y) are all consumed by the CM6 theme and the
 // pane / scroll-container CSS rules, so a single assignment here
@@ -954,14 +954,14 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   // Font overrides: prepend the user's font to the existing stack so
   // their choice wins if the font is installed on the system, and the
   // original fallback chain kicks in if not. Without prepending, a
-  // user who sets `edit-font = Codelia` on a machine without Codelia
+  // user who sets `editor-font = Codelia` on a machine without Codelia
   // installed would get the browser's default monospace (usually ugly)
   // instead of our curated stack. Read the current stack via
   // getComputedStyle, since it's defined in styles.css, not as a JS
   // constant, so we can't inline the default here.
-  if (cfg.editFont) {
+  if (cfg.editorFont) {
     const current = getComputedStyle(root).getPropertyValue("--font-mono").trim();
-    root.style.setProperty("--font-mono", `${cfg.editFont}, ${current}`);
+    root.style.setProperty("--font-mono", `${cfg.editorFont}, ${current}`);
   }
   if (cfg.previewFont) {
     const current = getComputedStyle(root).getPropertyValue("--font-sans").trim();
@@ -969,10 +969,10 @@ export const applyUserConfig = (cfg: SkrivroConfig) => {
   }
 
   // Font size overrides: direct CSS variable assignment propagates
-  // automatically to the CM6 theme (fontSize: 'var(--edit-font-size)')
+  // automatically to the CM6 theme (fontSize: 'var(--editor-font-size)')
   // and the .preview-scroll CSS rule (font-size: var(--preview-font-size)).
-  if (cfg.editFontSize) {
-    root.style.setProperty("--edit-font-size", cfg.editFontSize);
+  if (cfg.editorFontSize) {
+    root.style.setProperty("--editor-font-size", cfg.editorFontSize);
   }
   if (cfg.previewFontSize) {
     root.style.setProperty("--preview-font-size", cfg.previewFontSize);

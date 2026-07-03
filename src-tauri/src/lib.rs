@@ -73,7 +73,7 @@ fn take_pending_opens(state: tauri::State<PendingOpens>) -> Vec<String> {
 // Format example:
 //
 //   # Fonts
-//   edit-font = JetBrains Mono
+//   editor-font = JetBrains Mono
 //   preview-font = Charter
 //
 //   # All length-typed values (font sizes, padding) require an
@@ -81,7 +81,7 @@ fn take_pending_opens(state: tauri::State<PendingOpens>) -> Vec<String> {
 //   # uniform across every length-typed key. Valid units: pt, px,
 //   # rem, em, %, vw, vh, ch, ex, etc. (we don't maintain an
 //   # allowlist, the webview's CSS engine is the ultimate validator).
-//   edit-font-size = 14pt
+//   editor-font-size = 14pt
 //   preview-font-size = 15pt
 //
 //   # Padding (editor and preview, x / y axes). Each key accepts one or
@@ -113,24 +113,24 @@ fn take_pending_opens(state: tauri::State<PendingOpens>) -> Vec<String> {
 //   soft-column-limit = 100
 //
 // Naming convention across three layers:
-//   - Config file:  kebab-case ("edit-font"), the user-facing spec
-//   - Rust struct:  snake_case (`edit_font`), Rust convention
-//   - JSON output:  camelCase  ("editFont"), via serde rename_all,
+//   - Config file:  kebab-case ("editor-font"), the user-facing spec
+//   - Rust struct:  snake_case (`editor_font`), Rust convention
+//   - JSON output:  camelCase  ("editorFont"), via serde rename_all,
 //                                                 for idiomatic JS
 //                                                 dot-access on the
 //                                                 frontend side.
 //
 // The parser's match arm handles kebab→snake mapping by hand, and the
 // serde rename attribute handles snake→camel for the JSON boundary. JS
-// code then uses `cfg.editFont`, `cfg.asciidocSafeMode`, etc., without any
-// bracket-notation gymnastics.
+// code then uses `cfg.editorFont`, `cfg.asciidocSafeMode`, etc.,
+// without any bracket-notation gymnastics.
 
 #[derive(Serialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 struct SkrivroConfig {
-    edit_font: Option<String>,
+    editor_font: Option<String>,
     preview_font: Option<String>,
-    edit_font_size: Option<String>,
+    editor_font_size: Option<String>,
     preview_font_size: Option<String>,
     editor_padding_x: Option<String>,
     editor_padding_y: Option<String>,
@@ -430,7 +430,8 @@ fn skrivro_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
 ///   in dev builds.
 ///
 /// Called from `parse_skrivro_config` for:
-/// - Font-size keys (`edit-font-size`, `preview-font-size`, max_tokens=1)
+/// - Font-size keys (`editor-font-size`, `preview-font-size`,
+///   max_tokens=1)
 /// - Padding keys (`editor/preview-padding-x/y`, max_tokens=2)
 #[cfg_attr(not(debug_assertions), allow(unused_variables))]
 fn normalize_length(key: &str, val: &str, line_num: usize, max_tokens: usize) -> Option<String> {
@@ -540,9 +541,9 @@ fn parse_skrivro_config(text: &str) -> SkrivroConfig {
             continue;
         }
         match key {
-            "edit-font" => cfg.edit_font = Some(val.to_string()),
+            "editor-font" => cfg.editor_font = Some(val.to_string()),
             "preview-font" => cfg.preview_font = Some(val.to_string()),
-            "edit-font-size" => cfg.edit_font_size = normalize_length(key, val, idx + 1, 1),
+            "editor-font-size" => cfg.editor_font_size = normalize_length(key, val, idx + 1, 1),
             "preview-font-size" => cfg.preview_font_size = normalize_length(key, val, idx + 1, 1),
             "editor-padding-x" => cfg.editor_padding_x = normalize_length(key, val, idx + 1, 2),
             "editor-padding-y" => cfg.editor_padding_y = normalize_length(key, val, idx + 1, 2),
@@ -1623,7 +1624,7 @@ mod tests {
     #[test]
     fn length_accepts_single_value_with_unit() {
         assert_eq!(
-            normalize_length("edit-font-size", "1.2rem", 1, 1),
+            normalize_length("editor-font-size", "1.2rem", 1, 1),
             Some("1.2rem".to_string())
         );
     }
@@ -1635,7 +1636,7 @@ mod tests {
         // integers, decimals, leading-dot fractions, and scientific
         // notation.
         for bare in ["14", "2.5", ".5", "1e2"] {
-            assert_eq!(normalize_length("edit-font-size", bare, 1, 1), None);
+            assert_eq!(normalize_length("editor-font-size", bare, 1, 1), None);
         }
     }
 
@@ -1666,7 +1667,7 @@ mod tests {
         // Font sizes take exactly one value, while padding takes one
         // or two (CSS shorthand). Anything past the cap is dropped
         // whole.
-        assert_eq!(normalize_length("edit-font-size", "1rem 2rem", 1, 1), None);
+        assert_eq!(normalize_length("editor-font-size", "1rem 2rem", 1, 1), None);
         assert_eq!(
             normalize_length("editor-padding-x", "1rem 2rem 3rem", 1, 2),
             None
@@ -1675,7 +1676,7 @@ mod tests {
 
     #[test]
     fn length_rejects_whitespace_only_values() {
-        assert_eq!(normalize_length("edit-font-size", "   ", 1, 1), None);
+        assert_eq!(normalize_length("editor-font-size", "   ", 1, 1), None);
     }
 
     #[test]
@@ -1692,7 +1693,7 @@ mod tests {
     #[test]
     fn config_defaults_to_all_unset() {
         let cfg = parse_skrivro_config("");
-        assert_eq!(cfg.edit_font, None);
+        assert_eq!(cfg.editor_font, None);
         assert_eq!(cfg.theme, None);
         assert_eq!(cfg.default_format, None);
         assert_eq!(cfg.soft_column_limit, None);
@@ -1710,16 +1711,16 @@ mod tests {
 
     #[test]
     fn config_trims_whitespace_around_key_and_value() {
-        let cfg = parse_skrivro_config("   edit-font   =   Iosevka   \n");
-        assert_eq!(cfg.edit_font.as_deref(), Some("Iosevka"));
+        let cfg = parse_skrivro_config("   editor-font   =   Iosevka   \n");
+        assert_eq!(cfg.editor_font.as_deref(), Some("Iosevka"));
     }
 
     #[test]
     fn config_preserves_internal_value_spacing() {
         // Font names and other free-string values keep their internal
         // spaces. Only the surrounding whitespace is trimmed.
-        let cfg = parse_skrivro_config("edit-font = Iosevka Comfy\n");
-        assert_eq!(cfg.edit_font.as_deref(), Some("Iosevka Comfy"));
+        let cfg = parse_skrivro_config("editor-font = Iosevka Comfy\n");
+        assert_eq!(cfg.editor_font.as_deref(), Some("Iosevka Comfy"));
     }
 
     #[test]
@@ -1735,9 +1736,9 @@ mod tests {
     #[test]
     fn config_skips_malformed_lines_and_continues() {
         let cfg = parse_skrivro_config(
-            "edit-font = Iosevka\nthis line has no equals sign\npreview-font = Alegreya\n",
+            "editor-font = Iosevka\nthis line has no equals sign\npreview-font = Alegreya\n",
         );
-        assert_eq!(cfg.edit_font.as_deref(), Some("Iosevka"));
+        assert_eq!(cfg.editor_font.as_deref(), Some("Iosevka"));
         assert_eq!(cfg.preview_font.as_deref(), Some("Alegreya"));
     }
 
@@ -1745,8 +1746,8 @@ mod tests {
     fn config_skips_unknown_keys() {
         // Keys are exact and case-sensitive: a typo or a case variant
         // is an unknown key, not a fuzzy match.
-        let cfg = parse_skrivro_config("edit-fnot = Iosevka\nEDIT-FONT = Iosevka\n");
-        assert_eq!(cfg.edit_font, None);
+        let cfg = parse_skrivro_config("editor-fnot = Iosevka\nEDITOR-FONT = Iosevka\n");
+        assert_eq!(cfg.editor_font, None);
     }
 
     #[test]
@@ -1767,8 +1768,8 @@ mod tests {
 
     #[test]
     fn config_font_sizes_take_one_unit_value() {
-        let cfg = parse_skrivro_config("edit-font-size = 1.1rem\npreview-font-size = 16\n");
-        assert_eq!(cfg.edit_font_size.as_deref(), Some("1.1rem"));
+        let cfg = parse_skrivro_config("editor-font-size = 1.1rem\npreview-font-size = 16\n");
+        assert_eq!(cfg.editor_font_size.as_deref(), Some("1.1rem"));
         assert_eq!(cfg.preview_font_size, None);
     }
 
@@ -1848,14 +1849,14 @@ mod tests {
     #[test]
     fn config_one_bad_line_does_not_abort_the_rest() {
         let text = "\
-edit-font = Iosevka
+editor-font = Iosevka
 soft-column-limit = ninety
 !!! not a config line
 preview-font-size = -2rem
 theme = gruvbox-dark
 ";
         let cfg = parse_skrivro_config(text);
-        assert_eq!(cfg.edit_font.as_deref(), Some("Iosevka"));
+        assert_eq!(cfg.editor_font.as_deref(), Some("Iosevka"));
         assert_eq!(cfg.theme.as_deref(), Some("gruvbox-dark"));
         assert_eq!(cfg.soft_column_limit, None);
         assert_eq!(cfg.preview_font_size, None);

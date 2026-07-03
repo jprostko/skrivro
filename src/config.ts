@@ -23,7 +23,7 @@
 // NOT the Rust field names directly:
 //
 //   - SkrivroConfig: Rust struct uses `#[serde(rename_all = "camelCase")]`,
-//     so field names arrive as camelCase in JS (edit_font → editFont).
+//     so field names arrive as camelCase in JS (editor_font → editorFont).
 //   - ThemeColors: same: `bg_panel` (Rust) → `bgPanel` (JS).
 //   - SessionState: same: `last_file_path` (Rust) → `lastFilePath` (JS).
 //   - LaunchInfo: NO rename annotation in Rust, so field names stay
@@ -82,14 +82,14 @@ export interface ThemeColors {
 export interface SkrivroConfig {
   // Fonts (CSS font-family values, the user's input is prepended to
   // the built-in stack in applyUserConfig).
-  editFont?: string;
+  editorFont?: string;
   previewFont?: string;
 
   // Lengths (explicit CSS unit required by the Rust-side
   // normalize_length helper, and bare numbers are rejected before we
   // see them, so what arrives here is always a valid CSS length
   // string).
-  editFontSize?: string;
+  editorFontSize?: string;
   previewFontSize?: string;
   editorPaddingX?: string;
   editorPaddingY?: string;

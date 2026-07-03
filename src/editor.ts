@@ -84,7 +84,7 @@ const catppuccinTheme = EditorView.theme(
       color: "var(--skr-text)",
       backgroundColor: "var(--skr-bg)",
       height: "100%",
-      fontSize: "var(--edit-font-size)",
+      fontSize: "var(--editor-font-size)",
     },
     ".cm-scroller": {
       fontFamily: "var(--font-mono)",

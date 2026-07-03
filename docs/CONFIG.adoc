@@ -56,7 +56,7 @@ The default file ships with every key documented inline and commented out: uncom
 Several keys take CSS length values: font sizes and padding.
 
 *All length values require an explicit unit.*
-Bare numbers are rejected: `edit-font-size = 14` is invalid. Write `edit-font-size = 14pt`.
+Bare numbers are rejected: `editor-font-size = 14` is invalid. Write `editor-font-size = 14pt`.
 This is uniform: any key documented as a length must include a unit.
 
 Acceptable units: anything CSS itself accepts.
@@ -95,9 +95,9 @@ The compiled-in defaults shown are what Skrivro uses if the key is unset.
 |===
 | Key | Type | Default | Notes
 
-| `edit-font` | font family | `ui-monospace` | Editor (monospace) font. Prepended to the built-in CSS font stack: if the named font isn't installed, the renderer falls through.
+| `editor-font` | font family | `ui-monospace` | Editor (monospace) font. Prepended to the built-in CSS font stack: if the named font isn't installed, the renderer falls through.
 | `preview-font` | font family | `system-ui` | Preview (sans-serif) font. Same prepend-to-stack behavior.
-| `edit-font-size` | length | `0.95rem` | Editor font size.
+| `editor-font-size` | length | `0.95rem` | Editor font size.
 | `preview-font-size` | length | `1rem` | Preview font size.
 |===
 

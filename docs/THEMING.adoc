@@ -112,8 +112,9 @@ A light theme sets `--skr-bg` to a near-white value, `--skr-text` to a near-blac
 
 Catppuccin Latte and Tokyo Night Day are the bundled examples. Refer to them for the value conventions.
 
-There is one known cosmetic issue with light themes: a brief dark-then-light flash at startup, because the CSS `:root` defaults are Catppuccin Mocha (dark) and the light theme override doesn't take effect until after the config has loaded.
-This is a sub-second visual glitch, no functional impact.
+On macOS a brief flash can appear before the first paint: the window's native background follows the system appearance setting rather than the theme, and it shows until the webview paints.
+It is most visible when the appearance and the theme contrast, for example catppuccin-latte under the dark appearance or catppuccin-mocha under the light appearance.
+It is sub-second, has no functional impact, and does not occur on Linux or Windows, where the theme override is applied before first paint.
 
 == The 24 slots
 

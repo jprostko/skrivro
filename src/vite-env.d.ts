@@ -24,6 +24,24 @@ declare global {
     // kebab-case and applies as --skr-<kebab> inline CSS var overrides.
     __SKRIVRO_INITIAL_THEME__?: Record<string, string | null>;
   }
+
+  // Keyboard Map API, absent from TypeScript's DOM lib because it is
+  // Chromium-only (Mozilla holds a negative standards position on it,
+  // hence the optional `keyboard`). Used by main.ts to translate a
+  // composed keydown's physical key back to the active layout's base
+  // letter for the Windows AltGr chord recovery. Only the one lookup
+  // method we call is declared.
+  interface KeyboardLayoutMap {
+    get(code: string): string | undefined;
+  }
+
+  interface NavigatorKeyboard {
+    getLayoutMap(): Promise<KeyboardLayoutMap>;
+  }
+
+  interface Navigator {
+    readonly keyboard?: NavigatorKeyboard;
+  }
 }
 
 // The `export {}` makes this a module rather than a script, which is

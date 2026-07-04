@@ -126,6 +126,114 @@ import {
   refreshStatus,
 } from "./ui.js";
 
+// ================= Windows AltGr chord recovery =================
+// On Windows, keyboard layouts implement the AltGr character layer as
+// the Ctrl+Alt modifier state, and the physical AltGr key works by
+// synthesizing a fake Left Ctrl press alongside Right Alt. The
+// consequence: a discrete Left Ctrl+Left Alt chord composes characters
+// exactly like AltGr does. On a Swedish layout, Ctrl+Alt+E arrives as
+// key "€" with ctrlKey/altKey lifted and AltGraph reported, so the
+// shortcut handler below never sees a letter to match, and the stray €
+// lands in the buffer. Verified empirically on WebView2, Chrome, and
+// Firefox, which produce identical event streams, including the
+// synthetic Left Ctrl keydown.
+//
+// Policy is full isolation. The physical right Alt key IS the
+// character layer and is never touched. A physically held Ctrl+Alt
+// chord is Skrivro's shortcut namespace on every key: while it is
+// down, any composed keydown is suppressed (no stray characters) and
+// the key's base-layer letter, resolved through the Keyboard Map API,
+// dispatches the secondary shortcut it was aiming at. Unbound keys
+// swallow silently. Typing characters via discrete Ctrl+Alt is
+// deliberately sacrificed, real AltGr always works.
+//
+// Accepted residual: dead keys. A dead key pressed under the chord
+// (Ctrl+Alt+¨ on Swedish layouts) still arms the layout's pending
+// accent and composes on a later keypress exactly as AltGr+¨ would.
+// The dead state arms in the OS translation layer before the DOM
+// keydown exists, so suppressing the keydown cannot prevent it, no
+// web API can clear it, and the eventual commit arrives as
+// composition input, which Input Events defines as not cancelable.
+// The sequence is deliberate, no shortcut letter is a dead key, and
+// the output matches what the character layer produces anyway.
+//
+// The chord is tracked from physical modifier events. Control (either
+// side) arms one half. Alt arms the other only when its code is not
+// AltRight, which is the code the AltGr key reports, so AltGr can
+// never arm the chord (doubly so, since engines name its key
+// "AltGraph" rather than "Alt"). The synthetic Control accompanying
+// real AltGr DOES arm the ctrl half transiently. That is expected and
+// harmless because both halves are required, so never gate on the
+// ctrl half alone.
+//
+// On Linux and macOS this path is inert by construction. Neither
+// platform lifts ctrl/alt flags for composition under a physical
+// Ctrl+Alt chord: Linux AltGr is the separate Level3 modifier, and
+// macOS keeps altKey set on Option compositions (and uses Ctrl+Cmd
+// as the secondary chord anyway), so the signature never matches.
+let physCtrl = false;
+let physAlt = false;
+
+window.addEventListener(
+  "keyup",
+  (e) => {
+    if (e.key === "Control") physCtrl = false;
+    if (e.key === "Alt") physAlt = false;
+  },
+  { capture: true },
+);
+
+// A keyup can be missed when focus leaves mid-chord (alt-tab, VM
+// viewer grab keys, dialogs). Reset on blur and on tab-hide so stale
+// chord state can never swallow a later composed character.
+window.addEventListener("blur", () => {
+  physCtrl = false;
+  physAlt = false;
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    physCtrl = false;
+    physAlt = false;
+  }
+});
+
+// Physical key to base-layer letter for the active layout, used to
+// recover which letter a composed keydown was aiming at ("€" on KeyE
+// means the E chord on a Swedish layout). The Keyboard Map API
+// resolves rearranged layouts correctly (AZERTY, Hungarian QWERTZ)
+// and is Chromium-only, which always covers WebView2. Where the API
+// is unavailable the map stays null and composed chords swallow
+// without dispatching, preserving the no-stray-characters guarantee.
+//
+// Cached at init and refreshed on window focus. Layout switches
+// normally happen while the window is unfocused, and a mid-focus
+// switch only goes stale until the next focus, which affects dispatch
+// identity, never swallowing.
+//
+// The init-time call can be rejected outright: Chromium answers
+// getLayoutMap only from an active, focused top-level context, and
+// module evaluation runs before the window is activated. Verified on
+// WebView2, where the map stayed null for an entire session that
+// never blurred and refocused the window. The composed-chord branch
+// in the keydown handler therefore retries on demand: a keydown
+// proves the window is focused, so the retry succeeds, and the
+// dispatch lands on the promise a few milliseconds late in the worst
+// case (a cold launch whose first ever keypress is a chord).
+let layoutMap: KeyboardLayoutMap | null = null;
+
+async function refreshLayoutMap(): Promise<void> {
+  try {
+    layoutMap = (await navigator.keyboard?.getLayoutMap()) ?? null;
+  } catch {
+    layoutMap = null;
+  }
+}
+
+void refreshLayoutMap();
+window.addEventListener("focus", () => {
+  void refreshLayoutMap();
+});
+
 // ================= Keyboard shortcuts =================
 // Capture phase so we beat CM6's internal keymap + Vim bindings.
 //
@@ -159,9 +267,120 @@ import {
 // Net effect: exactly one app-shortcut chord per platform.
 //   Mac:           Cmd+letter (primary), Ctrl+Cmd+letter (secondary)
 //   Linux/Windows: Ctrl+letter (primary), Ctrl+Alt+letter (secondary)
+
+// Single dispatch table for the secondary-modifier shortcuts, shared
+// by the normal keydown path below (the letter arrives in e.key) and
+// the AltGr chord recovery above (the letter is recovered through the
+// layout map). Returns whether the letter is bound so callers can
+// preventDefault on real matches and let everything else flow on.
+function runSecondaryAction(letter: string): boolean {
+  switch (letter) {
+    case "v":
+      toggleVim();
+      return true;
+    case "g":
+      toggleGutter();
+      return true;
+    case "s":
+      setDisplayMode("split");
+      return true;
+    case "e":
+      setDisplayMode("editor");
+      return true;
+    case "p":
+      setDisplayMode("preview");
+      return true;
+    case "t":
+      toggleTitlebar();
+      return true;
+    case "b":
+      toggleStatusBar();
+      return true;
+    case "l":
+      syncPreviewToCaret();
+      return true;
+    case "h":
+      toggleHelp();
+      return true;
+    case "r":
+      // Format toggle (R for Representation, cycles the active buffer
+      // format: AsciiDoc → Markdown → Text → AsciiDoc). F would be the
+      // obvious letter but Ctrl+Cmd+F on Mac is the Fullscreen menu
+      // shortcut that AppKit intercepts before the webview sees it.
+      toggleFormat();
+      return true;
+    case "w":
+      // Pane-focus toggle (W for Window, matches Vim's window-command
+      // mnemonic without colliding with Vim's own <C-w> chord, which
+      // requires no Alt). Only meaningful in split mode, and
+      // togglePaneFocus no-ops in editor-only and preview-only.
+      togglePaneFocus();
+      return true;
+    case "y":
+      // Syntax highlighting toggle. Y is a weak mnemonic (S would be
+      // better but Ctrl+S / Ctrl+Shift+S are already in the save family
+      // and adding Ctrl+Alt+S would overload the letter), but the
+      // secondary-modifier namespace is crowded enough that "works and
+      // doesn't conflict" wins over "readable mnemonic."
+      toggleSyntaxHighlighting();
+      return true;
+    case "c":
+      // Width-mode cycle (narrow → medium → wide → full → narrow).
+      // C for Column / Cap. The secondary modifier (Alt on Linux/
+      // Windows, Ctrl on Mac) keeps the chord distinct from plain
+      // Ctrl+C / ⌘C copy.
+      cycleWidthMode();
+      return true;
+    case "i":
+      // I for Index, an alternate term for table of contents.
+      // Toggles table of contents visibility (shown ↔ hidden),
+      // a session-scoped override resetting to "shown" on every
+      // launch.
+      toggleTocVisibility();
+      return true;
+    case "k":
+      // Spellcheck toggle (K for checK). Silences / restores the
+      // misspelling squiggles. No-op with a message when spellcheck is
+      // disabled in the config (spellcheck-language = off).
+      toggleSpellcheck();
+      return true;
+    default:
+      return false;
+  }
+}
+
 window.addEventListener(
   "keydown",
   (e) => {
+    // Physical chord bookkeeping, before any early return so it also
+    // sees modifier presses the shortcut logic below ignores.
+    if (e.key === "Control") physCtrl = true;
+    if (e.key === "Alt" && e.code !== "AltRight") physAlt = true;
+
+    // Windows AltGr chord recovery (see the section comment above).
+    // The signature is a composed keydown, modifier flags lifted and
+    // AltGraph reported, arriving while the physical Ctrl+Alt chord
+    // is held. Real AltGr typing never matches (the chord is not
+    // physically down), and Linux/macOS never produce the signature.
+    if (physCtrl && physAlt && !e.ctrlKey && !e.altKey && e.getModifierState("AltGraph")) {
+      e.preventDefault();
+      if (layoutMap) {
+        const letter = layoutMap.get(e.code);
+        if (letter) runSecondaryAction(letter.toLowerCase());
+      } else {
+        // The init-time getLayoutMap call is rejected when it runs
+        // before window activation (see the layout map comment). This
+        // keydown proves the window is focused now, so retry and
+        // dispatch on resolution. Swallowing stayed synchronous.
+        const code = e.code;
+        void refreshLayoutMap().then(() => {
+          const letter = layoutMap?.get(code);
+          if (letter) runSecondaryAction(letter.toLowerCase());
+        });
+      }
+      return;
+    }
+
     const mod = isMac ? e.metaKey : e.ctrlKey;
     if (!mod) return;
     const second = isMac ? e.ctrlKey : e.altKey;
@@ -169,75 +388,8 @@ window.addEventListener(
 
     // Secondary-modifier shortcuts first, so Ctrl+Alt+S / Ctrl+Cmd+S (split)
     // doesn't match plain Ctrl+S / Cmd+S (save).
-    if (second && k === "v") {
+    if (second && runSecondaryAction(k)) {
       e.preventDefault();
-      toggleVim();
-    } else if (second && k === "g") {
-      e.preventDefault();
-      toggleGutter();
-    } else if (second && k === "s") {
-      e.preventDefault();
-      setDisplayMode("split");
-    } else if (second && k === "e") {
-      e.preventDefault();
-      setDisplayMode("editor");
-    } else if (second && k === "p") {
-      e.preventDefault();
-      setDisplayMode("preview");
-    } else if (second && k === "t") {
-      e.preventDefault();
-      toggleTitlebar();
-    } else if (second && k === "b") {
-      e.preventDefault();
-      toggleStatusBar();
-    } else if (second && k === "l") {
-      e.preventDefault();
-      syncPreviewToCaret();
-    } else if (second && k === "h") {
-      e.preventDefault();
-      toggleHelp();
-    } else if (second && k === "r") {
-      // Format toggle (R for Representation, cycles the active buffer
-      // format: AsciiDoc → Markdown → Text → AsciiDoc). F would be the
-      // obvious letter but Ctrl+Cmd+F on Mac is the Fullscreen menu
-      // shortcut that AppKit intercepts before the webview sees it.
-      e.preventDefault();
-      toggleFormat();
-    } else if (second && k === "w") {
-      // Pane-focus toggle (W for Window, matches Vim's window-command
-      // mnemonic without colliding with Vim's own <C-w> chord, which
-      // requires no Alt). Only meaningful in split mode, and
-      // togglePaneFocus no-ops in editor-only and preview-only.
-      e.preventDefault();
-      togglePaneFocus();
-    } else if (second && k === "y") {
-      // Syntax highlighting toggle. Y is a weak mnemonic (S would be
-      // better but Ctrl+S / Ctrl+Shift+S are already in the save family
-      // and adding Ctrl+Alt+S would overload the letter), but the
-      // secondary-modifier namespace is crowded enough that "works and
-      // doesn't conflict" wins over "readable mnemonic."
-      e.preventDefault();
-      toggleSyntaxHighlighting();
-    } else if (second && k === "c") {
-      // Width-mode cycle (narrow → medium → wide → full → narrow).
-      // C for Column / Cap. The secondary modifier (Alt on Linux/
-      // Windows, Ctrl on Mac) keeps the chord distinct from plain
-      // Ctrl+C / ⌘C copy.
-      e.preventDefault();
-      cycleWidthMode();
-    } else if (second && k === "i") {
-      // I for Index, an alternate term for table of contents.
-      // Toggles table of contents visibility (shown ↔ hidden),
-      // a session-scoped override resetting to "shown" on every
-      // launch.
-      e.preventDefault();
-      toggleTocVisibility();
-    } else if (second && k === "k") {
-      // Spellcheck toggle (K for checK). Silences / restores the
-      // misspelling squiggles. No-op with a message when spellcheck is
-      // disabled in the config (spellcheck-language = off).
-      e.preventDefault();
-      toggleSpellcheck();
     }
     // Primary-only shortcuts. Save/Open/New use the primary modifier alone
     // because those are universal cross-platform conventions (Ctrl+S /

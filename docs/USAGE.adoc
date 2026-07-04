@@ -38,6 +38,9 @@ That breaks literal letter matching.
 kbd:[Ctrl] doesn't compose, so kbd:[Cmd+Ctrl+letter] is reliable.
 Bonus: it stays out of Vim's kbd:[Ctrl+letter] namespace.
 
+On Windows, kbd:[Ctrl+Alt+letter] always acts as the shortcut, even on keyboard layouts where Windows treats kbd:[Ctrl+Alt] as an alternative way to type AltGr characters (kbd:[Ctrl+Alt+E] would otherwise type € on many European layouts).
+Type those characters with the kbd:[AltGr] key itself, which Skrivro never touches.
+
 == File operations
 
 [cols="1,3", options="header"]

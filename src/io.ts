@@ -9,7 +9,7 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile, stat } from "@tauri-apps/plugin-fs";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { basename, dirname, resolve, isAbsolute } from "@tauri-apps/api/path";
+import { basename, dirname, join, resolve, isAbsolute } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
 
 import {
@@ -26,7 +26,7 @@ import { addCustomWord, removeCustomWord } from "./spellcheck/custom-words.js";
 import { render, syncPreviewToCaret, requestPreviewScrollToTop } from "./preview.js";
 import { clearAllRendererCaches } from "./renderer.js";
 import { userConfig } from "./config.js";
-import { prefs } from "./prefs.js";
+import { prefs, savePrefs } from "./prefs.js";
 import { tr } from "./i18n.js";
 import {
   refreshStatus,
@@ -437,6 +437,29 @@ export const readDocumentText = async (path: string): Promise<string> => {
   return readTextFile(path);
 };
 
+// Where a file dialog should start: the current file's directory when
+// a file is open (the dialog lands next to the work), else the
+// remembered last-used directory, else null for the platform default
+// (also the fresh-install behavior). Linux needs this because GTK's
+// dialog has no memory of its own and opens at the home directory
+// every time. macOS and Windows dialogs do keep a per-app memory, and
+// this deliberately replaces it so all three platforms follow the
+// same rule.
+const dialogStartDir = async (): Promise<string | null> => {
+  if (currentBuffer.path) return await dirname(currentBuffer.path);
+  return prefs.lastFileDir || null;
+};
+
+// Remember the directory of every file opened or saved by real path,
+// feeding dialogStartDir. Failure is cosmetic (the next dialog starts
+// at the platform default), so errors are swallowed.
+const rememberFileDir = async (path: string) => {
+  try {
+    prefs.lastFileDir = await dirname(path);
+    savePrefs();
+  } catch {}
+};
+
 // Internal: load a file from a given absolute path into the editor.
 // Does NOT guard against a dirty buffer: callers are responsible for
 // running this inside a confirmDiscard wrapper if appropriate.
@@ -458,6 +481,7 @@ export const loadFileFromPath = async (path: string) => {
     // result. Prefix makes the fire-and-forget intent explicit for both
     // readers and the no-floating-promises lint rule.
     void writeSessionState(currentBuffer.path);
+    void rememberFileDir(path);
     updateTitle();
     requestPreviewScrollToTop();
     void render();
@@ -477,8 +501,10 @@ export const loadFileFromPath = async (path: string) => {
 export const openFile = () => {
   confirmDiscard(async () => {
     try {
+      const startDir = await dialogStartDir();
       const selected = await open({
         multiple: false,
+        ...(startDir ? { defaultPath: startDir } : {}),
       });
       if (!selected) return; // user canceled
       await loadFileFromPath(selected);
@@ -513,13 +539,21 @@ export const saveFile = async () => {
 export const saveFileAs = async () => {
   let selected: string | null = null;
   try {
+    // Untitled buffers start in the remembered directory with the
+    // suggested name prefilled. A buffer with a real path keeps its
+    // full path, which starts the dialog next to the current file.
     selected = await save({
-      defaultPath: currentBuffer.path || currentBuffer.name,
+      defaultPath: currentBuffer.path
+        ? currentBuffer.path
+        : prefs.lastFileDir
+          ? await join(prefs.lastFileDir, currentBuffer.name)
+          : currentBuffer.name,
     });
     if (!selected) return; // user canceled: silent, the user knows
     await writeTextFile(selected, docToSave());
     currentBuffer.path = selected;
     currentBuffer.name = await basename(selected);
+    void rememberFileDir(selected);
     setBufferFormat(detectFormat(selected));
     setDirty(false);
     clearDraft();

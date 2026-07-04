@@ -25,6 +25,11 @@ const defaultPrefs = {
   // regardless).
   spellcheck: true,
   widthMode: "medium",
+  // Directory of the last file opened or saved through a real path.
+  // Feeds the file dialogs' starting location in io.ts. Empty string
+  // means no history yet, which lets the dialog fall through to the
+  // platform default.
+  lastFileDir: "",
 };
 
 const loadPrefs = () => {

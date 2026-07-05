@@ -303,8 +303,7 @@ function runSecondaryAction(letter: string): boolean {
     case "x":
       // Show/hide the bar's "?" help button. X is AltGr-clean on all
       // Western European and Nordic defaults, and Ctrl+Cmd+X carries
-      // no macOS system meaning (unlike Q, which locks the screen,
-      // and D, which opens the dictionary popover).
+      // no macOS system meaning.
       toggleHelpButton();
       return true;
     case "l":

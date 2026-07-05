@@ -15,8 +15,7 @@ const defaultPrefs = {
   gutterHidden: true,
   statusBarHidden: false,
   // Where the bar sits: "bottom" (default) or "top". Flipped by
-  // Ctrl+Alt+T / ⌃⌘T. A titlebarHidden key from older prefs may
-  // linger in saved JSON. Nothing reads it anymore.
+  // Ctrl+Alt+T / ⌃⌘T.
   barPosition: "bottom",
   // The bar's "?" help button, hidden via Ctrl+Alt+X / ⌃⌘X for users
   // who reach help by keyboard and want the chrome minimal.

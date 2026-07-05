@@ -163,55 +163,6 @@
         flex-direction: column;
       }
 
-      /* ---------- Titlebar ---------- */
-      .titlebar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        padding: 0.5rem 1rem;
-        background: var(--skr-bg-panel);
-        border-bottom: 1px solid var(--skr-surface);
-        font-size: 0.85rem;
-        color: var(--skr-text-muted);
-        user-select: none;
-        flex-shrink: 0;
-      }
-      .titlebar .name {
-        font-weight: 500;
-      }
-      body.is-dirty .titlebar .name::before {
-        content: "● ";
-        color: var(--skr-emphasis);
-      }
-      .titlebar .help-button {
-        background: var(--skr-surface);
-        color: var(--skr-link);
-        border: none;
-        border-radius: 4px;
-        width: 1.5rem;
-        height: 1.5rem;
-        font-family: var(--font-mono);
-        font-size: 0.85rem;
-        font-weight: 600;
-        cursor: pointer;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .titlebar .help-button:hover {
-        background: var(--skr-surface-hover);
-        color: var(--skr-accent);
-      }
-      .titlebar .help-button:focus-visible {
-        outline: 2px solid var(--skr-accent);
-        outline-offset: 2px;
-      }
-      body.no-titlebar .titlebar {
-        display: none;
-      }
-
       /* ---------- Split panes ---------- */
       .wrap {
         display: flex;
@@ -1319,6 +1270,16 @@
         display: none;
       }
 
+      /* Bar position. The bar sits after .wrap in the DOM, so it renders
+         at the bottom by default. body.bar-top (persisted barPosition,
+         toggled by Ctrl+Alt+T / ⌃⌘T) lifts it above the panes via flex
+         order, and the 1px divider flips to the editor-facing side. */
+      body.bar-top .statusbar {
+        order: -1;
+        border-top: none;
+        border-bottom: 1px solid var(--skr-surface);
+      }
+
       .statusbar .status-left,
       .statusbar .status-right {
         display: flex;
@@ -1332,6 +1293,41 @@
       }
       .statusbar .status-right {
         flex-shrink: 0;
+      }
+
+      /* Help button, the mouse path into the help dialog (same action as
+         Ctrl+Alt+H / ⌃⌘H). The bar's min-height holds its content box at
+         1.5rem (no box-sizing reset in this file), so the 1.1rem button
+         fits inside the height the bar already has. */
+      .statusbar .help-button {
+        background: var(--skr-surface);
+        color: var(--skr-link);
+        border: none;
+        border-radius: 3px;
+        width: 1.1rem;
+        height: 1.1rem;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .statusbar .help-button:hover {
+        background: var(--skr-surface-hover);
+        color: var(--skr-accent);
+      }
+      .statusbar .help-button:focus-visible {
+        outline: 2px solid var(--skr-accent);
+        outline-offset: 1px;
+      }
+      /* Hidden via Ctrl+Alt+X / ⌃⌘X (persisted helpButtonHidden). With the
+         button display:none, the right cluster's flex gap collapses and the
+         readouts sit flush right again. */
+      body.no-help-button .statusbar .help-button {
+        display: none;
       }
 
       .statusbar .status-mode-pill {
@@ -1488,43 +1484,33 @@
   <body>
     <!-- Inline (non-module) script runs synchronously during parse, before
        the first paint. Reads prefs from localStorage and sets body classes
-       immediately so the titlebar / gutter / display-mode state is correct
-       on the very first frame: no FOUC. The module script's applyTitlebar
-       / applyGutter / applyDisplayMode calls still run later, but they're
-       no-ops because the classes are already correct. -->
+       immediately so the bar / gutter / display-mode state is correct on
+       the very first frame: no FOUC. The module script's applyStatusBar /
+       applyBarPosition / applyGutter / applyDisplayMode calls still run
+       later, but they're no-ops because the classes are already correct. -->
     <script>
       (function () {
         try {
           var p = JSON.parse(localStorage.getItem("adoc-editor-prefs-v1"));
           if (!p) return;
           var cl = document.body.classList;
-          if (p.titlebarHidden) cl.add("no-titlebar");
           if (p.gutterHidden) cl.add("no-gutter");
           if (p.statusBarHidden) cl.add("no-statusbar");
+          if (p.barPosition === "top") cl.add("bar-top");
+          if (p.helpButtonHidden) cl.add("no-help-button");
           if (p.displayMode && p.displayMode !== "split") cl.add("mode-" + p.displayMode);
         } catch (e) {}
       })();
     </script>
-    <header class="titlebar">
-      <div><span class="name" id="name">untitled.adoc</span></div>
-      <button
-        type="button"
-        id="helpBtn"
-        class="help-button"
-        aria-label="Show keyboard shortcuts and commands help (Ctrl+Alt+H)"
-      >
-        ?
-      </button>
-    </header>
-
     <main class="wrap">
       <div id="src-host" class="editor-pane"></div>
       <div class="preview" id="out" tabindex="-1"></div>
     </main>
 
-    <!-- Status bar: mode pill (Vim-only) + filename on the left,
-       file type + cursor position on the right. Toggled by
-       Ctrl+Alt+B / ⌃⌘B. -->
+    <!-- The bar: mode pill (Vim-only) + filename on the left, file type
+       + cursor position + help button on the right. Shown/hidden by
+       Ctrl+Alt+B / ⌃⌘B, moved between bottom (default) and top by
+       Ctrl+Alt+T / ⌃⌘T (body.bar-top reorders it in the flex column). -->
     <footer class="statusbar" id="statusbar">
       <div class="status-left">
         <span class="status-mode-pill" id="statusMode" data-vim-mode="normal" hidden>NORMAL</span>
@@ -1535,6 +1521,14 @@
         <span class="status-filetype" id="statusFiletype">AsciiDoc</span>
         <span class="status-position" id="statusPosition">Ln 1, Col 1</span>
         <span class="status-word-count" id="statusWordCount">0 words</span>
+        <button
+          type="button"
+          id="helpBtn"
+          class="help-button"
+          aria-label="Show keyboard shortcuts and commands help (Ctrl+Alt+H)"
+        >
+          ?
+        </button>
       </div>
     </footer>
 
@@ -1556,7 +1550,7 @@
 
     <!-- Help overlay with all keyboard shortcuts and Vim Ex commands.
        Toggled by Ctrl+Alt+H / ⌃⌘H or by clicking the "?" button in
-       the titlebar. Dismissable via Escape (native <dialog> behavior),
+       the status bar. Dismissable via Escape (native <dialog> behavior),
        backdrop click, or the close button. -->
     <!-- kbd authoring convention: app-shortcut kbds are written in the
        Linux/Windows form. On Mac, applyMacModifierLabels (in the module
@@ -1596,7 +1590,7 @@
       <h3>Display</h3>
       <div class="help-grid">
         <div class="help-key"><kbd>Ctrl+Alt+T</kbd></div>
-        <div class="help-desc">Toggle titlebar</div>
+        <div class="help-desc">Move the status bar to the top or bottom</div>
         <div class="help-key"><kbd>Ctrl+Alt+G</kbd></div>
         <div class="help-desc">Toggle gutter</div>
         <div class="help-key"><kbd>Ctrl+Alt+V</kbd></div>
@@ -1610,7 +1604,9 @@
         <div class="help-key"><kbd>Ctrl+Alt+H</kbd></div>
         <div class="help-desc">Toggle this help</div>
         <div class="help-key"><kbd>Ctrl+Alt+B</kbd></div>
-        <div class="help-desc">Toggle status bar</div>
+        <div class="help-desc">Show or hide the status bar</div>
+        <div class="help-key"><kbd>Ctrl+Alt+X</kbd></div>
+        <div class="help-desc">Show or hide the help button</div>
         <div class="help-key"><kbd>Ctrl+Alt+R</kbd></div>
         <div class="help-desc">Cycle format (AsciiDoc / Markdown / Text)</div>
         <div class="help-key"><kbd>Ctrl+Alt+Y</kbd></div>
@@ -1817,7 +1813,6 @@
 
       const out = document.getElementById("out");
       const host = document.getElementById("src-host");
-      const nameEl = document.getElementById("name");
       const fileInput = document.getElementById("fileInput");
 
       const confirmDlg = document.getElementById("confirmDialog");
@@ -1840,11 +1835,16 @@
       // ================= Prefs =================
 
       const defaultPrefs = {
-        titlebarHidden: false,
         vimMode: false,
         displayMode: "split",
         gutterHidden: true,
         statusBarHidden: false,
+        // Where the bar sits: "bottom" (default) or "top". Flipped by
+        // Ctrl+Alt+T / ⌃⌘T.
+        barPosition: "bottom",
+        // The bar's "?" help button, hidden via Ctrl+Alt+X / ⌃⌘X for
+        // users who reach help by keyboard and want the chrome minimal.
+        helpButtonHidden: false,
         syntaxHighlighting: true,
         spellcheck: true,
         widthMode: "medium",
@@ -2952,11 +2952,10 @@
       // ================= Title / dirty =================
 
       const updateTitle = () => {
-        nameEl.textContent = currentName;
         document.body.classList.toggle("is-dirty", dirty);
         document.title = `${dirty ? "● " : ""}${currentName} — Skrivro Web`;
-        // Status bar mirrors filename + dirty indicator, so refresh on any title
-        // update.
+        // The bar shows the filename + dirty indicator, so refresh on any
+        // title update.
         refreshStatus();
       };
       const setDirty = (d) => {
@@ -3107,7 +3106,7 @@
       };
 
       // ================= Help overlay =================
-      // Ctrl+Alt+H / ⌃⌘H or the "?" button in the titlebar toggles the help
+      // Ctrl+Alt+H / ⌃⌘H or the "?" button in the status bar toggles the help
       // dialog. Escape (native <dialog> behavior), the close button,
       // and clicking the backdrop all dismiss it.
       //
@@ -4375,13 +4374,21 @@
 
       // ================= Toggles =================
 
-      const applyTitlebar = () => {
-        document.body.classList.toggle("no-titlebar", prefs.titlebarHidden);
+      const applyBarPosition = () => {
+        document.body.classList.toggle("bar-top", prefs.barPosition === "top");
       };
-      const toggleTitlebar = () => {
-        prefs.titlebarHidden = !prefs.titlebarHidden;
+      const toggleBarPosition = () => {
+        prefs.barPosition = prefs.barPosition === "top" ? "bottom" : "top";
         savePrefs();
-        applyTitlebar();
+        applyBarPosition();
+      };
+      const applyHelpButton = () => {
+        document.body.classList.toggle("no-help-button", prefs.helpButtonHidden);
+      };
+      const toggleHelpButton = () => {
+        prefs.helpButtonHidden = !prefs.helpButtonHidden;
+        savePrefs();
+        applyHelpButton();
       };
       const applyGutter = () => {
         document.body.classList.toggle("no-gutter", prefs.gutterHidden);
@@ -4600,7 +4607,7 @@
           mods.sort((a, b) => order.indexOf(a) - order.indexOf(b));
           kbd.textContent = mods.join("") + keys.join("");
         });
-        // The titlebar "?" button names the same help shortcut in its
+        // The bar's "?" button names the same help shortcut in its
         // accessible name. That's a plain-text attribute, so it can't carry
         // <kbd> and the loop above doesn't reach it. Rewrite the keybind to
         // the Mac form here too (Ctrl+Alt+H -> Ctrl+Cmd+H).
@@ -5030,10 +5037,11 @@
       // a position falls through to swallow-only rather than firing a
       // wrong binding. Covered: the euro on E (Western European and
       // Nordic defaults), the UK and Irish acute vowels on E, I, and O,
-      // the Polish diacritics on C, E, L, N, O, and S, and the ł that
-      // Czech, Slovak, Hungarian, and Croatian defaults put on K, all
-      // verified against the Windows layout tables (kbdlayout.info klc
-      // dumps). The euro also lives on U on Polish and Hungarian
+      // the Polish diacritics on C, E, L, N, O, and S, the ł that
+      // Czech, Slovak, Hungarian, and Croatian defaults put on K, and
+      // X's pair, ź on Polish and # on Czech, Slovak, and Hungarian,
+      // all verified against the Windows layout tables (kbdlayout.info
+      // klc dumps). The euro also lives on U on Polish and Hungarian
       // defaults, which is why entries are keyed by physical key: € on
       // KeyU matches no entry and swallows without dispatching.
       const altgrFallback = {
@@ -5045,6 +5053,7 @@
         KeyC: { glyphs: "ć", letter: "c" },
         KeyL: { glyphs: "ł", letter: "l" },
         KeyK: { glyphs: "ł", letter: "k" },
+        KeyX: { glyphs: "ź#", letter: "x" },
       };
 
       function fallbackLetter(code, key) {
@@ -5112,10 +5121,18 @@
             setDisplayMode("preview");
             return true;
           case "t":
-            toggleTitlebar();
+            // T for Top. One of the three letters with no AltGr mapping
+            // on any default European layout.
+            toggleBarPosition();
             return true;
           case "b":
             toggleStatusBar();
+            return true;
+          case "x":
+            // Show/hide the bar's "?" help button. X is AltGr-clean on
+            // all Western European and Nordic defaults, and Ctrl+Cmd+X
+            // carries no macOS system meaning.
+            toggleHelpButton();
             return true;
           case "o":
             openFile();
@@ -5644,7 +5661,8 @@
 
       // ================= Init =================
 
-      applyTitlebar();
+      applyBarPosition();
+      applyHelpButton();
       applyGutter();
       applyStatusBar();
       applyDisplayMode();

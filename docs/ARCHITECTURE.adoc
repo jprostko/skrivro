@@ -123,7 +123,7 @@ Each module owns its DOM references, its state, and its exports.
 | File operations: `openFile`, `saveFile`, `saveFileAs`, `newFile`, `loadFileFromPath`, `confirmDiscard`. The `currentBuffer` state object (path, name, format, dirty). Vim Ex command registration. Autosave debouncer. Session state read/write.
 
 | `ui.ts`
-| DOM-level UI: status bar updates (mode pill, dirty indicator, cursor position, word count), display mode switching, top-bar / status-bar / gutter toggles, help dialog, confirm dialog, `applyUserConfig` for translating Rust config values into CSS custom properties.
+| DOM-level UI: status bar updates (mode pill, dirty indicator, cursor position, word count), display mode switching, status-bar / bar-position / help-button / gutter toggles, help dialog, confirm dialog, `applyUserConfig` for translating Rust config values into CSS custom properties.
 
 | `menu.ts`
 | macOS menu bar. Custom items for Quit / Close / Minimize that route through `onCloseRequested` for dirty-buffer protection. `installMenu()` is called only on Mac at init time.
@@ -132,7 +132,7 @@ Each module owns its DOM references, its state, and its exports.
 | Translation table (`STRINGS_SV`) and the `tr()` helper. `lang` is resolved once at module load from `window.__SKRIVRO_LANG__` (set by an inline script that reads the Rust config override or falls back to `navigator.language`).
 
 | `prefs.ts`
-| LocalStorage-backed UI prefs (Vim mode, gutter visibility, status bar visibility, display mode, etc.). Distinct from `config.ts`: prefs are per-machine UI state, while config is per-user customization from the config file.
+| LocalStorage-backed UI prefs (Vim mode, gutter visibility, status bar visibility and position, display mode, etc.). Distinct from `config.ts`: prefs are per-machine UI state, while config is per-user customization from the config file.
 
 | `config.ts`
 | Type definitions matching Rust struct shapes (`SkrivroConfig`, `ThemeColors`, `LaunchInfo`, `SessionState`). Live binding `userConfig` populated from Rust at init time.
@@ -148,7 +148,7 @@ Each module owns its DOM references, its state, and its exports.
 |===
 
 `index.html` is the single HTML entry point.
-It contains the static DOM structure (titlebar, editor host, preview container, status bar, help dialog, confirm dialog) and small inline `<script>` blocks at the end of `<body>` for FOUC prevention (theme color resolution + language detection before the main module loads).
+It contains the static DOM structure (editor host, preview container, status bar, help dialog, confirm dialog) and small inline `<script>` blocks at the end of `<body>` for FOUC prevention (theme color resolution + language detection before the main module loads).
 
 `styles.css` holds all CSS: both the layout / chrome and the preview-side rendering rules for AsciiDoc and Markdown output.
 The 24 `--skr-*` CSS custom properties live at `:root` with Catppuccin Mocha values. Theme overrides come from JavaScript via inline style on `:root`.
@@ -179,7 +179,7 @@ Skrivro keeps four kinds of state, in different places for different reasons:
 
 | UI prefs (`prefs.*` keys)
 | WebView localStorage
-| Per-machine UI state: display mode, Vim toggle, top bar visibility. Doesn't make sense to share across devices.
+| Per-machine UI state: display mode, Vim toggle, bar visibility and position. Doesn't make sense to share across devices.
 
 | Session state (last-opened file, window state)
 | Platform data dir (`~/.local/share/com.skrivro.editor/` on Linux, etc.)

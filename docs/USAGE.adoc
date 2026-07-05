@@ -335,10 +335,13 @@ Beyond the display-mode and format-toggle shortcuts above, several UI toggles ar
 | Shortcut | Action
 
 | kbd:[Ctrl+Alt+T]
-| Toggle the top bar (the strip with the filename and help button).
+| Move the status bar to the top or bottom of the window.
 
 | kbd:[Ctrl+Alt+B]
-| Toggle the status bar (the strip at the bottom with mode pill, cursor position, etc.).
+| Show or hide the status bar (the strip with mode pill, filename, cursor position, etc.).
+
+| kbd:[Ctrl+Alt+X]
+| Show or hide the status bar's help button.
 
 | kbd:[Ctrl+Alt+G]
 | Toggle the editor's gutter (line numbers).
@@ -369,7 +372,8 @@ All toggle states persist across launches via the prefs file (separate from the 
 
 == Status bar
 
-The status bar runs along the bottom of the window.
+The status bar is Skrivro's single chrome strip.
+It runs along the bottom of the window by default, and kbd:[Ctrl+Alt+T] moves it to the top (the choice persists across launches).
 Reading left to right:
 
 * *Mode pill* (Vim mode only): colored badge showing NORMAL / INSERT / VISUAL / V-LINE / V-BLOCK / REPLACE / COMMAND.
@@ -380,6 +384,7 @@ Reading left to right:
 * *Cursor position*: line and column. Format is configurable: `Ln 42, Col 85` (verbose, default), `42:85` (compact), or `42,85` (Vim-style ruler). See link:CONFIG.adoc[].
 * *Sync indicator*: a small arrow that flashes when scroll-sync fires.
 * *Word count* (preview-only mode only): total words in the rendered preview.
+* *Help button*: a `?` that opens the help overlay (same as kbd:[Ctrl+Alt+H]). Hide or show it with kbd:[Ctrl+Alt+X].
 
 Status-bar styling has two presets: `canonical` (the default, bright Catppuccin colors from `catppuccin/nvim`'s `lualine` config) and `muted` (subtler palette, LazyVim-inspired).
 Set via `statusbar-style` in `skrivro.conf`. See link:CONFIG.adoc[].

@@ -38,7 +38,8 @@ In all cases, if the buffer has unsaved changes, Skrivro shows a "Discard change
 
 === Can I move / resize the window?
 
-Yes. Drag the top bar (the strip with the filename) to move the window, double-click that same strip to maximize / restore.
+Yes. Drag the status bar (the strip with the filename, at the bottom by default) to move the window, double-click that same strip to maximize / restore.
+If you've hidden the status bar with kbd:[Ctrl+Alt+B], there's no drag surface until you show it again.
 Resizing works via your window manager (drag a window edge, or whatever shortcut your WM provides).
 
 === The window remembers its size and position. Where's that stored?

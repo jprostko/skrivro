@@ -129,7 +129,7 @@ The slot names are CSS custom property names with the `--skr-` prefix dropped. F
 | Slot | Catppuccin Mocha | Purpose
 
 | `bg` | `#1e1e2e` | Primary background: body, editor pane, scrollbar tracks.
-| `bg-panel` | `#181825` | Chrome surfaces: titlebar, preview pane, dialogs, CodeMirror panels (Ex command line, search bar).
+| `bg-panel` | `#181825` | Chrome surfaces: status bar, preview pane, dialogs, CodeMirror panels (Ex command line, search bar).
 | `bg-inset` | `#11111b` | Deepest layer: code blocks, AsciiDoc literalblock, render-error background.
 | `bg-backdrop` | `rgba(17, 17, 27, 0.6)` | Dialog backdrop overlay (the dimming behind a confirm dialog). Same color as `bg-inset` at 60% alpha.
 | `bg-stripe` | `rgba(49, 50, 68, 0.3)` | Preview table even-row zebra striping. Set to a translucent surface tint so it works against any backing color.
@@ -154,7 +154,7 @@ The slot names are CSS custom property names with the `--skr-` prefix dropped. F
 | Slot | Catppuccin Mocha | Purpose
 
 | `text` | `#cdd6f4` | Primary text: body copy, *strong* / _emphasis_, dialog text, button labels, CodeMirror foreground.
-| `text-muted` | `#bac2de` | Secondary text: titlebar text, blockquote attribution, image captions, dialog messages, the active gutter line number.
+| `text-muted` | `#bac2de` | Secondary text: status bar filename, blockquote attribution, image captions, dialog messages, the active gutter line number.
 | `text-dim` | `#a6adc8` | Tertiary text: status bar base color, status bar labels, file type indicator, cursor position readout, "muted" mode pill normal-mode foreground.
 | `text-faint` | `#6c7086` | Dimmest text: inactive gutter line numbers, CodeMirror comment color, CodeMirror punctuation, sync indicator at-rest color.
 |===

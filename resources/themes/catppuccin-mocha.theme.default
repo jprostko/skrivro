@@ -26,8 +26,8 @@ bg = #1e1e2e
 # block inner bg (exampleblock, sidebarblock, admonition).
 
 bg-panel = #181825
-# Chrome / elevated surfaces: titlebar, preview pane, confirm dialog,
-# help dialog, CM6 Ex command panel.
+# Chrome / elevated surfaces: status bar, preview pane, confirm
+# dialog, help dialog, CM6 Ex command panel.
 
 bg-inset = #11111b
 # Deepest layer: preview code/pre blocks, literalblock, render-error.
@@ -70,8 +70,8 @@ text = #cdd6f4
 # Primary text: body, strong/em, dialog body, button text, CM6 fg.
 
 text-muted = #bac2de
-# Secondary: titlebar text, preview quote text, table caption,
-# dialog title/message, statusbar filename, active gutter line number.
+# Secondary: statusbar filename, preview quote text, table caption,
+# dialog title/message, active gutter line number.
 
 text-dim = #a6adc8
 # Tertiary: statusbar base color, filetype label, cursor position
@@ -98,7 +98,7 @@ accent-minor = #f5c2e7
 
 link = #89b4fa
 # Links (preview + editor syntax), info admonition border, example
-# block border, Normal mode pill bg, titlebar help button default.
+# block border, Normal mode pill bg, statusbar help button default.
 
 emphasis = #fab387
 # Inline code color (preview + editor monospace/list syntax), dirty

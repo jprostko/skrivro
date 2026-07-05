@@ -1,6 +1,7 @@
 // ================= UI =================
 // Status bar rendering, help dialog, confirm dialog, pref-backed
-// toggles (titlebar / gutter / status bar / display mode / Vim mode),
+// toggles (status bar / bar position / help button / gutter / display
+// mode / Vim mode),
 // Mac help-label rewriting, user config application. Also owns the
 // host-level listeners that drive status bar state: keyup for mode
 // tracking, focusin/focusout on the Vim command panel input for
@@ -338,8 +339,8 @@ export const updateWordCount = () => {
 };
 
 // ================= Help overlay =================
-// Ctrl+Alt+H / ⌃⌘H or the "?" button in the titlebar toggles the help
-// dialog. Escape (native <dialog> behavior), the close button,
+// Ctrl+Alt+H / ⌃⌘H or the "?" button in the status bar toggles the
+// help dialog. Escape (native <dialog> behavior), the close button,
 // and clicking the backdrop all dismiss it.
 //
 // Native <dialog>.close() restores focus to whatever was active
@@ -473,13 +474,21 @@ helpDlg.addEventListener("click", (e) => {
 
 // ================= Toggles =================
 
-export const applyTitlebar = () => {
-  document.body.classList.toggle("no-titlebar", prefs.titlebarHidden);
+export const applyBarPosition = () => {
+  document.body.classList.toggle("bar-top", prefs.barPosition === "top");
 };
-export const toggleTitlebar = () => {
-  prefs.titlebarHidden = !prefs.titlebarHidden;
+export const toggleBarPosition = () => {
+  prefs.barPosition = prefs.barPosition === "top" ? "bottom" : "top";
   savePrefs();
-  applyTitlebar();
+  applyBarPosition();
+};
+export const applyHelpButton = () => {
+  document.body.classList.toggle("no-help-button", prefs.helpButtonHidden);
+};
+export const toggleHelpButton = () => {
+  prefs.helpButtonHidden = !prefs.helpButtonHidden;
+  savePrefs();
+  applyHelpButton();
 };
 export const applyGutter = () => {
   document.body.classList.toggle("no-gutter", prefs.gutterHidden);
@@ -792,7 +801,7 @@ export const applyMacModifierLabels = () => {
     mods.sort((a, b) => order.indexOf(a) - order.indexOf(b));
     kbd.textContent = mods.join("") + keys.join("");
   });
-  // The titlebar "?" button names the same help shortcut in its accessible
+  // The bar's "?" button names the same help shortcut in its accessible
   // name. That's a plain-text attribute, so it can't carry <kbd> and the
   // loop above doesn't reach it. Rewrite the keybind to the Mac form here
   // so screen readers announce the right chord (Ctrl+Alt+H -> Ctrl+Cmd+H).
@@ -1220,9 +1229,9 @@ if (wrapEl) {
   });
 }
 
-// Keep a pane focused when clicking the titlebar or status bar (split
-// and editor-only modes only: in preview-only mode the editor is
-// intentionally blurred by setDisplayMode). Both bars carry
+// Keep a pane focused when clicking the status bar (split and
+// editor-only modes only: in preview-only mode the editor is
+// intentionally blurred by setDisplayMode). The bar carries
 // `data-tauri-drag-region`, which sometimes consumes the mousedown
 // event (preserving pane focus as a side effect) and sometimes lets
 // it through (focus moves to <body>, and Ex commands silently fail
@@ -1257,8 +1266,6 @@ const chromeFocusRedirect = (e: MouseEvent) => {
     }
   });
 };
-const titlebar = document.querySelector(".titlebar");
-if (titlebar) titlebar.addEventListener("mousedown", chromeFocusRedirect as EventListener);
 statusBar.addEventListener("mousedown", chromeFocusRedirect as EventListener);
 
 // `:` auto-capture in split mode. If the editor doesn't have focus

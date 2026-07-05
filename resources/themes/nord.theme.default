@@ -16,7 +16,7 @@
 # is inverted so the preview pane (bg-panel) is darker than the
 # editor (bg), matching the visual convention of the other bundled
 # themes where the preview is the darker pane. nord1 → bg (editor),
-# nord0 → bg-panel (preview, titlebar, dialogs).
+# nord0 → bg-panel (preview, status bar, dialogs).
 bg = #3B4252
 bg-panel = #2E3440
 bg-inset = #272C36
@@ -43,8 +43,8 @@ surface-hover = #4C566A
 # numbers. The gap between nord4 and nord3 is large with no official
 # intermediate values. text-muted (#B5BCC9) and text-dim (#929AA9)
 # below are computed intermediates to fill that gap for secondary
-# and tertiary text (titlebar, statusbar labels, captions). They are
-# NOT official Nord palette colors.
+# and tertiary text (statusbar filename and labels, captions). They
+# are NOT official Nord palette colors.
 text = #D8DEE9
 text-muted = #B5BCC9
 text-dim = #929AA9

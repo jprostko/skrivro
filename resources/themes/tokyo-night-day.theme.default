@@ -11,7 +11,7 @@
 # Skrivro convention: the editor pane on the left is the BRIGHTER
 # surface, the preview pane on the right is slightly darker. Day's
 # `bg` (#e1e2e7, lightest) goes to the editor and `bg_dark` (#d0d5e3)
-# to the preview/titlebar/dialogs.
+# to the preview/status bar/dialogs.
 #
 # Shadow opacity is softened from Moon's 0.5 to 0.1 because dark
 # translucent shadows read as harsh smudges against a near-white

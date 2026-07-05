@@ -6,7 +6,7 @@
 
   /* Backgrounds */
   --skr-bg: #1e1e2e; /* primary: body, editor, scrollbar tracks */
-  --skr-bg-panel: #181825; /* chrome: titlebar, preview, dialogs, panels */
+  --skr-bg-panel: #181825; /* chrome: status bar, preview, dialogs, panels */
   --skr-bg-inset: #11111b; /* deepest: code blocks, literalblock, error bg */
   --skr-bg-backdrop: rgba(17, 17, 27, 0.6); /* dialog overlay */
   --skr-bg-stripe: rgba(49, 50, 68, 0.3); /* preview table zebra rows */
@@ -19,7 +19,7 @@
 
   /* Text */
   --skr-text: #cdd6f4; /* primary */
-  --skr-text-muted: #bac2de; /* secondary: titlebar, captions, gutter */
+  --skr-text-muted: #bac2de; /* secondary: bar filename, captions, gutter */
   --skr-text-dim: #a6adc8; /* tertiary: statusbar, labels */
   --skr-text-faint: #6c7086; /* dimmest: line numbers, comments, sync idle */
 
@@ -124,55 +124,6 @@ body {
 body {
   display: flex;
   flex-direction: column;
-}
-
-/* ---------- Titlebar ---------- */
-.titlebar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.5rem 1rem;
-  background: var(--skr-bg-panel);
-  border-bottom: 1px solid var(--skr-surface);
-  font-size: 0.85rem;
-  color: var(--skr-text-muted);
-  user-select: none;
-  flex-shrink: 0;
-}
-.titlebar .name {
-  font-weight: 500;
-}
-body.is-dirty .titlebar .name::before {
-  content: "● ";
-  color: var(--skr-emphasis);
-}
-.titlebar .help-button {
-  background: var(--skr-surface);
-  color: var(--skr-link);
-  border: none;
-  border-radius: 4px;
-  width: 1.5rem;
-  height: 1.5rem;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.titlebar .help-button:hover {
-  background: var(--skr-surface-hover);
-  color: var(--skr-accent);
-}
-.titlebar .help-button:focus-visible {
-  outline: 2px solid var(--skr-accent);
-  outline-offset: 2px;
-}
-body.no-titlebar .titlebar {
-  display: none;
 }
 
 /* ---------- Split panes ---------- */
@@ -1429,6 +1380,16 @@ body.no-statusbar .statusbar {
   display: none;
 }
 
+/* Bar position. The bar sits after .wrap in the DOM, so it renders at
+   the bottom by default. body.bar-top (persisted barPosition, toggled
+   by Ctrl+Alt+T / ⌃⌘T) lifts it above the panes via flex order, and
+   the 1px divider flips to the editor-facing side. */
+body.bar-top .statusbar {
+  order: -1;
+  border-top: none;
+  border-bottom: 1px solid var(--skr-surface);
+}
+
 /* Preview-only mode: hide editor-state status bar slots. The Vim
    mode pill and the Ln/Col cursor readout describe state that only
    makes sense when the editor is visible and receiving input. In
@@ -1485,6 +1446,41 @@ body.mode-preview .statusbar .status-word-count {
 }
 .statusbar .status-right {
   flex-shrink: 0;
+}
+
+/* Help button, the mouse path into the help dialog (same action as
+   Ctrl+Alt+H / ⌃⌘H). The bar's min-height holds its content box at
+   1.5rem (no box-sizing reset in this file), so the 1.1rem button
+   fits inside the height the bar already has. */
+.statusbar .help-button {
+  background: var(--skr-surface);
+  color: var(--skr-link);
+  border: none;
+  border-radius: 3px;
+  width: 1.1rem;
+  height: 1.1rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.statusbar .help-button:hover {
+  background: var(--skr-surface-hover);
+  color: var(--skr-accent);
+}
+.statusbar .help-button:focus-visible {
+  outline: 2px solid var(--skr-accent);
+  outline-offset: 1px;
+}
+/* Hidden via Ctrl+Alt+X / ⌃⌘X (persisted helpButtonHidden). With the
+   button display:none, the right cluster's flex gap collapses and the
+   readouts sit flush right again. */
+body.no-help-button .statusbar .help-button {
+  display: none;
 }
 
 .statusbar .status-mode-pill {

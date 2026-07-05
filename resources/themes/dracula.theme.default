@@ -24,12 +24,12 @@ surface-hover = #424450
 #
 # Dracula's official palette has only two text levels: fg (#F8F8F2) and
 # comment (#6272A4). That's a large brightness gap with no intermediate
-# shades for secondary/tertiary text (titlebar, captions, statusbar
-# labels). text-muted and text-dim below are computed midpoints between
-# fg and comment to fill that gap. They are NOT official Dracula palette
-# colors, they are interpolations chosen to produce natural-looking
-# intermediate grays that feel consistent with Dracula's cool-toned
-# aesthetic.
+# shades for secondary/tertiary text (statusbar filename and labels,
+# captions). text-muted and text-dim below are computed midpoints
+# between fg and comment to fill that gap. They are NOT official
+# Dracula palette colors, they are interpolations chosen to produce
+# natural-looking intermediate grays that feel consistent with
+# Dracula's cool-toned aesthetic.
 text = #F8F8F2
 text-muted = #ADB5CB
 text-dim = #8893B7

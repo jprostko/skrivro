@@ -47,7 +47,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { openFile, saveFile, saveFileAs, newFile, reloadFile, confirmDiscard } from "./io.js";
 import {
   toggleVim,
-  toggleTitlebar,
+  toggleBarPosition,
+  toggleHelpButton,
   toggleGutter,
   toggleStatusBar,
   setDisplayMode,
@@ -180,9 +181,9 @@ export const installMenu = async () => {
         action: toggleVim,
       }),
       await MenuItem.new({
-        text: "Toggle Titlebar",
+        text: "Toggle Status Bar Position",
         accelerator: "Cmd+Ctrl+T",
-        action: toggleTitlebar,
+        action: toggleBarPosition,
       }),
       await MenuItem.new({
         text: "Toggle Gutter",
@@ -193,6 +194,11 @@ export const installMenu = async () => {
         text: "Toggle Status Bar",
         accelerator: "Cmd+Ctrl+B",
         action: toggleStatusBar,
+      }),
+      await MenuItem.new({
+        text: "Toggle Help Button",
+        accelerator: "Cmd+Ctrl+X",
+        action: toggleHelpButton,
       }),
       await PredefinedMenuItem.new({ item: "Separator" }),
       await MenuItem.new({

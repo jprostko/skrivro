@@ -1,8 +1,8 @@
 // ================= User config =================
 // Holds the parsed skrivro.conf contents loaded from Rust at init.
 // Separate from prefs.ts (which holds localStorage-backed UI state):
-// prefs = browser-local UI preferences (Vim mode, titlebar, display
-// mode, etc.), while userConfig = external config file (fonts,
+// prefs = browser-local UI preferences (Vim mode, bar position,
+// display mode, etc.), while userConfig = external config file (fonts,
 // padding, theme, Asciidoctor safe mode, cursor position format,
 // etc.).
 //

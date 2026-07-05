@@ -104,14 +104,16 @@ import {
 // below in the keyboard shortcut handler and the init sequence.
 import { installMenu } from "./menu.js";
 import {
-  applyTitlebar,
+  applyBarPosition,
+  applyHelpButton,
   applyGutter,
   applyStatusBar,
   applyDisplayMode,
   applyMacModifierLabels,
   applyUserConfig,
   applyWidthMode,
-  toggleTitlebar,
+  toggleBarPosition,
+  toggleHelpButton,
   toggleGutter,
   toggleStatusBar,
   toggleVim,
@@ -291,10 +293,19 @@ function runSecondaryAction(letter: string): boolean {
       setDisplayMode("preview");
       return true;
     case "t":
-      toggleTitlebar();
+      // T for Top. One of the three letters with no AltGr mapping on
+      // any default European layout.
+      toggleBarPosition();
       return true;
     case "b":
       toggleStatusBar();
+      return true;
+    case "x":
+      // Show/hide the bar's "?" help button. X is AltGr-clean on all
+      // Western European and Nordic defaults, and Ctrl+Cmd+X carries
+      // no macOS system meaning (unlike Q, which locks the screen,
+      // and D, which opens the dictionary popover).
+      toggleHelpButton();
       return true;
     case "l":
       syncPreviewToCaret();
@@ -510,15 +521,17 @@ void listen("skrivro:open-file", (event) => {
 
 // Install the macOS menu bar before any user-visible state. The menu
 // only ships on Mac, since Linux/Windows would render Tauri menus
-// in-window (below the titlebar), which doesn't fit our borderless
-// keyboard-first layout there. Custom items are needed because the
-// default menu's Minimize / Close / Quit selectors don't route through
-// our dirty-buffer confirm flow, see menu.ts for the full rationale.
+// in-window (a strip above the editor), which doesn't fit our
+// borderless keyboard-first layout there. Custom items are needed
+// because the default menu's Minimize / Close / Quit selectors don't
+// route through our dirty-buffer confirm flow, see menu.ts for the
+// full rationale.
 if (isMac) {
   await installMenu();
 }
 
-applyTitlebar();
+applyBarPosition();
+applyHelpButton();
 applyGutter();
 applyStatusBar();
 applyDisplayMode();

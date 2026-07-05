@@ -7,19 +7,20 @@
   <body>
     <!-- Inline (non-module) script runs synchronously during parse, before
        the first paint. Reads prefs from localStorage and sets body classes
-       immediately so the titlebar / gutter / display-mode state is correct
-       on the very first frame, no FOUC. The module script's applyTitlebar
-       / applyGutter / applyDisplayMode calls still run later, but they're
-       no-ops because the classes are already correct. -->
+       immediately so the bar / gutter / display-mode state is correct on
+       the very first frame, no FOUC. The module script's applyStatusBar /
+       applyBarPosition / applyGutter / applyDisplayMode calls still run
+       later, but they're no-ops because the classes are already correct. -->
     <script>
       (function () {
         try {
           var p = JSON.parse(localStorage.getItem("adoc-editor-prefs-v1"));
           if (!p) return;
           var cl = document.body.classList;
-          if (p.titlebarHidden) cl.add("no-titlebar");
           if (p.gutterHidden) cl.add("no-gutter");
           if (p.statusBarHidden) cl.add("no-statusbar");
+          if (p.barPosition === "top") cl.add("bar-top");
+          if (p.helpButtonHidden) cl.add("no-help-button");
           if (p.displayMode && p.displayMode !== "split") cl.add("mode-" + p.displayMode);
         } catch (e) {}
       })();
@@ -47,25 +48,6 @@
         }
       })();
     </script>
-    <!-- data-tauri-drag-region makes the titlebar a mouse-drag handle for
-       moving the window, needed on decorationless Mac builds where there's
-       otherwise no app-level way to drag. The help button inside remains
-       clickable, since Tauri's drag-region handling excludes interactive
-       elements (buttons, inputs, etc.) from triggering drag. Users who
-       hide the titlebar via Ctrl+Alt+T / ⌃⌘T lose the drag region along
-       with it; that's an accepted tradeoff of the "minimal UI" toggle. -->
-    <header class="titlebar" data-tauri-drag-region>
-      <div data-tauri-drag-region><span class="name" id="name">untitled.adoc</span></div>
-      <button
-        type="button"
-        id="helpBtn"
-        class="help-button"
-        aria-label="Show keyboard shortcuts and commands help (Ctrl+Alt+H)"
-      >
-        ?
-      </button>
-    </header>
-
     <main class="wrap">
       <div id="src-host" class="editor-pane"></div>
       <!-- The preview is two elements: an outer .preview-pane that owns
@@ -98,15 +80,18 @@
       </div>
     </main>
 
-    <!-- Status bar: mode pill (Vim-only) + filename on the left,
-       file type + cursor position on the right. Toggled by
-       Ctrl+Alt+B / ⌃⌘B. -->
-    <!-- data-tauri-drag-region: second drag handle for the window, so users
-       who hide the titlebar via Ctrl+Alt+T / ⌃⌘T still have a way to
-       drag. All status bar slots are non-interactive (mode pill,
-       filename, filetype, position, word count, sync indicator, all
-       display-only spans with no click handlers), so nothing gets
-       swallowed by the drag behavior. -->
+    <!-- The bar: mode pill (Vim-only) + filename on the left, file type
+       + cursor position + help button on the right. Shown/hidden by
+       Ctrl+Alt+B / ⌃⌘B, moved between bottom (default) and top by
+       Ctrl+Alt+T / ⌃⌘T (body.bar-top reorders it in the flex column). -->
+    <!-- data-tauri-drag-region: the window's mouse-drag handle, needed
+       on decorationless builds where no OS chrome exists to drag. Every
+       slot except the help button is a display-only span with no click
+       handler, so dragging works anywhere on the bar. The button stays
+       clickable because Tauri's drag-region handling excludes
+       interactive elements. Users who hide the bar via Ctrl+Alt+B /
+       ⌃⌘B lose the drag region along with it, an accepted tradeoff of
+       the "minimal UI" toggle. -->
     <footer class="statusbar" id="statusbar" data-tauri-drag-region>
       <div class="status-left" data-tauri-drag-region>
         <span class="status-mode-pill" id="statusMode" data-vim-mode="normal" hidden>NORMAL</span>
@@ -118,6 +103,14 @@
         <span class="status-spellcheck" id="statusSpellcheck" hidden></span>
         <span class="status-position" id="statusPosition">Ln 1, Col 1</span>
         <span class="status-word-count" id="statusWordCount">0 words</span>
+        <button
+          type="button"
+          id="helpBtn"
+          class="help-button"
+          aria-label="Show keyboard shortcuts and commands help (Ctrl+Alt+H)"
+        >
+          ?
+        </button>
       </div>
     </footer>
 
@@ -134,7 +127,7 @@
 
     <!-- Help overlay with all keyboard shortcuts and Vim Ex commands.
        Toggled by Ctrl+Alt+H / ⌃⌘H or by clicking the "?" button in the
-       titlebar. Dismissable via Escape (native <dialog> behavior),
+       status bar. Dismissable via Escape (native <dialog> behavior),
        backdrop click, or the close button. -->
     <!-- kbd authoring convention: app-shortcut kbds are written in the
        Linux/Windows form. On Mac, applyMacModifierLabels (ui.ts) rewrites
@@ -174,7 +167,7 @@
       <h3>Display</h3>
       <div class="help-grid">
         <div class="help-key"><kbd>Ctrl+Alt+T</kbd></div>
-        <div class="help-desc">Toggle titlebar</div>
+        <div class="help-desc">Move the status bar to the top or bottom</div>
         <div class="help-key"><kbd>Ctrl+Alt+G</kbd></div>
         <div class="help-desc">Toggle gutter</div>
         <div class="help-key"><kbd>Ctrl+Alt+V</kbd></div>
@@ -188,7 +181,9 @@
         <div class="help-key"><kbd>Ctrl+Alt+H</kbd></div>
         <div class="help-desc">Toggle this help</div>
         <div class="help-key"><kbd>Ctrl+Alt+B</kbd></div>
-        <div class="help-desc">Toggle status bar</div>
+        <div class="help-desc">Show or hide the status bar</div>
+        <div class="help-key"><kbd>Ctrl+Alt+X</kbd></div>
+        <div class="help-desc">Show or hide the help button</div>
         <div class="help-key"><kbd>Ctrl+Alt+R</kbd></div>
         <div class="help-desc">Cycle format (AsciiDoc / Markdown / Text)</div>
         <div class="help-key"><kbd>Ctrl+Alt+Y</kbd></div>

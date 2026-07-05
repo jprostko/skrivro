@@ -4,18 +4,23 @@
 // properties directly (e.g., prefs.vimMode = true), then call
 // savePrefs() to persist the change to localStorage. The inline
 // pre-paint script at the start of index.html's <body> also reads
-// from PREFS_KEY to apply body classes for
-// titlebar/gutter/displayMode/statusBar state on the very first
-// frame, FOUC prevention for the UI chrome.
+// from PREFS_KEY to apply body classes for bar/gutter/displayMode
+// state on the very first frame, FOUC prevention for the UI chrome.
 
 const PREFS_KEY = "adoc-editor-prefs-v1";
 
 const defaultPrefs = {
-  titlebarHidden: false,
   vimMode: false,
   displayMode: "split",
   gutterHidden: true,
   statusBarHidden: false,
+  // Where the bar sits: "bottom" (default) or "top". Flipped by
+  // Ctrl+Alt+T / ⌃⌘T. A titlebarHidden key from older prefs may
+  // linger in saved JSON. Nothing reads it anymore.
+  barPosition: "bottom",
+  // The bar's "?" help button, hidden via Ctrl+Alt+X / ⌃⌘X for users
+  // who reach help by keyboard and want the chrome minimal.
+  helpButtonHidden: false,
   syntaxHighlighting: true,
   // Runtime spellcheck on/off. Default true so that, when spellcheck is
   // active (spellcheck-language is anything but off, and auto is now the

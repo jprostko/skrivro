@@ -66,7 +66,6 @@ const MAX_FILE_BYTES = 3 * 1024 * 1024;
 // returning null is impossible at runtime. The `!` tells TS strict
 // null checks to trust us rather than requiring defensive null
 // branches at each use site.
-const nameEl = document.getElementById("name")!;
 // confirmDlg additionally casts to HTMLDialogElement so showModal() /
 // close() type-check (those methods are on HTMLDialogElement, not
 // HTMLElement). The cast subsumes the non-null assertion.
@@ -212,7 +211,6 @@ const errMsg = (e: unknown): string => {
 // ================= Title / dirty =================
 
 export const updateTitle = () => {
-  nameEl.textContent = currentBuffer.name;
   document.body.classList.toggle("is-dirty", currentBuffer.dirty);
   const title = `${currentBuffer.dirty ? "● " : ""}${currentBuffer.name} — Skrivro`;
   document.title = title;
@@ -221,7 +219,7 @@ export const updateTitle = () => {
   getCurrentWindow()
     .setTitle(title)
     .catch((e) => console.error("setTitle failed:", e));
-  // Status bar mirrors filename + dirty indicator, so refresh it too.
+  // The bar shows the filename + dirty indicator, so refresh it too.
   refreshStatus();
 };
 

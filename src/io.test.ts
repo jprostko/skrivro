@@ -60,7 +60,6 @@ vi.mock("./ui.js", () => ({
 // in has to exist before the module loads, hence the scaffold plus a
 // dynamic import (a static import would hoist above the scaffold).
 document.body.innerHTML = `
-  <span id="name"></span>
   <dialog id="confirmDialog">
     <p id="confirmMessage"></p>
     <button id="confirmOkBtn"></button>

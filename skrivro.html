@@ -4865,10 +4865,55 @@
       out.addEventListener("mousedown", () => {
         if (prefs.displayMode === "split") {
           // Defer the focus call so the click's default behavior (text
-          // selection, link follow, etc.) isn't disturbed by an immediate
-          // focus shift in the same event-loop tick.
+          // selection, link handling, etc.) isn't disturbed by an
+          // immediate focus shift in the same event-loop tick.
           queueMicrotask(() => out.focus());
         }
+      });
+
+      // ================= Preview link handling =================
+      //
+      // Delegated click interception for every link in the rendered
+      // preview, mirroring the desktop build's rule: no click in the
+      // preview may navigate the tab away from Skrivro. Default anchor
+      // behavior here is even worse than the desktop webview's, since a
+      // relative href resolves against skrivro.html's own URL and an
+      // external one simply replaces the page, so any such click tosses
+      // the editor (and unsaved changes past the autosave's 500ms
+      // window) out of the tab.
+      //
+      // http(s) links open in a new tab via window.open with noopener,
+      // so the new page gets no handle back to the editor. Pure
+      // fragment links (#section) fall through to the browser's native
+      // scroll-to-anchor. Everything else is swallowed: relative paths
+      // are unfollowable here by constraint (no filesystem access), and
+      // other schemes (mailto:, ftp:, etc.), protocol-relative URLs,
+      // and empty hrefs (Markdown emits one for [text]()) never
+      // navigate. The desktop build additionally renders relative
+      // document links read-only in the preview, which needs the
+      // filesystem, see the README's differences table.
+      out.addEventListener("click", (e) => {
+        // Narrow to Element for closest(), guarding the exotic-target
+        // case (a Document or Window, say) that isn't in the DOM tree.
+        if (!(e.target instanceof Element)) return;
+        const a = e.target.closest("a");
+        if (!a) return;
+        const href = a.getAttribute("href");
+        // Null means the <a> has no href attribute at all, so a click
+        // on it cannot navigate. An empty string is a real href that
+        // resolves to the page itself, so it takes the catch-all
+        // preventDefault below.
+        if (href === null) return;
+        if (/^https?:\/\//i.test(href)) {
+          e.preventDefault();
+          window.open(href, "_blank", "noopener");
+          return;
+        }
+        // In-page anchors keep the browser's native scroll-to-anchor.
+        if (href.startsWith("#")) return;
+        // Everything else (relative paths, other schemes, empty hrefs)
+        // never navigates.
+        e.preventDefault();
       });
 
       // Preview-only mode: clicks on the margin areas (outside the

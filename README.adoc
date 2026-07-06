@@ -42,6 +42,9 @@ This branch exists for cases where installing the desktop application isn't an o
 | External images in preview
 | Governed by the page's Content Security Policy, not a Skrivro setting. There is no `allow-external-images` config key.
 
+| Links in the preview
+| Web links open in a new browser tab. Links to other document files do nothing: the desktop version shows the linked document read-only in the preview, which requires filesystem access that a browser page doesn't have. In-page anchor links scroll the preview in both versions.
+
 | OS integration
 | No file associations, no single-instance routing, no native menu bar, no window-state persistence. Dropping a file from the OS file manager onto the window does open it.
 

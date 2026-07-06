@@ -26,7 +26,13 @@ import { addCustomWord, removeCustomWord } from "./spellcheck/custom-words.js";
 import { render, syncPreviewToCaret, requestPreviewScrollToTop } from "./preview.js";
 import { clearAllRendererCaches } from "./renderer.js";
 import { userConfig } from "./config.js";
-import { prefs, savePrefs } from "./prefs.js";
+import {
+  prefs,
+  savePrefs,
+  isResetPending,
+  resetLocalSettings,
+  clearLocalStorage,
+} from "./prefs.js";
 import { tr } from "./i18n.js";
 import {
   refreshStatus,
@@ -270,6 +276,7 @@ export const scheduleAutosave = () => {
     // suspenders against any future code path that clears dirty
     // without going through clearDraft.
     if (!currentBuffer.dirty) return;
+    if (isResetPending()) return;
     try {
       localStorage.setItem(
         LS_KEY,
@@ -303,6 +310,7 @@ export const clearDraft = () => {
 // blank, which is what would happen without the feature anyway).
 // `path` is the absolute file path, or null for an untitled buffer.
 export const writeSessionState = async (path: string | null) => {
+  if (isResetPending()) return;
   try {
     await invoke("set_session_state", {
       state: { version: 1, lastFilePath: path },
@@ -1119,6 +1127,49 @@ Vim.defineEx("xit", "xit", exitIfDirty);
 // :xall / :xa: 'xa' is a prefix of 'xall', so one registration
 // gives both forms.
 Vim.defineEx("xall", "xa", exitIfDirty);
+
+// ================= Reset commands =================
+//
+// Deliberately Ex-only, all-caps, and full-length: the plugin's Ex
+// dispatcher matches registered names case-sensitively with no
+// abbreviation, so neither command can fire by accident, and that
+// friction is the confirmation step (no dialog by design, recovery
+// takes under a minute). Both leave skrivro.conf and theme files
+// untouched: user-authored files are never the app's to delete.
+// The armed guard (isResetPending in prefs.ts) keeps every writer
+// from re-persisting state between the reset and the restart.
+
+// :RESETSETTINGS clears persisted UI settings (the prefs key) and
+// nothing else. The autosave draft, the personal dictionary, session
+// state, and window geometry all stay.
+Vim.defineEx("RESETSETTINGS", undefined, () => {
+  resetLocalSettings();
+  vimMessage(
+    tr("All local settings have been reset to defaults. Restart the application to apply them."),
+  );
+});
+
+// :FACTORYRESET returns everything app-managed to first-launch
+// state: all webview storage (settings + autosave draft), the
+// personal dictionary (blanked, never deleted), session state, and
+// window geometry. Geometry can't be handled here directly, because
+// tauri-plugin-window-state rewrites its file on every close: the
+// factory_reset command instead drops a marker that the next launch
+// consumes before the plugin restores, so the deletion always wins.
+Vim.defineEx("FACTORYRESET", undefined, async () => {
+  clearLocalStorage();
+  try {
+    await invoke("factory_reset");
+  } catch (e) {
+    vimMessage(tr("Factory reset incomplete: %s", errMsg(e)));
+    return;
+  }
+  vimMessage(
+    tr(
+      "All local settings and data have been reset to first-launch defaults. Restart the application to apply them.",
+    ),
+  );
+});
 
 // Normal-mode mapping: gz → :syncpreview<CR>. gz is in Vim's `g`
 // namespace for extended commands and is unused in standard Vim.

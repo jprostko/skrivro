@@ -117,6 +117,11 @@ export const STRINGS_SV: Record<string, string> = {
   "Spellcheck: off (disabled in config)": "Stavningskontroll: off (inaktiverad i konfigurationen)",
   "Width mode: %s": "Breddläge: %s",
   "Table of contents: %s": "Innehållsförteckning: %s",
+  "All local settings have been reset to defaults. Restart the application to apply them.":
+    "Alla lokala inställningar har återställts till standard. Starta om programmet för att ändringarna ska gälla.",
+  "All local settings and data have been reset to first-launch defaults. Restart the application to apply them.":
+    "Alla lokala inställningar och all data har återställts till fabriksinställningar. Starta om programmet för att ändringarna ska gälla.",
+  "Factory reset incomplete: %s": "Fabriksåterställning ofullständig: %s",
   "Spellcheck is disabled in config (spellcheck-language = off)":
     "Stavningskontroll är inaktiverad i konfigurationen (spellcheck-language = off)",
   "Spellcheck is off in the editor (turn it on to add or remove words)":
@@ -152,6 +157,7 @@ export const STRINGS_SV: Record<string, string> = {
   Commands: "Kommandon",
   Width: "Bredd",
   "Table of contents": "Innehållsförteckning",
+  Reset: "Återställning",
   Spelling: "Stavning",
   Find: "Sök",
   Editing: "Redigering",
@@ -224,6 +230,12 @@ export const STRINGS_SV: Record<string, string> = {
     "Visa om åsidosättning av innehållsförteckningens synlighet är på eller av",
   "Show or hide the table of contents (mirrors Ctrl+Alt+I, resets on launch)":
     "Visa eller dölj innehållsförteckningen (motsvarar <kbd>Ctrl+Alt+I</kbd>, återställs vid start)",
+
+  // Ex command descriptions for :RESETSETTINGS and :FACTORYRESET.
+  "Reset all local settings to defaults (typed exactly as shown, restart required)":
+    "Återställ alla lokala inställningar till standard (skrivs exakt som visat, omstart krävs)",
+  "Reset settings, autosave draft, personal dictionary, and window state to first-launch defaults (typed exactly as shown, restart required, config and theme files stay)":
+    "Återställ inställningar, autosparat utkast, personlig ordlista och fönsterläge till fabriksinställningar (skrivs exakt som visat, omstart krävs, konfigurations- och temafiler behålls)",
 
   // Help dialog: placeholder labels inside <kbd><var>...</var></kbd>
   // syntax examples (e.g. ":w <var>filename</var>"). Translated even
@@ -339,7 +351,9 @@ export const translateStaticText = () => {
   ];
   selectors.forEach((sel) => {
     document.querySelectorAll(sel).forEach((el) => {
-      const key = el.textContent.trim();
+      // Collapse interior whitespace so descriptions the formatter has
+      // wrapped across HTML lines still match their single-line keys.
+      const key = el.textContent.trim().replace(/\s+/g, " ");
       const value = STRINGS_SV[key];
       if (value !== undefined) {
         el.innerHTML = value;

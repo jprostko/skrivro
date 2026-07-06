@@ -944,6 +944,41 @@ fn write_custom_words(app: tauri::AppHandle, words: Vec<String>) -> Result<(), S
     Ok(())
 }
 
+// ================= Factory reset =================
+//
+// The Rust half of :FACTORYRESET (the webview half clears its own
+// localStorage). Blanks custom-words.txt back to its header when the
+// file exists, never creating or deleting it (the file node is the
+// user's, only its content is the app's), deletes state.json, and
+// drops a marker the next launch consumes. The window-state file
+// can't be deleted here: tauri-plugin-window-state saves on every
+// close, so a deletion now would be rewritten on the way out.
+// Consuming the marker at startup, before any window exists to
+// restore, wins unconditionally. skrivro.conf and themes/ are never
+// touched by design.
+
+const FACTORY_RESET_MARKER: &str = "factory-reset-pending";
+
+#[tauri::command]
+fn factory_reset(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(path) = custom_words_path(&app) {
+        if path.exists() {
+            write_custom_words(app.clone(), Vec::new())?;
+        }
+    }
+    if let Some(path) = session_state_path(&app) {
+        let _ = std::fs::remove_file(path);
+    }
+    let dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| format!("no app-local-data dir: {e}"))?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("mkdir {}: {}", dir.display(), e))?;
+    std::fs::write(dir.join(FACTORY_RESET_MARKER), "")
+        .map_err(|e| format!("write marker: {e}"))
+}
+
 // ================= User-supplied dictionaries =================
 //
 // Skrivro bundles only the English (en-US) Hunspell dictionary. Swedish,
@@ -1440,11 +1475,29 @@ pub fn run() {
             set_session_state,
             read_custom_words,
             write_custom_words,
+            factory_reset,
             read_user_dictionary,
             take_pending_opens,
             apply_collection_behavior
         ])
         .setup(|app| {
+            // Factory-reset marker (see factory_reset): consumed here,
+            // before the window exists, so deleting the window-state
+            // file can't be undone by the plugin's save-on-close. The
+            // filename matches tauri-plugin-window-state's
+            // DEFAULT_FILENAME, which we don't customize.
+            {
+                use tauri::Manager;
+                if let Ok(dir) = app.path().app_local_data_dir() {
+                    let marker = dir.join(FACTORY_RESET_MARKER);
+                    if marker.exists() {
+                        let _ = std::fs::remove_file(dir.join(".window-state.json"));
+                        let _ = std::fs::remove_file(dir.join("state.json"));
+                        let _ = std::fs::remove_file(marker);
+                    }
+                }
+            }
+
             // Create the main window programmatically (rather than via
             // tauri.conf.json's app.windows array) so we can compute the
             // background_color and initialization_script dynamically from

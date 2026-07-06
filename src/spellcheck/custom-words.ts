@@ -15,6 +15,7 @@
 // config dir and create it on first write (mirroring set_session_state).
 
 import { invoke } from "@tauri-apps/api/core";
+import { isResetPending } from "../prefs.js";
 import { setPersonalWords } from "./index.js";
 
 // lowercased key → original-case word. The map dedupes case-insensitively
@@ -50,8 +51,13 @@ export const loadCustomWords = async (): Promise<void> => {
 export const syncCustomWordsToWorker = (): void => setPersonalWords(list());
 
 // Sync to the worker (immediate squiggle refresh) and rewrite the file.
+// After a factory reset the file write is skipped: the reset blanked
+// custom-words.txt, and re-persisting the live list would undo that
+// before the restart. The worker sync stays, so the running session
+// keeps behaving as it did, same policy as the prefs guard.
 const persist = async (): Promise<void> => {
   setPersonalWords(list());
+  if (isResetPending()) return;
   try {
     await invoke("write_custom_words", { words: list() });
   } catch (e) {

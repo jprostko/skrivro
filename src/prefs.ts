@@ -45,8 +45,41 @@ const loadPrefs = () => {
 };
 
 export const savePrefs = () => {
+  if (resetPending) return;
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  } catch {}
+};
+
+// ================= Settings reset =================
+// Both reset paths arm this guard so nothing re-persists between the
+// reset and the restart the Ex message asks for. Every writer of
+// persisted state consults it: savePrefs above, the autosave draft
+// and session-state writers in io.ts, and the personal-dictionary
+// persist in spellcheck/custom-words.ts. The live session keeps
+// behaving as configured, and the guard only falls away with the
+// restart itself.
+let resetPending = false;
+export const isResetPending = () => resetPending;
+
+// :RESETSETTINGS. Clobbers the prefs key rather than looping fields,
+// so prefs added by any later version reset too. The in-memory prefs
+// object is left alone on purpose: the running session keeps its
+// current behavior until the restart applies the defaults.
+export const resetLocalSettings = () => {
+  resetPending = true;
+  try {
+    localStorage.removeItem(PREFS_KEY);
+  } catch {}
+};
+
+// :FACTORYRESET's webview half. clear() rather than per-key removes,
+// so storage added by any later version resets too. The Rust half
+// (files and window state) is the factory_reset command in lib.rs.
+export const clearLocalStorage = () => {
+  resetPending = true;
+  try {
+    localStorage.clear();
   } catch {}
 };
 

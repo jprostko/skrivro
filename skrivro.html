@@ -1724,6 +1724,19 @@
         </div>
       </div>
 
+      <h3>Reset</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>:RESETSETTINGS</kbd></div>
+        <div class="help-desc">
+          Reset all local settings to defaults (typed exactly as shown, page reload required)
+        </div>
+        <div class="help-key"><kbd>:FACTORYRESET</kbd></div>
+        <div class="help-desc">
+          Reset settings, autosave draft, and personal dictionary to first-launch defaults (typed
+          exactly as shown, page reload required)
+        </div>
+      </div>
+
       <h2>Vim normal mode <span class="help-note">(Vim mode only)</span></h2>
 
       <h3>Modes</h3>
@@ -1858,11 +1871,46 @@
         return { ...defaultPrefs };
       };
       const savePrefs = () => {
+        if (resetPending) return;
         try {
           localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
         } catch {}
       };
       const prefs = loadPrefs();
+
+      // ================= Settings reset =================
+      // Both reset paths arm this guard so nothing re-persists between
+      // the reset and the reload the Ex message asks for. Every writer
+      // of persisted state consults it: savePrefs above, the autosave
+      // snapshot, and the custom-words persist. The live session keeps
+      // behaving as configured, and the guard only falls away with the
+      // reload itself.
+      let resetPending = false;
+      const isResetPending = () => resetPending;
+
+      // :RESETSETTINGS. Clobbers the prefs key rather than looping
+      // fields, so prefs added by any later version reset too. The
+      // in-memory prefs object is left alone on purpose: the running
+      // session keeps its current behavior until the reload applies
+      // the defaults.
+      const resetLocalSettings = () => {
+        resetPending = true;
+        try {
+          localStorage.removeItem(PREFS_KEY);
+        } catch {}
+      };
+
+      // :FACTORYRESET. localStorage is the entirety of persisted state
+      // on this build (settings, autosave draft, personal dictionary),
+      // so clear() alone is true first-launch state. clear() rather
+      // than per-key removes, so storage added by any later version
+      // resets too.
+      const clearLocalStorage = () => {
+        resetPending = true;
+        try {
+          localStorage.clear();
+        } catch {}
+      };
 
       // ================= Mutable state =================
 
@@ -2982,6 +3030,7 @@
       // until the file is re-linked. Reattaching the live handle would
       // need IndexedDB, deliberately out of scope here.
       const persistSnapshot = () => {
+        if (isResetPending()) return;
         try {
           localStorage.setItem(
             LS_KEY,
@@ -3915,10 +3964,16 @@
       const hasCustomWord = (word) => customWords.has(word.trim().toLowerCase());
 
       // Write the list, drop the stale verdicts, and refresh the squiggles.
+      // After a factory reset the storage write is skipped: re-persisting
+      // the live list would undo the wipe before the reload. The squiggle
+      // refresh stays, so the running session keeps behaving as it did,
+      // same policy as the prefs guard.
       const persistCustomWords = () => {
-        try {
-          localStorage.setItem(CUSTOM_WORDS_KEY, JSON.stringify([...customWords.values()]));
-        } catch {}
+        if (!isResetPending()) {
+          try {
+            localStorage.setItem(CUSTOM_WORDS_KEY, JSON.stringify([...customWords.values()]));
+          } catch {}
+        }
         wordCache.clear();
         editorView.dispatch({ effects: spellcheckRecompute.of(null) });
       };
@@ -5617,6 +5672,36 @@
         } else {
           vimMessage(`E474: Invalid argument "${arg}" (expected on or off)`);
         }
+      });
+
+      // ================= Reset commands =================
+      //
+      // Deliberately Ex-only, all-caps, and full-length: the plugin's
+      // Ex dispatcher matches registered names case-sensitively with no
+      // abbreviation, so neither command can fire by accident, and that
+      // friction is the confirmation step (no dialog by design,
+      // recovery takes under a minute). The armed guard (isResetPending
+      // above) keeps every writer from re-persisting state between the
+      // reset and the reload.
+
+      // :RESETSETTINGS clears persisted UI settings (the prefs key) and
+      // nothing else. The autosave draft and the personal dictionary
+      // stay.
+      Vim.defineEx("RESETSETTINGS", undefined, () => {
+        resetLocalSettings();
+        vimMessage(
+          "All local settings have been reset to defaults. Reload the page to apply them.",
+        );
+      });
+
+      // :FACTORYRESET returns this build to first-launch state, which
+      // is one wipe here: settings, autosave draft, and personal
+      // dictionary all live in localStorage.
+      Vim.defineEx("FACTORYRESET", undefined, () => {
+        clearLocalStorage();
+        vimMessage(
+          "All local settings and data have been reset to first-launch defaults. Reload the page to apply them.",
+        );
       });
 
       // Note on visual block mode: on Linux/Windows, Ctrl+V is

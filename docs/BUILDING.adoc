@@ -231,7 +231,7 @@ On older distros that ship only WebKitGTK 4.0, Tauri 2 won't work. You'd need to
 
 Tauri's Linux client-side decoration implementation has known issues on Wayland (see https://github.com/tauri-apps/tao/issues/1046[tao#1046]).
 Skrivro ships with `decorations: false` for this reason on Linux and Windows, and uses platform-specific Cocoa code on macOS to hide the chrome while keeping the predefined menu items working.
-Don't change `tauri.conf.json`'s `decorations` value unless you understand the tradeoff.
+Don't change the window builder's `decorations` calls in `src-tauri/src/lib.rs` unless you understand the tradeoff (the window is created programmatically, so `tauri.conf.json` carries no `decorations` key).
 
 === macOS: build fails with "ld: framework not found ..."
 

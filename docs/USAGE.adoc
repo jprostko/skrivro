@@ -396,7 +396,7 @@ Set via `statusbar-style` in `skrivro.conf`. See link:CONFIG.adoc[].
 
 == Closing Skrivro
 
-Skrivro ships with `decorations: false`, so there's no titlebar × button to click.
+Skrivro draws no window chrome, so there's no titlebar close button to click.
 Use these instead:
 
 [cols="1,3", options="header"]

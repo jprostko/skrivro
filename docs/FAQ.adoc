@@ -12,8 +12,10 @@ For themes, see link:THEMING.adoc[].
 
 === Where's the title bar? How do I close the window?
 
-Skrivro intentionally ships without a title bar or window controls (`decorations: false`).
-The window border, minimize/maximize/close buttons, and titlebar drag region that most apps draw are all absent.
+Skrivro intentionally ships without a visible title bar or window controls.
+On Linux and Windows the window is genuinely borderless (`decorations: false` in the window builder).
+On macOS the window stays a normal titled window with all of its chrome hidden (the title bar background, the title text, and the traffic-light buttons), which is what keeps the menu bar's window commands working.
+On every platform, the window border, minimize/maximize/close buttons, and titlebar drag region that most apps draw are absent.
 This makes the window blend cleanly into tiling window managers and reduces chrome for keyboard-driven users.
 
 Closing depends on your platform:

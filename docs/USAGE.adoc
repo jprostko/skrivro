@@ -370,6 +370,11 @@ Beyond the display-mode and format-toggle shortcuts above, several UI toggles ar
 
 All toggle states persist across launches via the prefs file (separate from the config file: prefs are UI state, config is per-user customization).
 
+[NOTE]
+====
+Two Vim-mode Ex commands reset local state: `:RESETSETTINGS` returns every setting above to its default, and `:FACTORYRESET` additionally clears the autosave draft, the personal dictionary, and the remembered window state, back to first-launch defaults. Both must be typed exactly as shown (all caps, full length), both take effect after a restart, and neither touches `skrivro.conf` or theme files. See link:FAQ.adoc[] for details.
+====
+
 == Status bar
 
 The status bar is Skrivro's single chrome strip.

@@ -179,6 +179,17 @@ Three locations, all platform-appropriate:
 All three are fully local.
 None of this data leaves your machine unless you explicitly back it up or sync your home directory.
 
+=== How do I reset settings to their defaults?
+
+From Vim mode (kbd:[Ctrl+Alt+V] if it's off), two Ex commands cover the two levels:
+
+* `:RESETSETTINGS` resets every local setting (display mode, bar position, gutter, width mode, and the rest) to its default. Your autosave draft, personal dictionary, and window size are kept.
+* `:FACTORYRESET` returns Skrivro to first-launch state: settings, the autosave draft, the personal dictionary (the file is emptied, not deleted), the remembered session state, and the window size.
+
+Both commands must be typed exactly as shown, all caps and full length, so neither can fire by accident.
+Both print a confirmation in the Vim command line and take effect on the next launch.
+Neither one touches `skrivro.conf` or your theme files.
+
 == Editor behavior
 
 === Why does the editor pane look lighter than the preview pane?

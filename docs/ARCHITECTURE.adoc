@@ -114,7 +114,7 @@ Each module owns its DOM references, its state, and its exports.
 | CodeMirror 6 setup. Constructs the `EditorView`, configures language compartments (asciidoc / markdown / text), exposes `getDoc` / `setDoc` and the live `editorView` binding. Owns the language and Vim-mode CM6 extensions.
 
 | `preview.ts`
-| Preview-pane orchestration. Calls the active renderer, injects HTML into the DOM, manages scroll-sync state, handles external link delegation (open in system browser via Tauri shell plugin), gates external image loading.
+| Preview-pane orchestration. Calls the active renderer, injects HTML into the DOM, manages scroll-sync state, intercepts every preview link click (external links open in the system browser via the Tauri shell plugin, in-page anchors scroll the preview, nothing else navigates), gates external image loading.
 
 | `renderer.ts`
 | Format-keyed dispatch and worker coordination. The `Renderer` interface returns `{ html, buildBlockMap, translateEditorLine }`. The AsciiDoc path wraps `@asciidoctor/core` plus the include preprocessor, the Markdown path wraps `markdown-it` with the GFM-alert, task-list, and emoji rules, and the text path escapes and wraps in `<pre>`. The heavy conversion runs in `render-worker.ts` (see below) so the main thread stays responsive.

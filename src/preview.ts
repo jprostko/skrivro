@@ -472,24 +472,33 @@ export const syncPreviewToCaret = () => {
   if (target) target.scrollIntoView({ block: "start" });
 };
 
-// ================= External link handling =================
+// ================= Preview link handling =================
 //
-// Hand off clicks on http(s) links in the preview pane to the user's
-// system browser via the Tauri shell plugin. Without this, clicking
-// a link in a rendered document does nothing: Tauri 2 blocks webview
-// navigation to arbitrary external URLs by default as a security
-// measure (preventing phishing-style webview hijacking), so default
-// click behavior on an external <a> is silently swallowed.
+// Delegated click interception for every link in the rendered
+// preview. One listener on the preview container with a closest()
+// lookup covers every re-render's links without re-attaching per
+// render. The governing rule: no click in the preview may navigate
+// the webview away from the app.
 //
-// Delegation (listener on the preview container, closest() lookup)
-// catches every re-render's links without re-attaching per-render.
-// Only http:// and https:// schemes are intercepted: fragment links
-// (#section) fall through to default scroll-to-anchor behavior, and
-// other schemes (mailto:, ftp:, etc.) are left to whatever the
-// webview does with them (usually nothing, which is fine).
+// http(s) links are handed off to the user's system browser via the
+// Tauri shell plugin. Tauri 2 blocks webview navigation to arbitrary
+// external URLs by default as a security measure (preventing
+// phishing-style webview hijacking), so without the handoff these
+// clicks would be silently swallowed.
 //
-// Requires the `shell:allow-open` capability to have been granted
-// with a URL scope that permits the href we're opening. See
+// Pure fragment links (#section) fall through to the webview's
+// default scroll-to-anchor behavior.
+//
+// Every other href is swallowed with preventDefault(). A relative
+// path (other.adoc, ../notes/plan.md) resolves inside the app origin,
+// which the webview will navigate to, unloading the app so it has to
+// boot again. An empty href (Markdown emits one for [text]())
+// resolves to the current URL and reloads the app the same way.
+// Remaining schemes (mailto:, ftp:, etc.) mostly no-op in the
+// webview, but they are swallowed too so the rule has no holes.
+//
+// The handoff requires the `shell:allow-open` capability to have been
+// granted with a URL scope that permits the href we're opening. See
 // src-tauri/capabilities/default.json, scoped to ^https?:// so that
 // the shell plugin will only hand off web URLs to the OS, not e.g.
 // file:// URLs that could be used to open arbitrary local files.
@@ -502,9 +511,19 @@ out.addEventListener("click", (e) => {
   const a = e.target.closest("a");
   if (!a) return;
   const href = a.getAttribute("href");
-  if (!href) return;
+  // Null means the <a> has no href attribute at all, so a click on it
+  // cannot navigate. An empty string gets no such pass: it is a real
+  // href that resolves to the current URL, so it takes the catch-all
+  // preventDefault below.
+  if (href === null) return;
   if (/^https?:\/\//i.test(href)) {
     e.preventDefault();
     shellOpen(href).catch((err) => console.error("Failed to open external URL:", href, err));
+    return;
   }
+  // In-page anchors keep the webview's native scroll-to-anchor.
+  if (href.startsWith("#")) return;
+  // Everything else (relative paths, other schemes, empty hrefs)
+  // never navigates.
+  e.preventDefault();
 });

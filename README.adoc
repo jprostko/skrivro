@@ -49,7 +49,7 @@ This branch exists for cases where installing the desktop application isn't an o
 | No file associations, no single-instance routing, no native menu bar, no window-state persistence. Dropping a file from the OS file manager onto the window does open it.
 
 | Network
-| The desktop version runs fully offline. Standalone loads its libraries from a CDN, so the first load (and the spellcheck dictionary's first download) needs network access. Later loads can run from the browser cache.
+| The desktop version runs fully offline. Standalone loads its libraries from a CDN, so the first load (and the spellcheck dictionary's first download) needs network access. The browser cache only bridges short gaps: the CDN URLs are version-floating and expire within minutes, so in practice most launches need the network.
 |===
 
 == Running

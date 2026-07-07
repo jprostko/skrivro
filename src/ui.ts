@@ -1428,7 +1428,8 @@ window.addEventListener(
     if (e.shiftKey || second) return;
     // Scope to the preview when:
     //   (a) preview element is the currently-focused element (split or
-    //       preview-only after explicit focus via Ctrl+Alt+W or click), OR
+    //       preview-only after explicit focus via Ctrl+Alt+W / ⌃⌘W or
+    //       click), OR
     //   (b) we're in preview-only mode regardless of where focus
     //       actually lives. After setDisplayMode('preview') blurs the
     //       editor, focus typically lands on <body>, and Ctrl+A on body

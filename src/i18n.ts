@@ -189,7 +189,7 @@ export const STRINGS_SV: Record<string, string> = {
     "Växla synlighet för innehållsförteckning (återställs vid start)",
   "Sync preview to cursor": "Synka förhandsvisning till markör",
   "Toggle focus between editor and preview": "Växla fokus mellan redigerare och förhandsvisning",
-  // Help dialog: find/replace (Ctrl+F keybind + :find Ex command)
+  // Help dialog: find/replace (Ctrl+F / ⌘F keybind + :find Ex command)
   "Find and replace (Vim users use :find)": "Sök och ersätt (Vim-användare använder :find)",
   "Open find and replace": "Öppna sök och ersätt",
   // Ex command descriptions for :format. The format names (asciidoc /

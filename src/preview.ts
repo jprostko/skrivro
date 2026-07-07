@@ -608,7 +608,8 @@ peekReturnBtn.addEventListener("click", exitPeek);
 // Focused text fields defer entirely: an Esc typed into the Vim Ex
 // prompt or the find panel belongs to that field's own dismissal, so
 // the first press closes the field and the next one returns (same
-// focused-input skip the `:` auto-capture and Ctrl+A handlers use).
+// focused-input skip the `:` auto-capture and Ctrl+A / ⌘A handlers
+// use).
 // With focus on the editor content, Vim keeps its own Esc jobs:
 // insert, visual, and replace each eat the first press, and only a
 // NORMAL-mode press returns. CM6's hasFocus is literally

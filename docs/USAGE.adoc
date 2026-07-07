@@ -245,8 +245,8 @@ All of these run in Vim mode by typing kbd:[:] in normal mode and then the comma
 | `:e!` / `:e! <filename>`
 | Force reload or open, discarding the dirty buffer.
 
-| `:enew`
-| New empty buffer (refuses if dirty).
+| `:new` / `:enew`
+| New empty buffer. Confirms first if the buffer has unsaved changes.
 
 | `:open`
 | Show the file-picker dialog (same as kbd:[Ctrl+O]).

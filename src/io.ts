@@ -642,6 +642,31 @@ const resolveArgPath = async (arg: string): Promise<string> => {
 };
 
 // ================= Vim Ex commands =================
+//
+// What earns an Ex command, distilled from how the shipped set grew.
+// The discriminator is "can you trust what you see":
+//
+//   - File and quit operations are vim-canonical. They exist because
+//     their Vim spellings (:w, :e, :q, :wq, :x, ZZ) are muscle
+//     memory, and they follow Vim's semantics as faithfully as the
+//     platform allows.
+//   - A stateful setting earns a command only when its state cannot
+//     be trusted by eye. Subtle state (spellcheck, syntax
+//     highlighting, the width mode, the table-of-contents override,
+//     the format) gets a report-plus-set mirror: the bare command
+//     reads the state back and an argument sets it, the way :spell
+//     and :syntax behave in real Vim.
+//   - Self-evident chrome toggles (display modes, the gutter, the
+//     bar, help, pane focus) get no Ex command. Their keybinds are
+//     the whole interface, and the screen itself already answers
+//     what state they are in.
+//   - The resets (:RESETSETTINGS, :FACTORYRESET) are the sanctioned
+//     exception to the rule that nothing user-facing may be Ex-only:
+//     their deliberate friction is the confirmation step, and the
+//     FAQ documents the manual path for everyone else.
+//
+// Every registered command ships documented in the help dialog (both
+// languages) and in USAGE.adoc.
 
 // Parse an Ex command's argString into a normalized { bang, arg } pair.
 //

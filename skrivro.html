@@ -270,6 +270,35 @@
         opacity: 1;
       }
 
+      /* Window-anchored toast for app-level messages (see appMessage
+     in the script). The Ex panel only exists with Vim mode on, so
+     feedback for vim-independent triggers lands here when the panel
+     is unavailable. Fixed to the viewport, so it shows in every
+     display mode regardless of which panes exist, and sits above
+     the status bar's band so the two never overlap. Same visual
+     treatment as the preview toast. */
+      .app-toast {
+        position: fixed;
+        bottom: 2.4rem;
+        left: 50%;
+        transform: translateX(-50%);
+        max-width: min(40rem, calc(100vw - 2rem));
+        padding: 0.4rem 0.9rem;
+        border-radius: 4px;
+        background: var(--skr-bg-panel);
+        border: 1px solid var(--skr-surface);
+        box-shadow: 0 2px 10px var(--skr-shadow);
+        color: var(--skr-text);
+        font-size: 0.95rem;
+        opacity: 0;
+        transition: opacity 150ms ease;
+        pointer-events: none;
+        z-index: 2;
+      }
+      .app-toast.visible {
+        opacity: 1;
+      }
+
       /* ---------- Preview: generic HTML ---------- */
       .preview h1,
       .preview h2,
@@ -1576,6 +1605,13 @@
         </button>
       </div>
     </footer>
+
+    <!-- Window-anchored toast for app-level messages (appMessage in
+       the script): feedback whose trigger does not need Vim (open and
+       save failures, the spellcheck download failure) lands here when
+       the Ex panel does not exist, which is whenever Vim mode is off.
+       Fixed to the viewport, visible in every display mode. -->
+    <div class="app-toast" id="appToast" role="status"></div>
 
     <!-- Fallback for browsers without File System Access API -->
     <input type="file" id="fileInput" style="display: none" />
@@ -3378,22 +3414,70 @@
       // 15000ms default for errors because 15s is a long time to stare
       // at a short message like "E37: No write since last change".
       // Still enough time to read a verbose E212 with a long path. Safe
-      // to call from any code path: if the editor isn't ready yet we
-      // no-op silently rather than throw.
+      // to call from any code path.
+      //
+      // Returns whether the message was actually delivered: false when
+      // Vim mode is off (the panel belongs to the vim extension, and an
+      // empty vimCompartment must not leave a stale wrapper rendering
+      // into nothing) or when the editor isn't ready yet. Ex-command
+      // callers ignore the result, since their own trigger implies Vim
+      // is on, and appMessage below is the router for everything with
+      // a vim-free trigger.
       const vimMessage = (text) => {
-        if (!editorView) return;
+        if (!prefs.vimMode) return false;
+        if (!editorView) return false;
         const cm = getCM(editorView);
-        if (!cm || typeof cm.openNotification !== "function") return;
+        if (!cm || typeof cm.openNotification !== "function") return false;
         const div = document.createElement("div");
         div.className = "cm-vim-message";
         div.style.whiteSpace = "pre";
         div.textContent = text;
         cm.openNotification(div, { bottom: true, duration: 5000 });
+        return true;
+      };
+
+      const appToast = document.getElementById("appToast");
+      let appToastTimer = null;
+
+      // Window-anchored toast, the vim-free half of the two message
+      // channels (see appMessage below for the routing). The Ex panel
+      // exists only with Vim mode on, so vim-independent feedback lands
+      // here when the panel is unavailable. Fixed to the viewport (see
+      // .app-toast in the CSS), so it shows in every display mode and
+      // with the status bar hidden. Duration matches the Ex panel's
+      // 5000ms so the same message lives equally long in either
+      // channel. Re-showing restarts the timer, and the newest message
+      // wins.
+      const showAppToast = (text) => {
+        appToast.textContent = text;
+        appToast.classList.add("visible");
+        if (appToastTimer !== null) clearTimeout(appToastTimer);
+        appToastTimer = setTimeout(() => {
+          appToast.classList.remove("visible");
+          appToastTimer = null;
+        }, 5000);
+      };
+
+      // App-level message router for feedback whose trigger does not
+      // need Vim: open and save failures (the Ctrl+Alt+O / ⌃⌘O picker,
+      // drag-drop, Ctrl+S / ⌘S, and Ctrl+Shift+S / ⇧⌘S) and the
+      // spellcheck dictionary download failure (behind Ctrl+Alt+K /
+      // ⌃⌘K, or the default-on load at startup). Availability fallback:
+      // the Ex panel when it exists (Vim mode on), the window toast
+      // otherwise. Vim users therefore see exactly the messages they
+      // always did, while non-vim users stop getting silence, which is
+      // what the vim-gated panel gave them for every one of these
+      // before this router existed. Ex-only feedback keeps calling
+      // vimMessage directly.
+      const appMessage = (text) => {
+        if (vimMessage(text)) return;
+        showAppToast(text);
       };
 
       // Extract a human-readable message from an unknown thrown value
-      // for inclusion in a vimMessage() error string. Keeps the catch
-      // sites below from rendering "[object Object]" to the user.
+      // for inclusion in a message string (appMessage or vimMessage).
+      // Keeps the catch sites below from rendering "[object Object]"
+      // to the user.
       const errMsg = (e) => (e instanceof Error ? e.message : String(e));
 
       // ================= File-size guard =================
@@ -3429,10 +3513,11 @@
 
       // Thrown by readDocumentText when a file exceeds MAX_FILE_BYTES.
       // The Error message is the ready-to-display, user-facing string:
-      // call sites catch this type, show e.message via vimMessage, and
-      // skip the load. A distinct class (rather than a flag on a plain
-      // Error) is what lets each catch tell "too large" apart from an
-      // ordinary open failure and message it correctly.
+      // call sites catch this type, show e.message via appMessage
+      // (vimMessage on the Ex-only :e reload path), and skip the load.
+      // A distinct class (rather than a flag on a plain Error) is what
+      // lets each catch tell "too large" apart from an ordinary open
+      // failure and message it correctly.
       class FileTooLargeError extends Error {
         constructor(name, size) {
           super(
@@ -3479,11 +3564,11 @@
               } catch (e) {
                 if (e.name === "AbortError") return; // user canceled the picker
                 if (e instanceof FileTooLargeError) {
-                  vimMessage(e.message);
+                  appMessage(e.message);
                   return;
                 }
                 console.error(e);
-                vimMessage(`E484: Can't open file (${errMsg(e)})`);
+                appMessage(`E484: Can't open file (${errMsg(e)})`);
               }
             })();
           } else {
@@ -3510,11 +3595,11 @@
           render();
         } catch (e) {
           if (e instanceof FileTooLargeError) {
-            vimMessage(e.message);
+            appMessage(e.message);
             return;
           }
           console.error(e);
-          vimMessage(`E484: Can't open file (${errMsg(e)})`);
+          appMessage(`E484: Can't open file (${errMsg(e)})`);
         }
       });
 
@@ -3538,7 +3623,7 @@
       // dragover's preventDefault is required for the drop event to
       // fire at all. Without it the browser opens the dragged file in
       // place of the page. Non-file drops (text, URLs) and unreadable
-      // files fail the same way openFile's catch path does: vimMessage
+      // files fail the same way openFile's catch path does: appMessage
       // with E484.
       document.addEventListener("dragover", (e) => {
         e.preventDefault();
@@ -3572,11 +3657,11 @@
                 render();
               } catch (err) {
                 if (err instanceof FileTooLargeError) {
-                  vimMessage(err.message);
+                  appMessage(err.message);
                   return;
                 }
                 console.error(err);
-                vimMessage(`E484: Can't open file (${errMsg(err)})`);
+                appMessage(`E484: Can't open file (${errMsg(err)})`);
               }
             })();
           });
@@ -3599,11 +3684,11 @@
               render();
             } catch (err) {
               if (err instanceof FileTooLargeError) {
-                vimMessage(err.message);
+                appMessage(err.message);
                 return;
               }
               console.error(err);
-              vimMessage(`E484: Can't open file (${errMsg(err)})`);
+              appMessage(`E484: Can't open file (${errMsg(err)})`);
             }
           })();
         });
@@ -3620,7 +3705,7 @@
             persistSnapshot();
           } catch (e) {
             console.error(e);
-            vimMessage(`E212: Can't open file for writing: ${currentName} (${errMsg(e)})`);
+            appMessage(`E212: Can't open file for writing: ${currentName} (${errMsg(e)})`);
           }
         } else {
           downloadFile(currentName);
@@ -3647,7 +3732,7 @@
           } catch (e) {
             if (e.name === "AbortError") return; // user canceled the picker
             console.error(e);
-            vimMessage(`E212: Can't open file for writing: ${currentName} (${errMsg(e)})`);
+            appMessage(`E212: Can't open file for writing: ${currentName} (${errMsg(e)})`);
           }
         } else {
           const name = prompt("Save as:", currentName) || currentName;
@@ -4814,7 +4899,7 @@
             if (!spellEnabling) return;
             spellEnabling = false;
             editorView.dispatch({ effects: spellCompartment.reconfigure([]) });
-            vimMessage("Spellcheck failed to load (check your network)");
+            appMessage("Spellcheck failed to load (check your network)");
           });
       };
 
@@ -5590,9 +5675,11 @@
       // single "quit blocked" message.
       //
       // saveFile() is async and not awaited in the :wq / :x families.
-      // If the save errors (E212), its vimMessage will land in the
-      // same panel and overwrite closeBlocked()'s message: save
-      // errors outrank the informational close-blocked notice.
+      // If the save errors (E212), its message routes through
+      // appMessage, which lands in this same panel whenever Vim is on
+      // (the only way these commands fire) and overwrites
+      // closeBlocked()'s notice: save errors outrank the informational
+      // close-blocked message.
       const closeBlocked = () => {
         vimMessage("Quit blocked by the browser. Please close the tab/window manually.");
       };
@@ -5946,7 +6033,7 @@
           .catch((err) => {
             console.error("spellcheck failed to load:", err);
             engineLoading = null;
-            vimMessage("Spellcheck failed to load (check your network)");
+            appMessage("Spellcheck failed to load (check your network)");
           });
       }
 

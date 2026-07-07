@@ -294,6 +294,25 @@ export const STRINGS_SV: Record<string, string> = {
   "Remove the word under the cursor from your custom dictionary (same as :spellundo)":
     "Ta bort ordet under markören från din egen ordlista (samma som :spellundo)",
 
+  // Preview link handling: the peek banner label (runtime tr), the
+  // banner's return button (static HTML, swept by translateStaticText),
+  // and the pane-local toast messages for swallowed link clicks.
+  "Viewing %s": "Visar %s",
+  Return: "Tillbaka",
+  "Unable to follow this link": "Det går inte att följa den här länken",
+  "Link target not found: %s": "Länkmålet hittades inte: %s",
+
+  // Help dialog: preview links section. The .help-plain spans in the
+  // key column are swept alongside the descriptions.
+  "Preview links": "Länkar i förhandsvisningen",
+  "Web link": "Webblänk",
+  "File link": "Fillänk",
+  "Opens in your system browser": "Öppnas i systemets webbläsare",
+  "Shows the linked document in the preview without leaving your file. Return with the bar at the top of the preview, by editing, or with sync to cursor.":
+    "Visar det länkade dokumentet i förhandsvisningen utan att lämna din fil. Gå tillbaka med fältet överst i förhandsvisningen, genom att redigera eller med synka till markör.",
+  "Return to your document (from the editor with Vim on, NORMAL mode only)":
+    "Gå tillbaka till ditt dokument (från redigeraren med Vim på, endast i NORMAL-läge)",
+
   // Preview pane: external-image gate placeholder. The literal
   // `allow-external-images` config-key name stays English in both
   // languages (input syntax).
@@ -346,8 +365,12 @@ export const translateStaticText = () => {
     // contents stay English (Ex commands and key names don't
     // translate) but the placeholder label is a user-facing word.
     ".help-dialog .help-key var",
+    // Plain-prose key-column labels (the Preview links section uses
+    // the key column for click classes rather than keystrokes).
+    ".help-dialog .help-plain",
     "#confirmCancelBtn",
     "#confirmOkBtn",
+    "#peekReturnBtn",
   ];
   selectors.forEach((sel) => {
     document.querySelectorAll(sel).forEach((el) => {

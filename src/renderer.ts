@@ -623,12 +623,22 @@ export const asciidoctorRenderer: Renderer = {
     // icon-note"> etc.), later swapped for inline SVGs by
     // replaceAdmonitionIcons, and styling for the icons lives in
     // styles.css (see .admonitionblock td.icon [class^="fa icon-"]).
+    // relfilesuffix makes inter-document xref targets keep their
+    // source extension (xref:other.adoc[] renders href="other.adoc"
+    // instead of the default "other.html"), which is what lets the
+    // preview's link interception resolve the target on disk.
+    // Self-referencing xrefs still collapse to pure #fragment hrefs
+    // regardless of the suffix.
     //
     // Typed Record<string, unknown> so the docname/docfile/docdir keys
     // can be spread on below without TS narrowing it to the initial
     // literal shape. Asciidoctor attribute values span strings,
     // numbers, and booleans, so unknown is the right width.
-    let attributes: Record<string, unknown> = { showtitle: true, icons: "font" };
+    let attributes: Record<string, unknown> = {
+      showtitle: true,
+      icons: "font",
+      relfilesuffix: ".adoc",
+    };
 
     if (context.path) {
       const baseDir = await dirname(context.path);

@@ -131,6 +131,49 @@ The two panes stay independently scrollable, and you ask for a sync when you wan
 
 A small indicator in the status bar flashes when sync fires, so you know the keystroke registered even when the preview was already showing the right block.
 
+== Preview links
+
+Links in the rendered preview never navigate the app itself.
+What a click does depends on the link:
+
+[cols="1,2", options="header"]
+|===
+| Link | Click behavior
+
+| Web link (`http`, `https`)
+| Opens in your system browser.
+
+| In-page anchor (`#section`)
+| Scrolls the preview to that section.
+
+| Relative link to a document (`.adoc`, `.asciidoc`, `.md`, `.markdown`, `.txt`)
+| Shows that document read-only in the preview, without leaving your file.
+
+| Anything else (`mailto:`, other schemes, missing or non-document targets)
+| Nothing, with a short notice in the preview saying the link can't be followed.
+|===
+
+Following a document link is called a peek.
+A bar appears at the top of the preview naming the file you're viewing, and your own document, the editor, and any unsaved changes are untouched.
+Links inside the peeked document keep working: web links still open your browser, anchors still scroll, and relative links show the next document.
+
+To return to your own document, do any of the following:
+
+* Click the button in the bar at the top of the preview.
+* Press kbd:[Esc]. With focus in the editor and Vim mode on, this returns only from NORMAL mode, so insert, visual, and the Ex prompt keep their Esc and a second press returns.
+* Edit your document (the preview follows your edits, so it comes back).
+* Open a file, create a new one, or toggle the format.
+* Sync the preview to the cursor (kbd:[Ctrl+Alt+L], `gz`, or `:syncpreview`), which returns first and then syncs.
+* Switch to editor-only display, which ends the peek since the preview is hidden.
+
+There is no history and no nesting to unwind.
+However deep you follow a chain of links, returning is always one step, and the preview scroll position of your own document is restored when you arrive.
+
+While peeking, the word count shown in preview-only mode reflects the peeked document.
+
+Relative links in an untitled buffer can't be followed, since there is no directory to resolve them against.
+Save the file first.
+
 == Find and replace
 
 kbd:[Ctrl+F] opens a find-and-replace panel at the top of the editor.

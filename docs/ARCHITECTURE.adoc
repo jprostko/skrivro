@@ -114,10 +114,10 @@ Each module owns its DOM references, its state, and its exports.
 | CodeMirror 6 setup. Constructs the `EditorView`, configures language compartments (asciidoc / markdown / text), exposes `getDoc` / `setDoc` and the live `editorView` binding. Owns the language and Vim-mode CM6 extensions.
 
 | `preview.ts`
-| Preview-pane orchestration. Calls the active renderer, injects HTML into the DOM, manages scroll-sync state, intercepts every preview link click (external links open in the system browser via the Tauri shell plugin, in-page anchors scroll the preview, nothing else navigates), gates external image loading.
+| Preview-pane orchestration. Calls the active renderer, injects HTML into the DOM, manages scroll-sync state, owns the preview link handling (external links open in the system browser via the Tauri shell plugin, in-page anchors scroll, relative document links render a read-only peek with a return banner, everything else is swallowed with a toast, and nothing ever navigates the webview), gates external image loading.
 
 | `renderer.ts`
-| Format-keyed dispatch and worker coordination. The `Renderer` interface returns `{ html, buildBlockMap, translateEditorLine }`. The AsciiDoc path wraps `@asciidoctor/core` plus the include preprocessor, the Markdown path wraps `markdown-it` with the GFM-alert, task-list, and emoji rules, and the text path escapes and wraps in `<pre>`. The heavy conversion runs in `render-worker.ts` (see below) so the main thread stays responsive.
+| Format-keyed dispatch and worker coordination. The `Renderer` interface returns `{ fragment, buildBlockMap, translateEditorLine, tocPosition }`. The AsciiDoc path wraps `@asciidoctor/core` plus the include preprocessor, the Markdown path wraps `markdown-it` with the GFM-alert, task-list, and emoji rules, and the text path escapes and wraps in `<pre>`. The heavy conversion runs in `render-worker.ts` (see below) so the main thread stays responsive.
 
 | `io.ts`
 | File operations: `openFile`, `saveFile`, `saveFileAs`, `newFile`, `loadFileFromPath`, `confirmDiscard`. The `currentBuffer` state object (path, name, format, dirty). Vim Ex command registration. Autosave debouncer. Session state read/write.

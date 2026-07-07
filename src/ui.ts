@@ -21,6 +21,7 @@ import {
 } from "./editor.js";
 import { getSpellcheckStatus } from "./spellcheck/index.js";
 import { currentBuffer, setBufferFormat, vimMessage, type Format } from "./io.js";
+import { exitPeek } from "./preview.js";
 import { userConfig, type SkrivroConfig } from "./config.js";
 
 // ================= DOM refs =================
@@ -77,7 +78,7 @@ let inCommandMode = false;
 // to 'insert'. Plugin source reference: the `enterInsertMode`
 // action with `actionArgs.replace` calls cm.toggleOverwrite(true)
 // and sets the keyMap to 'vim-replace'.
-const readVimMode = () => {
+export const readVimMode = () => {
   if (!prefs.vimMode) return null;
   if (inCommandMode) return "command";
   if (!editorView) return "normal";
@@ -832,9 +833,10 @@ export const applyDisplayMode = () => {
 // that visually marks the active pane. Each press moves focus AND
 // the outline to the other pane.
 //
-// "Has focus" is read via editorView.hasFocus (a live CM6 getter that
-// handles nested focusable elements inside the editor: search panel
-// input, Vim Ex input, and the like all count as "editor has focus").
+// "Has focus" is read via editorView.hasFocus, which is true only
+// when the editor's contentDOM itself is the active element (a
+// focused search or Vim Ex panel input reads as false, and toggling
+// from those lands back on the editor content, not the preview). If
 // the editor has focus, move to the preview element (which is
 // programmatically focusable via tabindex="-1" on the div). Otherwise
 // move to the editor. This covers both the "preview is focused" case
@@ -889,6 +891,9 @@ export const setDisplayMode = (mode: string) => {
   prefs.displayMode = mode;
   savePrefs();
   applyDisplayMode();
+  // Hiding the preview ends any active peek: the peek is a transient
+  // reading surface and never outlives its pane. No-op when idle.
+  if (mode === "editor") exitPeek();
   if (!editorView) return;
   // Focus/blur the editor explicitly on mode transition so the
   // newly-visible surface has predictable focus state:

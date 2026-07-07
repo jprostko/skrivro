@@ -76,7 +76,27 @@
          on .preview-pane still fires when its inner descendant is
          focused, which lights up the active-pane outline. -->
       <div class="preview-pane">
+        <!-- Peek banner: visible (via body.peeking) while the preview
+           shows a linked document instead of the user's own. A sibling
+           of .preview-scroll, NOT a child of #out, so its text never
+           counts into the preview word count. It overlays the pane's
+           top edge, and a companion CSS rule pushes .preview-scroll's
+           top inset down by the banner height so content scrolls
+           beneath the banner's lower edge instead of hiding under it.
+           The button is the mouse path back and Esc the keyboard one
+           (editor focus keeps Esc for Vim outside NORMAL mode).
+           Editing, opening a file, toggling format, and preview sync
+           all return too. -->
+        <div class="peek-banner" id="peekBanner">
+          <span class="peek-banner-label" id="peekBannerLabel"></span>
+          <button type="button" class="peek-return" id="peekReturnBtn">Return</button>
+        </div>
         <div class="preview-scroll" id="out" tabindex="-1"></div>
+        <!-- Pane-local toast for swallowed link clicks. The Ex panel
+           hides with the editor in preview-only mode and the status
+           bar can be hidden outright, so neither can carry this
+           feedback. pointer-events: none so it never eats clicks. -->
+        <div class="preview-toast" id="previewToast" role="status"></div>
       </div>
     </main>
 
@@ -204,6 +224,21 @@
         <div class="help-desc">Toggle focus between editor and preview</div>
         <div class="help-key"><kbd>Ctrl+F</kbd></div>
         <div class="help-desc">Find and replace (Vim users use :find)</div>
+      </div>
+
+      <h3>Preview links</h3>
+      <div class="help-grid">
+        <div class="help-key"><span class="help-plain">Web link</span></div>
+        <div class="help-desc">Opens in your system browser</div>
+        <div class="help-key"><span class="help-plain">File link</span></div>
+        <div class="help-desc">
+          Shows the linked document in the preview without leaving your file. Return with the bar at
+          the top of the preview, by editing, or with sync to cursor.
+        </div>
+        <div class="help-key"><kbd>Esc</kbd></div>
+        <div class="help-desc">
+          Return to your document (from the editor with Vim on, NORMAL mode only)
+        </div>
       </div>
 
       <h2>Vim Ex commands <span class="help-note">(Vim mode only)</span></h2>

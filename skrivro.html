@@ -1694,6 +1694,35 @@
         <div class="help-desc">Show the file picker dialog</div>
       </div>
 
+      <h3>Quit</h3>
+      <div class="help-grid">
+        <div class="help-key"><kbd>:q</kbd> <kbd>:quit</kbd></div>
+        <div class="help-desc">
+          Quit request: refuses if dirty, otherwise reports that the tab must be closed by hand,
+          since a page cannot close its own tab
+        </div>
+        <div class="help-key"><kbd>:q!</kbd> <kbd>:quit!</kbd></div>
+        <div class="help-desc">
+          Discard unsaved changes without prompting, then the close-the-tab report
+        </div>
+        <div class="help-key"><kbd>:wq</kbd></div>
+        <div class="help-desc">Save (always writes), then the close-the-tab report</div>
+        <div class="help-key"><kbd>:x</kbd> <kbd>:exit</kbd> <kbd>:xit</kbd></div>
+        <div class="help-desc">
+          Save only if dirty, then the close-the-tab report (no write on a clean buffer)
+        </div>
+        <div class="help-key"><kbd>:x!</kbd></div>
+        <div class="help-desc">Force save even if clean, then the close-the-tab report</div>
+        <div class="help-key"><kbd>:qa</kbd> <kbd>:qall</kbd></div>
+        <div class="help-desc">Quit all (single-buffer alias for :q)</div>
+        <div class="help-key"><kbd>:qa!</kbd> <kbd>:qall!</kbd></div>
+        <div class="help-desc">Force quit all</div>
+        <div class="help-key"><kbd>:wqa</kbd> <kbd>:wqall</kbd></div>
+        <div class="help-desc">Save all, quit all</div>
+        <div class="help-key"><kbd>:xa</kbd> <kbd>:xall</kbd></div>
+        <div class="help-desc">Save if dirty (all), quit all</div>
+      </div>
+
       <h3>Preview</h3>
       <div class="help-grid">
         <div class="help-key"><kbd>:syncpreview</kbd> <kbd>:syncp</kbd></div>
@@ -5418,6 +5447,35 @@
       );
 
       // ================= Vim Ex commands =================
+      //
+      // What earns an Ex command, distilled from how the shipped set
+      // grew. The discriminator is "can you trust what you see":
+      //
+      //   - File and quit operations are vim-canonical. They exist
+      //     because their Vim spellings (:w, :e, :q, :wq, :x, ZZ) are
+      //     muscle memory, and they follow Vim's semantics as
+      //     faithfully as the platform allows, which in a browser
+      //     means the :w filename family is ignored and the :q family
+      //     reports that the tab must be closed by hand.
+      //   - A stateful setting earns a command only when its state
+      //     cannot be trusted by eye. Subtle state (spellcheck, syntax
+      //     highlighting, the width mode, the table-of-contents
+      //     override, the format) gets a report-plus-set mirror: the
+      //     bare command reads the state back and an argument sets it,
+      //     the way :spell and :syntax behave in real Vim.
+      //   - Self-evident chrome toggles (display modes, the gutter,
+      //     the bar, help, pane focus) get no Ex command. Their
+      //     keybinds are the whole interface, and the screen itself
+      //     already answers what state they are in.
+      //   - The resets (:RESETSETTINGS, :FACTORYRESET) are the
+      //     sanctioned exception to the rule that nothing user-facing
+      //     may be Ex-only: their deliberate friction is the
+      //     confirmation step, and on this build both amount to
+      //     clearing localStorage, which anyone can also do by hand.
+      //
+      // Every registered command ships documented in the help dialog
+      // (English-only on this build), with the README's differences
+      // table covering where behavior diverges from the desktop build.
 
       // Parse an Ex command's argString into a normalized { bang, arg } pair.
       //
@@ -5571,23 +5629,25 @@
         closeBlocked();
       });
 
-      // :x / :x! / :xit: save if dirty, then close-blocked.
-      Vim.defineEx("xit", "x", () => {
-        if (dirty) saveFile();
+      // :x / :xit: save if dirty, then close-blocked. The bang (:x!)
+      // force-saves even on a clean buffer, matching the desktop
+      // build and Vim.
+      Vim.defineEx("xit", "x", (cm, params) => {
+        if (dirty || parseExArgs(params).bang) saveFile();
         closeBlocked();
       });
 
       // :xa / :xall collapse to :x (single buffer).
-      Vim.defineEx("xall", "xa", () => {
-        if (dirty) saveFile();
+      Vim.defineEx("xall", "xa", (cm, params) => {
+        if (dirty || parseExArgs(params).bang) saveFile();
         closeBlocked();
       });
 
       // :exit is Vim's own command name (alias for :x), a
       // separate registration even though the body is
       // identical.
-      Vim.defineEx("exit", "exi", () => {
-        if (dirty) saveFile();
+      Vim.defineEx("exit", "exi", (cm, params) => {
+        if (dirty || parseExArgs(params).bang) saveFile();
         closeBlocked();
       });
 

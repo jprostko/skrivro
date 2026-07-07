@@ -20,7 +20,7 @@ import {
   getCM,
 } from "./editor.js";
 import { getSpellcheckStatus } from "./spellcheck/index.js";
-import { currentBuffer, setBufferFormat, vimMessage, type Format } from "./io.js";
+import { currentBuffer, setBufferFormat, vimMessage, appMessage, type Format } from "./io.js";
 import { exitPeek } from "./preview.js";
 import { userConfig, type SkrivroConfig } from "./config.js";
 
@@ -43,6 +43,7 @@ const statusSpellcheck = document.getElementById("statusSpellcheck")!;
 const helpDlg = document.getElementById("helpDialog") as HTMLDialogElement;
 const helpBtn = document.getElementById("helpBtn")!;
 const helpCloseBtn = document.getElementById("helpCloseBtn")!;
+const appToast = document.getElementById("appToast")!;
 const previewPaneEl = document.querySelector(".preview-pane");
 
 // ================= Status bar =================
@@ -339,6 +340,28 @@ export const updateWordCount = () => {
   statusWordCount.textContent = `${count.toLocaleString()} ${label}`;
 };
 
+// ================= App toast =================
+//
+// The window-anchored half of the app's two message channels, see
+// appMessage in io.ts for the routing. The Ex panel exists only with
+// Vim mode on, so vim-independent feedback lands here when the panel
+// is unavailable. Fixed to the viewport (styles.css .app-toast), so
+// it shows in every display mode, with either pane hidden, and with
+// the status bar hidden too. Duration matches the Ex panel's 5000ms
+// so the same message lives equally long in either channel.
+// Re-showing restarts the timer, and the newest message wins.
+let appToastTimer: ReturnType<typeof setTimeout> | null = null;
+
+export const showAppToast = (text: string) => {
+  appToast.textContent = text;
+  appToast.classList.add("visible");
+  if (appToastTimer !== null) clearTimeout(appToastTimer);
+  appToastTimer = setTimeout(() => {
+    appToast.classList.remove("visible");
+    appToastTimer = null;
+  }, 5000);
+};
+
 // ================= Help overlay =================
 // Ctrl+Alt+H / ⌃⌘H or the "?" button in the status bar toggles the
 // help dialog. Escape (native <dialog> behavior), the close button,
@@ -539,7 +562,7 @@ const SPELLCHECK_OFF_MSG = "Spellcheck is disabled in config (spellcheck-languag
 // Ctrl+Alt+K / ⌃⌘K and the :spell Ex command.
 export const toggleSpellcheck = () => {
   if (!spellcheckConfigured()) {
-    vimMessage(tr(SPELLCHECK_OFF_MSG));
+    appMessage(tr(SPELLCHECK_OFF_MSG));
     return;
   }
   prefs.spellcheck = !prefs.spellcheck;

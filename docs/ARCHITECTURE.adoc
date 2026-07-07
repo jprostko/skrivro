@@ -120,10 +120,10 @@ Each module owns its DOM references, its state, and its exports.
 | Format-keyed dispatch and worker coordination. The `Renderer` interface returns `{ fragment, buildBlockMap, translateEditorLine, tocPosition }`. The AsciiDoc path wraps `@asciidoctor/core` plus the include preprocessor, the Markdown path wraps `markdown-it` with the GFM-alert, task-list, and emoji rules, and the text path escapes and wraps in `<pre>`. The heavy conversion runs in `render-worker.ts` (see below) so the main thread stays responsive.
 
 | `io.ts`
-| File operations: `openFile`, `saveFile`, `saveFileAs`, `newFile`, `loadFileFromPath`, `confirmDiscard`. The `currentBuffer` state object (path, name, format, dirty). Vim Ex command registration. Autosave debouncer. Session state read/write.
+| File operations: `openFile`, `saveFile`, `saveFileAs`, `newFile`, `loadFileFromPath`, `confirmDiscard`. The `currentBuffer` state object (path, name, format, dirty). Vim Ex command registration. The message channels: `vimMessage` into the Ex panel, and the `appMessage` router that falls back to the window toast when Vim mode is off. Autosave debouncer. Session state read/write.
 
 | `ui.ts`
-| DOM-level UI: status bar updates (mode pill, dirty indicator, cursor position, word count), display mode switching, status-bar / bar-position / help-button / gutter toggles, help dialog, confirm dialog, `applyUserConfig` for translating Rust config values into CSS custom properties.
+| DOM-level UI: status bar updates (mode pill, dirty indicator, cursor position, word count), display mode switching, status-bar / bar-position / help-button / gutter toggles, help dialog, confirm dialog, the window toast (`showAppToast`), `applyUserConfig` for translating Rust config values into CSS custom properties.
 
 | `menu.ts`
 | macOS menu bar. Custom items for Quit / Close / Minimize that route through `onCloseRequested` for dirty-buffer protection. `installMenu()` is called only on Mac at init time.

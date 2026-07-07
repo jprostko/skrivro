@@ -145,6 +145,13 @@
       </div>
     </dialog>
 
+    <!-- Window-anchored toast for app-level messages (appMessage in
+       io.ts): feedback whose trigger does not need Vim (save failures,
+       oversized files, the spellcheck-disabled notice) lands here when
+       the Ex panel does not exist, which is whenever Vim mode is off.
+       Fixed to the viewport, visible in every display mode. -->
+    <div class="app-toast" id="appToast" role="status"></div>
+
     <!-- Help overlay with all keyboard shortcuts and Vim Ex commands.
        Toggled by Ctrl+Alt+H / ⌃⌘H or by clicking the "?" button in the
        status bar. Dismissable via Escape (native <dialog> behavior),

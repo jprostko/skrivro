@@ -317,6 +317,35 @@ body.peeking .preview-scroll {
   opacity: 1;
 }
 
+/* Window-anchored toast for app-level messages (see showAppToast in
+   ui.ts and the appMessage router in io.ts). The Ex panel only
+   exists with Vim mode on, so feedback for vim-independent triggers
+   lands here when the panel is unavailable. Fixed to the viewport,
+   so it shows in every display mode regardless of which panes
+   exist, and sits above the status bar's band so the two never
+   overlap. Same visual treatment as the preview toast. */
+.app-toast {
+  position: fixed;
+  bottom: 2.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(40rem, calc(100vw - 2rem));
+  padding: 0.4rem 0.9rem;
+  border-radius: 4px;
+  background: var(--skr-bg-panel);
+  border: 1px solid var(--skr-surface);
+  box-shadow: 0 2px 10px var(--skr-shadow);
+  color: var(--skr-text);
+  font-size: 0.95rem;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+  z-index: 2;
+}
+.app-toast.visible {
+  opacity: 1;
+}
+
 /* Active-pane indicator, split mode only. The 1px column at the
    boundary between the panes (which is .editor-pane's `border-right`,
    declared further up) acts as a pivot: surface when neither pane is

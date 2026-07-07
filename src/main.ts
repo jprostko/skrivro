@@ -93,7 +93,7 @@ import {
   currentBuffer,
   detectFormat,
   updateTitle,
-  vimMessage,
+  appMessage,
   readDocumentText,
   FileTooLargeError,
   DEFAULT_DOC,
@@ -477,7 +477,7 @@ void appWindow.onCloseRequested((event) => {
 // loadFileFromPath: the catch in that function logs to console and
 // leaves the existing buffer untouched. No visible error to the
 // user (except an oversize file, whose FileTooLargeError message is
-// surfaced via vimMessage), and the dropped-file just doesn't load,
+// surfaced via appMessage), and the dropped-file just doesn't load,
 // buffer stays as it was.
 // If this becomes a frequent confusion point we could surface a
 // toast or dialog, but for now the silent-on-invalid behavior
@@ -602,9 +602,10 @@ try {
 let initialDoc = DEFAULT_DOC;
 let hasDraft = false;
 // A startup-time message (e.g. a launch file rejected by the
-// file-size guard) to surface once the editor exists. vimMessage
-// no-ops before the editor is created, so it is stashed here and
-// flushed after createEditor below.
+// file-size guard) to surface once the editor exists. appMessage's
+// Ex-panel half needs the editor, so the message is stashed here
+// and flushed after createEditor below, where it lands in the panel
+// with Vim on and in the window toast otherwise.
 let startupMessage: string | null = null;
 if (launchInfo.initial_file) {
   // CLI argument wins, so skip draft and session-restore
@@ -712,8 +713,8 @@ if (hasDraft) setDirty(true);
 updateTitle();
 void render();
 // Flush any deferred startup message (a launch file the size guard
-// rejected). The editor exists now, so vimMessage will display it.
-if (startupMessage) vimMessage(startupMessage);
+// rejected). The editor exists now, so appMessage can route it.
+if (startupMessage) appMessage(startupMessage);
 // Non-null assertion: createEditor has just run above and assigned
 // the editor.ts live binding, so editorView is guaranteed non-null
 // here. strict mode's null typing doesn't track the assignment

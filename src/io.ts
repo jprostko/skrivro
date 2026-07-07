@@ -42,6 +42,7 @@ import {
   WIDTH_MODES,
   applyTocVisibility,
   isTocHidden,
+  showAppToast,
 } from "./ui.js";
 
 // ================= Constants =================
@@ -178,17 +179,41 @@ export const setLaunchCwd = (cwd: string) => {
 // default for errors because 15s is a long time to stare at a short
 // message like "E37: No write since last change". Still enough time
 // to read a verbose E212 with a long path. Safe to call from any code
-// path. If the editor isn't ready yet we no-op silently rather than
-// throw.
-export const vimMessage = (text: string) => {
-  if (!editorView) return;
+// path.
+//
+// Returns whether the message was actually delivered: false when Vim
+// mode is off (the panel belongs to the vim extension, and an empty
+// vimCompartment must not leave a stale wrapper rendering into
+// nothing) or when the editor isn't ready yet. Ex-command callers
+// ignore the result, since their own trigger implies Vim is on, and
+// appMessage below is the router for everything with a vim-free
+// trigger.
+export const vimMessage = (text: string): boolean => {
+  if (!prefs.vimMode) return false;
+  if (!editorView) return false;
   const cm = getCM(editorView);
-  if (!cm) return;
+  if (!cm) return false;
   const div = document.createElement("div");
   div.className = "cm-vim-message";
   div.style.whiteSpace = "pre";
   div.textContent = text;
   cm.openNotification(div, { bottom: true, duration: 5000 });
+  return true;
+};
+
+// App-level message router for feedback whose trigger does not need
+// Vim: save failures (Ctrl+S / ⌘S and Ctrl+Shift+S / ⇧⌘S share their
+// helpers with :w and :saveas), the oversized-file refusal on open,
+// drag-drop, and launch, and the spellcheck-disabled notice behind
+// Ctrl+Alt+K / ⌃⌘K. Availability fallback: the Ex panel when it
+// exists (Vim mode on), the window toast otherwise (showAppToast in
+// ui.ts). Vim users therefore see exactly the messages they always
+// did, while non-vim users stop getting silence, which is what the
+// vim-gated panel gave them for every one of these before this router
+// existed. Ex-only feedback keeps calling vimMessage directly.
+export const appMessage = (text: string) => {
+  if (vimMessage(text)) return;
+  showAppToast(text);
 };
 
 // Extract a human-readable message from an unknown thrown value. The
@@ -497,7 +522,7 @@ export const loadFileFromPath = async (path: string) => {
     // silent-on-invalid handling for drag-drop and the picker is
     // deliberate (see the onDragDropEvent comment in main.ts).
     if (e instanceof FileTooLargeError) {
-      vimMessage(e.message);
+      appMessage(e.message);
     } else {
       console.error("Failed to load file:", path, e);
     }
@@ -538,7 +563,7 @@ export const saveFile = async () => {
     clearDraft();
   } catch (e) {
     console.error(e);
-    vimMessage(tr("E212: Can't open file for writing: %s (%s)", currentBuffer.path, errMsg(e)));
+    appMessage(tr("E212: Can't open file for writing: %s (%s)", currentBuffer.path, errMsg(e)));
   }
 };
 
@@ -571,7 +596,7 @@ export const saveFileAs = async () => {
     // the target path even if the write threw after the dialog
     // resolved. If the dialog itself threw, selected is still null
     // and we fall back to a generic message.
-    vimMessage(
+    appMessage(
       selected
         ? tr("E212: Can't open file for writing: %s (%s)", selected, errMsg(e))
         : tr("E212: Can't open file for writing (%s)", errMsg(e)),

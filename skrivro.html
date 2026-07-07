@@ -168,6 +168,9 @@
         display: flex;
         flex: 1;
         min-height: 0;
+        /* Containing block for the absolutely-positioned
+       .preview-toast (no layout effect on its own). */
+        position: relative;
       }
       .editor-pane,
       .preview {
@@ -229,6 +232,42 @@
         content: "";
         display: block;
         height: calc(100vh - 4em);
+      }
+
+      /* Pane-local toast for swallowed link clicks (see the preview
+     link-handling script block). Floats over the preview area near
+     its bottom edge: the panes split .wrap 1:1, so the preview's
+     center sits at 75% of .wrap in split mode and at 50% in
+     preview-only mode (where the capped column is centered).
+     Hidden in editor-only mode, where no preview exists to click.
+     Fades via the opacity transition and never intercepts clicks. */
+      .preview-toast {
+        position: absolute;
+        bottom: 1rem;
+        left: 75%;
+        transform: translateX(-50%);
+        max-width: calc(50% - 2rem);
+        padding: 0.4rem 0.9rem;
+        border-radius: 4px;
+        background: var(--skr-bg-panel);
+        border: 1px solid var(--skr-surface);
+        box-shadow: 0 2px 10px var(--skr-shadow);
+        color: var(--skr-text);
+        font-size: 0.95rem;
+        opacity: 0;
+        transition: opacity 150ms ease;
+        pointer-events: none;
+        z-index: 2;
+      }
+      body.mode-preview .preview-toast {
+        left: 50%;
+        max-width: calc(100% - 2rem);
+      }
+      body.mode-editor .preview-toast {
+        display: none;
+      }
+      .preview-toast.visible {
+        opacity: 1;
       }
 
       /* ---------- Preview: generic HTML ---------- */
@@ -1505,6 +1544,12 @@
     <main class="wrap">
       <div id="src-host" class="editor-pane"></div>
       <div class="preview" id="out" tabindex="-1"></div>
+      <!-- Pane-local toast for swallowed link clicks. A sibling of the
+         preview, NOT a child of #out: every render replaces #out's
+         children (which would delete it) and the word count reads
+         #out's text (which would count it). pointer-events: none so it
+         never eats clicks. -->
+      <div class="preview-toast" id="previewToast" role="status"></div>
     </main>
 
     <!-- The bar: mode pill (Vim-only) + filename on the left, file type
@@ -4871,6 +4916,25 @@
         }
       });
 
+      const previewToast = document.getElementById("previewToast");
+      let toastTimer = null;
+
+      // Transient pane-local message for swallowed link clicks,
+      // mirroring the desktop build. It lives beside the preview
+      // rather than in the Ex panel (hidden with the editor in
+      // preview-only mode) or the status bar (hideable outright), so
+      // it is visible in every mode that can produce a link click.
+      // Re-showing restarts the timer, and the newest message wins.
+      const showPreviewToast = (text) => {
+        previewToast.textContent = text;
+        previewToast.classList.add("visible");
+        if (toastTimer !== null) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          previewToast.classList.remove("visible");
+          toastTimer = null;
+        }, 4000);
+      };
+
       // ================= Preview link handling =================
       //
       // Delegated click interception for every link in the rendered
@@ -4885,13 +4949,14 @@
       // http(s) links open in a new tab via window.open with noopener,
       // so the new page gets no handle back to the editor. Pure
       // fragment links (#section) fall through to the browser's native
-      // scroll-to-anchor. Everything else is swallowed: relative paths
-      // are unfollowable here by constraint (no filesystem access), and
-      // other schemes (mailto:, ftp:, etc.), protocol-relative URLs,
-      // and empty hrefs (Markdown emits one for [text]()) never
-      // navigate. The desktop build additionally renders relative
-      // document links read-only in the preview, which needs the
-      // filesystem, see the README's differences table.
+      // scroll-to-anchor. Everything else is swallowed and answered
+      // with a transient toast: relative paths are unfollowable here by
+      // constraint (no filesystem access), and other schemes (mailto:,
+      // ftp:, etc.), protocol-relative URLs, and empty hrefs (Markdown
+      // emits one for [text]()) never navigate. The desktop build
+      // additionally renders relative document links read-only in the
+      // preview, which needs the filesystem, see the README's
+      // differences table.
       out.addEventListener("click", (e) => {
         // Narrow to Element for closest(), guarding the exotic-target
         // case (a Document or Window, say) that isn't in the DOM tree.
@@ -4912,8 +4977,12 @@
         // In-page anchors keep the browser's native scroll-to-anchor.
         if (href.startsWith("#")) return;
         // Everything else (relative paths, other schemes, empty hrefs)
-        // never navigates.
+        // never navigates, and says so instead of leaving the click a
+        // silent mystery. Document links are unfollowable here by
+        // constraint (no filesystem access), so one general message
+        // covers every swallowed case.
         e.preventDefault();
+        showPreviewToast("Unable to follow this link");
       });
 
       // Preview-only mode: clicks on the margin areas (outside the

@@ -21,7 +21,28 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="theme-color" content="#1e1e2e" />
     <title>untitled.adoc — Skrivro Web</title>
+    <!-- Inline favicons: the single-file model rules out sidecar icon
+     files, so both ride along as data: URIs generated from the desktop
+     branch's vendored sources (resources/icons/32x32.png base64,
+     resources/icons/skrivro.svg URL-encoded). Order is behaviorally
+     irrelevant, engines that understand SVG favicons prefer the SVG
+     wherever it sits and the rest take the PNG, so SVG first is mere
+     convention. -->
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      sizes="any"
+      href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%201024%201024%22%3E%0A%20%20%3Ctitle%3ESkrivro%3C/title%3E%0A%20%20%3Cg%20id=%22panes%22%3E%0A%20%20%20%20%3Cpath%20id=%22pane-editor%22%20fill=%22%23006AA7%22%20d=%22M%20580%2064%20C%20580%20120%20400%20240%20400%20350%20C%20400%20430%20424%20440%20512%20512%20C%20600%20584%20624%20594%20624%20674%20C%20624%20784%20444%20904%20444%20960%20L%20176%20960%20A%20112%20112%200%200%201%2064%20848%20L%2064%20176%20A%20112%20112%200%200%201%20176%2064%20Z%22/%3E%0A%20%20%20%20%3Cpath%20id=%22pane-preview%22%20fill=%22%2300527C%22%20d=%22M%20444%20960%20C%20444%20904%20624%20784%20624%20674%20C%20624%20594%20600%20584%20512%20512%20C%20424%20440%20400%20430%20400%20350%20C%20400%20240%20580%20120%20580%2064%20L%20848%2064%20A%20112%20112%200%200%201%20960%20176%20L%20960%20848%20A%20112%20112%200%200%201%20848%20960%20Z%22/%3E%0A%20%20%3C/g%3E%0A%20%20%3Cpath%20id=%22channel%22%20fill=%22none%22%20stroke=%22%23FECC02%22%20stroke-width=%2280%22%20d=%22M%20580%2064%20C%20580%20120%20400%20240%20400%20350%20C%20400%20430%20424%20440%20512%20512%20C%20600%20584%20624%20594%20624%20674%20C%20624%20784%20444%20904%20444%20960%22/%3E%0A%3C/svg%3E%0A"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACI0lEQVR42mNhGGDAMrgckLMygOH/v3yG/wwOxBpQb7gWiNeB2UZzkxkuvBTHrZiR4QCQnMiwtmUDTIgJxfJ//9aTYnmA/Bm45QcfyeO3HARAZv9nWM8QXBOA6YB//+tJCToDoYcM82xngdkff3IwJG72IV7zf4YCLFHw34BY/QJs3xj2ebUC6a9gfuCaEIYHH/lJcb89RYlwnXM/3PKkLT4MBx7K0S8XFGjvYHCQvAZmL7ykx7AAiOmWDUFBXwdNdBeBCS5xiw99y4EE1UPwoC/c40r/gshe4hrc95TEO9kO+PCLG0zL83+kWknIRIrijY+MIWmB4wdDgNot+jvgwHMtho+/uMDseT5bGAzEX9LXAR+AlgfuLYKHwr7opRQ7golUDQeeazIkHU6HO+Jc8lyGBL1L9K2OF9y2g0SD7Ux4dIDFySiUmMh1OcgRRhvaKE4TTJTE34V38gyO22rgjgClCbo6AOaIRKQ0QWr2ZKJGXt7w0AQeCvbyD+nvABB4/xNSSiqQWEpSpVHqIHmdQYH3NbxpRncH9JkthjfNFlzSpa8DQGWBgTAk3hsP2zJ8+MFBPweA2gcgDAv6CadM6dcxAcU7rCR8CGyQBq4JprAuYGS4SKwmBZ7X4IYpLN5BrWISg/4gFgcwNRAf77PgTTNQf4BghwTT2w2YDpgSvoGBiSkQ2XW4OiSwVnERsF244ZYaaT5nZAhkWNNyABHwI713DAA21b+FSd3V8AAAAABJRU5ErkJggg=="
+    />
+    <link rel="manifest" href="site.webmanifest" />
 
     <!-- Restrictive Content Security Policy. Blocks all external origins
      except esm.sh (which is required because the standalone version loads

@@ -57,6 +57,14 @@ This branch exists for cases where installing the desktop application isn't an o
 Open `skrivro.html` in a Chromium-based browser (Chrome, Edge, Brave, etc.) for the full feature set.
 Other browsers work with reduced functionality (file save typically falls back to a download).
 
+== Installing as a web app
+
+When `skrivro.html` is served from a web server, the sidecar files beside it (`site.webmanifest`, `icon-192.png`, `icon-512.png`, and `icon-maskable-512.png`) make the page installable, so Chromium offers its install action and Safari offers Add to Dock, giving the app its own window and launcher entry.
+When the file is opened directly from disk the manifest link is inert and nothing changes, which keeps the sidecars optional companions rather than requirements.
+Serve `site.webmanifest` with the `application/manifest+json` media type if the server does not already.
+There is deliberately no service worker: nothing is cached, and the page keeps loading its modules from esm.sh at runtime exactly as when uninstalled.
+The favicon needs no sidecar files since it is inlined in the HTML itself.
+
 == Documentation
 
 Day-to-day usage, keyboard shortcuts, vim mode, and configuration documentation live with the desktop version on the `master` branch.

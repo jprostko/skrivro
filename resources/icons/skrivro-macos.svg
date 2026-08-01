@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <title>Skrivro macOS — full-bleed Tahoe-first card</title>
+  <g id="panes">
+    <path id="pane-editor" fill="#006AA7" d="M 590 0 C 590 64 384 201 384 327 C 384 418 411 430 512 512 C 613 594 640 606 640 697 C 640 823 434 960 434 1024 L 232 1024 A 232 232 0 0 1 0 792 L 0 232 A 232 232 0 0 1 232 0 Z"/>
+    <path id="pane-preview" fill="#00527C" d="M 434 1024 C 434 960 640 823 640 697 C 640 606 613 594 512 512 C 411 430 384 418 384 327 C 384 201 590 64 590 0 L 792 0 A 232 232 0 0 1 1024 232 L 1024 792 A 232 232 0 0 1 792 1024 Z"/>
+  </g>
+  <path id="channel" fill="none" stroke="#FECC02" stroke-width="92" d="M 590 0 C 590 64 384 201 384 327 C 384 418 411 430 512 512 C 613 594 640 606 640 697 C 640 823 434 960 434 1024"/>
+</svg>

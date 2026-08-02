@@ -61,6 +61,28 @@ Delete the window-state file in that directory if you want to reset to the defau
 On Wayland, restore behavior depends on the compositor: some respect window-position restoration, some don't.
 This isn't something Skrivro can control.
 
+=== The app crashes at launch on Linux with an NVIDIA GPU. Is it broken?
+
+No.
+WebKitGTK's renderer can fail against NVIDIA's proprietary driver.
+The window flashes briefly or comes up dead, the app exits, and the terminal shows a Wayland protocol error:
+
+----
+Gdk-Message: Error 71 (Protocol error) dispatching to Wayland display
+----
+
+Launch with an environment variable to work around it:
+
+[source,bash]
+----
+WEBKIT_DISABLE_DMABUF_RENDERER=1 skrivro
+----
+
+On newer driver stacks `__NV_DISABLE_EXPLICIT_SYNC=1` works as an alternative.
+To make the fix permanent, add the variable to the `Exec` line of your desktop entry:
+
+ Exec=env WEBKIT_DISABLE_DMABUF_RENDERER=1 skrivro %F
+
 == Customization
 
 === How do I change the font, padding, or colors?

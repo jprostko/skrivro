@@ -8,6 +8,7 @@
 // in renderer.ts, and preview.ts only knows about the Renderer
 // interface.
 
+import { stat } from "@tauri-apps/plugin-fs";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { basename, dirname, resolve } from "@tauri-apps/api/path";
@@ -169,7 +170,31 @@ let renderPending = false;
 let lastRenderMs = 0;
 
 // ================= Image post-processing =================
-//
+
+// Convert an absolute filesystem path to an asset URI carrying the
+// file's mtime as a cache-busting query parameter. The webview's
+// image cache is keyed by URI and lives for the page's whole
+// lifetime, and Skrivro's page never navigates, so a bare asset URI
+// would keep serving the first bitmap ever loaded for that path even
+// after the file's bytes change on disk. Only an app restart clears
+// that cache, and bounded-cache eviction makes the staleness
+// intermittent rather than reliable. Disk truth is the preview's
+// contract, so every render stamps each local image with its current
+// mtime: changed bytes mean a changed mtime, hence a different URI,
+// a cache miss, and a fresh fetch, while an unchanged file keeps an
+// identical URI and stays cached. The asset protocol resolves the
+// file from the URI's path alone and ignores the query string. A
+// failed stat (missing file, unreadable parent) falls back to the
+// bare URI, leaving a broken image exactly as broken as before.
+const bustedFileSrc = async (absPath: string): Promise<string> => {
+  const uri = convertFileSrc(absPath);
+  try {
+    const mtime = (await stat(absPath)).mtime;
+    if (mtime) return `${uri}?m=${mtime.getTime()}`;
+  } catch {}
+  return uri;
+};
+
 // Two passes in one walk over a detached wrapper element:
 //
 //   1. Rewrite scheme-less paths (relative or absolute filesystem)
@@ -178,7 +203,10 @@ let lastRenderMs = 0;
 //      resolve against tauri://localhost/ and hit Tauri's SPA-
 //      fallback handler (returning index.html as the "image"), so
 //      the asset-protocol rewrite is what makes local images
-//      actually load. Requires tauri.conf.json to have
+//      actually load. Every rewrite goes through bustedFileSrc, so
+//      the URI also carries the file's mtime and an on-disk byte
+//      change survives the webview's URI-keyed image cache (see the
+//      helper's comment above). Requires tauri.conf.json to have
 //      `app.security.assetProtocol` enabled (it is). Relative paths
 //      resolve against `baseDir`, the directory of whichever document
 //      is being rendered (the buffer's for live renders, the peeked
@@ -236,7 +264,7 @@ const processImages = async (wrapper: HTMLElement, baseDir: string | null): Prom
     if (!baseDir) continue;
     try {
       const absPath = await resolve(baseDir, src);
-      img.setAttribute("src", convertFileSrc(absPath));
+      img.setAttribute("src", await bustedFileSrc(absPath));
       // Leading-slash paths in markdown source are ambiguous: they
       // can be real filesystem-absolute paths (e.g.,
       // /usr/share/icons/foo.png, which Tauri's asset protocol can
@@ -260,7 +288,7 @@ const processImages = async (wrapper: HTMLElement, baseDir: string | null): Prom
           async () => {
             try {
               const altPath = await resolve(baseDir, src.slice(1));
-              img.setAttribute("src", convertFileSrc(altPath));
+              img.setAttribute("src", await bustedFileSrc(altPath));
             } catch (e) {
               console.warn("Image fallback resolve failed:", src, e);
             }

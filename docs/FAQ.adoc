@@ -144,6 +144,15 @@ For AsciiDoc: the `asciidoctor` CLI (Ruby) or `asciidoctor-pdf`.
 For Markdown: `pandoc`, `marked` (CLI), or any of dozens of others.
 These tools are mature and produce better output than anything Skrivro could ship as a built-in feature.
 
+=== Can I print my document?
+
+No.
+There is no print function, and the standard print shortcut is not wired to anything.
+
+Printing well is a pagination job, which makes it the same problem as export: point a converter at your file and print its output.
+`asciidoctor-pdf` turns an AsciiDoc file into a paginated PDF in one command, and `pandoc` does the same for Markdown.
+A dedicated converter paginates far better than an editor webview ever could, so printing stays out of scope alongside export.
+
 === Why aren't external images showing up in my preview?
 
 They should be showing up. External images (HTTPS-hosted images referenced by URL, like the badges and screenshots in a typical GitHub README) load automatically.

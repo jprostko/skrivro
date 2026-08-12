@@ -41,6 +41,9 @@
       "../resources/icons/icon.ico"
     ],
     "category": "Productivity",
+    "macOS": {
+      "minimumSystemVersion": "26.0"
+    },
     "fileAssociations": [
       {
         "ext": ["adoc", "asciidoc"],

@@ -73,18 +73,26 @@ packages = [entry for entries in data.values() for entry in entries]
 
 # Prefer a dedicated license file, and fall back to a README, since
 # some packages (e.g. font-awesome) carry their terms there instead.
+# The README route is gated on the file mentioning licensing at all: a
+# README that never says license carries no terms, and pasting pure
+# usage documentation into a legal aggregation helps nobody, so such
+# packages (those declaring a license only in package.json) take the
+# SPDX pointer note below instead.
 LICENSE_GLOBS = ("LICENSE*", "LICENCE*", "License*", "licence*", "license*", "COPYING*")
 README_GLOBS = ("README*", "Readme*", "readme*")
 
-def find_text(pkg_dir, patterns):
+def find_text(pkg_dir, patterns, require_license_mention=False):
     for pat in patterns:
         for path in sorted(glob.glob(os.path.join(pkg_dir, pat))):
             if os.path.isfile(path):
                 try:
                     with open(path, encoding="utf-8", errors="replace") as fh:
-                        return fh.read().strip()
+                        text = fh.read().strip()
                 except Exception as e:
                     return f"(error reading {os.path.basename(path)}: {e})"
+                if require_license_mention and "licen" not in text.lower():
+                    continue
+                return text
     return ""
 
 for pkg in sorted(packages, key=lambda p: p["name"].lower()):
@@ -96,7 +104,9 @@ for pkg in sorted(packages, key=lambda p: p["name"].lower()):
 
     text = ""
     if pkg_dir and os.path.isdir(pkg_dir):
-        text = find_text(pkg_dir, LICENSE_GLOBS) or find_text(pkg_dir, README_GLOBS)
+        text = find_text(pkg_dir, LICENSE_GLOBS) or find_text(
+            pkg_dir, README_GLOBS, require_license_mention=True
+        )
 
     print("----------------------------------------------------------------")
     print(f"Package: {name} {version}")

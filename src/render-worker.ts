@@ -1,10 +1,9 @@
 /// <reference lib="webworker" />
 // ================= Render worker =================
 //
-// Off-main-thread parse + convert. The preview pipeline used to run
-// the markup parsers synchronously on the UI thread, freezing the
-// editor for the render's whole duration. This Web Worker hosts the
-// expensive parsing so a render in progress no longer blocks typing.
+// Off-main-thread parse + convert. This Web Worker hosts the expensive
+// markup parsing so a render in progress never blocks typing, no matter
+// how long a large document takes to parse.
 //
 // Runs here: Asciidoctor load + convert, Markdown render, and the
 // source-line extraction for scroll-sync block maps. Stays on the
@@ -23,9 +22,7 @@ import Asciidoctor, {
   type Document as AsciidoctorDocument,
   type AbstractBlock,
 } from "@asciidoctor/core";
-import MarkdownIt from "markdown-it";
-import type Token from "markdown-it/lib/token.mjs";
-import type StateCore from "markdown-it/lib/rules_core/state_core.mjs";
+import MarkdownIt, { type StateCore, type Token } from "markdown-it";
 import { bare as markdownItEmoji } from "markdown-it-emoji";
 import { nameToEmoji } from "gemoji";
 
@@ -83,6 +80,12 @@ export type WorkerRenderResponse = WorkerRenderSuccess | WorkerRenderFailure;
 // Exported so the test suite exercises this exact configured instance
 // rather than a lookalike.
 export const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
+
+// Auto-link scheme-less text (www.example.com and bare domains) in
+// addition to explicit URLs and emails. linkify-it keeps fuzzy links
+// off unless asked, and GFM's autolink extension expects the www form to
+// link.
+md.linkify.set({ fuzzyLink: true });
 
 // GFM's strikethrough extension renders to <del> (per the GFM spec).
 // markdown-it's built-in strikethrough is its own, non-GFM extension
@@ -209,12 +212,15 @@ const gfmAlertRule = (state: StateCore): void => {
 // Renderer rules for the retagged alert tokens. gfm_alert_open emits
 // the callout <div> plus the icon-and-label title <p>, the alert body
 // (every token between open and close) renders in between as usual,
-// and gfm_alert_close emits the closing </div>. The markup is
-// identical to what the previous (marked-based) renderer produced.
+// and gfm_alert_close emits the closing </div>. The markup matches
+// GitHub's own alert rendering (class names and inline Octicon SVGs).
 md.renderer.rules.gfm_alert_open = (tokens, idx) => {
   const token = tokens[idx];
   if (!token) return "";
-  const type = token.meta.type as GfmAlertType;
+  // gfm_alert tokens only ever come from gfmAlertRule, which sets meta
+  // at creation, so the `!` documents that invariant (the Token type
+  // declares meta nullable).
+  const type = token.meta!.type as GfmAlertType;
   const lower = type.toLowerCase();
   const title = type.charAt(0) + type.slice(1).toLowerCase();
   return (
@@ -277,11 +283,18 @@ md.core.ruler.after("block", "gfm_task_list", gfmTaskListRule);
 
 // ---- emoji shortcodes ----
 // GitHub-style `:name:` shortcodes render as the unicode emoji. The
-// `bare` markdown-it-emoji plugin ships no emoji data of its own,
-// so feeding it gemoji's nameToEmoji preserves the exact shortcode
-// set the previous (marked-emoji) renderer used. `:)`-style
-// shortcuts stay off, the plugin's default.
-md.use(markdownItEmoji, { defs: nameToEmoji });
+// `bare` markdown-it-emoji plugin ships no emoji data of its own, and
+// gemoji's nameToEmoji is GitHub's shortcode set, so `:name:` coverage
+// stays GFM-faithful. `:)`-style shortcuts stay off, the plugin's
+// default. The cast bridges the plugin's published types, which are
+// authored against an older markdown-it type surface than the installed
+// one. The runtime plugin API is unchanged, and the asserted shape is
+// exactly the call we make. Drop the cast when the plugin ships types
+// matching the current markdown-it major.
+md.use(
+  markdownItEmoji as unknown as (m: typeof md, opts: { defs: Record<string, string> }) => void,
+  { defs: nameToEmoji },
+);
 
 // ---- markdown scroll-sync line map ----
 // One source-line entry per top-level rendered block, in document

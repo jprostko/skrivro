@@ -540,7 +540,7 @@ export const replaceAdmonitionIcons = (parsed: Document): void => {
 // ================= Render worker client =================
 //
 // The expensive parse + convert work runs in render-worker.ts (a Web
-// Worker), so a render in progress no longer blocks the editor. This
+// Worker), so a render in progress never blocks the editor. This
 // section owns the single worker instance and the request/response
 // plumbing: each render gets a monotonic id, its resolve callback is
 // parked in pendingRenders, and the worker's message handler looks the

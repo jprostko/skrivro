@@ -405,10 +405,9 @@ const renderAsciidoc = async (req: WorkerRenderRequest): Promise<WorkerRenderSuc
 const renderMarkdown = (req: WorkerRenderRequest): WorkerRenderSuccess => {
   // One parse yields the token stream, and the renderer turns that
   // same stream into HTML and computeMarkdownLineMap walks it for the
-  // scroll-sync map, no second pass. (marked needed a separate lexer
-  // call because marked.parser skipped extensions, while markdown-it
-  // has no such split.) `env` is markdown-it's per-render sandbox,
-  // passed to both parse and render so reference definitions resolve.
+  // scroll-sync map, no second pass. `env` is markdown-it's per-render
+  // sandbox, passed to both parse and render so reference definitions
+  // resolve.
   const env = {};
   const tokens = md.parse(req.source, env);
   const html = md.renderer.render(tokens, md.options, env);

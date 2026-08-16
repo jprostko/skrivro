@@ -383,12 +383,11 @@ fn load_theme(name: &str, app: &tauri::AppHandle) -> Option<ThemeColors> {
 ///   macOS:   ~/Library/Application Support/com.skrivro.editor/skrivro.conf
 ///   Windows: %APPDATA%\com.skrivro.editor\skrivro.conf
 ///
-/// Previously this function used hardcoded env::var("XDG_CONFIG_HOME") +
-/// $HOME fallback, which worked on Linux but was non-idiomatic on macOS
-/// and effectively broken on Windows (where neither env var is typically
-/// set in cmd.exe or PowerShell). Switching to app_config_dir fixes both
-/// platforms and uses the identifier from tauri.conf.json as the subdir
-/// name, so rename in tauri.conf.json propagates everywhere.
+/// app_config_dir resolves the platform-idiomatic location on all three
+/// targets, where plain environment lookups are Linux-shaped (neither XDG
+/// variable nor a usable HOME fallback typically exists on Windows), and
+/// it takes the identifier from tauri.conf.json as the subdirectory name,
+/// so a rename there propagates everywhere.
 ///
 /// Returns `None` only in a broken environment where Tauri can't resolve
 /// the user's config directory, which we treat as "no config available"

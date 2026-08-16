@@ -63,7 +63,7 @@ const suggestResolvers = new Map<number, (suggestions: string[]) => void>();
 // Lazily construct the worker. `new URL('./spellcheck-worker.ts',
 // import.meta.url)` is the Vite worker pattern, recognized statically
 // and emitted as its own bundle chunk (the dictionaries are separate
-// `?url` assets the worker fetches, so they no longer bloat this chunk).
+// `?url` assets the worker fetches, so they stay out of this chunk).
 const getWorker = (): Worker => {
   if (worker) return worker;
   const w = new Worker(new URL("./spellcheck-worker.ts", import.meta.url), {

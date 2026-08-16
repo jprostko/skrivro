@@ -155,12 +155,11 @@ let syncAfterRender = false;
 // immediate re-run. At most one pass runs at a time, and a burst of
 // edits collapses to a single trailing pass.
 //
-// The old render-staleness token that lived here did two jobs: stop a
-// stale render from clobbering a newer one, and stop a superseded
-// render from writing its result at all. Coalescing covers the first
-// (strictly sequential passes cannot overlap, so a clobber is
-// structurally impossible). The buffer-staleness check inside
-// renderOnce covers the second.
+// Two staleness hazards exist here, each with its own cover: a stale
+// render clobbering a newer one is structurally impossible because
+// passes are strictly sequential, and a superseded render writing its
+// result at all is stopped by the buffer-staleness check inside
+// renderOnce.
 let renderInFlight = false;
 let renderPending = false;
 

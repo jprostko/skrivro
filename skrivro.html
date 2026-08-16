@@ -90,8 +90,8 @@
           "@codemirror/search": "https://esm.sh/@codemirror/search@6",
           "@lezer/highlight": "https://esm.sh/@lezer/highlight@1",
           "@replit/codemirror-vim": "https://esm.sh/@replit/codemirror-vim@6",
-          "@asciidoctor/core": "https://esm.sh/@asciidoctor/core@3",
-          "markdown-it": "https://esm.sh/markdown-it@14",
+          "@asciidoctor/core": "https://esm.sh/@asciidoctor/core@4",
+          "markdown-it": "https://esm.sh/markdown-it@15",
           "markdown-it-emoji": "https://esm.sh/markdown-it-emoji@3",
           "gemoji": "https://esm.sh/gemoji@8",
           "nspell": "https://esm.sh/nspell@2",
@@ -1906,7 +1906,7 @@
     </dialog>
 
     <script type="module">
-      import Asciidoctor from "@asciidoctor/core";
+      import { load } from "@asciidoctor/core";
       import DOMPurify from "dompurify";
       import MarkdownIt from "markdown-it";
       import { bare as markdownItEmoji } from "markdown-it-emoji";
@@ -2379,8 +2379,6 @@
 
       // ================= AsciidoctorRenderer =================
 
-      const ad = Asciidoctor();
-
       // ================= Admonition icon SVGs =================
       //
       // Font Awesome 4 glyphs extracted from the webfont SVG and wrapped
@@ -2509,7 +2507,7 @@
           // matching Asciidoctor's standard convention. Styling for the
           // resulting icons lives in the stylesheet above, see the rules
           // targeting .admonitionblock td.icon [class^="fa icon-"].
-          const doc = ad.load(source, {
+          const doc = await load(source, {
             safe: "unsafe",
             sourcemap: true,
             attributes: { showtitle: true, icons: "font" },
@@ -2523,7 +2521,7 @@
           // by default (verified with the Octicons used elsewhere), so the
           // injected icon markup survives sanitization.
           const parsed = new DOMParser().parseFromString(
-            doc.convert({ standalone: false }),
+            await doc.convert({ standalone: false }),
             "text/html",
           );
           replaceAdmonitionIcons(parsed);
@@ -2564,6 +2562,12 @@
       // <code class="language-xxx">, the class the preview's syntax CSS
       // keys on.
       const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
+
+      // Auto-link scheme-less text (www.example.com and bare domains) in
+      // addition to explicit URLs and emails. linkify-it keeps fuzzy links
+      // off unless asked, and GFM's autolink extension expects the www form
+      // to link.
+      md.linkify.set({ fuzzyLink: true });
 
       // GFM's strikethrough extension renders to <del> (per the GFM spec).
       // markdown-it's built-in strikethrough is its own, non-GFM extension
@@ -2756,11 +2760,10 @@
       //
       // GitHub-style `:name:` shortcodes render as the unicode emoji. The
       // `bare` markdown-it-emoji plugin ships no emoji data of its own,
-      // so feeding it gemoji's nameToEmoji keeps the exact shortcode set
-      // the previous (marked-emoji) renderer used. The plugin emits the
-      // raw codepoint, so the system emoji font draws the glyph: no <img>
-      // tags, no network access. `:)`-style shortcuts stay off, the
-      // plugin's default.
+      // and gemoji's nameToEmoji is GitHub's shortcode set, so `:name:`
+      // coverage stays GFM-faithful. The plugin emits the raw codepoint, so
+      // the system emoji font draws the glyph: no <img> tags, no network
+      // access. `:)`-style shortcuts stay off, the plugin's default.
       md.use(markdownItEmoji, { defs: nameToEmoji });
 
       // Compute one source-line entry per top-level rendered block, in
@@ -2922,12 +2925,11 @@
       // an immediate re-run. At most one pass runs at a time, and a
       // burst of edits collapses to a single trailing pass.
       //
-      // The old render-staleness token that lived here did two jobs:
-      // stop a stale render from clobbering a newer one, and stop a
-      // superseded render from writing its result at all. Coalescing
-      // covers the first: strictly sequential passes cannot overlap, so
-      // a clobber is structurally impossible. The buffer-staleness check
-      // inside renderOnce (currentFormat + docEpoch) covers the second.
+      // Two staleness hazards exist here, each with its own cover: a stale
+      // render clobbering a newer one is structurally impossible because
+      // passes are strictly sequential, and a superseded render writing its
+      // result at all is stopped by the buffer-staleness check inside
+      // renderOnce (currentFormat + docEpoch).
       let renderInFlight = false;
       let renderPending = false;
 

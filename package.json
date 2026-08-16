@@ -15,7 +15,7 @@
     "prepare": "vp config"
   },
   "dependencies": {
-    "@asciidoctor/core": "^3.0.4",
+    "@asciidoctor/core": "^4.0.8",
     "@codemirror/commands": "^6.10.4",
     "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/language": "^6.12.4",
@@ -40,6 +40,7 @@
     "@tauri-apps/cli": "^2.11.4",
     "@types/markdown-it": "^14.1.2",
     "@types/markdown-it-emoji": "^3.0.1",
+    "@types/node": "^26.2.0",
     "@voidzero-dev/vite-plus-core": "^0.2.9",
     "happy-dom": "^20.11.2",
     "oxlint": "^1.78.0",

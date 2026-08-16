@@ -1,3 +1,4 @@
+/// <reference types="node" />
 // Tests for the spellcheck worker, driven through its real message
 // protocol. Under happy-dom the worker's `self` is the window, so
 // dispatching MessageEvents exercises the actual handler, and its

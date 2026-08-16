@@ -1,6 +1,38 @@
-import { defineConfig } from "vite-plus";
+import { createLogger, defineConfig } from "vite-plus";
 
 const host = process.env.TAURI_DEV_HOST;
+
+// Asciidoctor's universal browser build conditionally imports node
+// builtins and probes a package-relative data directory for its
+// Node-side conveniences, all behind environment guards. In the webview
+// those paths are dead: the worker only ever uses the string-in,
+// string-out API, and includes are pre-expanded on the main thread. The
+// bundler still warns about the externalized builtins and the
+// unresolved data URL on every build, which reads as breakage to
+// someone building from source. Drop exactly the warnings that name the
+// package or its data probe and hand everything else through.
+const dropAsciidoctorNoise = (level, log, defaultHandler) => {
+  const text = `${log.message} ${log.id ?? ""}`;
+  if (level === "warn" && text.includes("@asciidoctor/core")) return;
+  if (level === "warn" && text.includes("'../../data'")) return;
+  defaultHandler(level, log);
+};
+
+// The data-URL warning prints through the logger's deduplicating
+// warnOnce channel rather than the rollup log hooks, so the logger
+// filters it there, with plain warn covered for the same message shape
+// as well.
+const isAsciidoctorDataProbe = (msg) =>
+  msg.includes("'../../data'") && msg.includes("doesn't exist at build time");
+const logger = createLogger();
+const warn = logger.warn.bind(logger);
+const warnOnce = logger.warnOnce.bind(logger);
+logger.warn = (msg, options) => {
+  if (!isAsciidoctorDataProbe(msg)) warn(msg, options);
+};
+logger.warnOnce = (msg) => {
+  if (!isAsciidoctorDataProbe(msg)) warnOnce(msg);
+};
 
 export default defineConfig({
   staged: {
@@ -39,6 +71,7 @@ export default defineConfig({
     },
   },
   root: "src",
+  customLogger: logger,
   clearScreen: false,
   server: {
     port: 1420,
@@ -62,6 +95,7 @@ export default defineConfig({
     // Opal). Raise the threshold so the warning stops firing on every
     // build.
     chunkSizeWarningLimit: 2000,
+    rollupOptions: { onLog: dropAsciidoctorNoise },
   },
   // Vitest (pnpm test). The tests are their own target: builds never
   // run them, and no app code imports a test file, so they never

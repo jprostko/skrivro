@@ -18,10 +18,7 @@
 // transit is just a string, and the security boundary is DOMPurify
 // on the main thread, before the HTML ever reaches the DOM.
 
-import Asciidoctor, {
-  type Document as AsciidoctorDocument,
-  type AbstractBlock,
-} from "@asciidoctor/core";
+import { load, type Document as AsciidoctorDocument, type AbstractBlock } from "@asciidoctor/core";
 import MarkdownIt, { type StateCore, type Token } from "markdown-it";
 import { bare as markdownItEmoji } from "markdown-it-emoji";
 import { nameToEmoji } from "gemoji";
@@ -316,10 +313,6 @@ export const computeMarkdownLineMap = (tokens: Token[]): number[] => {
 
 // ================= Asciidoctor setup =================
 
-// Exported so the test suite exercises this exact configured instance
-// rather than a lookalike.
-export const ad = Asciidoctor();
-
 // Asciidoctor block contexts that map to a scrollable preview
 // element. Excludes purely structural contexts (document, preamble)
 // and inline-level blocks with no preview container of their own.
@@ -389,17 +382,17 @@ export const extractAsciidoctorBlockLines = (doc: AsciidoctorDocument): number[]
 
 // ================= Render functions =================
 
-const renderAsciidoc = (req: WorkerRenderRequest): WorkerRenderSuccess => {
+const renderAsciidoc = async (req: WorkerRenderRequest): Promise<WorkerRenderSuccess> => {
   // Load first (so the AST is available for the block-line walk),
   // then convert. sourcemap: true is what annotates blocks with
   // source line numbers.
-  const doc = ad.load(req.source, {
+  const doc = await load(req.source, {
     safe: req.safe || "unsafe",
     sourcemap: true,
     attributes: req.attributes ?? {},
   });
   const blockLines = extractAsciidoctorBlockLines(doc);
-  const html = doc.convert({ standalone: false });
+  const html = await doc.convert({ standalone: false });
   return {
     id: req.id,
     ok: true,
@@ -430,10 +423,10 @@ const renderMarkdown = (req: WorkerRenderRequest): WorkerRenderSuccess => {
 
 // ================= Message handler =================
 
-addEventListener("message", (e: MessageEvent<WorkerRenderRequest>) => {
+addEventListener("message", async (e: MessageEvent<WorkerRenderRequest>) => {
   const req = e.data;
   try {
-    const result = req.kind === "asciidoc" ? renderAsciidoc(req) : renderMarkdown(req);
+    const result = req.kind === "asciidoc" ? await renderAsciidoc(req) : renderMarkdown(req);
     postMessage(result);
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);

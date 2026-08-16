@@ -5,7 +5,9 @@
 // handler at import time, and happy-dom supplies the
 // addEventListener global it expects.
 import { describe, expect, it } from "vite-plus/test";
-import { ad, computeMarkdownLineMap, extractAsciidoctorBlockLines, md } from "./render-worker.js";
+import { load } from "@asciidoctor/core";
+
+import { computeMarkdownLineMap, extractAsciidoctorBlockLines, md } from "./render-worker.js";
 
 const parseAndRender = (source: string) => {
   const env = {};
@@ -93,7 +95,7 @@ describe("token-to-element pairing invariant", () => {
 });
 
 describe("extractAsciidoctorBlockLines", () => {
-  it("collects one source line per mappable block in document order", () => {
+  it("collects one source line per mappable block in document order", async () => {
     const fixture = [
       "== Section", // line 1
       "",
@@ -108,7 +110,7 @@ describe("extractAsciidoctorBlockLines", () => {
       "",
       "NOTE: heads up", // line 12
     ].join("\n");
-    const doc = ad.load(fixture, { sourcemap: true, safe: "unsafe" });
+    const doc = await load(fixture, { sourcemap: true, safe: "unsafe" });
     expect(extractAsciidoctorBlockLines(doc)).toEqual([1, 3, 5, 8, 12]);
   });
 

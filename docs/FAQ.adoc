@@ -83,6 +83,39 @@ To make the fix permanent, add the variable to the `Exec` line of your desktop e
 
  Exec=env WEBKIT_DISABLE_DMABUF_RENDERER=1 skrivro %F
 
+[#macos-damaged]
+=== macOS says "Skrivro" is damaged and can't be opened. Is it?
+
+No.
+That dialog is Gatekeeper's wording for a downloaded app that has no notarization ticket.
+Browsers stamp downloads with the `com.apple.quarantine` attribute, and current macOS shows quarantined unnotarized apps this dialog instead of offering an Open Anyway button.
+The app is unsigned because notarization requires a paid Apple Developer membership.
+
+Clear the attribute once after installing and the app launches normally from then on:
+
+[source,bash]
+----
+xattr -dr com.apple.quarantine /Applications/Skrivro.app
+----
+
+Locally built apps never carry the attribute, only downloads do, which is also why the dialog never appears when building from source.
+
+[#windows-smartscreen]
+=== Windows says "Windows protected your PC" when I run the installer. Is it dangerous?
+
+No.
+That is Microsoft Defender SmartScreen's dialog for a downloaded installer from an unknown publisher, the Windows cousin of the macOS entry above.
+The full text reads "Microsoft Defender SmartScreen prevented an unrecognized app from starting. Running this app might put your PC at risk."
+
+Click *More info*, and a *Run anyway* button appears next to *Don't run*.
+The installers are unsigned, so each new version's download shows the dialog until that file builds reputation with Microsoft.
+
+=== The installer's "Run Skrivro" checkbox didn't launch the app.
+
+You may see this with the `.exe` (NSIS) installer: the install completes correctly, but the finish page's run checkbox does nothing.
+Launch Skrivro from the Start menu instead, everything past that point behaves normally.
+The MSI installer doesn't show the quirk.
+
 == Customization
 
 === How do I change the font, padding, or colors?

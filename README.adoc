@@ -24,12 +24,17 @@ A limited single-file HTML build of Skrivro also exists on the `standalone` bran
 image:https://img.shields.io/badge/macOS-26+-000000?logo=apple[macOS 26+]
 image:https://img.shields.io/badge/Apple_Silicon-arm64-000000?logo=apple[Apple Silicon arm64]
 
+The app is unsigned, so macOS quarantines the download and reports it as damaged.
+Clear the attribute once after installing (`xattr -dr com.apple.quarantine /Applications/Skrivro.app`), details in the link:docs/FAQ.adoc#macos-damaged[FAQ].
+
 *Windows*
 
 image:https://img.shields.io/badge/Windows-11+-0078D4[Windows 11+]
 
 Windows needs the WebView2 runtime: Windows 11 ships with it, and
 the installers fetch it in the unlikely case it is missing.
+Also, the installers are unsigned, so SmartScreen interrupts each one's first run.
+Click *More info*, then *Run anyway*. Details are in the link:docs/FAQ.adoc#windows-smartscreen[FAQ].
 
 *Linux* (x86_64)
 
@@ -78,8 +83,8 @@ Mouse and trackpad work everywhere they should, but the app is designed to be dr
 
 == Getting started
 
-Skrivro doesn't ship pre-built binaries yet.
-To build from source, clone this repository and run from its root:
+Installers and packages for every platform are on the link:https://github.com/jprostko/skrivro/releases[releases page].
+To build from source instead, clone this repository and run from its root:
 
 [source,bash]
 ----

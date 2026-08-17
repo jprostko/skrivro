@@ -3,7 +3,7 @@
 
 _Keyboard-first AsciiDoc and Markdown editor with live preview._
 
-image:https://img.shields.io/github/actions/workflow/status/jprostko/skrivro/release.yml?label=CI[CI,link=https://github.com/jprostko/skrivro/actions/workflows/release.yml]
+image:https://img.shields.io/github/actions/workflow/status/jprostko/skrivro/release.yml?label=build[Build,link=https://github.com/jprostko/skrivro/actions/workflows/release.yml]
 image:https://img.shields.io/github/v/release/jprostko/skrivro?label=release[Latest release,link=https://github.com/jprostko/skrivro/releases/latest]
 image:https://img.shields.io/github/downloads/jprostko/skrivro/total?label=downloads[Downloads,link=https://github.com/jprostko/skrivro/releases]
 image:https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white[Tauri 2,link=https://tauri.app]
@@ -128,7 +128,7 @@ Skrivro was built primarily through AI pair-programming. Most of the code, and m
 The author drove design decisions, tested every change, and made the final calls on what shipped. The model handled much of the keyboard work and architecture exploration.
 
 This is worth disclosing up front because some readers reasonably evaluate code differently knowing how it was produced.
-The codebase is reviewable: every commit has a substantive message explaining the *why*, the architecture is documented in link:docs/ARCHITECTURE.adoc[], and testing pairs a Vitest and cargo-test suite over the pure-logic layer with the author running the app to verify behavior. There is no CI pipeline.
+The codebase is reviewable: every commit has a substantive message explaining the *why*, the architecture is documented in link:docs/ARCHITECTURE.adoc[], and testing pairs a Vitest and cargo-test suite over the pure-logic layer with the author running the app to verify behavior. Automated builds and the test suite run at release time only. There is no per-commit CI.
 
 *This is not a maintained open-source project in the traditional sense.*
 It's published so that anyone who finds it useful can use it, audit it, or build on it under the 0BSD license, but the author doesn't plan to triage issues, review pull requests, or take feature requests.

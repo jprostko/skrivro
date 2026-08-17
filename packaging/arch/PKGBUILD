@@ -1,11 +1,5 @@
 # Maintainer: Joseph R. Prostko <joe dot prostko at gmail dot com>
 
-# INTERIM source, pre-remote: clones this repository's committed HEAD
-# from its local path (uncommitted changes are invisible to the build).
-# Once the first public release exists, swap _srcurl for the public URL
-# (#tag=v$pkgver, or the release tarball with real sha256sums instead
-# of 'SKIP') and drop this note.
-
 pkgname=skrivro
 pkgver=1.0.0
 pkgrel=1
@@ -31,10 +25,11 @@ depends=(
 )
 # Build/stage tooling only. JS deps (Vite Plus, CodeMirror, ...) and Rust
 # crates are NOT listed here: pnpm and cargo install them per-lockfile in
-# prepare(). librsvg renders the 48x48 icon in stage.sh, and
-# desktop-file-utils + appstream are stage.sh's validators.
+# prepare(). Vite+ itself comes from the lockfile too and runs through
+# pnpm exec, since no pacman package provides vp. librsvg renders the
+# 48x48 icon in stage.sh, and desktop-file-utils + appstream are
+# stage.sh's validators.
 makedepends=(
-  'git'
   'rust'
   'nodejs'
   'pnpm'
@@ -42,12 +37,11 @@ makedepends=(
   'desktop-file-utils'
   'appstream'
 )
-_srcurl="git+file:///home/jprostko/claude/code/asciidoc-editor"
-source=("$pkgname::$_srcurl")
-sha256sums=('SKIP')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/jprostko/skrivro/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('2b2fe4c03a3ccebfd62b131499dd93c630067e7644b48f1459d380efc6e379d2')
 
 prepare() {
-  cd "$pkgname"
+  cd "$pkgname-$pkgver"
   # Fetch all locked dependencies up front. build() then works offline.
   # pnpm honors the packageManager pin in package.json (may fetch that
   # exact pnpm version on first run).
@@ -56,28 +50,23 @@ prepare() {
 }
 
 build() {
-  cd "$pkgname"
+  cd "$pkgname-$pkgver"
   export RUSTUP_TOOLCHAIN=stable
-  # Frontend first: tauri-build embeds the built dist/ into the binary.
-  pnpm run build
-  # tauri/custom-protocol is REQUIRED: it is the compile-time switch
-  # between a dev binary (connects to devUrl, localhost:1420) and a
-  # production binary serving the embedded frontendDist. `tauri build`
-  # passes it implicitly. Plain cargo must pass it explicitly. The app's
-  # Cargo.toml defines no local feature alias, so target the tauri
-  # crate's feature directly.
-  cargo build --release --locked --features tauri/custom-protocol \
-    --manifest-path src-tauri/Cargo.toml
+  # The canonical build documented in BUILDING.adoc. Vite+ builds the
+  # frontend, then drives cargo with the tauri/custom-protocol feature,
+  # the compile-time switch away from dev-server mode. Linux bundling
+  # is disabled in tauri.conf.json, so this produces only the binary.
+  pnpm exec vp run tauri build
 }
 
 check() {
-  cd "$pkgname"
+  cd "$pkgname-$pkgver"
   pnpm run test
 }
 
 package() {
-  cd "$pkgname"
-  # stage.sh derives REPO_ROOT (the clone) and BIN from its own location.
-  # Pointing STAGE at pkgdir assembles the install tree directly.
+  cd "$pkgname-$pkgver"
+  # stage.sh derives REPO_ROOT (the extracted source) and BIN from its
+  # own location. Pointing STAGE at pkgdir assembles the install tree.
   STAGE="$pkgdir" ./packaging/stage.sh
 }

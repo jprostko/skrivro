@@ -1,0 +1,152 @@
+= Skrivro Linux packaging
+:toc: preamble
+:toclevels: 2
+
+This directory produces Skrivro's native Linux packages: an Arch package
+via PKGBUILD, a Debian package, and an RPM. Tauri's built-in Linux
+bundler is deliberately not used. Its artifact names derive from
+`productName` (capitalized), its `.desktop`/icon naming ignores the
+bundle identifier, and none of that is configurable. macOS and Windows
+are unaffected: those platforms use `tauri build` and never touch this
+directory.
+
+Flatpak, Snap, and AppImage are out of scope by decision.
+
+== Architecture: one staging tree, thin packagers
+
+Everything flows through `stage.sh`. It gathers the release binary,
+desktop-integration assets, and reference examples into a staging tree
+that mirrors the installed filesystem exactly. Each package format is a
+thin metadata wrapper around that same tree:
+
+----
+resources/, packaging/assets/, LICENSE, NOTICES, README.adoc, binary
+        │
+        ▼
+   stage.sh  ──►  dist/stage/usr/...   (or straight into a pkg root)
+        │
+        ├── arch/PKGBUILD      package() = stage.sh into $pkgdir
+        ├── debian/build.sh    ar+tar+xz around the tree + control file
+        └── rpm/build.sh       rpmbuild, %install = stage.sh + strip
+----
+
+Fix a path or add a file in `stage.sh` once and every format inherits it.
+
+== Layout
+
+[cols="1,2"]
+|===
+| `assets/applications/…desktop` | Desktop entry (shared with the app repo's desktop integration)
+| `assets/mime/packages/…xml`    | shared-mime-info definitions for `text/x-asciidoc` and `text/markdown`
+| `assets/metainfo/…metainfo.xml`| AppStream metadata (freedesktop.org AppStream, not RHEL's repo concept)
+| `stage.sh`                     | Assembles and validates the staging tree, where all renaming happens
+| `arch/PKGBUILD`                | Arch/AUR recipe that builds frontend + binary itself, then stages
+| `debian/control.in`            | Debian control template (`@VERSION@`, `@ARCH@`, `@INSTALLED_SIZE@`)
+| `debian/build.sh`              | Assembles the `.deb` with ar+tar+xz, no dpkg required
+| `rpm/skrivro.spec`             | RPM spec with runtime Requires auto-generated as sonames
+| `rpm/build.sh`                 | rpmbuild driver that passes version/paths as macros
+|===
+
+== Naming policy
+
+Reverse-DNS (`com.skrivro.editor`) is used exactly where the namespace
+is shared across all installed packages, and the short name (`skrivro`)
+everywhere the namespace belongs to one package:
+
+[cols="2,1"]
+|===
+| `/usr/share/applications/com.skrivro.editor.desktop` | reverse-DNS
+| `/usr/share/icons/hicolor/<size>/apps/com.skrivro.editor.png` | reverse-DNS
+| `/usr/share/metainfo/com.skrivro.editor.metainfo.xml` | reverse-DNS
+| `/usr/share/mime/packages/com.skrivro.editor.xml` | reverse-DNS
+| `/usr/bin/skrivro` | short
+| `/usr/share/doc/skrivro/` (README + example config/themes, `.default` suffix kept) | short
+| `/usr/share/licenses/skrivro/` (LICENSE + NOTICES) | short
+|===
+
+The repo keeps Tauri's generated icon filenames (`32x32.png`,
+`128x128@2x.png`, …) because the Tauri bundler consumes them on other
+platforms. `stage.sh` is the single place they are renamed and remapped
+(`128x128@2x` → hicolor `256x256/`, `icon.png` → `512x512/`, 48×48
+rendered from `resources/icons/skrivro.svg` via `rsvg-convert`).
+
+== Building
+
+[IMPORTANT]
+====
+A Tauri binary built with plain `cargo build --release` is a *dev*
+binary: it tries to connect to the Vite dev server (`devUrl`,
+localhost:1420) and dies with "Could not connect to localhost". The
+compile-time switch to production behavior is the
+`tauri/custom-protocol` cargo feature. `tauri build` (and therefore
+`vp run tauri build`) passes it implicitly. Plain cargo must pass
+`--features tauri/custom-protocol`. The PKGBUILD does this correctly.
+Keep it that way. `debian/build.sh` and `rpm/build.sh` do *not* build
+the binary. Whatever `BIN` points at gets packaged, so this rule lives
+with the caller.
+====
+
+Arch, which builds everything itself (frontend, binary, staging):
+
+[source,bash]
+----
+cd packaging/arch && makepkg -f
+sudo pacman -U skrivro-*.pkg.tar.zst
+----
+
+Debian and RPM (package a binary you built first):
+
+[source,bash]
+----
+vp run tauri build           # or any custom-protocol build
+./packaging/debian/build.sh  # → dist/skrivro_<ver>_amd64.deb
+./packaging/rpm/build.sh     # → dist/skrivro-<ver>-1.x86_64.rpm
+----
+
+All scripts accept `REPO_ROOT`, `OUT_DIR`/`STAGE`, `BIN`, and `VERSION`
+environment overrides. Defaults assume they run from their in-repo
+locations and read the version from `src-tauri/tauri.conf.json`.
+
+== Dependencies
+
+* *Arch*: curated `depends` from the binary's direct `DT_NEEDED`
+  (namcap-clean), plus `hicolor-icon-theme`. Build tooling in
+  `makedepends`. JS and Rust dependencies never appear. pnpm and cargo
+  install them per-lockfile during the build.
+* *Debian*: hand-mapped names in `control.in`, with `t64 |` alternates
+  spanning the time_t transition and a versioned `libc6` floor.
+* *RPM*: nothing manual. rpmbuild emits precise soname requires
+  (including versioned GLIBC symbols) and capability provides
+  (`mimehandler(text/x-asciidoc)`, …) at build time.
+
+No package ships maintainer scripts: pacman hooks, Debian file
+triggers, and Fedora/openSUSE file triggers all rebuild the icon cache,
+MIME database, and desktop database automatically.
+
+*Floors* (settled 2026-08): release binaries are built against a
+glibc ≤ 2.39 baseline (an Ubuntu 24.04 CI runner fits). Supported
+targets: Ubuntu 24.04+, Debian 13+, current Fedora, and RHEL 10+.
+RHEL 10 users need EPEL enabled for webkit2gtk-4.1 (libsoup3 is in
+AppStream). RHEL 9 is not supportable at all: it ships no
+webkit2gtk-4.1 anywhere, which Tauri 2 hard-requires, so no glibc
+baseline could rescue it.
+
+== Validation
+
+`stage.sh` runs `desktop-file-validate`, `appstreamcli validate`
+(errors fatal, pre-release TODO warnings tolerated), and `xmllint` on
+every run, so every package format gets the same checks. Run `namcap`
+against built Arch packages. `dpkg-deb --info` is safe for read-only
+inspection of the `.deb` on Arch (never `dpkg -i` on Arch).
+
+== Remaining release steps
+
+* PKGBUILD: after the first GitHub release exists, swap the interim
+  `git+file://` source for the public URL (`#tag=v…`, or the release
+  tarball with real `sha256sums`, since checksums cannot precede the
+  artifact). Everything else in this directory is release-ready.
+* Release Linux binaries are built on the glibc ≤ 2.39 baseline
+  (see *Floors*): an Ubuntu 24.04 runner, never a rolling distro, or
+  the floor silently rises.
+* Post-1.0: add metainfo `<screenshots>` once publicly hosted images
+  exist (the block is stubbed in the XML).

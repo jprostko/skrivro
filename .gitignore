@@ -9,3 +9,9 @@ src-tauri/gen/
 
 # Generated test data (scripts/gen-test-docs.sh)
 test-data/
+
+# Packaging build litter (makepkg run in-tree)
+packaging/arch/src/
+packaging/arch/pkg/
+packaging/arch/*.pkg.tar.zst
+packaging/arch/*.log

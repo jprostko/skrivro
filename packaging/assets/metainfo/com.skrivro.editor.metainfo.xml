@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AppStream metainfo for Skrivro (freedesktop.org AppStream, not RHEL's
+  repo concept). Installs to /usr/share/metainfo/. Software centers and
+  distro catalog generators read this. The app itself never does.
+
+  Validate with:  appstreamcli validate com.skrivro.editor.metainfo.xml
+
+  TODO post-1.0: <screenshots> needs publicly hosted image URLs. The
+  block is stubbed below. Optionally add <url type="vcs-browser"> and
+  type="bugtracker".
+-->
+<component type="desktop-application">
+  <id>com.skrivro.editor</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>0BSD</project_license>
+
+  <name>Skrivro</name>
+  <summary>Keyboard-first AsciiDoc and Markdown editor with live preview</summary>
+  <summary xml:lang="sv">Tangentbordsstyrd AsciiDoc- och Markdown-redigerare med direkt förhandsvisning</summary>
+
+  <description>
+    <p>
+      A keyboard-first editor for AsciiDoc and Markdown with a live
+      side-by-side preview. Documents render as you type, with three
+      display modes: editor only, split, or preview only. Vim emulation
+      is available as a first-class option, and the interface stays
+      minimal, a single status bar and no toolbars. It runs offline and
+      makes no network requests of its own.
+    </p>
+    <p xml:lang="sv">
+      En tangentbordsstyrd redigerare för AsciiDoc och Markdown med
+      direkt förhandsvisning sida vid sida. Dokumentet renderas medan du
+      skriver, med tre visningslägen: endast redigerare, delat läge
+      eller endast förhandsvisning. Vim-emulering finns som ett
+      fullvärdigt tillval, och gränssnittet hålls minimalt, ett enda
+      statusfält och inga verktygsfält. Programmet fungerar helt utan
+      nätverk och gör inga egna nätverksanrop.
+    </p>
+    <ul>
+      <li>Live preview for AsciiDoc and Markdown (GitHub Flavored)</li>
+      <li xml:lang="sv">Direkt förhandsvisning för AsciiDoc och Markdown (GitHub Flavored)</li>
+      <li>Optional Vim mode</li>
+      <li xml:lang="sv">Vim-läge som tillval</li>
+      <li>Offline spellcheck with user-supplied dictionaries</li>
+      <li xml:lang="sv">Stavningskontroll offline med egna ordlistor</li>
+      <li>Seven bundled themes plus user theme files</li>
+      <li xml:lang="sv">Sju medföljande teman plus egna temafiler</li>
+      <li>Plain text configuration file</li>
+      <li xml:lang="sv">Konfiguration i en vanlig textfil</li>
+    </ul>
+  </description>
+
+  <categories>
+    <category>Office</category>
+    <category>Publishing</category>
+    <category>Development</category>
+    <category>TextEditor</category>
+  </categories>
+
+  <!-- Search terms beyond what name/summary already contain. The
+       .desktop file carries the full Keywords= list for desktop search. -->
+  <keywords>
+    <keyword>adoc</keyword>
+    <keyword xml:lang="sv">adoc</keyword>
+    <keyword>md</keyword>
+    <keyword xml:lang="sv">md</keyword>
+    <keyword>writing</keyword>
+    <keyword xml:lang="sv">skrivande</keyword>
+    <keyword>markup</keyword>
+    <keyword xml:lang="sv">markup</keyword>
+    <keyword>vim</keyword>
+    <keyword xml:lang="sv">vim</keyword>
+  </keywords>
+
+  <launchable type="desktop-id">com.skrivro.editor.desktop</launchable>
+
+  <provides>
+    <binary>skrivro</binary>
+    <mediatype>text/x-asciidoc</mediatype>
+    <mediatype>text/markdown</mediatype>
+  </provides>
+
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
+
+  <url type="homepage">https://github.com/jprostko/skrivro</url>
+
+  <!--
+  <screenshots>
+    <screenshot type="default">
+      <caption>Split view with live preview</caption>
+      <image>https://TODO/screenshot-split.png</image>
+    </screenshot>
+  </screenshots>
+  -->
+
+  <developer id="com.skrivro">
+    <name>Joseph R. Prostko</name>
+  </developer>
+
+  <!-- Empty oars-1.1 rating = no objectionable content in any category. -->
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.0.0" date="2026-08-16"/>
+  </releases>
+</component>

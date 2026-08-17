@@ -3,12 +3,46 @@
 
 _Keyboard-first AsciiDoc and Markdown editor with live preview._
 
+image:https://img.shields.io/github/actions/workflow/status/jprostko/skrivro/release.yml?label=CI[CI,link=https://github.com/jprostko/skrivro/actions/workflows/release.yml]
+image:https://img.shields.io/github/v/release/jprostko/skrivro?label=release[Latest release,link=https://github.com/jprostko/skrivro/releases/latest]
+image:https://img.shields.io/github/downloads/jprostko/skrivro/total?label=downloads[Downloads,link=https://github.com/jprostko/skrivro/releases]
+image:https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white[Tauri 2,link=https://tauri.app]
+image:https://img.shields.io/badge/Rust-stable-b7410e?logo=rust[Rust stable]
+image:https://img.shields.io/badge/license-0BSD-blue[License: 0BSD,link=LICENSE]
+
 image::resources/icons/skrivro.svg[Skrivro logo, 128, 128]
 
 Skrivro is a desktop application for writing AsciiDoc and Markdown documents with side-by-side live preview.
 It's built around keyboard-driven workflows (with optional Vim mode), runs as a native Tauri application on Linux, macOS, and Windows, and ships small. The WebKit-based binary is under 20 MB on Linux.
 
 A limited single-file HTML build of Skrivro also exists on the `standalone` branch, browser-based, for locked-down environments where installing native software isn't an option. It necessarily gives up the features that depend on a native app. The `standalone` branch documents what differs.
+
+== Minimum OS versions
+
+*macOS* (Apple Silicon)
+
+image:https://img.shields.io/badge/macOS-26+-000000?logo=apple[macOS 26+]
+image:https://img.shields.io/badge/Apple_Silicon-arm64-000000?logo=apple[Apple Silicon arm64]
+
+*Windows*
+
+image:https://img.shields.io/badge/Windows-11+-0078D4[Windows 11+]
+
+Windows needs the WebView2 runtime: Windows 11 ships with it, and
+the installers fetch it in the unlikely case it is missing.
+
+*Linux* (x86_64)
+
+image:https://img.shields.io/badge/Ubuntu-24.04+-e95420?logo=ubuntu&logoColor=white[Ubuntu 24.04+]
+image:https://img.shields.io/badge/Debian-13+-a81d33?logo=debian&logoColor=white[Debian 13+]
+image:https://img.shields.io/badge/Fedora-current-51a2da?logo=fedora&logoColor=white[Fedora]
+image:https://img.shields.io/badge/RHEL-10+_(EPEL)-ee0000?logo=redhat&logoColor=white[RHEL 10+ via EPEL]
+image:https://img.shields.io/badge/Arch-rolling-1793d1?logo=archlinux&logoColor=white[Arch]
+
+Linux additionally needs WebKitGTK 4.1 (libsoup 3): in distro repos
+everywhere above except RHEL, where it comes from EPEL. The glibc
+floor of release binaries is 2.39 (hence Ubuntu 24.04 / Debian 13 /
+RHEL 10). Linux packages are currently x86_64 only.
 
 == Screenshots
 
@@ -36,7 +70,7 @@ Mouse and trackpad work everywhere they should, but the app is designed to be dr
 * *Themes.* Seven bundled themes (five dark, including Catppuccin Mocha and Dracula, plus two light). User-supplied themes drop into a `themes/` directory and override bundled versions of the same name.
 * *AsciiDoc include:: support.* Multi-file books and documentation projects work: `include::` directives are pre-expanded via the filesystem before Asciidoctor sees the source.
 * *Scroll sync.* Snap the preview to the block under the editor cursor on demand. Sync-once, not continuous. Both panes stay independently scrollable until you ask for a sync.
-* *Cross-platform.* Linux (X11 and Wayland, including tiling window managers), macOS (Apple Silicon and Intel), Windows.
+* *Cross-platform.* Linux (X11 and Wayland, including tiling window managers), macOS (Apple Silicon), Windows.
 * *Localized UI.* English and Swedish at present. Auto-detects from system locale, and can be forced via config.
 * *Session restore.* On by default: reopens the file from your last session on launch. Set `restore-session = false` to start with a blank buffer instead.
 * *File associations.* Double-click `.adoc` or `.md` files to open them in Skrivro.

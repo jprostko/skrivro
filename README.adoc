@@ -125,9 +125,6 @@ The author drove design decisions, tested every change, and made the final calls
 This is worth disclosing up front because some readers reasonably evaluate code differently knowing how it was produced.
 The codebase is reviewable: every commit has a substantive message explaining the *why*, the architecture is documented in link:docs/ARCHITECTURE.adoc[], and testing pairs a Vitest and cargo-test suite over the pure-logic layer with the author running the app to verify behavior. There is no CI pipeline.
 
-The project would not exist in this form without AI assistance.
-It's a years-long backlog item that the author wouldn't have realistically shipped working on it on and off.
-
 *This is not a maintained open-source project in the traditional sense.*
 It's published so that anyone who finds it useful can use it, audit it, or build on it under the 0BSD license, but the author doesn't plan to triage issues, review pull requests, or take feature requests.
 The most likely path forward for someone who wants Skrivro to do something different is to fork it. The codebase is small and the architecture is documented enough that adapting it is realistic.

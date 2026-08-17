@@ -3,6 +3,7 @@
 # Fires on v* tags (standalone-v* tags do not match and are ignored) and
 # on manual dispatch, which builds everything and uploads workflow
 # artifacts without touching a release. Use that as the dry run.
+# Dispatch manually with: gh workflow run release.yml
 #
 # Linux runs on ubuntu-24.04 ON PURPOSE: the runner's glibc (2.39) is
 # the compatibility floor of the shipped binaries (Ubuntu 24.04+,

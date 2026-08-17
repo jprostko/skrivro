@@ -12,11 +12,11 @@
 #
 # macOS and Windows go through tauri-action (Tauri's bundler is fine
 # there, while Linux packaging lives in packaging/). Neither platform
-# is code-signed. The APPLE_* env below references secrets that do not
-# exist, so macOS builds are unsigned. In the event signing material
-# is ever added, macOS picks it up with no workflow change, and
-# Windows gets configured through Tauri's config rather than this
-# file.
+# is code-signed, and no signing env is wired: referencing undefined
+# secrets sets empty variables, which the bundler treats as configured
+# signing and then fails on (observed in the first dry run). In the
+# event signing material ever exists, add the APPLE_* variables from
+# tauri-action's docs to the macos job env.
 
 name: Release
 
@@ -35,7 +35,7 @@ jobs:
   linux:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -59,13 +59,8 @@ jobs:
             exit 1
           fi
 
-      - name: Build frontend
-        run: pnpm run build
-
-      - name: Build binary
-        run: |
-          cargo build --release --locked --features tauri/custom-protocol \
-            --manifest-path src-tauri/Cargo.toml
+      - name: Build
+        run: pnpm exec vp run tauri build
 
       - name: Package (tarball, deb, rpm)
         run: |
@@ -77,7 +72,7 @@ jobs:
 
       - name: Upload workflow artifacts (dry run)
         if: github.ref_type != 'tag'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-packages
           path: |
@@ -87,7 +82,7 @@ jobs:
 
       - name: Attach to release
         if: github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/skrivro-*-linux-x86_64.tar.xz
@@ -97,7 +92,7 @@ jobs:
   macos:
     runs-on: macos-latest # arm64, the app is Apple Silicon only
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -106,15 +101,9 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           args: --target aarch64-apple-darwin
@@ -122,7 +111,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -131,7 +120,7 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

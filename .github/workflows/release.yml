@@ -1,0 +1,137 @@
+# Release builds for all three platforms.
+#
+# Fires on v* tags (standalone-v* tags do not match and are ignored) and
+# on manual dispatch, which builds everything and uploads workflow
+# artifacts without touching a release. Use that as the dry run.
+#
+# Linux runs on ubuntu-24.04 ON PURPOSE: the runner's glibc (2.39) is
+# the compatibility floor of the shipped binaries (Ubuntu 24.04+,
+# Debian 13+, RHEL 10+). Moving to a newer image silently raises that
+# floor. See packaging/README.adoc, "Floors".
+#
+# macOS and Windows go through tauri-action (Tauri's bundler is fine
+# there, while Linux packaging lives in packaging/). Neither platform
+# is code-signed. The APPLE_* env below references secrets that do not
+# exist, so macOS builds are unsigned. In the event signing material
+# is ever added, macOS picks it up with no workflow change, and
+# Windows gets configured through Tauri's config rather than this
+# file.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            librsvg2-bin desktop-file-utils appstream libxml2-utils rpm
+
+      - name: Install frontend dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Check tag matches app version
+        if: github.ref_type == 'tag'
+        run: |
+          ver="$(python3 -c 'import json; print(json.load(open("src-tauri/tauri.conf.json"))["version"])')"
+          if [ "v$ver" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match app version $ver" >&2
+            exit 1
+          fi
+
+      - name: Build frontend
+        run: pnpm run build
+
+      - name: Build binary
+        run: |
+          cargo build --release --locked --features tauri/custom-protocol \
+            --manifest-path src-tauri/Cargo.toml
+
+      - name: Package (tarball, deb, rpm)
+        run: |
+          ./packaging/stage.sh
+          ver="$(python3 -c 'import json; print(json.load(open("src-tauri/tauri.conf.json"))["version"])')"
+          tar -cJf "dist/skrivro-${ver}-linux-x86_64.tar.xz" -C dist/stage .
+          ./packaging/debian/build.sh
+          ./packaging/rpm/build.sh
+
+      - name: Upload workflow artifacts (dry run)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            dist/skrivro-*-linux-x86_64.tar.xz
+            dist/skrivro_*_amd64.deb
+            dist/skrivro-*.x86_64.rpm
+
+      - name: Attach to release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/skrivro-*-linux-x86_64.tar.xz
+            dist/skrivro_*_amd64.deb
+            dist/skrivro-*.x86_64.rpm
+
+  macos:
+    runs-on: macos-latest # arm64, the app is Apple Silicon only
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          args: --target aarch64-apple-darwin
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}

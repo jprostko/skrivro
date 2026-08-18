@@ -1296,6 +1296,16 @@ body.no-gutter .cm-gutters {
   align-items: center;
 }
 
+/* The typed command text. Form controls don't inherit fonts (UA
+   stylesheets size them on their own), and neither the plugin theme
+   nor our rules set one on the input, so it otherwise sits at the
+   browser default while the ":" / "/" prefix beside it scales with
+   the editor font inherited from .cm-editor. font: inherit gives the
+   input the panel's monospace family and that same size. */
+.cm-vim-panel input {
+  font: inherit;
+}
+
 /* ---------- Confirm dialog (custom <dialog>) ---------- */
 dialog.confirm-dialog {
   background: var(--skr-bg-panel);

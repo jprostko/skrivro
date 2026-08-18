@@ -452,27 +452,29 @@ body.mode-split .preview-scroll::after {
   margin-top: 1.6em;
   margin-bottom: 0.6em;
 }
+/* Sized in em so the heading ladder scales with preview-font-size
+   together with the body text. */
 .preview-pane h1 {
-  font-size: 1.9rem;
+  font-size: 1.9em;
   border-bottom: 1px solid var(--skr-surface);
   padding-bottom: 0.3em;
 }
 .preview-pane h2 {
-  font-size: 1.5rem;
+  font-size: 1.5em;
   border-bottom: 1px solid var(--skr-surface);
   padding-bottom: 0.25em;
 }
 .preview-pane h3 {
-  font-size: 1.25rem;
+  font-size: 1.25em;
   color: var(--skr-accent-alt);
 }
 .preview-pane h4 {
-  font-size: 1.1rem;
+  font-size: 1.1em;
   color: var(--skr-accent-alt);
 }
 .preview-pane h5,
 .preview-pane h6 {
-  font-size: 1rem;
+  font-size: 1em;
   color: var(--skr-accent-minor);
 }
 
@@ -1210,7 +1212,9 @@ body.mode-preview .preview-pane.has-sidebar-toc {
 .preview-pane.has-sidebar-toc .preview-scroll > #toc {
   padding: 1em 1.5em;
   background: var(--skr-bg-panel);
-  font-size: 0.9rem;
+  /* em, not rem: the sidebar tracks preview-font-size like the
+     embedded #toc, which simply inherits the pane font. */
+  font-size: 0.9em;
 }
 .preview-pane.has-sidebar-toc.toc-left .preview-scroll > #toc {
   border-right: 1px solid var(--skr-surface);

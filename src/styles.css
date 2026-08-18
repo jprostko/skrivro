@@ -965,7 +965,9 @@ body.mode-split .preview-scroll::after {
   border-radius: 6px;
   box-shadow: 0 4px 16px var(--skr-shadow);
   font-family: var(--font-sans);
-  font-size: 0.9rem;
+  /* Held as a ratio of the editor font, matching the find/replace panel's
+     factor, so the menu tracks the text it acts on. */
+  font-size: calc(var(--editor-font-size) * 0.9);
 }
 .spell-menu-item {
   display: block;

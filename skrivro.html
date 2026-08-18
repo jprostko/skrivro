@@ -333,27 +333,29 @@
         margin-top: 1.6em;
         margin-bottom: 0.6em;
       }
+      /* Sized in em so the heading ladder scales with preview-font-size
+     together with the body text. */
       .preview h1 {
-        font-size: 1.9rem;
+        font-size: 1.9em;
         border-bottom: 1px solid var(--skr-surface);
         padding-bottom: 0.3em;
       }
       .preview h2 {
-        font-size: 1.5rem;
+        font-size: 1.5em;
         border-bottom: 1px solid var(--skr-surface);
         padding-bottom: 0.25em;
       }
       .preview h3 {
-        font-size: 1.25rem;
+        font-size: 1.25em;
         color: var(--skr-accent-alt);
       }
       .preview h4 {
-        font-size: 1.1rem;
+        font-size: 1.1em;
         color: var(--skr-accent-alt);
       }
       .preview h5,
       .preview h6 {
-        font-size: 1rem;
+        font-size: 1em;
         color: var(--skr-accent-minor);
       }
 
@@ -838,7 +840,9 @@
         border-radius: 6px;
         box-shadow: 0 4px 16px var(--skr-shadow);
         font-family: var(--font-sans);
-        font-size: 0.9rem;
+        /* Held as a ratio of the editor font, matching the find/replace
+       panel's factor, so the menu tracks the text it acts on. */
+        font-size: calc(var(--editor-font-size) * 0.9);
       }
       .spell-menu-item {
         display: block;
@@ -1059,7 +1063,9 @@
       .preview.has-sidebar-toc > #toc {
         padding: 1em 1.5em;
         background: var(--skr-bg-panel);
-        font-size: 0.9rem;
+        /* em, not rem: the sidebar tracks preview-font-size like the
+       embedded #toc, which simply inherits the pane font. */
+        font-size: 0.9em;
       }
       .preview.has-sidebar-toc.toc-left > #toc {
         border-right: 1px solid var(--skr-surface);
@@ -1567,6 +1573,16 @@
       .cm-vim-panel div,
       .cm-vim-panel span {
         align-items: center;
+      }
+
+      /* The typed command text. Form controls don't inherit fonts (UA
+     stylesheets size them on their own), and neither the plugin theme
+     nor our rules set one on the input, so it otherwise sits at the
+     browser default while the ":" / "/" prefix beside it scales with
+     the editor font inherited from .cm-editor. font: inherit gives the
+     input the panel's monospace family and that same size. */
+      .cm-vim-panel input {
+        font: inherit;
       }
     </style>
   </head>

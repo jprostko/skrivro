@@ -3154,14 +3154,14 @@
       // restores clean (honest ● indicator, no spurious beforeunload
       // prompt) and a mid-edit buffer restores dirty.
       //
-      // This replaces the old clear-on-clean draft: rather than DELETING
-      // the entry when the buffer goes clean, every buffer transition
-      // (edit, save, open, new, reload) rewrites it via persistSnapshot,
-      // carrying the live dirty state. The one thing it does NOT preserve
-      // is the File System Access handle (handles can't be JSON-serialized
-      // to localStorage), so after a reload Ctrl+S / Cmd+S falls back to save-as
-      // until the file is re-linked. Reattaching the live handle would
-      // need IndexedDB, deliberately out of scope here.
+      // The entry is never deleted when the buffer goes clean: every
+      // buffer transition (edit, save, open, new, reload) rewrites it via
+      // persistSnapshot, carrying the live dirty state. The one thing it
+      // does NOT preserve is the File System Access handle (handles can't
+      // be JSON-serialized to localStorage), so after a reload
+      // Ctrl+S / Cmd+S falls back to save-as until the file is re-linked.
+      // Reattaching the live handle would need IndexedDB, deliberately out
+      // of scope here.
       const persistSnapshot = () => {
         if (isResetPending()) return;
         try {
@@ -6098,9 +6098,9 @@
       if (initialDirty) setDirty(true);
       updateTitle();
       render();
-      // Initial focus respects the saved display mode: the unconditional
-      // editorView.focus() that used to live here would stick focus on the
-      // hidden editor when launching in preview-only mode.
+      // Initial focus respects the saved display mode: an unconditional
+      // editorView.focus() here would stick focus on the hidden editor when
+      // launching in preview-only mode.
       applyFocusForMode();
     </script>
   </body>

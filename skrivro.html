@@ -1212,6 +1212,11 @@
       }
 
       /* ---------- Help overlay (custom <dialog>) ---------- */
+      /* Help text is read at length like the preview, not glanced at like
+     the status bar, so its sizes all track preview-font-size: raising
+     the preview font zooms the whole dialog as one unit, width cap
+     included, and the descriptions keep their line length instead of
+     wrapping tighter. */
       dialog.help-dialog {
         background: var(--skr-bg-panel);
         color: var(--skr-text);
@@ -1219,9 +1224,9 @@
         border-radius: 8px;
         padding: 1.5rem 2rem;
         font-family: var(--font-sans);
-        font-size: 0.9rem;
+        font-size: calc(var(--preview-font-size) * 0.9);
         line-height: 1.5;
-        max-width: 700px;
+        max-width: calc(var(--preview-font-size) * 43.75);
         width: calc(100% - 4rem);
         max-height: 80vh;
         overflow-y: auto;
@@ -1263,7 +1268,7 @@
         background: none;
         border: none;
         color: var(--skr-text-dim);
-        font-size: 1.5rem;
+        font-size: calc(var(--preview-font-size) * 1.5);
         line-height: 1;
         cursor: pointer;
         padding: 0.25rem 0.5rem;
@@ -1278,7 +1283,7 @@
       }
       .help-dialog h2 {
         color: var(--skr-accent);
-        font-size: 1.05rem;
+        font-size: calc(var(--preview-font-size) * 1.05);
         font-weight: 600;
         margin: 1.5rem 0 0.5rem 0;
         padding-bottom: 0.25rem;
@@ -1290,7 +1295,7 @@
       }
       .help-dialog h3 {
         color: var(--skr-accent-alt);
-        font-size: 0.75rem;
+        font-size: calc(var(--preview-font-size) * 0.75);
         font-weight: 600;
         margin: 0.85rem 0 0.35rem 0;
         text-transform: uppercase;
@@ -1298,7 +1303,7 @@
       }
       .help-dialog .help-note {
         color: var(--skr-text-dim);
-        font-size: 0.75rem;
+        font-size: calc(var(--preview-font-size) * 0.75);
         font-weight: normal;
         text-transform: none;
         letter-spacing: normal;
@@ -1321,7 +1326,7 @@
         border-radius: 3px;
         padding: 0.1rem 0.4rem;
         font-family: var(--font-mono);
-        font-size: 0.75rem;
+        font-size: calc(var(--preview-font-size) * 0.75);
       }
       .help-dialog .help-key kbd + kbd {
         margin-left: 0.2rem;

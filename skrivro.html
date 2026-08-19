@@ -150,22 +150,22 @@
         --preview-padding-y: 2rem;
 
         /* Single-pane width cap (consumed by .cm-scroller in editor-only
-       and .preview in preview-only). Default value is the medium
-       mode, and applyWidthMode in the script section overrides this
-       on launch based on the user's persisted widthMode pref. See the
-       formula comment block further down for details. */
+           and .preview in preview-only). Default value is the medium
+           mode, and applyWidthMode in the script section overrides this
+           on launch based on the user's persisted widthMode pref. See the
+           formula comment block further down for details. */
         --width-cap: 90ch;
 
         /* Sidebar table of contents width when the doc requests
-       `:toc: left` or `:toc: right` and conditions for sidebar
-       layout are met (preview-only mode + width mode != narrow).
-       Echoes Asciidoctor's spec values (15em / 20em from their
-       default stylesheet) but mapped onto our width modes instead
-       of viewport breakpoints: medium and wide both get 15em (the
-       spec's smaller value), full gets 20em (the spec's larger
-       value). applyWidthMode in the script section overrides this
-       on launch and on width-mode changes. The :root default here
-       matches medium (the default width mode). */
+           `:toc: left` or `:toc: right` and conditions for sidebar
+           layout are met (preview-only mode + width mode != narrow).
+           Echoes Asciidoctor's spec values (15em / 20em from their
+           default stylesheet) but mapped onto our width modes instead
+           of viewport breakpoints: medium and wide both get 15em (the
+           spec's smaller value), full gets 20em (the spec's larger
+           value). applyWidthMode in the script section overrides this
+           on launch and on width-mode changes. The :root default here
+           matches medium (the default width mode). */
         --toc-sidebar-width: 15em;
       }
 
@@ -190,7 +190,7 @@
         flex: 1;
         min-height: 0;
         /* Containing block for the absolutely-positioned
-       .preview-toast (no layout effect on its own). */
+           .preview-toast (no layout effect on its own). */
         position: relative;
       }
       .editor-pane,
@@ -205,9 +205,9 @@
         background: var(--skr-bg);
         border-right: 1px solid var(--skr-surface);
         /* position: relative establishes the containing block for the
-       absolutely-positioned ::after pseudo used by the active-pane
-       outline (see body.mode-split .editor-pane:focus-within::after
-       further down). No layout effect on its own. */
+           absolutely-positioned ::after pseudo used by the active-pane
+           outline (see body.mode-split .editor-pane:focus-within::after
+           further down). No layout effect on its own. */
         position: relative;
       }
       .editor-pane .cm-editor {
@@ -232,23 +232,23 @@
         margin-top: 0;
       }
       /* Scroll-past-end spacer: without this, the preview's scrollable
-     range stops where the rendered content ends, which means
-     scrollIntoView (used by sync-preview) on the document's last
-     ~viewport-worth of content can't bring those blocks to the top
-     of the viewport: they're clamped to whatever scroll position
-     keeps the document end visible at the bottom. The spacer adds
-     a viewport-height-minus-a-bit of empty scrollable space so any
-     block, including the last, can be scrolled to the top. The 4em
-     subtraction keeps a couple of trailing lines visible at max
-     scroll instead of leaving the viewport entirely empty.
+         range stops where the rendered content ends, which means
+         scrollIntoView (used by sync-preview) on the document's last
+         ~viewport-worth of content can't bring those blocks to the top
+         of the viewport: they're clamped to whatever scroll position
+         keeps the document end visible at the bottom. The spacer adds
+         a viewport-height-minus-a-bit of empty scrollable space so any
+         block, including the last, can be scrolled to the top. The 4em
+         subtraction keeps a couple of trailing lines visible at max
+         scroll instead of leaving the viewport entirely empty.
 
-     Scoped to split mode only because that's the only mode where
-     scroll-sync runs. In preview-only mode the user is just
-     reading. The natural scroll endpoint is "last line at the
-     bottom of the viewport," and the empty spacer would just be
-     unwanted blank space below the last line. In editor-only mode
-     the preview is `display: none`, so the spacer's reach is moot
-     either way. */
+         Scoped to split mode only because that's the only mode where
+         scroll-sync runs. In preview-only mode the user is just
+         reading. The natural scroll endpoint is "last line at the
+         bottom of the viewport," and the empty spacer would just be
+         unwanted blank space below the last line. In editor-only mode
+         the preview is `display: none`, so the spacer's reach is moot
+         either way. */
       body.mode-split .preview::after {
         content: "";
         display: block;
@@ -256,12 +256,12 @@
       }
 
       /* Pane-local toast for swallowed link clicks (see the preview
-     link-handling script block). Floats over the preview area near
-     its bottom edge: the panes split .wrap 1:1, so the preview's
-     center sits at 75% of .wrap in split mode and at 50% in
-     preview-only mode (where the capped column is centered).
-     Hidden in editor-only mode, where no preview exists to click.
-     Fades via the opacity transition and never intercepts clicks. */
+         link-handling script block). Floats over the preview area near
+         its bottom edge: the panes split .wrap 1:1, so the preview's
+         center sits at 75% of .wrap in split mode and at 50% in
+         preview-only mode (where the capped column is centered).
+         Hidden in editor-only mode, where no preview exists to click.
+         Fades via the opacity transition and never intercepts clicks. */
       .preview-toast {
         position: absolute;
         bottom: 1rem;
@@ -292,12 +292,12 @@
       }
 
       /* Window-anchored toast for app-level messages (see appMessage
-     in the script). The Ex panel only exists with Vim mode on, so
-     feedback for vim-independent triggers lands here when the panel
-     is unavailable. Fixed to the viewport, so it shows in every
-     display mode regardless of which panes exist, and sits above
-     the status bar's band so the two never overlap. Same visual
-     treatment as the preview toast. */
+         in the script). The Ex panel only exists with Vim mode on, so
+         feedback for vim-independent triggers lands here when the panel
+         is unavailable. Fixed to the viewport, so it shows in every
+         display mode regardless of which panes exist, and sits above
+         the status bar's band so the two never overlap. Same visual
+         treatment as the preview toast. */
       .app-toast {
         position: fixed;
         bottom: 2.4rem;
@@ -334,7 +334,7 @@
         margin-bottom: 0.6em;
       }
       /* Sized in em so the heading ladder scales with preview-font-size
-     together with the body text. */
+         together with the body text. */
       .preview h1 {
         font-size: 1.9em;
         border-bottom: 1px solid var(--skr-surface);
@@ -426,12 +426,13 @@
         margin: 2em 0;
       }
 
-      /* Constrain images to the preview container width. Asciidoctor's default
-     stylesheet applies `.imageblock img { max-width: 100% }` but our custom
-     Catppuccin-styled preview CSS doesn't inherit from that, so without this
-     rule any image rendered at its natural resolution (e.g. a 1920x1920
-     photograph) overflows the preview pane. height: auto preserves aspect
-     ratio when the intrinsic width exceeds the container. */
+      /* Constrain images to the preview container width. Asciidoctor's
+         default stylesheet applies `.imageblock img { max-width: 100% }`
+         but our custom Catppuccin-styled preview CSS doesn't inherit from
+         that, so without this rule any image rendered at its natural
+         resolution (e.g. a 1920x1920 photograph) overflows the preview
+         pane. height: auto preserves aspect ratio when the intrinsic width
+         exceeds the container. */
       .preview img {
         max-width: 100%;
         height: auto;
@@ -447,24 +448,24 @@
       }
 
       /* GFM task lists. The Markdown renderer tags each task-list item
-     with a `task-list-item` class (the same class GitHub's renderer
-     uses), so this rule targets them with a plain class selector,
-     tight and loose lists alike.
-     
-     Hide the native bullet, since showing both a bullet and a checkbox
-     is redundant. The checkbox is then pulled left by a negative
-     margin so it sits where the bullet would have, matching GitHub.
-     That negative margin is on the checkbox, NOT the <li>: the <li>
-     keeps its normal place in list flow, so a nested task list still
-     indents under its parent. (A -1.5em on the <li> itself cancels
-     each nested list's 1.5em padding-left and flattens the nesting.)
-     
-     accent-color sets the checked-state fill to the theme's link
-     color, and most modern browsers also tint the unchecked border
-     towards that color, improving visibility against dark backgrounds
-     (the default unchecked box is near-invisible on Catppuccin Mocha).
-     vertical-align: middle keeps the checkbox centered on the text
-     x-height instead of sitting on the baseline. */
+         with a `task-list-item` class (the same class GitHub's renderer
+         uses), so this rule targets them with a plain class selector,
+         tight and loose lists alike.
+
+         Hide the native bullet, since showing both a bullet and a checkbox
+         is redundant. The checkbox is then pulled left by a negative
+         margin so it sits where the bullet would have, matching GitHub.
+         That negative margin is on the checkbox, NOT the <li>: the <li>
+         keeps its normal place in list flow, so a nested task list still
+         indents under its parent. (A -1.5em on the <li> itself cancels
+         each nested list's 1.5em padding-left and flattens the nesting.)
+
+         accent-color sets the checked-state fill to the theme's link
+         color, and most modern browsers also tint the unchecked border
+         towards that color, improving visibility against dark backgrounds
+         (the default unchecked box is near-invisible on Catppuccin Mocha).
+         vertical-align: middle keeps the checkbox centered on the text
+         x-height instead of sitting on the baseline. */
       .preview li.task-list-item {
         list-style: none;
       }
@@ -474,8 +475,8 @@
         vertical-align: middle;
       }
       /* Negative margin on the checkbox itself, not the <li>, so the item
-     keeps its normal place in list flow and nested task lists indent
-     (see the note above). */
+         keeps its normal place in list flow and nested task lists indent
+         (see the note above). */
       .preview li.task-list-item input[type="checkbox"] {
         margin-left: -1.5em;
       }
@@ -519,44 +520,44 @@
         margin: 1em 0;
       }
       /* AsciiDoc admonitions: Asciidoctor emits them as a 2-column table
-     wrapped in <div class="admonitionblock <type>">. With
-     `icons: 'font'` set in load options (see render() below), the icon
-     cell contains <i class="fa icon-<type>"> referencing Font Awesome
-     glyphs by their Asciidoctor semantic alias. Without that
-     attribute, it'd contain a text label div instead.
-     
-     Structural rules below match Asciidoctor's own stylesheet: bare
-     table, no background, icon cell fixed-width and centered, a 1px
-     divider between icon and content columns, content cell padded.
-     Colors stay on our --skr-* palette rather than Asciidoctor's
-     tuned-for-light hex values so dark themes resolve correctly.
-     
-     No colored left-edge stripe, since Asciidoctor's native output
-     doesn't have one. Type signaling is carried entirely by the icon
-     color. */
+         wrapped in <div class="admonitionblock <type>">. With
+         `icons: 'font'` set in load options (see render() below), the icon
+         cell contains <i class="fa icon-<type>"> referencing Font Awesome
+         glyphs by their Asciidoctor semantic alias. Without that
+         attribute, it'd contain a text label div instead.
+
+         Structural rules below match Asciidoctor's own stylesheet: bare
+         table, no background, icon cell fixed-width and centered, a 1px
+         divider between icon and content columns, content cell padded.
+         Colors stay on our --skr-* palette rather than Asciidoctor's
+         tuned-for-light hex values so dark themes resolve correctly.
+
+         No colored left-edge stripe, since Asciidoctor's native output
+         doesn't have one. Type signaling is carried entirely by the icon
+         color. */
       .preview .admonitionblock {
         margin: 1em 0;
       }
       /* Convert Asciidoctor's <table>-based admonition layout to flexbox.
-     Table-cell vertical-align/baseline behavior diverges across browsers
-     for replaced elements (esp. inline SVGs of mixed sizes), and trying
-     to center an SVG inside a td involves baseline math, line-box
-     expansion, and font-metric quirks that aren't worth the complexity.
-     Flexbox align-items: center is the most predictable vertical-
-     centering primitive in CSS: same answer everywhere, no gotchas.
+         Table-cell vertical-align/baseline behavior diverges across browsers
+         for replaced elements (esp. inline SVGs of mixed sizes), and trying
+         to center an SVG inside a td involves baseline math, line-box
+         expansion, and font-metric quirks that aren't worth the complexity.
+         Flexbox align-items: center is the most predictable vertical-
+         centering primitive in CSS: same answer everywhere, no gotchas.
 
-     `display: contents` on tbody/tr removes them from layout while
-     preserving accessibility semantics, so the table flex container's
-     direct flex items are the icon and content tds. */
+         `display: contents` on tbody/tr removes them from layout while
+         preserving accessibility semantics, so the table flex container's
+         direct flex items are the icon and content tds. */
       .preview .admonitionblock > table {
         /* Flex with `align-items: center` cross-aligns each cell's box to
-       the row midline: icon cell (2.5em) and content cell (text line)
-       end up center-to-center. Container height = max(items) = 2.5em
-       in the common case. The vertical separator is a positioned
-       pseudo-element (below) rather than a border on the content
-       cell, so its height tracks the table's full flex-container
-       height instead of just the content cell's short intrinsic
-       height. `position: relative` establishes the containing block. */
+           the row midline: icon cell (2.5em) and content cell (text line)
+           end up center-to-center. Container height = max(items) = 2.5em
+           in the common case. The vertical separator is a positioned
+           pseudo-element (below) rather than a border on the content
+           cell, so its height tracks the table's full flex-container
+           height instead of just the content cell's short intrinsic
+           height. `position: relative` establishes the containing block. */
         display: flex;
         align-items: center;
         position: relative;
@@ -566,9 +567,9 @@
       }
       .preview .admonitionblock > table::before {
         /* Vertical separator between icon column and content column.
-       `left: 5em` positions it at the icon column's right edge
-       (matches td.icon's flex basis). Full table height via top/
-       bottom: 0. */
+           `left: 5em` positions it at the icon column's right edge
+           (matches td.icon's flex basis). Full table height via top/
+           bottom: 0. */
         content: "";
         position: absolute;
         left: 5em;
@@ -587,10 +588,10 @@
       }
       .preview .admonitionblock > table td.icon {
         /* Fixed-width icon column that scales with the preview font size:
-       the `flex: 0 0 5em` basis renders ~80px at the default
-       preview-font-size (1rem), roughly the width of Asciidoctor's stock
-       admonition icon column. No grow, no shrink, and the internal
-       flex container centers the SVG on both axes. */
+           the `flex: 0 0 5em` basis renders ~80px at the default
+           preview-font-size (1rem), roughly the width of Asciidoctor's stock
+           admonition icon column. No grow, no shrink, and the internal
+           flex container centers the SVG on both axes. */
         flex: 0 0 5em;
         display: flex;
         align-items: center;
@@ -598,21 +599,21 @@
       }
       .preview .admonitionblock > table td.content {
         /* Border-left removed (separator is a pseudo on the table now).
-       `flex: 1` takes remaining space after the 5em icon column. */
+           `flex: 1` takes remaining space after the 5em icon column. */
         flex: 1;
         padding-left: 1.125em;
         padding-right: 1.25em;
       }
       /* Kill top margin of the first child and bottom margin of the last
-     child inside the content cell. The generic `.preview p { margin:
-     0.8em 0 }` rule would otherwise add 1.6em of vertical padding to a
-     single-line block-form admonition, growing the row to ~3.25em and
-     making it visibly taller than the icon for no good reason. Reset
-     the outermost margins so the row tracks the icon's 2.5em height
-     in the common case. Inner paragraphs (in multi-paragraph
-     admonitions) keep their margins for inter-paragraph spacing.
-     Selectors cover both a bare <p> and Asciidoctor's `<div
-     class="paragraph"><p>` wrapper pattern. */
+         child inside the content cell. The generic `.preview p { margin:
+         0.8em 0 }` rule would otherwise add 1.6em of vertical padding to a
+         single-line block-form admonition, growing the row to ~3.25em and
+         making it visibly taller than the icon for no good reason. Reset
+         the outermost margins so the row tracks the icon's 2.5em height
+         in the common case. Inner paragraphs (in multi-paragraph
+         admonitions) keep their margins for inter-paragraph spacing.
+         Selectors cover both a bare <p> and Asciidoctor's `<div
+         class="paragraph"><p>` wrapper pattern. */
       .preview .admonitionblock > table td.content > :first-child,
       .preview .admonitionblock > table td.content > :first-child > p {
         margin-top: 0;
@@ -622,8 +623,8 @@
         margin-bottom: 0;
       }
       /* SVG sits as a flex item centered by the icon cell's flex container
-     (above). `display: block` strips inline baseline behavior so the
-     SVG's bounding box is what gets centered, not its baseline. */
+         (above). `display: block` strips inline baseline behavior so the
+         SVG's bounding box is what gets centered, not its baseline. */
       .preview .admonitionblock td.icon svg {
         display: block;
         width: 2.5em;
@@ -647,22 +648,22 @@
       }
 
       /* GFM alerts: GitHub's extended blockquote syntax (> [!NOTE], etc.)
-     that our markdownRenderer's gfmAlert rule parses into
-     <div class="markdown-alert markdown-alert-note"> (and variants).
-     Class names, HTML structure, and per-type colors mirror GitHub's
-     actual rendered output so a user familiar with GitHub's README
-     rendering sees the same shape and color semantics here.
-     Color semantics per GitHub's Primer tokens:
-       note      → accent    (blue)
-       tip       → success   (green)
-       important → done      (purple/mauve)
-       warning   → attention (yellow)
-       caution   → danger    (red)
-     These match the Primer semantics 1-to-1 using our --skr-* palette
-     slots. Our AsciiDoc admonition mapping uses a different palette
-     because AsciiDoc conventions for important/warning/caution
-     disagree with GitHub's. Cross-format divergence is intentional
-     so each format renders like its source-convention upstream. */
+         that our markdownRenderer's gfmAlert rule parses into
+         <div class="markdown-alert markdown-alert-note"> (and variants).
+         Class names, HTML structure, and per-type colors mirror GitHub's
+         actual rendered output so a user familiar with GitHub's README
+         rendering sees the same shape and color semantics here.
+         Color semantics per GitHub's Primer tokens:
+           note      → accent    (blue)
+           tip       → success   (green)
+           important → done      (purple/mauve)
+           warning   → attention (yellow)
+           caution   → danger    (red)
+         These match the Primer semantics 1-to-1 using our --skr-* palette
+         slots. Our AsciiDoc admonition mapping uses a different palette
+         because AsciiDoc conventions for important/warning/caution
+         disagree with GitHub's. Cross-format divergence is intentional
+         so each format renders like its source-convention upstream. */
       .preview .markdown-alert {
         margin: 1em 0;
         padding: 0.8em 1em;
@@ -675,33 +676,33 @@
         font-weight: 600;
         margin: 0 0 0.5em 0;
         /* Flex layout so the inlined Octicon SVG sits alongside the title
-       text with consistent spacing and vertical centering, matching
-       GitHub's rendered output (which also uses display: flex on this
-       element). */
+           text with consistent spacing and vertical centering, matching
+           GitHub's rendered output (which also uses display: flex on this
+           element). */
         display: flex;
         align-items: center;
         gap: 0.4em;
         /* Capitalize defensively: the token handler already emits
-       Title-cased "Note" / "Tip" / etc., but a future change might
-       not, and this keeps the header visually correct either way. */
+           Title-cased "Note" / "Tip" / etc., but a future change might
+           not, and this keeps the header visually correct either way. */
         text-transform: capitalize;
         /* Color comes from the per-type rules below: each alert variant
-       colors both the left stripe AND the title text with the same
-       semantic slot. The inlined Octicon SVG inherits via
-       `fill: currentColor` (rule below), so the icon color tracks
-       the title color automatically. */
+           colors both the left stripe AND the title text with the same
+           semantic slot. The inlined Octicon SVG inherits via
+           `fill: currentColor` (rule below), so the icon color tracks
+           the title color automatically. */
       }
       /* Octicon SVGs inlined inside the title. `fill: currentColor` is
-     what makes the single title-color rule color the icon along with
-     the title text, no per-type icon rules needed. flex-shrink: 0
-     prevents the SVG from being squeezed on narrow containers. */
+         what makes the single title-color rule color the icon along with
+         the title text, no per-type icon rules needed. flex-shrink: 0
+         prevents the SVG from being squeezed on narrow containers. */
       .preview .markdown-alert-title .octicon {
         fill: currentColor;
         flex-shrink: 0;
       }
       /* Drop the default top/bottom margins on the first/last children
-     so the title and trailing paragraph sit flush with the colored
-     frame, matching how .admonitionblock presents its content. */
+         so the title and trailing paragraph sit flush with the colored
+         frame, matching how .admonitionblock presents its content. */
       .preview .markdown-alert > :first-child {
         margin-top: 0;
       }
@@ -778,18 +779,18 @@
         border-radius: 4px;
       }
 
-      /* Text-mode preview: TextRenderer emits a single <pre class="text-verbatim">
-     that is the entire document body, not a listing block inside a larger
-     document. Without scoped styling it inherits .preview pre rules meant
-     for code samples (a rounded card with its own background, padding,
-     and left-edge accent), which look wrong when the "card" IS the whole
-     pane. Override: flush everything and let the preview pane's own
-     padding be the only layer of inset. pre-wrap wraps long lines at
-     whitespace while preserving explicit newlines, matching the editor
-     pane's word-wrap behavior. Font family and size track the editor
-     settings so both panes present the same characters at the same visual
-     weight: text mode is a mirror of what you typed, not a transformed
-     rendering of it. */
+      /* Text-mode preview: TextRenderer emits a single
+         <pre class="text-verbatim"> that is the entire document body, not a
+         listing block inside a larger document. Without scoped styling it
+         inherits .preview pre rules meant for code samples (a rounded card
+         with its own background, padding, and left-edge accent), which look
+         wrong when the "card" IS the whole pane. Override: flush everything
+         and let the preview pane's own padding be the only layer of inset.
+         pre-wrap wraps long lines at whitespace while preserving explicit
+         newlines, matching the editor pane's word-wrap behavior. Font family
+         and size track the editor settings so both panes present the same
+         characters at the same visual weight: text mode is a mirror of what
+         you typed, not a transformed rendering of it. */
       .preview pre.text-verbatim {
         background: transparent;
         border: 0;
@@ -800,18 +801,18 @@
         white-space: pre-wrap;
         font-family: var(--font-mono);
         /* font-size + line-height explicitly track the editor's so the two
-       panes present text at the same visual size and density. Selector
-       uses `pre.text-verbatim` rather than `.text-verbatim` to bump
-       specificity above the generic `.preview pre` rule (0,2,1 vs 0,1,1)
-       and guard against any surprise that might leave the 0.85em from
-       that rule winning for font-size. */
+           panes present text at the same visual size and density. Selector
+           uses `pre.text-verbatim` rather than `.text-verbatim` to bump
+           specificity above the generic `.preview pre` rule (0,2,1 vs 0,1,1)
+           and guard against any surprise that might leave the 0.85em from
+           that rule winning for font-size. */
         font-size: var(--editor-font-size);
         line-height: 1.6;
         color: var(--skr-text);
       }
 
       /* Disable programming ligatures in monospace contexts.
-     JetBrains Mono, Fira Code, etc. enable them by default. */
+         JetBrains Mono, Fira Code, etc. enable them by default. */
       .cm-content,
       .preview code,
       .preview pre {
@@ -819,8 +820,8 @@
       }
 
       /* Spellcheck squiggle. Drawn by us as a CM6 mark decoration rather
-     than the browser's native spellcheck underline, which CM6's DOM
-     re-renders wipe. */
+         than the browser's native spellcheck underline, which CM6's DOM
+         re-renders wipe. */
       .cm-spell-error {
         text-decoration: underline wavy var(--skr-error);
         text-decoration-skip-ink: none;
@@ -828,8 +829,8 @@
       }
 
       /* Spellcheck right-click menu. position:fixed and appended to <body>,
-     so it isn't clipped by editor overflow, and the menu code sets
-     left/top from the click coordinates. */
+         so it isn't clipped by editor overflow, and the menu code sets
+         left/top from the click coordinates. */
       .spell-menu {
         position: fixed;
         z-index: 1000;
@@ -841,7 +842,7 @@
         box-shadow: 0 4px 16px var(--skr-shadow);
         font-family: var(--font-sans);
         /* Held as a ratio of the editor font, matching the find/replace
-       panel's factor, so the menu tracks the text it acts on. */
+           panel's factor, so the menu tracks the text it acts on. */
         font-size: calc(var(--editor-font-size) * 0.9);
       }
       .spell-menu-item {
@@ -868,7 +869,7 @@
       }
 
       /* Find/replace panel (@codemirror/search), themed to match the app,
-     with the same panel background as the spellcheck menu. */
+         with the same panel background as the spellcheck menu. */
       .cm-panel.cm-search {
         padding: 0.4rem 0.55rem;
         background: var(--skr-bg-panel);
@@ -876,10 +877,10 @@
         border-bottom: 1px solid var(--skr-surface);
         font-family: var(--font-sans);
         /* One source for the find/replace controls' size. Buttons, inputs,
-       and checkbox labels each read it explicitly, because @codemirror's
-       base themes otherwise size those as a fraction of the panel
-       (.cm-button 70%, label 80%), leaving them inconsistently small.
-       Held as a ratio of the editor font so the panel tracks it. */
+           and checkbox labels each read it explicitly, because @codemirror's
+           base themes otherwise size those as a fraction of the panel
+           (.cm-button 70%, label 80%), leaving them inconsistently small.
+           Held as a ratio of the editor font so the panel tracks it. */
         --search-font-size: calc(var(--editor-font-size) * 0.9);
         font-size: var(--search-font-size);
       }
@@ -898,9 +899,9 @@
         border-radius: 4px;
         font-size: var(--search-font-size);
         /* Form controls don't inherit the panel's font-family, so without
-       this the buttons render in the browser's default UI font instead
-       of var(--font-sans), ending up a different typeface and apparent
-       size from the labels. */
+           this the buttons render in the browser's default UI font instead
+           of var(--font-sans), ending up a different typeface and apparent
+           size from the labels. */
         font-family: var(--font-sans);
       }
       .cm-panel.cm-search .cm-button:hover {
@@ -916,9 +917,9 @@
         color: var(--skr-text);
       }
       /* The regex toggle is deliberately hidden: the average user doesn't
-     know what regex means, and Vim's own / search still provides regex
-     matching for those who do. The panel code and the regex engine stay
-     intact, so deleting this rule restores the checkbox. */
+         know what regex means, and Vim's own / search still provides regex
+         matching for those who do. The panel code and the regex engine stay
+         intact, so deleting this rule restores the checkbox. */
       .cm-panel.cm-search label:has(input[name="re"]) {
         display: none;
       }
@@ -935,36 +936,36 @@
         border-right: none;
       }
       /* Apply the editor-only-mode width cap on .cm-scroller (the
-     scrollable text area inside .cm-editor) rather than on
-     .editor-pane. .cm-panels (the Vim Ex command bar / search bar)
-     is a sibling of .cm-scroller inside .cm-editor, so a cap on
-     .editor-pane constrains the Ex bar too, leaving it stranded
-     in the centered editor column instead of spanning the full
-     window like Vim's convention expects. Capping at .cm-scroller
-     leaves the Ex bar full-window-width while the text area still
-     centers.
+         scrollable text area inside .cm-editor) rather than on
+         .editor-pane. .cm-panels (the Vim Ex command bar / search bar)
+         is a sibling of .cm-scroller inside .cm-editor, so a cap on
+         .editor-pane constrains the Ex bar too, leaving it stranded
+         in the centered editor column instead of spanning the full
+         window like Vim's convention expects. Capping at .cm-scroller
+         leaves the Ex bar full-window-width while the text area still
+         centers.
 
-     Width-cap formula (shared by the preview rule below):
-       min(var(--width-cap), 100%)
+         Width-cap formula (shared by the preview rule below):
+           min(var(--width-cap), 100%)
 
-     --width-cap holds a `ch`-based cap (set by applyWidthMode in
-     the script section): 65ch for narrow, 90ch for medium, 125ch
-     for wide. The ch unit is "width of '0' in the current font",
-     so the same ch value renders differently in editor (monospace)
-     vs preview (proportional), naturally giving the editor a
-     wider visual cap than the preview at the same mode. That
-     mismatch is desirable: editing tends to want wider lines
-     (especially for code), reading tends to want narrower (prose
-     readability). One mode pref, two visually-appropriate pane
-     widths.
+         --width-cap holds a `ch`-based cap (set by applyWidthMode in
+         the script section): 65ch for narrow, 90ch for medium, 125ch
+         for wide. The ch unit is "width of '0' in the current font",
+         so the same ch value renders differently in editor (monospace)
+         vs preview (proportional), naturally giving the editor a
+         wider visual cap than the preview at the same mode. That
+         mismatch is desirable: editing tends to want wider lines
+         (especially for code), reading tends to want narrower (prose
+         readability). One mode pref, two visually-appropriate pane
+         widths.
 
-     The 100% safety net handles narrow viewports / tiles where
-     the cap would exceed the available width. Required on the
-     editor's `width:` rule (without it, an explicit width could
-     overflow narrower parents). Kept on the preview's `max-width:`
-     too: structurally redundant for max-width but identical
-     wrapping across both rules reads cleaner than two that look
-     similar but differ in a fourth term. */
+         The 100% safety net handles narrow viewports / tiles where
+         the cap would exceed the available width. Required on the
+         editor's `width:` rule (without it, an explicit width could
+         overflow narrower parents). Kept on the preview's `max-width:`
+         too: structurally redundant for max-width but identical
+         wrapping across both rules reads cleaner than two that look
+         similar but differ in a fourth term. */
       body.mode-editor .cm-scroller {
         width: min(var(--width-cap), 100%);
         margin-inline: auto;
@@ -975,46 +976,46 @@
       }
 
       /* Sidebar table of contents layout, applied when:
-     - Document has `:toc: left` or `:toc: right` (read from
-       Asciidoctor's `toc-position` attribute, see render() and
-       evaluateTocLayout() in the script section).
-     - Display mode is preview-only (split is too narrow per
-       pane, and editor-only hides the preview).
-     - Width mode is not narrow (narrow's text budget can't
-       accommodate a sidebar without compromising prose comfort).
-     evaluateTocLayout() adds .has-sidebar-toc + .toc-left/.toc-right
-     when all three hold, and removes them otherwise. The CSS below
-     applies based on classes alone: body.mode-* gating is
-     unnecessary because the classes only get added in the right
-     mode.
+         - Document has `:toc: left` or `:toc: right` (read from
+           Asciidoctor's `toc-position` attribute, see render() and
+           evaluateTocLayout() in the script section).
+         - Display mode is preview-only (split is too narrow per
+           pane, and editor-only hides the preview).
+         - Width mode is not narrow (narrow's text budget can't
+           accommodate a sidebar without compromising prose comfort).
+         evaluateTocLayout() adds .has-sidebar-toc + .toc-left/.toc-right
+         when all three hold, and removes them otherwise. The CSS below
+         applies based on classes alone: body.mode-* gating is
+         unnecessary because the classes only get added in the right
+         mode.
 
-     The sidebar layout EXPANDS the preview's max-width to
-     content-cap + sidebar-width + gap, replacing the normal
-     content-cap-only constraint. Content stays at the comfortable
-     reading width. Sidebar overhead adds on top. The 100% safety
-     net still applies: on viewports too narrow to fit sidebar +
-     content, the layout shrinks to fit the viewport. */
+         The sidebar layout EXPANDS the preview's max-width to
+         content-cap + sidebar-width + gap, replacing the normal
+         content-cap-only constraint. Content stays at the comfortable
+         reading width. Sidebar overhead adds on top. The 100% safety
+         net still applies: on viewports too narrow to fit sidebar +
+         content, the layout shrinks to fit the viewport. */
       /* The body.mode-preview prefix lifts specificity to (0,3,1),
-     beating the (0,2,1) of the body.mode-preview .preview rule
-     above that sets the non-sidebar max-width. Without the prefix,
-     .preview.has-sidebar-toc sat at (0,2,0), the mode rule won,
-     and max-width stayed at 90ch instead of the expanded calc,
-     which collapsed the content column to .preview-width minus
-     sidebar instead of preserving it. */
+         beating the (0,2,1) of the body.mode-preview .preview rule
+         above that sets the non-sidebar max-width. Without the prefix,
+         .preview.has-sidebar-toc sat at (0,2,0), the mode rule won,
+         and max-width stayed at 90ch instead of the expanded calc,
+         which collapsed the content column to .preview-width minus
+         sidebar instead of preserving it. */
       body.mode-preview .preview.has-sidebar-toc {
         display: grid;
         column-gap: 2em;
         max-width: min(calc(var(--width-cap) + var(--toc-sidebar-width) + 2em), 100%);
       }
       /* minmax(0, 1fr) instead of bare 1fr: grid's `1fr` cell defaults
-     to a min-width of min-content (the widest unbreakable unit
-     inside it, e.g. a long code line or URL). With prose plus code
-     blocks, that min-content can exceed the calc()-derived
-     content-column width, forcing the grid container to grow past
-     its max-width and producing horizontal scrollbars on .preview.
-     minmax(0, 1fr) lets the cell shrink below min-content. Long
-     lines inside code blocks then overflow within the code block's
-     own overflow-x rather than the whole preview's scroll. */
+         to a min-width of min-content (the widest unbreakable unit
+         inside it, e.g. a long code line or URL). With prose plus code
+         blocks, that min-content can exceed the calc()-derived
+         content-column width, forcing the grid container to grow past
+         its max-width and producing horizontal scrollbars on .preview.
+         minmax(0, 1fr) lets the cell shrink below min-content. Long
+         lines inside code blocks then overflow within the code block's
+         own overflow-x rather than the whole preview's scroll. */
       .preview.has-sidebar-toc.toc-left {
         grid-template-columns: var(--toc-sidebar-width) minmax(0, 1fr);
       }
@@ -1022,8 +1023,8 @@
         grid-template-columns: minmax(0, 1fr) var(--toc-sidebar-width);
       }
       /* Default: every child goes in the content column. The
-     #toc selector below overrides this for the table of contents
-     itself. */
+         #toc selector below overrides this for the table of contents
+         itself. */
       .preview.has-sidebar-toc.toc-left > * {
         grid-column: 2;
       }
@@ -1031,12 +1032,12 @@
         grid-column: 1;
       }
       /* The table of contents occupies the sidebar column, spans all
-     rows so it fills the layout's full vertical extent.
-     position: sticky pins it to the top of the visible area as
-     content scrolls. align-self: start prevents the grid from
-     stretching it to row height, and its natural height + max-height
-     (with overflow-y) handle the case where the table of contents
-     itself is taller than the viewport. */
+         rows so it fills the layout's full vertical extent.
+         position: sticky pins it to the top of the visible area as
+         content scrolls. align-self: start prevents the grid from
+         stretching it to row height, and its natural height + max-height
+         (with overflow-y) handle the case where the table of contents
+         itself is taller than the viewport. */
       .preview.has-sidebar-toc.toc-left > #toc {
         grid-column: 1;
         grid-row: 1 / -1;
@@ -1056,15 +1057,15 @@
         overflow-y: auto;
       }
       /* Table of contents theming using --skr-* vars. Subtle
-     border on the inner side (between it and the content) plus
-     muted padding. Title is slightly heavier, and nested lists
-     indent with no bullets to match Asciidoctor's default visual
-     but using our palette. */
+         border on the inner side (between it and the content) plus
+         muted padding. Title is slightly heavier, and nested lists
+         indent with no bullets to match Asciidoctor's default visual
+         but using our palette. */
       .preview.has-sidebar-toc > #toc {
         padding: 1em 1.5em;
         background: var(--skr-bg-panel);
         /* em, not rem: the sidebar tracks preview-font-size like the
-       embedded #toc, which simply inherits the pane font. */
+           embedded #toc, which simply inherits the pane font. */
         font-size: 0.9em;
       }
       .preview.has-sidebar-toc.toc-left > #toc {
@@ -1095,40 +1096,40 @@
       }
 
       /* Table of contents visibility toggle: when the user has
-     hidden it via Ctrl+Alt+I / ⌃⌘I or `:toc off`, evaluateTocLayout
-     adds .toc-hidden to .preview AND skips adding the sidebar layout
-     classes. So this single rule covers both layouts: the inline
-     table of contents at the top of content (Asciidoctor's default
-     placement) and the sidebar one inside the grid. */
+         hidden it via Ctrl+Alt+I / ⌃⌘I or `:toc off`, evaluateTocLayout
+         adds .toc-hidden to .preview AND skips adding the sidebar layout
+         classes. So this single rule covers both layouts: the inline
+         table of contents at the top of content (Asciidoctor's default
+         placement) and the sidebar one inside the grid. */
       .preview.toc-hidden #toc {
         display: none;
       }
 
       /* ---------- Active-pane outline (split mode only) ---------- */
       /* Visual indicator showing which pane has keyboard focus. Only
-     meaningful in split mode. In single-pane modes there's nothing
-     to disambiguate.
-     
-     The editor side splits the indicator across two mechanisms
-     because .cm-editor fills .editor-pane and its background paints
-     over any outline drawn at outline-offset:-1, leaving the outline
-     visible only on the right edge (where the static border-right
-     sits in the border zone, outside .cm-editor's reach). The fix:
-     (1) recolor the static border-right to accent on focus (that's
-     the right side of the rectangle), and (2) a positioned ::after
-     pseudo paints top/left/bottom borders. As a positioned
-     descendant, the
-     pseudo paints AFTER .cm-editor's subtree in stacking order, so
-     its borders sit on top of the content backgrounds rather than
-     behind them. inset:0 + box-sizing:border-box places the borders
-     at the same pixel columns an outline at offset -1 would have
-     occupied. pointer-events:none so it doesn't intercept clicks.
-     
-     Preview side uses a plain outline because .preview has padding
-     and its rendered HTML doesn't reach the pane edges, so no child
-     background covers the outline area. The .preview:focus rule
-     suppresses the default browser focus ring on the focusable
-     element itself (the :focus-within rule above does the work). */
+         meaningful in split mode. In single-pane modes there's nothing
+         to disambiguate.
+
+         The editor side splits the indicator across two mechanisms
+         because .cm-editor fills .editor-pane and its background paints
+         over any outline drawn at outline-offset:-1, leaving the outline
+         visible only on the right edge (where the static border-right
+         sits in the border zone, outside .cm-editor's reach). The fix:
+         (1) recolor the static border-right to accent on focus (that's
+         the right side of the rectangle), and (2) a positioned ::after
+         pseudo paints top/left/bottom borders. As a positioned
+         descendant, the
+         pseudo paints AFTER .cm-editor's subtree in stacking order, so
+         its borders sit on top of the content backgrounds rather than
+         behind them. inset:0 + box-sizing:border-box places the borders
+         at the same pixel columns an outline at offset -1 would have
+         occupied. pointer-events:none so it doesn't intercept clicks.
+
+         Preview side uses a plain outline because .preview has padding
+         and its rendered HTML doesn't reach the pane edges, so no child
+         background covers the outline area. The .preview:focus rule
+         suppresses the default browser focus ring on the focusable
+         element itself (the :focus-within rule above does the work). */
       body.mode-split .editor-pane:focus-within {
         border-right-color: var(--skr-accent);
       }
@@ -1156,8 +1157,8 @@
       }
 
       /* ---------- Confirm dialog (custom <dialog>) ----------
-     Replaces window.confirm so it doesn't consume the transient user
-     activation required by the File System Access API. */
+         Replaces window.confirm so it doesn't consume the transient user
+         activation required by the File System Access API. */
       dialog.confirm-dialog {
         background: var(--skr-bg-panel);
         color: var(--skr-text);
@@ -1213,10 +1214,10 @@
 
       /* ---------- Help overlay (custom <dialog>) ---------- */
       /* Help text is read at length like the preview, not glanced at like
-     the status bar, so its sizes all track preview-font-size: raising
-     the preview font zooms the whole dialog as one unit, width cap
-     included, and the descriptions keep their line length instead of
-     wrapping tighter. */
+         the status bar, so its sizes all track preview-font-size: raising
+         the preview font zooms the whole dialog as one unit, width cap
+         included, and the descriptions keep their line length instead of
+         wrapping tighter. */
       dialog.help-dialog {
         background: var(--skr-bg-panel);
         color: var(--skr-text);
@@ -1233,12 +1234,11 @@
         box-shadow: 0 10px 40px var(--skr-shadow);
         position: relative;
         /* Match the editor/preview scrollbars. Firefox uses the
-       scrollbar-* properties, while WebKit uses the
-       ::-webkit-scrollbar pseudo-elements below. Track is
-       mantle (to match the dialog background) rather than base,
-       so it blends into the dialog instead of showing a visible
-       column.
-        */
+           scrollbar-* properties, while WebKit uses the
+           ::-webkit-scrollbar pseudo-elements below. Track is
+           mantle (to match the dialog background) rather than base,
+           so it blends into the dialog instead of showing a visible
+           column. */
         scrollbar-color: var(--skr-surface-hover) var(--skr-bg-panel);
         scrollbar-width: thin;
       }
@@ -1337,19 +1337,19 @@
       }
 
       /* Hide elements marked Mac-only by default. The
-     applyMacModifierLabels function strips the .mac-only class on
-     Mac so the elements become visible there. Used in the help
-     dialog to advertise Mac-specific alternative bindings (e.g.,
-     Ctrl+V for V-BLOCK works on Mac because browser paste is Cmd+V
-     there, but doesn't on Linux/Windows where Ctrl+V is intercepted
-     by the browser's paste handler before reaching Vim). */
+         applyMacModifierLabels function strips the .mac-only class on
+         Mac so the elements become visible there. Used in the help
+         dialog to advertise Mac-specific alternative bindings (e.g.,
+         Ctrl+V for V-BLOCK works on Mac because browser paste is Cmd+V
+         there, but doesn't on Linux/Windows where Ctrl+V is intercepted
+         by the browser's paste handler before reaching Vim). */
       .mac-only {
         display: none;
       }
 
       /* ---------- Status bar ---------- */
       /* Canonical Catppuccin mode colors (blue/green/mauve/red/peach) sourced
-     from catppuccin/nvim's lualine.lua. */
+         from catppuccin/nvim's lualine.lua. */
       .statusbar {
         display: flex;
         align-items: center;
@@ -1480,15 +1480,15 @@
       }
 
       /* Status bar slots whose visibility depends on display mode:
-     - The Vim mode pill describes editor state, irrelevant when
-       the editor is hidden in preview-only mode.
-     - The cursor position (Ln/Col) is the editor caret, so it's
-       also meaningless in preview-only mode where the editor is
-       hidden.
-     - The word count is the inverse: shown only in preview-only,
-       where the cursor position would have been. Computed from the
-       rendered preview's textContent so it reflects the final
-       reading word count. */
+         - The Vim mode pill describes editor state, irrelevant when
+           the editor is hidden in preview-only mode.
+         - The cursor position (Ln/Col) is the editor caret, so it's
+           also meaningless in preview-only mode where the editor is
+           hidden.
+         - The word count is the inverse: shown only in preview-only,
+           where the cursor position would have been. Computed from the
+           rendered preview's textContent so it reflects the final
+           reading word count. */
       body.mode-preview .statusbar .status-mode-pill,
       body.mode-preview .statusbar .status-position {
         display: none;
@@ -1501,27 +1501,27 @@
       }
 
       /* Sync indicator: a small arrow that flashes from the teal
-     feedback accent back down to its dim resting color when
-     scroll-sync fires (via Ctrl+Alt+L / ⌃⌘L, :syncpreview, or gz). The
-     flash provides feedback even when the preview doesn't visibly
-     move: e.g., if the caret line was already at the top of the
-     visible block, scrollIntoView is a no-op but the user still
-     gets confirmation their keystroke registered.
+         feedback accent back down to its dim resting color when
+         scroll-sync fires (via Ctrl+Alt+L / ⌃⌘L, :syncpreview, or gz). The
+         flash provides feedback even when the preview doesn't visibly
+         move: e.g., if the caret line was already at the top of the
+         visible block, scrollIntoView is a no-op but the user still
+         gets confirmation their keystroke registered.
 
-     Only visible in split mode. In editor-only and preview-only
-     modes one of the two panes is hidden, so syncing the editor
-     caret to a preview block (or vice versa) doesn't represent
-     anything the user can see, so showing the indicator there would
-     just be visual noise.
+         Only visible in split mode. In editor-only and preview-only
+         modes one of the two panes is hidden, so syncing the editor
+         caret to a preview block (or vice versa) doesn't represent
+         anything the user can see, so showing the indicator there would
+         just be visual noise.
 
-     Implemented as a CSS animation rather than a transition + class
-     toggle: the animation plays once when .flashing is added and
-     returns the element to its base color at the end. The class
-     stays on the element after the animation completes (animation-
-     fill-mode default is `none`, so the element reverts to its
-     underlying .status-sync-indicator color). flashSync() restarts
-     the animation by removing and re-adding the class with a forced
-     reflow between to flush the pending style changes. */
+         Implemented as a CSS animation rather than a transition + class
+         toggle: the animation plays once when .flashing is added and
+         returns the element to its base color at the end. The class
+         stays on the element after the animation completes (animation-
+         fill-mode default is `none`, so the element reverts to its
+         underlying .status-sync-indicator color). flashSync() restarts
+         the animation by removing and re-adding the class with a forced
+         reflow between to flush the pending style changes. */
       .statusbar .status-sync-indicator {
         color: var(--skr-text-faint);
         display: none;
@@ -1542,38 +1542,38 @@
       }
 
       /* @replit/codemirror-vim hardcodes `color: red` inline on its own
-     notification divs (see plugin's showConfirm / openNotification
-     code path). Override to the theme's --skr-error slot so plugin
-     errors ("Not an editor command :foo", "Invalid regex", etc.)
-     and our own Ex error messages (see vimMessage in the script
-     section) render in theme-appropriate color. `!important` is
-     required to beat the inline style the plugin sets.
+         notification divs (see plugin's showConfirm / openNotification
+         code path). Override to the theme's --skr-error slot so plugin
+         errors ("Not an editor command :foo", "Invalid regex", etc.)
+         and our own Ex error messages (see vimMessage in the script
+         section) render in theme-appropriate color. `!important` is
+         required to beat the inline style the plugin sets.
 
-     white-space: pre-wrap overrides the plugin's inline `white-
-     space: pre`. In split-pane mode the Ex panel is constrained to
-     the editor pane's width, so long single-line messages get
-     clipped at the centerline between editor and preview. pre-wrap
-     lets them wrap at spaces instead of clipping, and still
-     preserves any explicit \n breaks the plugin or we emit. */
+         white-space: pre-wrap overrides the plugin's inline `white-
+         space: pre`. In split-pane mode the Ex panel is constrained to
+         the editor pane's width, so long single-line messages get
+         clipped at the centerline between editor and preview. pre-wrap
+         lets them wrap at spaces instead of clipping, and still
+         preserves any explicit \n breaks the plugin or we emit. */
       .cm-vim-message {
         color: var(--skr-error) !important;
         white-space: pre-wrap !important;
       }
 
       /* Vertically center the Ex panel's content. The plugin builds
-     the Ex prompt as a tree of nested flex containers all the way
-     down: .cm-vim-panel → dialog div → makePrompt div (display:
-     flex) → prompt span (display: flex, flex: 1) → prefix + input.
-     Each flex level defaults to align-items: stretch, so the
-     prefix span (the ":" or "/") and the input stretch vertically
-     and the text inside them floats to the top of the stretched
-     line-box. Centering only the outermost .cm-vim-panel isn't
-     enough. We have to override align-items on every flex
-     container in the chain. Applying the rule to all descendant
-     divs and spans is broad but safe: non-flex descendants
-     silently ignore align-items, and the rule only affects short
-     single-line content (multi-line content grows the panel to
-     match, leaving nothing to center against). */
+         the Ex prompt as a tree of nested flex containers all the way
+         down: .cm-vim-panel → dialog div → makePrompt div (display:
+         flex) → prompt span (display: flex, flex: 1) → prefix + input.
+         Each flex level defaults to align-items: stretch, so the
+         prefix span (the ":" or "/") and the input stretch vertically
+         and the text inside them floats to the top of the stretched
+         line-box. Centering only the outermost .cm-vim-panel isn't
+         enough. We have to override align-items on every flex
+         container in the chain. Applying the rule to all descendant
+         divs and spans is broad but safe: non-flex descendants
+         silently ignore align-items, and the rule only affects short
+         single-line content (multi-line content grows the panel to
+         match, leaving nothing to center against). */
       .cm-vim-panel,
       .cm-vim-panel div,
       .cm-vim-panel span {
@@ -1581,11 +1581,11 @@
       }
 
       /* The typed command text. Form controls don't inherit fonts (UA
-     stylesheets size them on their own), and neither the plugin theme
-     nor our rules set one on the input, so it otherwise sits at the
-     browser default while the ":" / "/" prefix beside it scales with
-     the editor font inherited from .cm-editor. font: inherit gives the
-     input the panel's monospace family and that same size. */
+         stylesheets size them on their own), and neither the plugin theme
+         nor our rules set one on the input, so it otherwise sits at the
+         browser default while the ":" / "/" prefix beside it scales with
+         the editor font inherited from .cm-editor. font: inherit gives the
+         input the panel's monospace family and that same size. */
       .cm-vim-panel input {
         font: inherit;
       }

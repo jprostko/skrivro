@@ -67,8 +67,8 @@ The favicon needs no sidecar files since it is inlined in the HTML itself.
 
 == Documentation
 
-Day-to-day usage, keyboard shortcuts, vim mode, and configuration documentation live with the desktop version on the `master` branch.
-The shortcut reference and vim Ex commands are also visible inside the app via the `?` button or Ctrl+Alt+H (Ctrl+Cmd+H on Mac).
+Day-to-day usage, keyboard shortcuts, Vim mode, and configuration documentation live with the desktop version on the `master` branch.
+The shortcut reference and Vim Ex commands are also visible inside the app via the `?` button or Ctrl+Alt+H (Ctrl+Cmd+H on Mac).
 Keyboard shortcuts can differ between this build and the desktop application, so a chord you rely on here may do nothing there, and the help dialog always shows the shortcuts for the build you are running.
 
 == Formatting

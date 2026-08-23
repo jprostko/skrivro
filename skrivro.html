@@ -293,7 +293,7 @@
 
       /* Window-anchored toast for app-level messages (see appMessage
          in the script). The Ex panel only exists with Vim mode on, so
-         feedback for vim-independent triggers lands here when the panel
+         feedback for Vim-independent triggers lands here when the panel
          is unavailable. Fixed to the viewport, so it shows in every
          display mode regardless of which panes exist, and sits above
          the status bar's band so the two never overlap. Same visual
@@ -3461,12 +3461,12 @@
       // to call from any code path.
       //
       // Returns whether the message was actually delivered: false when
-      // Vim mode is off (the panel belongs to the vim extension, and an
+      // Vim mode is off (the panel belongs to the Vim extension, and an
       // empty vimCompartment must not leave a stale wrapper rendering
       // into nothing) or when the editor isn't ready yet. Ex-command
       // callers ignore the result, since their own trigger implies Vim
       // is on, and appMessage below is the router for everything with
-      // a vim-free trigger.
+      // a Vim-free trigger.
       const vimMessage = (text) => {
         if (!prefs.vimMode) return false;
         if (!editorView) return false;
@@ -3483,9 +3483,9 @@
       const appToast = document.getElementById("appToast");
       let appToastTimer = null;
 
-      // Window-anchored toast, the vim-free half of the two message
+      // Window-anchored toast, the Vim-free half of the two message
       // channels (see appMessage below for the routing). The Ex panel
-      // exists only with Vim mode on, so vim-independent feedback lands
+      // exists only with Vim mode on, so Vim-independent feedback lands
       // here when the panel is unavailable. Fixed to the viewport (see
       // .app-toast in the CSS), so it shows in every display mode and
       // with the status bar hidden. Duration matches the Ex panel's
@@ -3509,8 +3509,8 @@
       // ⌃⌘K, or the default-on load at startup). Availability fallback:
       // the Ex panel when it exists (Vim mode on), the window toast
       // otherwise. Vim users therefore see exactly the messages they
-      // always did, while non-vim users stop getting silence, which is
-      // what the vim-gated panel gave them for every one of these
+      // always did, while non-Vim users stop getting silence, which is
+      // what the Vim-gated panel gave them for every one of these
       // before this router existed. Ex-only feedback keeps calling
       // vimMessage directly.
       const appMessage = (text) => {
@@ -5580,7 +5580,7 @@
       // What earns an Ex command, distilled from how the shipped set
       // grew. The discriminator is "can you trust what you see":
       //
-      //   - File and quit operations are vim-canonical. They exist
+      //   - File and quit operations are Vim-canonical. They exist
       //     because their Vim spellings (:w, :e, :q, :wq, :x, ZZ) are
       //     muscle memory, and they follow Vim's semantics as
       //     faithfully as the platform allows, which in a browser

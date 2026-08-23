@@ -7,6 +7,7 @@
 // tracking, focusin/focusout on the Vim command panel input for
 // COMMAND mode detection.
 
+import { EditorView } from "@codemirror/view";
 import { tr } from "./i18n.js";
 import { prefs, savePrefs } from "./prefs.js";
 import { isMac } from "./i18n.js";
@@ -498,8 +499,51 @@ helpDlg.addEventListener("click", (e) => {
 
 // ================= Toggles =================
 
+// A body-class geometry change reflows the editor behind CodeMirror's
+// back, and the selection can come out of that reflow silently moved,
+// seen on WebKitGTK in Vim normal mode as the block cursor landing on
+// a nearby line (blank lines especially) with the editor state moved
+// along. The layer responsible is not pinned down (the native caret
+// re-anchored mid-reflow and adopted by CodeMirror's DOM observer is
+// the leading suspect), so the guard fixes the outcome instead:
+// snapshot the selection, apply the flip, have CodeMirror re-measure,
+// and restore the snapshot if the selection moved by itself within the
+// two-frame reflow window (real input cannot land that fast after a
+// toggle chord). When the selection survives intact, the cursor is
+// still scrolled back into view, since a reflow can leave it outside
+// the visible range and Vim keeps the cursor on a visible line through
+// geometry changes (the same courtesy suits non-Vim mode). The restore
+// bails if the document changed or the editor was rebuilt in the
+// window. Startup calls run before the editor exists and apply the
+// flip unguarded.
+const guardEditorGeometry = (mutate: () => void) => {
+  const view = editorView;
+  if (!view) {
+    mutate();
+    return;
+  }
+  const sel = view.state.selection;
+  const doc = view.state.doc;
+  mutate();
+  view.requestMeasure();
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (editorView !== view || view.state.doc !== doc) return;
+      if (!view.state.selection.eq(sel)) {
+        view.dispatch({ selection: sel, scrollIntoView: true });
+      } else {
+        view.dispatch({
+          effects: EditorView.scrollIntoView(view.state.selection.main.head),
+        });
+      }
+    });
+  });
+};
+
 export const applyBarPosition = () => {
-  document.body.classList.toggle("bar-top", prefs.barPosition === "top");
+  guardEditorGeometry(() => {
+    document.body.classList.toggle("bar-top", prefs.barPosition === "top");
+  });
 };
 export const toggleBarPosition = () => {
   prefs.barPosition = prefs.barPosition === "top" ? "bottom" : "top";
@@ -515,7 +559,9 @@ export const toggleHelpButton = () => {
   applyHelpButton();
 };
 export const applyGutter = () => {
-  document.body.classList.toggle("no-gutter", prefs.gutterHidden);
+  guardEditorGeometry(() => {
+    document.body.classList.toggle("no-gutter", prefs.gutterHidden);
+  });
 };
 export const toggleGutter = () => {
   prefs.gutterHidden = !prefs.gutterHidden;
@@ -523,7 +569,9 @@ export const toggleGutter = () => {
   applyGutter();
 };
 export const applyStatusBar = () => {
-  document.body.classList.toggle("no-statusbar", prefs.statusBarHidden);
+  guardEditorGeometry(() => {
+    document.body.classList.toggle("no-statusbar", prefs.statusBarHidden);
+  });
 };
 export const toggleStatusBar = () => {
   prefs.statusBarHidden = !prefs.statusBarHidden;
@@ -636,11 +684,13 @@ const TOC_SIDEBAR_WIDTHS: Record<string, string> & { medium: string } = {
 // narrow disables it, so transitioning in/out of narrow needs to
 // recompute the layout class set.
 export const applyWidthMode = () => {
-  const cap = WIDTH_CAPS[prefs.widthMode] || WIDTH_CAPS.medium;
-  const tocSidebar = TOC_SIDEBAR_WIDTHS[prefs.widthMode] || TOC_SIDEBAR_WIDTHS.medium;
-  document.documentElement.style.setProperty("--width-cap", cap);
-  document.documentElement.style.setProperty("--toc-sidebar-width", tocSidebar);
-  evaluateTocLayout();
+  guardEditorGeometry(() => {
+    const cap = WIDTH_CAPS[prefs.widthMode] || WIDTH_CAPS.medium;
+    const tocSidebar = TOC_SIDEBAR_WIDTHS[prefs.widthMode] || TOC_SIDEBAR_WIDTHS.medium;
+    document.documentElement.style.setProperty("--width-cap", cap);
+    document.documentElement.style.setProperty("--toc-sidebar-width", tocSidebar);
+    evaluateTocLayout();
+  });
 };
 
 // Explicit setter for `:width <mode>`. No-op when the pref is
@@ -845,9 +895,11 @@ export const toggleVim = () => {
 
 export const DISPLAY_MODES = ["split", "editor", "preview"];
 export const applyDisplayMode = () => {
-  const cl = document.body.classList;
-  for (const m of DISPLAY_MODES) cl.remove(`mode-${m}`);
-  cl.add(`mode-${prefs.displayMode}`);
+  guardEditorGeometry(() => {
+    const cl = document.body.classList;
+    for (const m of DISPLAY_MODES) cl.remove(`mode-${m}`);
+    cl.add(`mode-${prefs.displayMode}`);
+  });
 };
 // Toggle keyboard focus between the editor pane and the preview pane.
 // Only meaningful in split mode: in editor-only and preview-only

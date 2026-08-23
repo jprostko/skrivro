@@ -79,7 +79,19 @@ WEBKIT_DISABLE_DMABUF_RENDERER=1 skrivro
 ----
 
 On newer driver stacks `__NV_DISABLE_EXPLICIT_SYNC=1` works as an alternative.
-To make the fix permanent, add the variable to the `Exec` line of your desktop entry:
+The two are alternatives rather than a pair, and which one works can differ between setups, even between a shell and a desktop entry.
+If Skrivro still exits immediately with one variable, switch to the other.
+
+To make the fix permanent, put the working variable in the desktop entry.
+The packaged entry lives at `/usr/share/applications/com.skrivro.editor.desktop`.
+Copy it to `~/.local/share/applications/` and edit the copy, which overrides the system file and survives package upgrades:
+
+[source,bash]
+----
+cp /usr/share/applications/com.skrivro.editor.desktop ~/.local/share/applications/
+----
+
+Then change the copy's `Exec` line to include the variable:
 
  Exec=env WEBKIT_DISABLE_DMABUF_RENDERER=1 skrivro %F
 

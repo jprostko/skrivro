@@ -344,7 +344,7 @@ export const updateWordCount = () => {
 //
 // The window-anchored half of the app's two message channels, see
 // appMessage in io.ts for the routing. The Ex panel exists only with
-// Vim mode on, so vim-independent feedback lands here when the panel
+// Vim mode on, so Vim-independent feedback lands here when the panel
 // is unavailable. Fixed to the viewport (styles.css .app-toast), so
 // it shows in every display mode, with either pane hidden, and with
 // the status bar hidden too. Duration matches the Ex panel's 5000ms

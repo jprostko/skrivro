@@ -319,7 +319,7 @@ body.peeking .preview-scroll {
 
 /* Window-anchored toast for app-level messages (see showAppToast in
    ui.ts and the appMessage router in io.ts). The Ex panel only
-   exists with Vim mode on, so feedback for vim-independent triggers
+   exists with Vim mode on, so feedback for Vim-independent triggers
    lands here when the panel is unavailable. Fixed to the viewport,
    so it shows in every display mode regardless of which panes
    exist, and sits above the status bar's band so the two never

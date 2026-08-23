@@ -182,11 +182,11 @@ export const setLaunchCwd = (cwd: string) => {
 // path.
 //
 // Returns whether the message was actually delivered: false when Vim
-// mode is off (the panel belongs to the vim extension, and an empty
+// mode is off (the panel belongs to the Vim extension, and an empty
 // vimCompartment must not leave a stale wrapper rendering into
 // nothing) or when the editor isn't ready yet. Ex-command callers
 // ignore the result, since their own trigger implies Vim is on, and
-// appMessage below is the router for everything with a vim-free
+// appMessage below is the router for everything with a Vim-free
 // trigger.
 export const vimMessage = (text: string): boolean => {
   if (!prefs.vimMode) return false;
@@ -208,8 +208,8 @@ export const vimMessage = (text: string): boolean => {
 // Ctrl+Alt+K / ⌃⌘K. Availability fallback: the Ex panel when it
 // exists (Vim mode on), the window toast otherwise (showAppToast in
 // ui.ts). Vim users therefore see exactly the messages they always
-// did, while non-vim users stop getting silence, which is what the
-// vim-gated panel gave them for every one of these before this router
+// did, while non-Vim users stop getting silence, which is what the
+// Vim-gated panel gave them for every one of these before this router
 // existed. Ex-only feedback keeps calling vimMessage directly.
 export const appMessage = (text: string) => {
   if (vimMessage(text)) return;
@@ -671,7 +671,7 @@ const resolveArgPath = async (arg: string): Promise<string> => {
 // What earns an Ex command, distilled from how the shipped set grew.
 // The discriminator is "can you trust what you see":
 //
-//   - File and quit operations are vim-canonical. They exist because
+//   - File and quit operations are Vim-canonical. They exist because
 //     their Vim spellings (:w, :e, :q, :wq, :x, ZZ) are muscle
 //     memory, and they follow Vim's semantics as faithfully as the
 //     platform allows.

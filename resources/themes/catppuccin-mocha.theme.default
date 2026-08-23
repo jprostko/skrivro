@@ -126,5 +126,5 @@ feedback = #94e2d5
 # this color when scroll-sync fires, then decays back to text-faint.
 
 cursor = #f5e0dc
-# CM6 caret color, .cm-cursor border, vim block cursor (.cm-fat-cursor)
+# CM6 caret color, .cm-cursor border, Vim block cursor (.cm-fat-cursor)
 # bg, unfocused fat-cursor outline.

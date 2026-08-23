@@ -160,7 +160,7 @@ cat <<'EOF' > "$DRIFT_MD"
 
 How to use this file: open it in split mode as Markdown. Put the cursor
 on a heading in the CONTROL zone and trigger sync (Ctrl+Alt+L on
-Linux/Windows, Ctrl+Cmd+L on Mac, or gz in vim normal mode). The
+Linux/Windows, Ctrl+Cmd+L on Mac, or gz in Vim normal mode). The
 preview should land exactly on that heading. Then put the cursor on any
 MARKER heading below the HTML zone and sync again. While the drift bug
 is present, the preview lands visibly BEFORE the marker, because the

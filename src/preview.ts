@@ -641,17 +641,17 @@ peekReturnBtn.addEventListener("click", exitPeek);
 // insert, visual, and replace each eat the first press, and only a
 // NORMAL-mode press returns. CM6's hasFocus is literally
 // "activeElement == contentDOM" (panel inputs make it false), which
-// is exactly the surface the vim gate wants once the field guard
-// above has run. readVimMode is null with Vim off, so non-vim editors
+// is exactly the surface the Vim gate wants once the field guard
+// above has run. readVimMode is null with Vim off, so non-Vim editors
 // return on every press. With focus anywhere else (the preview pane
 // after a click, or nothing focused as in preview-only mode), Esc
 // always returns. The event is deliberately NOT preventDefault'ed: a
-// normal-mode Esc may still have vim work to do (canceling a pending
+// normal-mode Esc may still have Vim work to do (canceling a pending
 // operator or count), and swallowing it would leave that state armed,
 // so the rare pending-operator press cancels AND returns, backing out
 // both layers at once. Open dialogs and the spellcheck menu keep Esc
 // entirely to themselves (dismissing them is the whole intent of the
-// press). Capture phase so a vim handler that consumes the key can't
+// press). Capture phase so a Vim handler that consumes the key can't
 // starve this listener.
 window.addEventListener(
   "keydown",

@@ -158,7 +158,7 @@
 # Status bar mode pill style: canonical / muted
 # canonical from lualine, muted from LazyVim, both using the active
 # theme's colors rather than a fixed palette
-#   canonical: each vim mode gets its own bright accent color
+#   canonical: each Vim mode gets its own bright accent color
 #   muted:     Normal and Visual are toned down, Insert / Replace /
 #              Command keep their canonical accents
 # statusbar-style = canonical

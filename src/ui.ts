@@ -1201,8 +1201,17 @@ host.addEventListener("focusout", (e) => {
 //
 // .cm-content is CM6's contenteditable surface, the one place where
 // clicks legitimately move focus. CM6 handles cursor placement there,
-// so we skip our redirect. Input elements (CM6's search panel, the
-// Vim Ex input) are also skipped so their own focus semantics work.
+// so we skip our redirect. CM panels (.cm-panels holds the
+// find/replace panel and the Vim Ex dialog) are skipped as a block:
+// their controls manage focus through the panel machinery, and the
+// search panel's close button refocuses the editor itself through
+// CM's scroll-protected path. A redirect fired from a panel click
+// would instead focus the content directly with no scroll protection,
+// and on WebKitGTK the engine's scroll-to-focus reveal then snaps the
+// scroller to the document top. It would also pull focus out of the
+// panel before the close handler's panel-holds-focus check, disabling
+// that stock refocus. Input elements are also skipped so any input
+// outside a panel keeps its own focus semantics.
 //
 // requestAnimationFrame defers the focus call to AFTER the browser's
 // default focus change from the mousedown, which would otherwise
@@ -1210,6 +1219,7 @@ host.addEventListener("focusout", (e) => {
 host.addEventListener("mousedown", (e) => {
   if (!(e.target instanceof Element)) return;
   if (e.target.closest(".cm-content")) return;
+  if (e.target.closest(".cm-panels")) return;
   if (e.target instanceof HTMLInputElement) return;
   requestAnimationFrame(() => {
     if (editorView) editorView.contentDOM.focus();

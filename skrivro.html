@@ -5194,85 +5194,66 @@
         showPreviewToast("Unable to follow this link");
       });
 
-      // Preview-only mode: clicks on the margin areas (outside the
-      // capped-width preview content but still inside .wrap) take focus
-      // off the preview and put it on <body>, which breaks keyboard
-      // navigation. Mirrors the wheel-forwarder logic above: margin
-      // mousedowns delegate to the inner element. Inside-content clicks
-      // are skipped because the preview's own tabindex-driven native
-      // focus already handles them.
+      // Keep the editor focused when clicking non-content regions of the
+      // editor pane: gutter (line numbers), scrollbar, pane padding, and
+      // the empty space around the scroller. Without this, clicking any of
+      // those moves focus off the content (onto the scroller or <body>),
+      // and subsequent keystrokes, Vim commands, and Ex commands (`:w`,
+      // `:e`, etc.) silently don't reach the editor until the user clicks
+      // back into the content. The scrollbar case produced an especially
+      // confusing symptom: the FIRST `:` after a scrollbar click was
+      // swallowed (focus moving back to the editor mid-keystroke), and only
+      // the second `:` opened the Ex prompt.
       //
-      // preventDefault + synchronous focus, NOT queueMicrotask: the
-      // browser's default mousedown handling moves focus to <body> when
-      // the target isn't focusable. A microtask-deferred out.focus()
-      // would land AFTER that default shift, so focus ricochets: out
-      // is briefly focused, then immediately blurred. preventDefault
-      // suppresses the default shift entirely, and out.focus() then
-      // runs synchronously and sticks.
-      document.querySelector(".wrap").addEventListener("mousedown", (e) => {
-        if (prefs.displayMode !== "preview") return;
-        if (out.contains(e.target)) return;
-        e.preventDefault();
-        out.focus();
+      // .cm-content is CM6's contenteditable surface, the one place where
+      // clicks legitimately move focus. CM6 handles cursor placement there,
+      // so we skip our redirect. CM panels (.cm-panels holds the
+      // find/replace panel and the Vim Ex dialog) are skipped as a block:
+      // their controls manage focus through the panel machinery, the search
+      // panel's close button refocuses the editor itself, and a redirect
+      // fired mid-click would pull focus out of the panel before the close
+      // handler's panel-holds-focus check, disabling that stock refocus.
+      // Input elements are also skipped so any input outside a panel keeps
+      // its own focus semantics.
+      //
+      // requestAnimationFrame defers the focus call to AFTER the browser's
+      // default focus change from the mousedown, which would otherwise
+      // override an immediate .focus() and move focus to <body> anyway.
+      // The refocus goes through editorView.focus(), never a bare
+      // contentDOM.focus(): the bare call skips CM's scroll protection,
+      // and WebKit's scroll-to-focus reveal then snaps a scrolled editor
+      // to the document top. The protected call also keeps CM6's internal
+      // focus state coherent, the same reason the help-dialog focus restore
+      // uses it.
+      host.addEventListener("mousedown", (e) => {
+        if (!(e.target instanceof Element)) return;
+        if (e.target.closest(".cm-content")) return;
+        if (e.target.closest(".cm-panels")) return;
+        if (e.target instanceof HTMLInputElement) return;
+        requestAnimationFrame(() => {
+          if (editorView) editorView.focus();
+        });
       });
 
-      // Editor-only mode: clicks on the margin areas around .cm-scroller
-      // can blur the editor's contentDOM. CM6 has its own mousedown
-      // handler that catches margin clicks and places the cursor on the
-      // nearest line (the line at the click Y): for different-Y clicks
-      // this works fine and keeps focus, but for same-Y clicks CM6 sees
-      // "no cursor movement needed" and apparently doesn't re-focus
-      // contentDOM, so the editor ends up blurred.
+      // ================= Single-pane scroll + focus routing =================
       //
-      // preventDefault + synchronous focus, same pattern as the
-      // preview margin handler above. preventDefault stops two default
-      // behaviors that would otherwise fire:
+      // In editor-only and preview-only modes, the inner scrollable
+      // element (.cm-scroller for editor, .preview itself for preview) is
+      // centered with margin-auto inside its pane and capped to a width
+      // less than the pane. The empty margin space around the scroller
+      // lives in flex containers without overflow, so user input over
+      // that space (wheel events, mousedowns) has no scrollable / focus
+      // target ancestor by default. The handlers below forward those
+      // events to the inner element so single-pane modes behave
+      // consistently no matter where in the pane the cursor is.
       //
-      //   1. The browser's focus shift to <body> for clicks on a non-
-      //      focusable target, which would override our focus call.
-      //   2. CM6's margin-click handling that places the cursor on
-      //      the line at the click Y. That cursor jump is gone here,
-      //      a deliberate trade-off. CM6's same behavior with no
-      //      cursor-position change (when the click Y matches the
-      //      cursor's current line) silently blurred the editor, and the
-      //      simplest fix that keeps focus reliable is to preventDefault
-      //      uniformly. Margin clicks as a way to navigate to a line
-      //      are unusual (most users click the text directly or use
-      //      keyboard navigation), so losing that path is preferable
-      //      to randomly losing focus on accidental margin clicks.
-      //
-      // The .cm-panels skip is so clicks on the Vim Ex command bar (or
-      // CM6's search panel) don't get their focus stolen by the editor:
-      // those panels have their own input that needs to keep focus
-      // after a click.
-      document.querySelector(".wrap").addEventListener("mousedown", (e) => {
-        if (prefs.displayMode !== "editor") return;
-        if (!editorView) return;
-        const target = e.target;
-        if (!(target instanceof Element)) return;
-        if (editorView.scrollDOM.contains(target)) return;
-        if (target.closest(".cm-panels")) return;
-        e.preventDefault();
-        editorView.focus();
-      });
+      // Skipped in split mode because the cap rules (`body.mode-editor` /
+      // `body.mode-preview` scoping) don't apply there: each pane fills
+      // its half of .wrap with no margin gap to worry about.
 
-      // ================= Wheel-event forwarding =================
-      // In single-pane modes, the active pane's scrollable element
-      // (.cm-scroller for editor, .preview itself for preview) is
-      // centered with margin-auto and capped to less than the pane
-      // width. Wheel events over the empty margin areas around the
-      // content have no scrollable ancestor: the pane wrappers and
-      // .wrap are flex containers without overflow, so the events
-      // fire into the void and the user sees nothing scroll.
-      //
-      // Forward those margin-area wheel events to the inner scroller
-      // so the pane scrolls regardless of where in the pane the cursor
-      // is hovering. Skipped in split mode because each pane fills its
-      // half of .wrap with no margin gap to worry about.
-      //
-      // passive: false is required because we call preventDefault to
-      // suppress whatever default behavior would have happened on the
-      // wrapper (typically nothing, but we want to be deterministic).
+      // Wheel forwarder: scroll the inner scroller via scrollBy when the
+      // wheel event lands outside it. passive: false because we
+      // preventDefault.
       const wrap = document.querySelector(".wrap");
       wrap.addEventListener(
         "wheel",
@@ -5292,6 +5273,96 @@
         },
         { passive: false },
       );
+
+      // Preview-only margin click: clicks on the margin areas (outside
+      // the capped-width preview content but still inside .wrap) take
+      // focus off the preview and put it on <body>, which breaks
+      // keyboard navigation. preventDefault + synchronous focus is the
+      // working pattern (queueMicrotask deferred runs AFTER the default
+      // focus shift, so focus ricochets).
+      document.querySelector(".wrap").addEventListener("mousedown", (e) => {
+        if (prefs.displayMode !== "preview") return;
+        if (out.contains(e.target)) return;
+        e.preventDefault();
+        out.focus();
+      });
+
+      // Editor-only margin click: clicks on the margin areas around
+      // .cm-scroller can blur the editor's contentDOM. CM6 has its own
+      // mousedown handler that catches margin clicks and places the
+      // cursor on the nearest line: for different-Y clicks this works
+      // and keeps focus, but for same-Y clicks CM6 sees "no cursor
+      // movement needed" and silently doesn't refocus contentDOM, so
+      // the editor blurs.
+      //
+      // preventDefault + synchronous focus stops two default behaviors:
+      //   1. The browser's focus shift to <body> for clicks on a non-
+      //      focusable target (which would override our focus call).
+      //   2. CM6's margin-click cursor placement at different Y. That
+      //      jump is gone here, a deliberate trade-off. Margin clicks
+      //      as a way to navigate to a specific line are unusual: most
+      //      users click the text directly or use keyboard navigation.
+      //      Losing that path is preferable to losing focus on accidental
+      //      margin clicks.
+      //
+      // The .cm-panels skip is so clicks on the Vim Ex command bar (or
+      // CM6's search panel) don't get their focus stolen by the editor.
+      // The existing host mousedown listener above also fires (it's on
+      // .editor-pane which is inside .wrap), but the rAF refocus there
+      // is a harmless no-op when we've already synchronously focused
+      // the editor here.
+      document.querySelector(".wrap").addEventListener("mousedown", (e) => {
+        if (prefs.displayMode !== "editor") return;
+        if (!editorView) return;
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        if (editorView.scrollDOM.contains(target)) return;
+        if (target.closest(".cm-panels")) return;
+        e.preventDefault();
+        editorView.focus();
+      });
+
+      // Keep a pane focused when clicking the status bar (split and
+      // editor-only modes only: in preview-only mode the editor is
+      // intentionally blurred by setDisplayMode). The bar is not a
+      // focus target, so the browser's default mousedown handling
+      // drops focus to <body>, and keystrokes, Vim commands, and Ex
+      // commands silently fail until the user clicks back into a
+      // pane. The redirect makes chrome clicks a focus no-op instead.
+      //
+      // In split mode, the redirect preserves whichever pane was
+      // focused before the click, since clicking chrome should be a
+      // no-op for focus state, not a pane switch from preview to
+      // editor. In editor-only mode there's only one pane anyway, so
+      // this collapses to always-editor. The wasPreviewFocused
+      // capture is synchronous (mousedown fires before the browser's
+      // default focus change), so it reflects the pre-click state
+      // even though the .focus() call is deferred to the next frame
+      // via rAF.
+      //
+      // Skip clicks on buttons (the help `?` button) and inputs,
+      // since those have their own focus semantics that shouldn't be
+      // overridden. In preview mode, skip the redirect so the editor
+      // stays blurred and the preview remains the read-only surface.
+      //
+      // The editor refocus goes through editorView.focus(), not a
+      // bare contentDOM.focus(), for the scroll protection and
+      // focus-state coherence documented at the pane redirect above.
+      const chromeFocusRedirect = (e) => {
+        if (prefs.displayMode === "preview") return;
+        if (!(e.target instanceof Element)) return;
+        if (e.target instanceof HTMLButtonElement) return;
+        if (e.target instanceof HTMLInputElement) return;
+        const wasPreviewFocused = prefs.displayMode === "split" && document.activeElement === out;
+        requestAnimationFrame(() => {
+          if (wasPreviewFocused) {
+            out.focus();
+          } else if (editorView) {
+            editorView.focus();
+          }
+        });
+      };
+      statusBar.addEventListener("mousedown", chromeFocusRedirect);
 
       // ================= Windows AltGr chord recovery =================
       // On Windows, keyboard layouts implement the AltGr character layer

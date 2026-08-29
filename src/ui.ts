@@ -1191,38 +1191,41 @@ host.addEventListener("focusout", (e) => {
 // Keep the editor focused when clicking non-content regions of the
 // editor pane: gutter (line numbers), scrollbar, pane padding, and
 // the empty space around the scroller. Without this, clicking any of
-// those moves focus to <body>, and subsequent keystrokes, Vim
-// commands, and Ex commands (`:w`, `:e`, etc.) silently don't reach
-// the editor until the user clicks back into the content. The
-// scrollbar case produced an especially confusing symptom: the FIRST
-// `:` after a scrollbar click was swallowed (focus moving back to
-// the editor mid-keystroke), and only the second `:` opened the Ex
-// prompt.
+// those moves focus off the content (onto the scroller or <body>),
+// and subsequent keystrokes, Vim commands, and Ex commands (`:w`,
+// `:e`, etc.) silently don't reach the editor until the user clicks
+// back into the content. The scrollbar case produced an especially
+// confusing symptom: the FIRST `:` after a scrollbar click was
+// swallowed (focus moving back to the editor mid-keystroke), and only
+// the second `:` opened the Ex prompt.
 //
 // .cm-content is CM6's contenteditable surface, the one place where
 // clicks legitimately move focus. CM6 handles cursor placement there,
 // so we skip our redirect. CM panels (.cm-panels holds the
 // find/replace panel and the Vim Ex dialog) are skipped as a block:
-// their controls manage focus through the panel machinery, and the
-// search panel's close button refocuses the editor itself through
-// CM's scroll-protected path. A redirect fired from a panel click
-// would instead focus the content directly with no scroll protection,
-// and on WebKitGTK the engine's scroll-to-focus reveal then snaps the
-// scroller to the document top. It would also pull focus out of the
-// panel before the close handler's panel-holds-focus check, disabling
-// that stock refocus. Input elements are also skipped so any input
-// outside a panel keeps its own focus semantics.
+// their controls manage focus through the panel machinery, the search
+// panel's close button refocuses the editor itself, and a redirect
+// fired mid-click would pull focus out of the panel before the close
+// handler's panel-holds-focus check, disabling that stock refocus.
+// Input elements are also skipped so any input outside a panel keeps
+// its own focus semantics.
 //
 // requestAnimationFrame defers the focus call to AFTER the browser's
 // default focus change from the mousedown, which would otherwise
 // override an immediate .focus() and move focus to <body> anyway.
+// The refocus goes through editorView.focus(), never a bare
+// contentDOM.focus(): the bare call skips CM's scroll protection,
+// and WebKitGTK's scroll-to-focus reveal then snaps a scrolled editor
+// to the document top. The protected call also keeps CM6's internal
+// focus state coherent, the same reason the help-dialog focus restore
+// uses it.
 host.addEventListener("mousedown", (e) => {
   if (!(e.target instanceof Element)) return;
   if (e.target.closest(".cm-content")) return;
   if (e.target.closest(".cm-panels")) return;
   if (e.target instanceof HTMLInputElement) return;
   requestAnimationFrame(() => {
-    if (editorView) editorView.contentDOM.focus();
+    if (editorView) editorView.focus();
   });
 });
 
@@ -1332,16 +1335,20 @@ if (wrapEl) {
 // In split mode, the redirect preserves whichever pane was focused
 // before the click, since clicking chrome should be a no-op for focus
 // state, not a pane switch from preview to editor. In editor-only
-// mode there's only one pane anyway, so this collapses to the old
-// "always editor" behavior. The wasPreviewFocused capture is
-// synchronous (mousedown fires before the browser's default focus
-// change), so it reflects the pre-click state even though the
-// .focus() call is deferred to the next frame via rAF.
+// mode there's only one pane anyway, so this collapses to
+// always-editor. The wasPreviewFocused capture is synchronous
+// (mousedown fires before the browser's default focus change), so it
+// reflects the pre-click state even though the .focus() call is
+// deferred to the next frame via rAF.
 //
 // Skip clicks on buttons (the help `?` button) and inputs, since
 // those have their own focus semantics that shouldn't be overridden.
 // In preview mode, skip the redirect so the editor stays blurred and
 // the preview remains the read-only surface.
+//
+// The editor refocus goes through editorView.focus(), not a bare
+// contentDOM.focus(), for the scroll protection and focus-state
+// coherence documented at the pane redirect above.
 const chromeFocusRedirect = (e: MouseEvent) => {
   if (prefs.displayMode === "preview") return;
   if (!(e.target instanceof Element)) return;
@@ -1352,7 +1359,7 @@ const chromeFocusRedirect = (e: MouseEvent) => {
     if (wasPreviewFocused) {
       out.focus();
     } else if (editorView) {
-      editorView.contentDOM.focus();
+      editorView.focus();
     }
   });
 };

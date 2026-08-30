@@ -1,7 +1,7 @@
 # Maintainer: Joseph R. Prostko <joe dot prostko at gmail dot com>
 
 pkgname=skrivro
-pkgver=1.0.0
+pkgver=1.0.1
 pkgrel=1
 pkgdesc="Keyboard-first AsciiDoc and Markdown editor with live preview"
 arch=('x86_64')
@@ -38,7 +38,7 @@ makedepends=(
   'appstream'
 )
 source=("$pkgname-$pkgver.tar.gz::https://github.com/jprostko/skrivro/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('2b2fe4c03a3ccebfd62b131499dd93c630067e7644b48f1459d380efc6e379d2')
+sha256sums=('9da29d6405eccc2b06cc4b1b07174eb018849bfef296066feb2cf5058e1c022c')
 
 prepare() {
   cd "$pkgname-$pkgver"
